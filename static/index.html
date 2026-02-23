@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fancy Diff Checker</title>
+    <title>Diff checker from Hell</title>
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=9">
 </head>
 <body>
     <div class="app-container">
@@ -71,7 +71,14 @@
         </header>
 
         <main class="main-content">
-            <div class="input-panels" id="input-panels">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="text-diff">Text Diff</button>
+                <button class="tab-btn" data-tab="folder-diff">Folder Diff</button>
+            </div>
+
+            <!-- TEXT DIFF VIEW -->
+            <div class="tab-content active" id="text-diff">
+                <div class="input-panels" id="input-panels">
                 <div class="panel original-panel">
                     <div class="panel-header">
                         <h2>Original Content</h2>
@@ -79,6 +86,8 @@
                     </div>
                     <textarea id="original-input" placeholder="Paste original text here..."></textarea>
                 </div>
+
+
                 <div class="panel modified-panel">
                     <div class="panel-header">
                         <h2>Modified Content</h2>
@@ -100,8 +109,13 @@
 
             <div class="diff-container hidden" id="diff-container">
                 <div class="panel-header diff-header">
-                    <h2>Comparison Diff</h2>
+                    <div class="diff-header-title">
+                        <h2>Comparison Diff</h2>
+                        <span id="detected-language-label" class="detected-lang-label hidden">Detected: <span id="lang-name"></span></span>
+                    </div>
                     <div class="diff-actions">
+                        <button id="merge-all-right-btn" class="secondary-btn" title="Overwrite ALL differences in Modified side">Merge All Right ➔</button>
+                        <button id="merge-all-left-btn" class="secondary-btn" title="Overwrite ALL differences in Original side">🡄 Merge All Left</button>
                         <button id="toggle-inline-btn" class="secondary-btn">Inline View</button>
                         <button id="edit-btn" class="secondary-btn">Edit</button>
                     </div>
@@ -109,6 +123,60 @@
                 <!-- Monaco Editor will be mounted here -->
                 <div id="monaco-diff-editor" class="editor-host"></div>
             </div>
+            </div> <!-- End Text Diff View -->
+
+            <!-- FOLDER DIFF VIEW -->
+            <div class="tab-content hidden" id="folder-diff">
+                <div class="folder-setup-panels">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Original Folder</h2>
+                        </div>
+                        <div class="folder-upload-area">
+                            <input type="file" id="original-folder-input" webkitdirectory directory multiple class="hidden-file-input">
+                            <button class="secondary-btn upload-btn" onclick="document.getElementById('original-folder-input').click()">Select Original Folder</button>
+                            <span id="original-folder-name" class="folder-name-display">No folder selected</span>
+                        </div>
+                    </div>
+                    
+
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Modified Folder</h2>
+                        </div>
+                        <div class="folder-upload-area">
+                            <input type="file" id="modified-folder-input" webkitdirectory directory multiple class="hidden-file-input">
+                            <button class="secondary-btn upload-btn" onclick="document.getElementById('modified-folder-input').click()">Select Modified Folder</button>
+                            <span id="modified-folder-name" class="folder-name-display">No folder selected</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-bar">
+                    <button id="compare-folders-btn" class="primary-btn" disabled>
+                        <span>Compare Folders</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="folder-results-container hidden" id="folder-results-container">
+                    <div class="sidebar" id="file-tree-sidebar">
+                        <div class="sidebar-header">
+                            <h3>Changed Files</h3>
+                        </div>
+                        <ul class="file-tree" id="file-tree">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                    <!-- The Monaco editor will be injected into this host when in folder mode -->
+                    <div class="folder-editor-wrapper" id="folder-editor-wrapper">
+                        <div class="empty-state">Select a file from the sidebar to view diff</div>
+                    </div>
+                </div>
+            </div> <!-- End Folder Diff View -->
         </main>
     </div>
 
@@ -117,6 +185,6 @@
     <!-- Highlight.js for Language Auto-Detection -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <!-- Custom JS -->
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=9"></script>
 </body>
 </html>

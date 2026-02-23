@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 import os
 
-app = FastAPI(title="Fancy Diff Checker")
+app = FastAPI(title="Diff checker from Hell")
 
 # Mount the static directory to serve HTML, CSS, and JS files
 static_dir = os.path.join(os.path.dirname(__file__), "static")

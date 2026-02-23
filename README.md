@@ -1,4 +1,4 @@
-# Fancy Diff Checker
+# Diff checker from Hell
 
 A beautiful, local web-based Diff Checker powered by FastAPI and the Monaco Editor (the same technology behind VS Code). 
 
