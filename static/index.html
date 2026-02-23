@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fancy Diff Checker</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 4c0-1.1.9-2 2-2"></path>
+                    <path d="M20 2c1.1 0 2 .9 2 2"></path>
+                    <path d="M22 8c0 1.1-.9 2-2 2"></path>
+                    <path d="M16 10c-1.1 0-2-.9-2-2"></path>
+                    <path d="M4 14c0-1.1.9-2 2-2"></path>
+                    <path d="M10 12c1.1 0 2 .9 2 2"></path>
+                    <path d="M12 18c0 1.1-.9 2-2 2"></path>
+                    <path d="M6 20c-1.1 0-2-.9-2-2"></path>
+                </svg>
+                <h1>DiffChecker<span class="accent">.io</span></h1>
+            </div>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="language-select">Language:</label>
+                    <select id="language-select">
+                        <option value="auto">Auto Detect</option>
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="java">Java</option>
+                        <option value="c">C</option>
+                        <option value="cpp">C++</option>
+                        <option value="csharp">C#</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                        <option value="php">PHP</option>
+                        <option value="ruby">Ruby</option>
+                        <option value="swift">Swift</option>
+                        <option value="kotlin">Kotlin</option>
+                        <option value="sql">SQL</option>
+                        <option value="yaml">YAML</option>
+                        <option value="yaml">Ansible</option>
+                        <option value="groovy">Jenkinsfile</option>
+                        <option value="hcl">Terraform</option>
+                        <option value="dockerfile">Dockerfile</option>
+                        <option value="shell">Shell Script</option>
+                        <option value="json">JSON</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="plaintext">Plain Text</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="theme-select">Theme:</label>
+                    <select id="theme-select">
+                        <option value="vs-dark">Dark</option>
+                        <option value="vs">Light</option>
+                        <option value="hc-black">High Contrast</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="input-panels" id="input-panels">
+                <div class="panel original-panel">
+                    <div class="panel-header">
+                        <h2>Original Content</h2>
+                        <button class="action-btn clear-btn" data-target="original-input">Clear</button>
+                    </div>
+                    <textarea id="original-input" placeholder="Paste original text here..."></textarea>
+                </div>
+                <div class="panel modified-panel">
+                    <div class="panel-header">
+                        <h2>Modified Content</h2>
+                        <button class="action-btn clear-btn" data-target="modified-input">Clear</button>
+                    </div>
+                    <textarea id="modified-input" placeholder="Paste modified text here..."></textarea>
+                </div>
+            </div>
+            
+            <div class="action-bar">
+                <button id="compare-btn" class="primary-btn">
+                    <span>Compare Files</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="diff-container hidden" id="diff-container">
+                <div class="panel-header diff-header">
+                    <h2>Comparison Diff</h2>
+                    <div class="diff-actions">
+                        <button id="toggle-inline-btn" class="secondary-btn">Inline View</button>
+                        <button id="edit-btn" class="secondary-btn">Edit</button>
+                    </div>
+                </div>
+                <!-- Monaco Editor will be mounted here -->
+                <div id="monaco-diff-editor" class="editor-host"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- RequireJS for Monaco Editor loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+    <!-- Highlight.js for Language Auto-Detection -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Custom JS -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
