@@ -1,190 +1,372 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diff checker from Hell</title>
+    <title>DiffChecker.io — Local Private Diff Tool</title>
+    <meta name="description" content="A fast, private, locally-hosted diff checker with Monaco Editor. No data leaks, no tracking.">
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        surface: { DEFAULT: '#1e293b', raised: '#263347', border: '#334155' },
+                        accent:  { DEFAULT: '#3b82f6', hover: '#2563eb', muted: 'rgba(59,130,246,0.15)' }
+                    }
+                }
+            }
+        }
+    </script>
+
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/style.css?v=9">
+
+    <!-- Custom overrides that Tailwind cannot easily express -->
+    <style>
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* Drag-active highlight */
+        .drag-active { border-color: #3b82f6 !important; background-color: rgba(59,130,246,0.12) !important; }
+
+        /* Loading spinner */
+        .loader { border: 3px solid rgba(255,255,255,0.08); border-top: 3px solid #3b82f6;
+                  border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Glyph-margin merge arrows — bigger, darker, both visible */
+        .merge-glyph-arrow-right,
+        .merge-glyph-arrow-left {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .merge-glyph-arrow-right::after,
+        .merge-glyph-arrow-left::after {
+            font-size:              28px;
+            font-weight:            900;
+            line-height:            1;
+            cursor:                 pointer;
+            user-select:            none;
+            -webkit-text-stroke:    1px currentColor;  /* thickens the arrow stroke */
+        }
+        /* → File 1 gutter: copy to File 2  — vivid sky-blue */
+        .merge-glyph-arrow-right::after { content: '→'; color: #60a5fa; }
+        /* ← File 2 gutter: copy to File 1  — vivid emerald */
+        .merge-glyph-arrow-left::after  { content: '←'; color: #34d399; }
+
+        /* Tab content visibility */
+        .tab-content { display: none; min-height: 0; }
+        .tab-content.active { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+
+        /* Monaco host — concrete height is critical. 
+           flex:1 alone requires every ancestor to have a set height.
+           We add min-height as a robust fallback so Monaco never gets 0px. */
+        .editor-host { 
+            width: 100%; 
+            flex: 1; 
+            min-height: 0;
+            height: calc(100vh - 160px); /* robust fallback */
+        }
+
+        /* Folder diff sidebar */
+        .folder-results-container { display: flex; flex: 1; gap: 0; overflow: hidden; }
+        .sidebar { width: 260px; flex-shrink: 0; background: #1e293b; border-right: 1px solid #334155; overflow-y: auto; }
+        .folder-editor-wrapper { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+        .tree-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer;
+                     font-size: 0.8rem; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.04);
+                     transition: background .1s; }
+        .tree-item:hover { background: rgba(255,255,255,0.05); }
+        .tree-item.active { background: rgba(59,130,246,0.15); color: #93c5fd; }
+        .status-indicator { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .status-modified { background: #f59e0b; }
+        .status-added    { background: #10b981; }
+        .status-removed  { background: #ef4444; }
+        .file-path-text  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    </style>
 </head>
-<body>
-    <div class="app-container">
-        <header class="header">
-            <div class="logo">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 4c0-1.1.9-2 2-2"></path>
-                    <path d="M20 2c1.1 0 2 .9 2 2"></path>
-                    <path d="M22 8c0 1.1-.9 2-2 2"></path>
-                    <path d="M16 10c-1.1 0-2-.9-2-2"></path>
-                    <path d="M4 14c0-1.1.9-2 2-2"></path>
-                    <path d="M10 12c1.1 0 2 .9 2 2"></path>
-                    <path d="M12 18c0 1.1-.9 2-2 2"></path>
-                    <path d="M6 20c-1.1 0-2-.9-2-2"></path>
-                </svg>
-                <h1>DiffChecker<span class="accent">.io</span></h1>
-            </div>
-            <div class="controls">
-                <div class="control-group">
-                    <label for="language-select">Language:</label>
-                    <select id="language-select">
-                        <option value="auto">Auto Detect</option>
-                        <option value="python">Python</option>
-                        <option value="javascript">JavaScript</option>
-                        <option value="typescript">TypeScript</option>
-                        <option value="java">Java</option>
-                        <option value="c">C</option>
-                        <option value="cpp">C++</option>
-                        <option value="csharp">C#</option>
-                        <option value="go">Go</option>
-                        <option value="rust">Rust</option>
-                        <option value="php">PHP</option>
-                        <option value="ruby">Ruby</option>
-                        <option value="swift">Swift</option>
-                        <option value="kotlin">Kotlin</option>
-                        <option value="sql">SQL</option>
-                        <option value="yaml">YAML</option>
-                        <option value="yaml">Ansible</option>
-                        <option value="groovy">Jenkinsfile</option>
-                        <option value="hcl">Terraform</option>
-                        <option value="dockerfile">Dockerfile</option>
-                        <option value="shell">Shell Script</option>
-                        <option value="json">JSON</option>
-                        <option value="html">HTML</option>
-                        <option value="css">CSS</option>
-                        <option value="markdown">Markdown</option>
-                        <option value="plaintext">Plain Text</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="theme-select">Theme:</label>
-                    <select id="theme-select">
-                        <option value="vs-dark">Dark</option>
-                        <option value="vs">Light</option>
-                        <option value="hc-black">High Contrast</option>
-                    </select>
-                </div>
-            </div>
-        </header>
+<body class="bg-slate-900 text-slate-100 h-full flex flex-col font-sans overflow-hidden" id="app-body">
 
-        <main class="main-content">
-            <div class="tabs">
-                <button class="tab-btn active" data-tab="text-diff">Text Diff</button>
-                <button class="tab-btn" data-tab="folder-diff">Folder Diff</button>
+    <!-- ==================== HEADER ==================== -->
+    <header class="bg-surface border-b border-surface-border py-3 px-5 flex flex-wrap justify-between items-center gap-3 shrink-0">
+        <!-- Logo -->
+        <div class="flex items-center gap-3">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 4c0-1.1.9-2 2-2"/><path d="M20 2c1.1 0 2 .9 2 2"/><path d="M22 8c0 1.1-.9 2-2 2"/>
+                <path d="M16 10c-1.1 0-2-.9-2-2"/><path d="M4 14c0-1.1.9-2 2-2"/><path d="M10 12c1.1 0 2 .9 2 2"/>
+                <path d="M12 18c0 1.1-.9 2-2 2"/><path d="M6 20c-1.1 0-2-.9-2-2"/>
+            </svg>
+            <h1 class="text-lg font-bold tracking-wide">Diff<span class="text-accent">Checker</span><span class="text-slate-400">.io</span></h1>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center gap-4">
+            <!-- Language -->
+            <div class="flex items-center gap-2">
+                <label for="language-select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Lang</label>
+                <select id="language-select" class="bg-slate-800 border border-surface-border rounded text-sm py-1 px-2 
+                        focus:outline-none focus:border-accent text-slate-200 cursor-pointer transition-colors">
+                    <option value="auto">Auto Detect</option>
+                    <option value="python">Python</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="java">Java</option>
+                    <option value="c">C</option>
+                    <option value="cpp">C++</option>
+                    <option value="csharp">C#</option>
+                    <option value="go">Go</option>
+                    <option value="rust">Rust</option>
+                    <option value="php">PHP</option>
+                    <option value="ruby">Ruby</option>
+                    <option value="swift">Swift</option>
+                    <option value="kotlin">Kotlin</option>
+                    <option value="sql">SQL</option>
+                    <option value="yaml">YAML</option>
+                    <option value="groovy">Jenkinsfile</option>
+                    <option value="dockerfile">Dockerfile</option>
+                    <option value="shell">Shell Script</option>
+                    <option value="json">JSON</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="markdown">Markdown</option>
+                    <option value="plaintext">Plain Text</option>
+                </select>
             </div>
 
-            <!-- TEXT DIFF VIEW -->
-            <div class="tab-content active" id="text-diff">
-                <div class="input-panels" id="input-panels">
-                <div class="panel original-panel">
-                    <div class="panel-header">
-                        <h2>Original Content</h2>
-                        <button class="action-btn clear-btn" data-target="original-input">Clear</button>
+            <!-- Theme -->
+            <div class="flex items-center gap-2">
+                <label for="theme-select" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Theme</label>
+                <select id="theme-select" class="bg-slate-800 border border-surface-border rounded text-sm py-1 px-2 
+                        focus:outline-none focus:border-accent text-slate-200 cursor-pointer transition-colors">
+                    <option value="vs-dark">Dark</option>
+                    <option value="vs">Light</option>
+                    <option value="hc-black">High Contrast</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== ERROR TOAST ==================== -->
+    <div id="error-toast" class="hidden fixed top-20 right-6 bg-red-600 text-white px-4 py-3 rounded-lg shadow-xl
+                                  z-50 flex items-center gap-3 max-w-sm">
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span id="error-message" class="text-sm font-medium"></span>
+    </div>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="flex flex-col flex-1 overflow-hidden min-h-0">
+
+        <!-- TABS -->
+        <div class="flex gap-1 px-4 pt-3 shrink-0 border-b border-surface-border">
+            <button class="tab-btn px-4 py-2 rounded-t text-sm font-semibold text-slate-400 
+                           hover:text-slate-200 transition-colors active" data-tab="text-diff">Text Diff</button>
+            <button class="tab-btn px-4 py-2 rounded-t text-sm font-semibold text-slate-400 
+                           hover:text-slate-200 transition-colors" data-tab="folder-diff">Folder Diff</button>
+
+            <style>
+                .tab-btn.active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
+            </style>
+        </div>
+
+        <!-- ==================== TEXT DIFF TAB ==================== -->
+        <div class="tab-content active" id="text-diff">
+
+            <!-- Input panels (textarea step) -->
+            <div class="flex gap-0 flex-col md:flex-row flex-1 overflow-hidden min-h-0" id="input-panels">
+
+                <!-- Original Panel -->
+                <div class="flex flex-col flex-1 border-r border-surface-border overflow-hidden">
+                    <!-- Panel header -->
+                    <div class="flex justify-between items-center px-4 py-2 bg-surface border-b border-surface-border shrink-0">
+                        <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400">File 1</h2>
+                        <div class="flex items-center gap-2">
+                            <!-- Drag-and-drop upload zone trigger -->
+                            <label id="drop-original"
+                                   class="flex items-center gap-1 text-xs text-slate-400 border border-surface-border
+                                          rounded px-2 py-1 cursor-pointer hover:border-accent hover:text-accent
+                                          transition-colors group relative">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                <span id="label-original">Upload file</span>
+                                <input type="file" id="file-original" class="absolute inset-0 opacity-0 cursor-pointer"/>
+                            </label>
+                            <button class="action-btn clear-btn text-xs text-slate-400 hover:text-slate-200 
+                                           border border-surface-border rounded px-2 py-1 transition-colors"
+                                    data-target="original-input">Clear</button>
+                        </div>
                     </div>
-                    <textarea id="original-input" placeholder="Paste original text here..."></textarea>
+                    <!-- Textarea -->
+                    <textarea id="original-input"
+                              class="flex-1 bg-slate-900 text-slate-200 font-mono text-sm p-4 resize-none 
+                                     outline-none placeholder-slate-600 leading-relaxed"
+                              placeholder="Paste original code/text here, or upload a file above..."></textarea>
                 </div>
 
-
-                <div class="panel modified-panel">
-                    <div class="panel-header">
-                        <h2>Modified Content</h2>
-                        <button class="action-btn clear-btn" data-target="modified-input">Clear</button>
+                <!-- Modified Panel -->
+                <div class="flex flex-col flex-1 overflow-hidden">
+                    <!-- Panel header -->
+                    <div class="flex justify-between items-center px-4 py-2 bg-surface border-b border-surface-border shrink-0">
+                        <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400">File 2</h2>
+                        <div class="flex items-center gap-2">
+                            <label id="drop-modified"
+                                   class="flex items-center gap-1 text-xs text-slate-400 border border-surface-border
+                                          rounded px-2 py-1 cursor-pointer hover:border-accent hover:text-accent
+                                          transition-colors group relative">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                <span id="label-modified">Upload file</span>
+                                <input type="file" id="file-modified" class="absolute inset-0 opacity-0 cursor-pointer"/>
+                            </label>
+                            <button class="action-btn clear-btn text-xs text-slate-400 hover:text-slate-200 
+                                           border border-surface-border rounded px-2 py-1 transition-colors"
+                                    data-target="modified-input">Clear</button>
+                        </div>
                     </div>
-                    <textarea id="modified-input" placeholder="Paste modified text here..."></textarea>
+                    <!-- Textarea -->
+                    <textarea id="modified-input"
+                              class="flex-1 bg-slate-900 text-slate-200 font-mono text-sm p-4 resize-none 
+                                     outline-none placeholder-slate-600 leading-relaxed"
+                              placeholder="Paste modified code/text here, or upload a file above..."></textarea>
                 </div>
             </div>
-            
-            <div class="action-bar">
-                <button id="compare-btn" class="primary-btn">
-                    <span>Compare Files</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
+
+            <!-- Action Bar -->
+            <div class="flex justify-center items-center py-3 px-4 bg-surface border-t border-surface-border shrink-0" id="action-bar-text">
+                <button id="compare-btn"
+                        class="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white font-semibold 
+                               text-sm px-6 py-2 rounded-lg shadow transition-colors">
+                    Compare Files
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                     </svg>
                 </button>
             </div>
 
-            <div class="diff-container hidden" id="diff-container">
-                <div class="panel-header diff-header">
-                    <div class="diff-header-title">
-                        <h2>Comparison Diff</h2>
-                        <span id="detected-language-label" class="detected-lang-label hidden">Detected: <span id="lang-name"></span></span>
+            <!-- Monaco Diff Container (hidden until compare is clicked) -->
+            <div class="flex flex-col flex-1 overflow-hidden hidden" id="diff-container">
+                <!-- Diff Header -->
+                <div class="flex justify-between items-center px-4 py-2 bg-surface border-b border-surface-border shrink-0">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400">Comparison Diff</h2>
+                        <span id="detected-language-label"
+                              class="hidden text-xs bg-accent/20 text-blue-300 px-2 py-0.5 rounded font-medium">
+                            Detected: <span id="lang-name"></span>
+                        </span>
                     </div>
-                    <div class="diff-actions">
-                        <button id="merge-all-right-btn" class="secondary-btn" title="Overwrite ALL differences in Modified side">Merge All Right ➔</button>
-                        <button id="merge-all-left-btn" class="secondary-btn" title="Overwrite ALL differences in Original side">🡄 Merge All Left</button>
-                        <button id="toggle-inline-btn" class="secondary-btn">Inline View</button>
-                        <button id="edit-btn" class="secondary-btn">Edit</button>
+                    <div class="flex items-center gap-2">
+                        <button id="merge-all-right-btn"
+                                class="text-xs text-slate-300 border border-surface-border rounded px-3 py-1 
+                                       hover:border-accent hover:text-accent transition-colors">Merge All Right ➔</button>
+                        <button id="merge-all-left-btn"
+                                class="text-xs text-slate-300 border border-surface-border rounded px-3 py-1 
+                                       hover:border-accent hover:text-accent transition-colors">🡄 Merge All Left</button>
+                        <button id="toggle-inline-btn"
+                                class="text-xs text-slate-300 border border-surface-border rounded px-3 py-1 
+                                       hover:border-accent hover:text-accent transition-colors">Inline View</button>
+                        <button id="edit-btn"
+                                class="text-xs text-slate-300 border border-surface-border rounded px-3 py-1 
+                                       hover:border-accent hover:text-accent transition-colors">Edit</button>
                     </div>
                 </div>
-                <!-- Monaco Editor will be mounted here -->
+                <!-- Monaco mounts here -->
                 <div id="monaco-diff-editor" class="editor-host"></div>
             </div>
-            </div> <!-- End Text Diff View -->
 
-            <!-- FOLDER DIFF VIEW -->
-            <div class="tab-content hidden" id="folder-diff">
-                <div class="folder-setup-panels">
-                    <div class="panel">
-                        <div class="panel-header">
-                            <h2>Original Folder</h2>
-                        </div>
-                        <div class="folder-upload-area">
-                            <input type="file" id="original-folder-input" webkitdirectory directory multiple class="hidden-file-input">
-                            <button class="secondary-btn upload-btn" onclick="document.getElementById('original-folder-input').click()">Select Original Folder</button>
-                            <span id="original-folder-name" class="folder-name-display">No folder selected</span>
-                        </div>
-                    </div>
-                    
+        </div> <!-- end #text-diff -->
 
+        <!-- ==================== FOLDER DIFF TAB ==================== -->
+        <div class="tab-content" id="folder-diff">
 
-                    <div class="panel">
-                        <div class="panel-header">
-                            <h2>Modified Folder</h2>
-                        </div>
-                        <div class="folder-upload-area">
-                            <input type="file" id="modified-folder-input" webkitdirectory directory multiple class="hidden-file-input">
-                            <button class="secondary-btn upload-btn" onclick="document.getElementById('modified-folder-input').click()">Select Modified Folder</button>
-                            <span id="modified-folder-name" class="folder-name-display">No folder selected</span>
-                        </div>
+            <!-- Folder Setup Panels -->
+            <div class="flex gap-4 p-4 shrink-0" id="folder-setup-panels-wrapper">
+                <!-- Original Folder Card -->
+                <div class="flex-1 bg-surface border border-surface-border rounded-lg p-4">
+                    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Folder 1</h2>
+                    <div class="flex items-center gap-3">
+                        <input type="file" id="original-folder-input" webkitdirectory directory multiple class="hidden">
+                        <button class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 rounded px-4 py-2 
+                                       font-medium transition-colors"
+                                onclick="document.getElementById('original-folder-input').click()">
+                            Select Folder
+                        </button>
+                        <span id="original-folder-name" class="text-sm text-slate-400">No folder selected</span>
                     </div>
                 </div>
-                
-                <div class="action-bar">
-                    <button id="compare-folders-btn" class="primary-btn" disabled>
-                        <span>Compare Folders</span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="folder-results-container hidden" id="folder-results-container">
-                    <div class="sidebar" id="file-tree-sidebar">
-                        <div class="sidebar-header">
-                            <h3>Changed Files</h3>
-                        </div>
-                        <ul class="file-tree" id="file-tree">
-                            <!-- Populated by JS -->
-                        </ul>
-                    </div>
-                    <!-- The Monaco editor will be injected into this host when in folder mode -->
-                    <div class="folder-editor-wrapper" id="folder-editor-wrapper">
-                        <div class="empty-state">Select a file from the sidebar to view diff</div>
+
+                <!-- Modified Folder Card -->
+                <div class="flex-1 bg-surface border border-surface-border rounded-lg p-4">
+                    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Folder 2</h2>
+                    <div class="flex items-center gap-3">
+                        <input type="file" id="modified-folder-input" webkitdirectory directory multiple class="hidden">
+                        <button class="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 rounded px-4 py-2 
+                                       font-medium transition-colors"
+                                onclick="document.getElementById('modified-folder-input').click()">
+                            Select Folder
+                        </button>
+                        <span id="modified-folder-name" class="text-sm text-slate-400">No folder selected</span>
                     </div>
                 </div>
-            </div> <!-- End Folder Diff View -->
-        </main>
-    </div>
+            </div>
+
+            <!-- Compare Button -->
+            <div class="flex justify-center py-3 px-4 shrink-0" id="action-bar-folder">
+                <button id="compare-folders-btn" disabled
+                        class="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white font-semibold 
+                               text-sm px-6 py-2 rounded-lg shadow transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    Compare Folders
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Folder Results (file tree + Monaco) -->
+            <div class="folder-results-container hidden flex-1 overflow-hidden" id="folder-results-container">
+                <!-- Sidebar File Tree -->
+                <div class="sidebar">
+                    <div class="px-3 py-2 border-b border-surface-border">
+                        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Changed Files</h3>
+                    </div>
+                    <ul id="file-tree" class="py-1"></ul>
+                </div>
+
+                <!-- Editor Host for Folder Diff -->
+                <div class="folder-editor-wrapper" id="folder-editor-wrapper">
+                    <div class="empty-state flex items-center justify-center h-full text-slate-500 text-sm">
+                        Select a file from the sidebar to view diff
+                    </div>
+                </div>
+            </div>
+
+        </div> <!-- end #folder-diff -->
+
+    </main>
 
     <!-- RequireJS for Monaco Editor loader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
     <!-- Highlight.js for Language Auto-Detection -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <!-- Custom JS -->
-    <script src="/static/app.js?v=9"></script>
+    <!-- App Logic -->
+    <script src="/static/app.js?v=34"></script>
 </body>
 </html>

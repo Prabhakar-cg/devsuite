@@ -175,26 +175,55 @@ select:hover, select:focus {
 }
 
 /* Inline Monaco Margin Revert Icons */
-.merge-right-icon {
-    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>') center center no-repeat;
-    cursor: pointer;
-    opacity: 0.9;
-    transition: all 0.2s;
-}
-.merge-right-icon:hover {
-    opacity: 1;
-    transform: scale(1.1);
+/* Diffchecker-style Merge Buttons */
+.diff-btn-container {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 50;
+    pointer-events: none;
 }
 
-.merge-left-icon {
-    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>') center center no-repeat;
+.diff-merge-btn {
+    pointer-events: auto;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
     cursor: pointer;
-    opacity: 0.9;
-    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    font-family: inherit;
+    transition: filter 0.2s;
 }
-.merge-left-icon:hover {
-    opacity: 1;
-    transform: scale(1.1);
+
+.diff-merge-btn.red {
+    background-color: #ef4444; /* red */
+}
+
+.diff-merge-btn.green {
+    background-color: #10b981; /* green */
+}
+
+.diff-merge-btn:hover {
+    filter: brightness(1.1);
+}
+
+.diff-merge-cancel {
+    pointer-events: auto;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: bold;
+    user-select: none;
+}
+.diff-merge-cancel:hover {
+    color: var(--text-primary);
 }
 
 .panel-header {
