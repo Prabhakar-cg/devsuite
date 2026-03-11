@@ -24,70 +24,96 @@ os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    """Add standard security headers to all responses."""
+    response = await call_next(request)
+    # Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+    # Prevent MIME-type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Basic XSS protection for older browsers
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # Strict Transport Security (HSTS)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # Content Security Policy (allows local assets and CDN resources used in the app)
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+        "worker-src 'self' blob:; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self';"
+    )
+    response.headers["Content-Security-Policy"] = csp
+    return response
+
+
 @app.get("/", response_class=HTMLResponse, summary="Serve DevSuite homepage")
-async def read_home():
+def read_home():
     """Serve the DevSuite landing page."""
     html_path = os.path.join(static_dir, "home.html")
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="home.html not found.")
+        raise HTTPException(status_code=404, detail="home.html not found.") from None
 
 
 @app.get("/diff", response_class=HTMLResponse, summary="Serve diff tool")
-async def read_diff():
+def read_diff():
     """Serve the Text/Folder Diff tool."""
     html_path = os.path.join(static_dir, "index.html")
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="index.html not found.")
+        raise HTTPException(status_code=404, detail="index.html not found.") from None
 
 
 @app.get("/json", response_class=HTMLResponse, summary="Serve JSON linter tool")
-async def read_json_tool():
+def read_json_tool():
     """Serve the JSON Linter & Formatter tool."""
     html_path = os.path.join(static_dir, "json.html")
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="json.html not found.")
+        raise HTTPException(status_code=404, detail="json.html not found.") from None
 
 
 @app.get("/yaml", response_class=HTMLResponse, summary="Serve YAML linter tool")
-async def read_yaml_tool():
+def read_yaml_tool():
     """Serve the YAML Linter & Validator tool."""
     html_path = os.path.join(static_dir, "yaml.html")
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="yaml.html not found.")
+        raise HTTPException(status_code=404, detail="yaml.html not found.") from None
 
 
 @app.get("/regex", response_class=HTMLResponse, summary="Serve Regex Tester tool")
-async def read_regex_tool():
+def read_regex_tool():
     """Serve the Regex Tester tool."""
     html_path = os.path.join(static_dir, "regex.html")
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="regex.html not found.")
+        raise HTTPException(status_code=404, detail="regex.html not found.") from None
 
 
 @app.get("/base64", response_class=HTMLResponse, summary="Serve Base64 Encoder/Decoder tool")
-async def read_base64_tool():
+def read_base64_tool():
     """Serve the Base64 Encoder/Decoder tool."""
     html_path = os.path.join(static_dir, "base64.html")
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="base64.html not found.")
+        raise HTTPException(status_code=404, detail="base64.html not found.") from None
 
 
 @app.post("/upload", summary="Upload a text file for diffing")
@@ -107,22 +133,33 @@ async def upload_file(file: UploadFile = File(...)):
         )
 
     try:
-        raw_bytes = await file.read()
-        # Check first 512 bytes for null bytes — strong indicator of binary data
-        if b"\x00" in raw_bytes[:512]:
+        MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024
+        chunk_size = 1024 * 1024
+        raw_bytes = bytearray()
+        null_byte_detected = False
+        
+        while chunk := await file.read(chunk_size):
+            if not null_byte_detected and not raw_bytes and len(chunk) > 0:
+                if b"\x00" in chunk[:512]:
+                    null_byte_detected = True
+            raw_bytes.extend(chunk)
+            if len(raw_bytes) > MAX_UPLOAD_SIZE_BYTES:
+                raise HTTPException(status_code=413, detail="File too large. Exceeds 50MB limit.")
+
+        if null_byte_detected:
             raise HTTPException(
                 status_code=400,
                 detail=f'"{file.filename}" appears to be a binary file and cannot be diffed.'
             )
-        # Decode, replacing unmappable chars to avoid crashing on imperfect UTF-8
+
         content = raw_bytes.decode("utf-8", errors="replace")
         return {"filename": file.filename, "content": content, "size_bytes": len(raw_bytes)}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Server error processing file: {str(e)}")
+        raise HTTPException(status_code=500, detail="Server error processing file") from e
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

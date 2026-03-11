@@ -136,11 +136,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function showToast(message, type = 'info', durationMs = 4500) {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        toast.innerHTML = `
-            <span class="toast-icon">${TOAST_ICONS[type] || 'ℹ️'}</span>
-            <span class="toast-body">${message}</span>
-            <button class="toast-close" aria-label="Dismiss">✕</button>
-        `;
+        
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'toast-icon';
+        iconSpan.textContent = TOAST_ICONS[type] || 'ℹ️';
+        
+        const bodySpan = document.createElement('span');
+        bodySpan.className = 'toast-body';
+        bodySpan.textContent = message;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'toast-close';
+        closeBtn.setAttribute('aria-label', 'Dismiss');
+        closeBtn.textContent = '✕';
+        
+        toast.appendChild(iconSpan);
+        toast.appendChild(bodySpan);
+        toast.appendChild(closeBtn);
+        
         toastContainer.appendChild(toast);
 
         const dismiss = () => {
@@ -208,6 +221,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     require(['vs/editor/editor.main'], () => {
         console.log('[DiffChecker] Monaco loaded.');
+        URL.revokeObjectURL(proxy);
+    }, (err) => {
+        console.error('[DiffChecker] Monaco failed to load from CDN', err);
+        showError('Warning: Failed to load Monaco Editor from CDN. Check your connection or disable tracking blockers.');
     });
 
 
@@ -225,6 +242,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleFileUpload(file, labelEl, textareaEl) {
         if (!file) return;
+        const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            showError(`"${file.name}" is too large (max 50MB).`);
+            return;
+        }
         const arrayReader = new FileReader();
         arrayReader.onload = (e) => {
             if (isBinaryFile(file, e.target.result)) {
@@ -316,10 +338,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // TAB SWITCHING
     // ==========================================
-    tabBtns.forEach(btn => {
+    for (const btn of tabBtns) {
         btn.addEventListener('click', () => {
-            tabBtns.forEach(b => b.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
+            for (const b of tabBtns) b.classList.remove('active');
+            for (const c of tabContents) c.classList.remove('active');
             btn.classList.add('active');
             document.getElementById(btn.dataset.tab).classList.add('active');
 
@@ -329,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (id === 'folder-diff' && folderDiffEditor) folderDiffEditor.layout();
             }, 60);
         });
-    });
+    }
 
 
     // ==========================================
@@ -454,8 +476,8 @@ document.addEventListener('DOMContentLoaded', () => {
         origEditor.updateOptions({ glyphMargin: true });
         modEditor.updateOptions({ glyphMargin: true });
 
-        let origDecs = [];
-        let modDecs  = [];
+        const origCollection = origEditor.createDecorationsCollection();
+        const modCollection  = modEditor.createDecorationsCollection();
 
         function applyDecorations() {
             origEditor.updateOptions({ glyphMargin: true });
@@ -491,8 +513,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            origDecs = origEditor.deltaDecorations(origDecs, oNew);
-            modDecs  = modEditor.deltaDecorations(modDecs,  mNew);
+            origCollection.set(oNew);
+            modCollection.set(mNew);
         }
 
         origEditor.onMouseDown(e => {
@@ -732,6 +754,8 @@ document.addEventListener('DOMContentLoaded', () => {
         folderResultsContainer.classList.remove('hidden');
         fileDiffStatusMap.clear();
 
+        showToast('Comparing folders (analyzing metadata and small file hashes)...', 'info', 3000);
+
         const allPaths = new Set([...originalFiles.keys(), ...modifiedFiles.keys()]);
         for (const path of allPaths) {
             const inOrig = originalFiles.has(path);
@@ -742,8 +766,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileDiffStatusMap.set(path, { status: 'added' });
             } else {
                 const o = originalFiles.get(path), m = modifiedFiles.get(path);
+                let changed = o.size !== m.size || o.lastModified !== m.lastModified;
+                
+                // If metadata matches, fallback to hashing for files < 5MB
+                if (!changed && o.size < 5 * 1024 * 1024) {
+                    try {
+                        const [bufO, bufM] = await Promise.all([o.arrayBuffer(), m.arrayBuffer()]);
+                        const [hashO, hashM] = await Promise.all([
+                            crypto.subtle.digest('SHA-256', bufO),
+                            crypto.subtle.digest('SHA-256', bufM)
+                        ]);
+                        const strO = Array.from(new Uint8Array(hashO)).join(',');
+                        const strM = Array.from(new Uint8Array(hashM)).join(',');
+                        changed = strO !== strM;
+                    } catch (e) {
+                        console.warn("Failed to hash " + path, e);
+                    }
+                }
+                
                 fileDiffStatusMap.set(path, {
-                    status: (o.size !== m.size || o.lastModified !== m.lastModified) ? 'modified' : 'unchanged'
+                    status: changed ? 'modified' : 'unchanged'
                 });
             }
         }
@@ -811,7 +853,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (status === 'modified' || status === 'removed') origTxt = await originalFiles.get(path).text();
             if (status === 'modified' || status === 'added')   modTxt  = await modifiedFiles.get(path).text();
-        } catch {
+        } catch (e) {
+            showError("Failed to open diff for " + path + ": " + e.message);
             origTxt = 'Error reading original file.';
             modTxt  = 'Error reading modified file.';
         }

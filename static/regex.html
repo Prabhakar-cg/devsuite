@@ -179,8 +179,22 @@
 
     function toast(msg, type = 'info', ms = 2500) {
         const c = document.getElementById('toast-container');
-        const t = document.createElement('div'); t.className = `toast ${type}`;
-        t.innerHTML = `<span>${msg}</span><button class="toast-close" onclick="this.parentElement.classList.add('hide');setTimeout(()=>this.parentElement.remove(),300)">✕</button>`;
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        
+        const span = document.createElement('span');
+        span.textContent = msg;
+        
+        const btn = document.createElement('button');
+        btn.className = 'toast-close';
+        btn.textContent = '✕';
+        btn.onclick = function() {
+            this.parentElement.classList.add('hide');
+            setTimeout(() => this.parentElement.remove(), 300);
+        };
+        
+        t.appendChild(span);
+        t.appendChild(btn);
         c.appendChild(t);
         setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, ms);
     }
@@ -286,8 +300,23 @@
         }
 
         function renderEmpty(msg) {
-            matchPane.innerHTML = `<div class="match-empty"><span class="match-empty-icon">🔎</span><span>${msg}</span></div>`;
-            matchBadge.style.display = 'none'; matchBadge.textContent = '';
+            matchPane.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = 'match-empty';
+            
+            const icon = document.createElement('span');
+            icon.className = 'match-empty-icon';
+            icon.textContent = '🔎';
+            
+            const text = document.createElement('span');
+            text.textContent = msg;
+            
+            div.appendChild(icon);
+            div.appendChild(text);
+            matchPane.appendChild(div);
+            
+            matchBadge.style.display = 'none';
+            matchBadge.textContent = '';
             copyMatchBtn.disabled = true;
         }
 

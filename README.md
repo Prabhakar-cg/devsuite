@@ -36,7 +36,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 ## Getting Started
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.10+
 
 ### Quick Start
 
