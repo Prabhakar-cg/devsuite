@@ -1,5 +1,5 @@
 """
-DiffChecker.io — FastAPI Backend
+DevSuite — FastAPI Backend
 ---------------------------------
 Serves the static frontend and provides a file upload endpoint.
 Priority: All file reading happens client-side in JavaScript (FileReader API)
@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
 app = FastAPI(
-    title="DiffChecker.io",
+    title="DevSuite",
     description="A private, locally-hosted diff checker with Monaco Editor.",
     version="2.0.0"
 )

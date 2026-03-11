@@ -1,5 +1,5 @@
 /**
- * DiffChecker.io — Application Logic v3.0
+ * DevSuite — Application Logic v3.0
  * -----------------------------------------
  * Features:
  *  - Text Diff with Monaco Editor (side-by-side + inline)
@@ -33,91 +33,91 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // DOM REFERENCES
     // ==========================================
-    const originalInput      = document.getElementById('original-input');
-    const modifiedInput      = document.getElementById('modified-input');
-    const compareBtn         = document.getElementById('compare-btn');
-    const textDiffContainer  = document.getElementById('diff-container');
-    const inputPanels        = document.getElementById('input-panels');
-    const actionBarText      = document.getElementById('action-bar-text');
-    const toggleInlineBtn    = document.getElementById('toggle-inline-btn');
-    const editBtn            = document.getElementById('edit-btn');
-    const editorHost         = document.getElementById('monaco-diff-editor');
+    const originalInput = document.getElementById('original-input');
+    const modifiedInput = document.getElementById('modified-input');
+    const compareBtn = document.getElementById('compare-btn');
+    const textDiffContainer = document.getElementById('diff-container');
+    const inputPanels = document.getElementById('input-panels');
+    const actionBarText = document.getElementById('action-bar-text');
+    const toggleInlineBtn = document.getElementById('toggle-inline-btn');
+    const editBtn = document.getElementById('edit-btn');
+    const editorHost = document.getElementById('monaco-diff-editor');
     const langLabelContainer = document.getElementById('detected-language-label');
-    const langNameSpan       = document.getElementById('lang-name');
-    const statsBar           = document.getElementById('stats-bar');
+    const langNameSpan = document.getElementById('lang-name');
+    const statsBar = document.getElementById('stats-bar');
 
     // Stats chips
     const statAdditionsCount = document.getElementById('stat-additions-count');
     const statDeletionsCount = document.getElementById('stat-deletions-count');
-    const statChangesCount   = document.getElementById('stat-changes-count');
+    const statChangesCount = document.getElementById('stat-changes-count');
 
     // Shared controls
-    const languageSelect     = document.getElementById('language-select');
-    const themeSelect        = document.getElementById('theme-select');
+    const languageSelect = document.getElementById('language-select');
+    const themeSelect = document.getElementById('theme-select');
 
     // Tabs
-    const tabBtns            = document.querySelectorAll('.tab-btn');
-    const tabContents        = document.querySelectorAll('.tab-content');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
 
     // File Upload
-    const dropOriginal       = document.getElementById('drop-original');
-    const dropModified       = document.getElementById('drop-modified');
-    const fileOriginal       = document.getElementById('file-original');
-    const fileModified       = document.getElementById('file-modified');
-    const labelOriginal      = document.getElementById('label-original');
-    const labelModified      = document.getElementById('label-modified');
+    const dropOriginal = document.getElementById('drop-original');
+    const dropModified = document.getElementById('drop-modified');
+    const fileOriginal = document.getElementById('file-original');
+    const fileModified = document.getElementById('file-modified');
+    const labelOriginal = document.getElementById('label-original');
+    const labelModified = document.getElementById('label-modified');
 
     // Merge
-    const mergeAllRightBtn   = document.getElementById('merge-all-right-btn');
-    const mergeAllLeftBtn    = document.getElementById('merge-all-left-btn');
+    const mergeAllRightBtn = document.getElementById('merge-all-right-btn');
+    const mergeAllLeftBtn = document.getElementById('merge-all-left-btn');
 
     // Export
-    const exportBtn          = document.getElementById('export-btn');
-    const exportMenu         = document.getElementById('export-menu');
-    const exportPatchBtn     = document.getElementById('export-patch-btn');
-    const exportCopyBtn      = document.getElementById('export-copy-btn');
+    const exportBtn = document.getElementById('export-btn');
+    const exportMenu = document.getElementById('export-menu');
+    const exportPatchBtn = document.getElementById('export-patch-btn');
+    const exportCopyBtn = document.getElementById('export-copy-btn');
 
     // Line count badges
-    const linesOriginal      = document.getElementById('lines-original');
-    const linesModified      = document.getElementById('lines-modified');
+    const linesOriginal = document.getElementById('lines-original');
+    const linesModified = document.getElementById('lines-modified');
 
     // Paste buttons
-    const pasteOriginalBtn   = document.getElementById('paste-original-btn');
-    const pasteModifiedBtn   = document.getElementById('paste-modified-btn');
+    const pasteOriginalBtn = document.getElementById('paste-original-btn');
+    const pasteModifiedBtn = document.getElementById('paste-modified-btn');
 
     // Copy panel buttons
-    const copyPanelBtns      = document.querySelectorAll('.copy-panel-btn');
+    const copyPanelBtns = document.querySelectorAll('.copy-panel-btn');
 
     // Clear buttons
-    const clearBtns          = document.querySelectorAll('.clear-btn');
+    const clearBtns = document.querySelectorAll('.clear-btn');
 
     // Folder Diff
-    const origFolderInput        = document.getElementById('original-folder-input');
-    const modFolderInput         = document.getElementById('modified-folder-input');
-    const origFolderName         = document.getElementById('original-folder-name');
-    const modFolderName          = document.getElementById('modified-folder-name');
-    const compareFoldersBtn      = document.getElementById('compare-folders-btn');
-    const folderSetupPanelsWrap  = document.getElementById('folder-setup-panels-wrapper');
-    const actionBarFolder        = document.getElementById('action-bar-folder');
+    const origFolderInput = document.getElementById('original-folder-input');
+    const modFolderInput = document.getElementById('modified-folder-input');
+    const origFolderName = document.getElementById('original-folder-name');
+    const modFolderName = document.getElementById('modified-folder-name');
+    const compareFoldersBtn = document.getElementById('compare-folders-btn');
+    const folderSetupPanelsWrap = document.getElementById('folder-setup-panels-wrapper');
+    const actionBarFolder = document.getElementById('action-bar-folder');
     const folderResultsContainer = document.getElementById('folder-results-container');
-    const fileTreeEl             = document.getElementById('file-tree');
-    const folderEditorHost       = document.getElementById('folder-editor-wrapper');
-    const changedFilesCount      = document.getElementById('changed-files-count');
+    const fileTreeEl = document.getElementById('file-tree');
+    const folderEditorHost = document.getElementById('folder-editor-wrapper');
+    const changedFilesCount = document.getElementById('changed-files-count');
 
     // ==========================================
     // STATE
     // ==========================================
-    let textDiffEditor      = null;
-    let textOriginalModel   = null;
-    let textModifiedModel   = null;
+    let textDiffEditor = null;
+    let textOriginalModel = null;
+    let textModifiedModel = null;
 
-    let folderDiffEditor    = null;
+    let folderDiffEditor = null;
     let folderOriginalModel = null;
     let folderModifiedModel = null;
 
-    let originalFiles       = new Map();
-    let modifiedFiles       = new Map();
-    let fileDiffStatusMap   = new Map();
+    let originalFiles = new Map();
+    let modifiedFiles = new Map();
+    let fileDiffStatusMap = new Map();
     let currentFolderFilter = 'all';
 
 
@@ -128,32 +128,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const TOAST_ICONS = {
         success: '✅',
-        error:   '❌',
+        error: '❌',
         warning: '⚠️',
-        info:    'ℹ️'
+        info: 'ℹ️'
     };
 
     function showToast(message, type = 'info', durationMs = 4500) {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        
+
         const iconSpan = document.createElement('span');
         iconSpan.className = 'toast-icon';
         iconSpan.textContent = TOAST_ICONS[type] || 'ℹ️';
-        
+
         const bodySpan = document.createElement('span');
         bodySpan.className = 'toast-body';
         bodySpan.textContent = message;
-        
+
         const closeBtn = document.createElement('button');
         closeBtn.className = 'toast-close';
         closeBtn.setAttribute('aria-label', 'Dismiss');
         closeBtn.textContent = '✕';
-        
+
         toast.appendChild(iconSpan);
         toast.appendChild(bodySpan);
         toast.appendChild(closeBtn);
-        
+
         toastContainer.appendChild(toast);
 
         const dismiss = () => {
@@ -198,21 +198,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         changes.forEach(c => {
             const origLines = (c.originalEndLineNumber - c.originalStartLineNumber + 1) || 0;
-            const modLines  = (c.modifiedEndLineNumber  - c.modifiedStartLineNumber  + 1) || 0;
-            additions += modLines  > 0 ? modLines  : 0;
+            const modLines = (c.modifiedEndLineNumber - c.modifiedStartLineNumber + 1) || 0;
+            additions += modLines > 0 ? modLines : 0;
             deletions += origLines > 0 ? origLines : 0;
         });
 
         statAdditionsCount.textContent = additions;
         statDeletionsCount.textContent = deletions;
-        statChangesCount.textContent   = changes.length;
+        statChangesCount.textContent = changes.length;
     }
 
 
     // ==========================================
     // MONACO INITIALIZATION
     // ==========================================
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
     window.MonacoEnvironment = { getWorkerUrl: () => proxy };
     let proxy = URL.createObjectURL(new Blob([`
         self.MonacoEnvironment = { baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/' };
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     function isBinaryFile(file, bytes) {
         const binaryMimes = ['image/', 'video/', 'audio/', 'application/pdf',
-                             'application/zip', 'application/octet-stream'];
+            'application/zip', 'application/octet-stream'];
         if (binaryMimes.some(m => file.type.startsWith(m))) return true;
         const arr = new Uint8Array(bytes.slice(0, 512));
         for (let i = 0; i < arr.length; i++) { if (arr[i] === 0) return true; }
@@ -271,8 +271,8 @@ document.addEventListener('DOMContentLoaded', () => {
         inputEl.addEventListener('change', (e) => {
             if (e.target.files.length > 0) handleFileUpload(e.target.files[0], labelEl, textareaEl);
         });
-        dropEl.addEventListener('dragover',  (e) => { e.preventDefault(); dropEl.classList.add('drag-active'); });
-        dropEl.addEventListener('dragleave', ()  => dropEl.classList.remove('drag-active'));
+        dropEl.addEventListener('dragover', (e) => { e.preventDefault(); dropEl.classList.add('drag-active'); });
+        dropEl.addEventListener('dragleave', () => dropEl.classList.remove('drag-active'));
         dropEl.addEventListener('drop', (e) => {
             e.preventDefault();
             dropEl.classList.remove('drag-active');
@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     copyPanelBtns.forEach(btn => {
         btn.addEventListener('click', async () => {
             const targetId = btn.getAttribute('data-target');
-            const target   = document.getElementById(targetId);
+            const target = document.getElementById(targetId);
             if (!target || !target.value) {
                 showToast('Nothing to copy — panel is empty.', 'warning', 2500);
                 return;
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             setTimeout(() => {
                 const id = btn.dataset.tab;
-                if (id === 'text-diff'   && textDiffEditor   && !textDiffContainer.classList.contains('hidden')) textDiffEditor.layout();
+                if (id === 'text-diff' && textDiffEditor && !textDiffContainer.classList.contains('hidden')) textDiffEditor.layout();
                 if (id === 'folder-diff' && folderDiffEditor) folderDiffEditor.layout();
             }, 60);
         });
@@ -369,12 +369,12 @@ document.addEventListener('DOMContentLoaded', () => {
         compareBtn.classList.add('loading');
         compareBtn.disabled = true;
 
-        inputPanels.style.display        = 'none';
-        actionBarText.style.display      = 'none';
+        inputPanels.style.display = 'none';
+        actionBarText.style.display = 'none';
         textDiffContainer.classList.remove('hidden');
-        textDiffContainer.style.display  = 'flex';
+        textDiffContainer.style.display = 'flex';
         textDiffContainer.style.flexDirection = 'column';
-        textDiffContainer.style.flex     = '1';
+        textDiffContainer.style.flex = '1';
         textDiffContainer.style.overflow = 'hidden';
 
         if (!textDiffEditor) {
@@ -416,10 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         textDiffContainer.style.display = 'none';
         textDiffContainer.classList.add('hidden');
-        inputPanels.style.display       = 'flex';
-        inputPanels.style.flex          = '1';
-        inputPanels.style.overflow      = 'hidden';
-        actionBarText.style.display     = 'flex';
+        inputPanels.style.display = 'flex';
+        inputPanels.style.flex = '1';
+        inputPanels.style.overflow = 'hidden';
+        actionBarText.style.display = 'flex';
     });
 
     toggleInlineBtn.addEventListener('click', () => {
@@ -440,19 +440,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         textDiffEditor = monaco.editor.createDiffEditor(editorHost, {
-            theme:                  themeSelect.value,
-            renderSideBySide:       true,
-            automaticLayout:        true,
-            scrollBeyondLastLine:   false,
-            fontSize:               14,
-            fontFamily:             "'JetBrains Mono', 'Fira Code', 'Menlo', monospace",
-            lineHeight:             22,
-            minimap:                { enabled: false },
-            padding:                { top: 16, bottom: 16 },
-            originalEditable:       true,
-            enableSplitViewResizing:true,
-            ignoreTrimWhitespace:   false,
-            glyphMargin:            true,
+            theme: themeSelect.value,
+            renderSideBySide: true,
+            automaticLayout: true,
+            scrollBeyondLastLine: false,
+            fontSize: 14,
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'Menlo', monospace",
+            lineHeight: 22,
+            minimap: { enabled: false },
+            padding: { top: 16, bottom: 16 },
+            originalEditable: true,
+            enableSplitViewResizing: true,
+            ignoreTrimWhitespace: false,
+            glyphMargin: true,
             renderMarginRevertIcon: false
         });
 
@@ -471,13 +471,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     function setupFloatingMergeIcons(diffEditor) {
         const origEditor = diffEditor.getOriginalEditor();
-        const modEditor  = diffEditor.getModifiedEditor();
+        const modEditor = diffEditor.getModifiedEditor();
 
         origEditor.updateOptions({ glyphMargin: true });
         modEditor.updateOptions({ glyphMargin: true });
 
         const origCollection = origEditor.createDecorationsCollection();
-        const modCollection  = modEditor.createDecorationsCollection();
+        const modCollection = modEditor.createDecorationsCollection();
 
         function applyDecorations() {
             origEditor.updateOptions({ glyphMargin: true });
@@ -493,9 +493,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     oNew.push({
                         range: new monaco.Range(oLine, 1, oLine, 1),
                         options: {
-                            glyphMarginClassName:    'merge-glyph-arrow-right',
+                            glyphMarginClassName: 'merge-glyph-arrow-right',
                             glyphMarginHoverMessage: { value: '**Copy →** to Modified' },
-                            description:             'merge-right'
+                            description: 'merge-right'
                         }
                     });
                 }
@@ -505,9 +505,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     mNew.push({
                         range: new monaco.Range(mLine, 1, mLine, 1),
                         options: {
-                            glyphMarginClassName:    'merge-glyph-arrow-left',
+                            glyphMarginClassName: 'merge-glyph-arrow-left',
                             glyphMarginHoverMessage: { value: '**Copy ←** to Original' },
-                            description:             'merge-left'
+                            description: 'merge-left'
                         }
                     });
                 }
@@ -545,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleMergeClick(diffEditor, change, direction) {
         if (!change) return;
         const origModel = diffEditor.getModel().original;
-        const modModel  = diffEditor.getModel().modified;
+        const modModel = diffEditor.getModel().modified;
 
         if (direction === 'to-right') {
             const oStart = change.originalStartLineNumber, oEnd = change.originalEndLineNumber;
@@ -562,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Last line(s) — delete from end of preceding line to avoid orphan newline
                     const prevEndCol = mStart > 1 ? modModel.getLineMaxColumn(mStart - 1) : 1;
                     range = new monaco.Range(Math.max(mStart - 1, 1), prevEndCol,
-                                            mEnd, modModel.getLineMaxColumn(mEnd));
+                        mEnd, modModel.getLineMaxColumn(mEnd));
                 }
                 text = '';
 
@@ -575,18 +575,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
                 if (mStart === 0) {
                     // Prepend to start of file
-                    text  = srcText + '\n';
+                    text = srcText + '\n';
                     range = new monaco.Range(1, 1, 1, 1);
                 } else {
                     // Append AFTER line mStart
                     const endCol = modModel.getLineMaxColumn(mStart);
-                    text  = '\n' + srcText;
+                    text = '\n' + srcText;
                     range = new monaco.Range(mStart, endCol, mStart, endCol);
                 }
 
             } else {
                 // Modification: replace the modified range with the original text.
-                text  = origModel.getValueInRange(
+                text = origModel.getValueInRange(
                     new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
                 range = new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd));
             }
@@ -604,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     const prevEndCol = oStart > 1 ? origModel.getLineMaxColumn(oStart - 1) : 1;
                     range = new monaco.Range(Math.max(oStart - 1, 1), prevEndCol,
-                                            oEnd, origModel.getLineMaxColumn(oEnd));
+                        oEnd, origModel.getLineMaxColumn(oEnd));
                 }
                 text = '';
 
@@ -614,17 +614,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const srcText = modModel.getValueInRange(
                     new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
                 if (oStart === 0) {
-                    text  = srcText + '\n';
+                    text = srcText + '\n';
                     range = new monaco.Range(1, 1, 1, 1);
                 } else {
                     const endCol = origModel.getLineMaxColumn(oStart);
-                    text  = '\n' + srcText;
+                    text = '\n' + srcText;
                     range = new monaco.Range(oStart, endCol, oStart, endCol);
                 }
 
             } else {
                 // Modification: replace the original range with the modified text.
-                text  = modModel.getValueInRange(
+                text = modModel.getValueInRange(
                     new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
                 range = new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd));
             }
@@ -638,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const changes = editor.getLineChanges() || [];
         if (changes.length === 0) return showToast('No differences detected — nothing to merge.', 'info');
         const origModel = editor.getModel().original;
-        const modModel  = editor.getModel().modified;
+        const modModel = editor.getModel().modified;
         if (direction === 'to-right') {
             modModel.setValue(origModel.getValue());
             showToast('Merged all changes → Modified.', 'success');
@@ -649,7 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (mergeAllRightBtn) mergeAllRightBtn.addEventListener('click', () => applyMergeAll('to-right'));
-    if (mergeAllLeftBtn)  mergeAllLeftBtn.addEventListener('click',  () => applyMergeAll('to-left'));
+    if (mergeAllLeftBtn) mergeAllLeftBtn.addEventListener('click', () => applyMergeAll('to-left'));
 
 
     // ==========================================
@@ -664,7 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function buildUnifiedDiff(origText, modText) {
         const origLines = origText.split('\n');
-        const modLines  = modText.split('\n');
+        const modLines = modText.split('\n');
         let patch = `--- Original\n+++ Modified\n`;
         // Simple unified diff — group using Monaco's changes for accuracy
         const editor = !folderResultsContainer.classList.contains('hidden') ? folderDiffEditor : textDiffEditor;
@@ -674,10 +674,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         changes.forEach(c => {
             const oS = c.originalStartLineNumber, oE = c.originalEndLineNumber || 0;
-            const mS = c.modifiedStartLineNumber,  mE = c.modifiedEndLineNumber  || 0;
+            const mS = c.modifiedStartLineNumber, mE = c.modifiedEndLineNumber || 0;
             patch += `@@ -${oS},${Math.max(oE - oS + 1, 0)} +${mS},${Math.max(mE - mS + 1, 0)} @@\n`;
             for (let i = oS; i <= oE && oE > 0; i++) patch += `-${origLines[i - 1] ?? ''}\n`;
-            for (let i = mS; i <= mE && mE > 0; i++) patch += `+${modLines[i  - 1] ?? ''}\n`;
+            for (let i = mS; i <= mE && mE > 0; i++) patch += `+${modLines[i - 1] ?? ''}\n`;
         });
         return patch;
     }
@@ -689,8 +689,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const patch = buildUnifiedDiff(textOriginalModel.getValue(), textModifiedModel.getValue());
         const blob = new Blob([patch], { type: 'text/plain' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
         a.href = url; a.download = 'diff.patch'; a.click();
         URL.revokeObjectURL(url);
         showToast('Patch file downloaded.', 'success');
@@ -759,7 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const allPaths = new Set([...originalFiles.keys(), ...modifiedFiles.keys()]);
         for (const path of allPaths) {
             const inOrig = originalFiles.has(path);
-            const inMod  = modifiedFiles.has(path);
+            const inMod = modifiedFiles.has(path);
             if (inOrig && !inMod) {
                 fileDiffStatusMap.set(path, { status: 'removed' });
             } else if (!inOrig && inMod) {
@@ -767,7 +767,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const o = originalFiles.get(path), m = modifiedFiles.get(path);
                 let changed = o.size !== m.size || o.lastModified !== m.lastModified;
-                
+
                 // If metadata matches, fallback to hashing for files < 5MB
                 if (!changed && o.size < 5 * 1024 * 1024) {
                     try {
@@ -783,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.warn("Failed to hash " + path, e);
                     }
                 }
-                
+
                 fileDiffStatusMap.set(path, {
                     status: changed ? 'modified' : 'unchanged'
                 });
@@ -820,9 +820,9 @@ document.addEventListener('DOMContentLoaded', () => {
             dot.className = `status-indicator status-${meta.status}`;
 
             const txt = document.createElement('span');
-            txt.className   = 'file-path-text';
+            txt.className = 'file-path-text';
             txt.textContent = path;
-            txt.title       = path;
+            txt.title = path;
 
             li.appendChild(dot);
             li.appendChild(txt);
@@ -852,11 +852,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let origTxt = '', modTxt = '';
         try {
             if (status === 'modified' || status === 'removed') origTxt = await originalFiles.get(path).text();
-            if (status === 'modified' || status === 'added')   modTxt  = await modifiedFiles.get(path).text();
+            if (status === 'modified' || status === 'added') modTxt = await modifiedFiles.get(path).text();
         } catch (e) {
             showError("Failed to open diff for " + path + ": " + e.message);
             origTxt = 'Error reading original file.';
-            modTxt  = 'Error reading modified file.';
+            modTxt = 'Error reading modified file.';
         }
         if (!folderDiffEditor) {
             initFolderDiffEditor(origTxt, modTxt, path);
@@ -872,22 +872,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (emptyState) emptyState.remove();
 
         folderDiffEditor = monaco.editor.createDiffEditor(folderEditorHost, {
-            theme:                  themeSelect.value,
-            renderSideBySide:       true,
-            automaticLayout:        true,
-            scrollBeyondLastLine:   false,
-            fontSize:               14,
-            fontFamily:             "'JetBrains Mono', 'Fira Code', 'Menlo', monospace",
-            lineHeight:             22,
-            minimap:                { enabled: false },
-            padding:                { top: 16, bottom: 16 },
-            originalEditable:       true,
-            glyphMargin:            true,
+            theme: themeSelect.value,
+            renderSideBySide: true,
+            automaticLayout: true,
+            scrollBeyondLastLine: false,
+            fontSize: 14,
+            fontFamily: "'JetBrains Mono', 'Fira Code', 'Menlo', monospace",
+            lineHeight: 22,
+            minimap: { enabled: false },
+            padding: { top: 16, bottom: 16 },
+            originalEditable: true,
+            glyphMargin: true,
             renderMarginRevertIcon: false
         });
 
         folderOriginalModel = monaco.editor.createModel(origTxt, 'plaintext');
-        folderModifiedModel = monaco.editor.createModel(modTxt,  'plaintext');
+        folderModifiedModel = monaco.editor.createModel(modTxt, 'plaintext');
         folderDiffEditor.setModel({ original: folderOriginalModel, modified: folderModifiedModel });
         updateEditorLanguage(folderOriginalModel, folderModifiedModel, origTxt || modTxt, path);
         setupFloatingMergeIcons(folderDiffEditor);
@@ -900,8 +900,8 @@ document.addEventListener('DOMContentLoaded', () => {
     languageSelect.addEventListener('change', (e) => {
         const lang = e.target.value;
         if (lang !== 'auto') {
-            if (textOriginalModel)   monaco.editor.setModelLanguage(textOriginalModel, lang);
-            if (textModifiedModel)   monaco.editor.setModelLanguage(textModifiedModel, lang);
+            if (textOriginalModel) monaco.editor.setModelLanguage(textOriginalModel, lang);
+            if (textModifiedModel) monaco.editor.setModelLanguage(textModifiedModel, lang);
             if (folderOriginalModel) monaco.editor.setModelLanguage(folderOriginalModel, lang);
             if (folderModifiedModel) monaco.editor.setModelLanguage(folderModifiedModel, lang);
         } else {
@@ -919,22 +919,22 @@ document.addEventListener('DOMContentLoaded', () => {
         // Always clear previous overrides first
         document.documentElement.removeAttribute('data-theme');
         document.body.style.background = '';
-        document.body.style.color      = '';
+        document.body.style.color = '';
 
         if (theme === 'ios-glass') {
             if (window.monaco) monaco.editor.setTheme('vs-dark');
             document.documentElement.setAttribute('data-theme', 'ios-glass');
             document.body.style.background = '#dce8ff';
-            document.body.style.color      = '#1c1c1e';
+            document.body.style.color = '#1c1c1e';
         } else if (theme === 'hc-black') {
             if (window.monaco) monaco.editor.setTheme('hc-black');
             document.documentElement.setAttribute('data-theme', 'high-contrast');
             document.body.style.background = '#000000';
-            document.body.style.color      = '#ffffff';
+            document.body.style.color = '#ffffff';
         } else if (theme === 'vs') {
             if (window.monaco) monaco.editor.setTheme('vs');
             document.body.style.background = '#ffffff';
-            document.body.style.color      = '#111827';
+            document.body.style.color = '#111827';
         } else {
             if (window.monaco) monaco.editor.setTheme(theme);
         }
@@ -943,17 +943,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function getLanguageFromPath(path) {
         if (!path) return null;
         const filename = path.split('/').pop().toLowerCase();
-        if (filename === 'dockerfile')  return 'dockerfile';
+        if (filename === 'dockerfile') return 'dockerfile';
         if (filename === 'jenkinsfile') return 'groovy';
         const ext = filename.split('.').pop();
         const map = {
-            'js':'javascript','jsx':'javascript','ts':'typescript','tsx':'typescript',
-            'py':'python','html':'html','htm':'html','css':'css','scss':'scss','less':'less',
-            'json':'json','md':'markdown','xml':'xml','svg':'xml','yml':'yaml','yaml':'yaml',
-            'sh':'shell','bash':'shell','c':'c','cpp':'cpp','h':'c','hpp':'cpp',
-            'cs':'csharp','go':'go','rs':'rust','php':'php','rb':'ruby','java':'java',
-            'swift':'swift','kt':'kotlin','sql':'sql','tf':'terraform','tfvars':'terraform',
-            'log':'plaintext','txt':'plaintext','gitignore':'plaintext','env':'plaintext'
+            'js': 'javascript', 'jsx': 'javascript', 'ts': 'typescript', 'tsx': 'typescript',
+            'py': 'python', 'html': 'html', 'htm': 'html', 'css': 'css', 'scss': 'scss', 'less': 'less',
+            'json': 'json', 'md': 'markdown', 'xml': 'xml', 'svg': 'xml', 'yml': 'yaml', 'yaml': 'yaml',
+            'sh': 'shell', 'bash': 'shell', 'c': 'c', 'cpp': 'cpp', 'h': 'c', 'hpp': 'cpp',
+            'cs': 'csharp', 'go': 'go', 'rs': 'rust', 'php': 'php', 'rb': 'ruby', 'java': 'java',
+            'swift': 'swift', 'kt': 'kotlin', 'sql': 'sql', 'tf': 'terraform', 'tfvars': 'terraform',
+            'log': 'plaintext', 'txt': 'plaintext', 'gitignore': 'plaintext', 'env': 'plaintext'
         };
         return map[ext] || null;
     }
@@ -965,11 +965,11 @@ document.addEventListener('DOMContentLoaded', () => {
             let detected = result.language || (result.secondBest && result.secondBest.language);
             if (!detected) return 'plaintext';
             const map = {
-                'js':'javascript','ts':'typescript','bash':'shell','sh':'shell',
-                'xml':'html','py':'python','yml':'yaml','yaml':'yaml','groovy':'groovy',
-                'java':'java','cpp':'cpp','c':'c','cs':'csharp','go':'go','rust':'rust',
-                'php':'php','ruby':'ruby','swift':'swift','kotlin':'kotlin','sql':'sql',
-                'dockerfile':'dockerfile','json':'json','markdown':'markdown','md':'markdown'
+                'js': 'javascript', 'ts': 'typescript', 'bash': 'shell', 'sh': 'shell',
+                'xml': 'html', 'py': 'python', 'yml': 'yaml', 'yaml': 'yaml', 'groovy': 'groovy',
+                'java': 'java', 'cpp': 'cpp', 'c': 'c', 'cs': 'csharp', 'go': 'go', 'rust': 'rust',
+                'php': 'php', 'ruby': 'ruby', 'swift': 'swift', 'kotlin': 'kotlin', 'sql': 'sql',
+                'dockerfile': 'dockerfile', 'json': 'json', 'markdown': 'markdown', 'md': 'markdown'
             };
             return map[detected] || detected;
         } catch {
@@ -989,7 +989,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (langLabelContainer) langLabelContainer.classList.add('hidden');
         }
         if (origModel) monaco.editor.setModelLanguage(origModel, lang);
-        if (modModel)  monaco.editor.setModelLanguage(modModel,  lang);
+        if (modModel) monaco.editor.setModelLanguage(modModel, lang);
     }
 
 
@@ -997,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // WINDOW RESIZE
     // ==========================================
     window.addEventListener('resize', () => {
-        if (textDiffEditor)   textDiffEditor.layout();
+        if (textDiffEditor) textDiffEditor.layout();
         if (folderDiffEditor) folderDiffEditor.layout();
     });
 
