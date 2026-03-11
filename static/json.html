@@ -66,6 +66,10 @@
         Sort Keys
     </button>
     <div class="toolbar-sep"></div>
+    <button id="btn-to-yaml" class="btn btn-ghost" title="Convert JSON to YAML">
+        → YAML
+    </button>
+    <div class="toolbar-sep"></div>
     <button id="btn-clear" class="btn btn-ghost" title="Clear editor">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
         Clear
@@ -121,8 +125,9 @@
     </div>
 </main>
 
-<!-- Monaco -->
+<!-- Monaco & js-yaml -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <script>
 (function () {
     'use strict';
@@ -215,8 +220,9 @@
             errorPanel.classList.remove('visible');
         }
 
-        function showOutput(text, label = 'Output') {
+        function showOutput(text, label = 'Output', lang = 'json') {
             const lines = text.split('\n').length;
+            monaco.editor.setModelLanguage(outputModel, lang);
             outputModel.setValue(text);
             outputEmpty.style.display = 'none';
             outputEditorEl.style.display = '';
@@ -315,6 +321,24 @@
             setStatus('valid', 'Valid JSON');
             clearError();
             toast('Keys sorted alphabetically!', 'success', 2000);
+        });
+
+        /* ── TO YAML ── */
+        document.getElementById('btn-to-yaml').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to convert', 'warning'); return; }
+            const r = parseJson(raw);
+            if (!r.ok) { showError(r.error.message, 'Fix JSON errors before converting'); toast('Cannot convert invalid JSON', 'error'); return; }
+            try {
+                const yamlStr = jsyaml.dump(r.data, { indent: 2, lineWidth: -1 });
+                showOutput(yamlStr, 'YAML (Converted)', 'yaml');
+                setStatus('valid', 'Valid JSON');
+                clearError();
+                toast('Converted to YAML!', 'success', 2000);
+            } catch (e) {
+                showError(e.message, 'YAML conversion failed');
+                toast('Conversion error', 'error');
+            }
         });
 
         /* ── CLEAR ── */
