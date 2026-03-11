@@ -24,15 +24,70 @@ os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
-@app.get("/", response_class=HTMLResponse, summary="Serve frontend")
-async def read_root():
-    """Serve the main index.html SPA entry point."""
+@app.get("/", response_class=HTMLResponse, summary="Serve DevSuite homepage")
+async def read_home():
+    """Serve the DevSuite landing page."""
+    html_path = os.path.join(static_dir, "home.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="home.html not found.")
+
+
+@app.get("/diff", response_class=HTMLResponse, summary="Serve diff tool")
+async def read_diff():
+    """Serve the Text/Folder Diff tool."""
     html_path = os.path.join(static_dir, "index.html")
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="index.html not found. Run setup correctly.")
+        raise HTTPException(status_code=404, detail="index.html not found.")
+
+
+@app.get("/json", response_class=HTMLResponse, summary="Serve JSON linter tool")
+async def read_json_tool():
+    """Serve the JSON Linter & Formatter tool."""
+    html_path = os.path.join(static_dir, "json.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="json.html not found.")
+
+
+@app.get("/yaml", response_class=HTMLResponse, summary="Serve YAML linter tool")
+async def read_yaml_tool():
+    """Serve the YAML Linter & Validator tool."""
+    html_path = os.path.join(static_dir, "yaml.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="yaml.html not found.")
+
+
+@app.get("/regex", response_class=HTMLResponse, summary="Serve Regex Tester tool")
+async def read_regex_tool():
+    """Serve the Regex Tester tool."""
+    html_path = os.path.join(static_dir, "regex.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="regex.html not found.")
+
+
+@app.get("/base64", response_class=HTMLResponse, summary="Serve Base64 Encoder/Decoder tool")
+async def read_base64_tool():
+    """Serve the Base64 Encoder/Decoder tool."""
+    html_path = os.path.join(static_dir, "base64.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="base64.html not found.")
 
 
 @app.post("/upload", summary="Upload a text file for diffing")

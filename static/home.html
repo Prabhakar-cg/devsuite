@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevSuite — Local Developer Tools</title>
+    <meta name="description" content="A private, locally-hosted developer support suite. Diff files, lint JSON/YAML, test regex — all in your browser, zero data leaks.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/home.css">
+</head>
+<body>
+
+    <!-- ====================================================
+         HEADER
+         ==================================================== -->
+    <header class="home-header">
+        <a class="logo-wrap" href="/">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                </svg>
+            </div>
+            <div class="logo-text">
+                <span class="logo-name">Dev<span>Suite</span></span>
+                <span class="logo-tagline">Local Developer Toolkit</span>
+            </div>
+        </a>
+
+        <div class="header-actions">
+            <span class="header-badge">✦ Runs Locally</span>
+        </div>
+    </header>
+
+    <!-- ====================================================
+         HERO
+         ==================================================== -->
+    <section class="hero">
+        <div class="hero-eyebrow">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Developer Support Suite
+        </div>
+        <h1 class="hero-title">
+            Your private<br>
+            <span class="gradient-text">developer toolkit</span>
+        </h1>
+        <p class="hero-subtitle">
+            A growing suite of developer tools — all locally hosted, all private.
+            No data leaves your machine. No accounts. No tracking.
+        </p>
+    </section>
+
+    <!-- ====================================================
+         TOOL GRID — ACTIVE TOOLS
+         ==================================================== -->
+    <section class="tools-section">
+
+        <p class="section-label">Available Tools</p>
+
+        <div class="tools-grid" id="active-tools">
+
+            <!-- Text Diff -->
+            <a class="tool-card active-tool" href="/diff" id="card-text-diff"
+               style="--card-glow: rgba(99,102,241,0.14); --card-border-hover: rgba(99,102,241,0.45);">
+                <div class="card-header">
+                    <div class="card-icon-wrap card-icon-indigo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                    </div>
+                    <span class="badge badge-live">Live</span>
+                </div>
+                <div>
+                    <div class="card-title">Text Diff</div>
+                    <div class="card-desc">
+                        Side-by-side and inline diff view for any two text files or snippets. Monaco Editor powered with syntax highlighting, merge arrows, and export.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
+                    <span class="tag-chip">Monaco</span>
+                    <span class="tag-chip">20+ langs</span>
+                    <span class="tag-chip">Export</span>
+                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+            </a>
+
+            <!-- Folder Diff -->
+            <a class="tool-card active-tool" href="/diff?tab=folder" id="card-folder-diff"
+               style="--card-glow: rgba(124,58,237,0.14); --card-border-hover: rgba(124,58,237,0.45);">
+                <div class="card-header">
+                    <div class="card-icon-wrap card-icon-violet">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                        </svg>
+                    </div>
+                    <span class="badge badge-live">Live</span>
+                </div>
+                <div>
+                    <div class="card-title">Folder Diff</div>
+                    <div class="card-desc">
+                        Compare entire directory trees. Browse changed files in a sidebar, view per-file diffs, filter by Added / Modified / Removed.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
+                    <span class="tag-chip">Tree View</span>
+                    <span class="tag-chip">File Filter</span>
+                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+            </a>
+
+            <!-- JSON Linter -->
+            <a class="tool-card active-tool" href="/json" id="card-json"
+               style="--card-glow: rgba(5,150,105,0.14); --card-border-hover: rgba(5,150,105,0.45);">
+                <div class="card-header">
+                    <div class="card-icon-wrap card-icon-emerald">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 3H7a2 2 0 00-2 2v5a2 2 0 01-2 2 2 2 0 012 2v5c0 1.1.9 2 2 2h1"/>
+                            <path d="M16 21h1a2 2 0 002-2v-5c0-1.1.9-2 2-2a2 2 0 01-2-2V5a2 2 0 00-2-2h-1"/>
+                        </svg>
+                    </div>
+                    <span class="badge badge-live">Live</span>
+                </div>
+                <div>
+                    <div class="card-title">JSON Linter &amp; Formatter</div>
+                    <div class="card-desc">
+                        Validate, pretty-print, minify and sort keys in JSON. Real-time syntax error detection with exact line and column pointers.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
+                    <span class="tag-chip">Validate</span>
+                    <span class="tag-chip">Format</span>
+                    <span class="tag-chip">Minify</span>
+                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+            </a>
+
+            <!-- YAML Linter -->
+            <a class="tool-card active-tool" href="/yaml" id="card-yaml"
+               style="--card-glow: rgba(217,119,6,0.14); --card-border-hover: rgba(245,158,11,0.45);">
+                <div class="card-header">
+                    <div class="card-icon-wrap card-icon-amber">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </div>
+                    <span class="badge badge-live">Live</span>
+                </div>
+                <div>
+                    <div class="card-title">YAML Linter &amp; Validator</div>
+                    <div class="card-desc">
+                        Parse and validate YAML configs — K8s, Docker Compose, GitHub Actions. Format, and convert YAML→JSON with one click.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
+                    <span class="tag-chip">Validate</span>
+                    <span class="tag-chip">Format</span>
+                    <span class="tag-chip">→ JSON</span>
+                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+            </a>
+
+        </div>
+
+            <!-- Regex Tester (LIVE) -->
+            <a class="tool-card active-tool" href="/regex" id="card-regex"
+               style="--card-glow: rgba(190,24,93,0.14); --card-border-hover: rgba(244,63,94,0.45);">
+                <div class="card-header">
+                    <div class="card-icon-wrap card-icon-rose">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                        </svg>
+                    </div>
+                    <span class="badge badge-live">Live</span>
+                </div>
+                <div>
+                    <div class="card-title">Regex Tester</div>
+                    <div class="card-desc">
+                        Write and test regular expressions with real-time match highlighting in Monaco, group capture display, and g / i / m / s flag toggles.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
+                    <span class="tag-chip">Live Match</span>
+                    <span class="tag-chip">Groups</span>
+                    <span class="tag-chip">Flags</span>
+                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+            </a>
+
+            <!-- Base64 (LIVE) -->
+            <a class="tool-card active-tool" href="/base64" id="card-base64"
+               style="--card-glow: rgba(2,132,199,0.14); --card-border-hover: rgba(56,189,248,0.45);">
+                <div class="card-header">
+                    <div class="card-icon-wrap card-icon-sky">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+                            <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+                        </svg>
+                    </div>
+                    <span class="badge badge-live">Live</span>
+                </div>
+                <div>
+                    <div class="card-title">Base64 Encoder / Decoder</div>
+                    <div class="card-desc">
+                        Encode and decode Base64 strings with full UTF-8 support, URL-safe mode, JWT decoder panel, and file input.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
+                    <span class="tag-chip">Encode</span>
+                    <span class="tag-chip">Decode</span>
+                    <span class="tag-chip">JWT</span>
+                    <span class="tag-chip">URL-safe</span>
+                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+            </a>
+
+        </div>
+
+    </section>
+
+    <!-- ====================================================
+         FOOTER
+         ==================================================== -->
+    <footer class="home-footer">
+        <div class="footer-privacy">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            100% local — no data leaves your machine
+        </div>
+        <p class="footer-copy">
+            <span>DevSuite</span> &nbsp;·&nbsp; Built for developers who value privacy
+        </p>
+    </footer>
+
+</body>
+</html>

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.0.0] - 2026-03-11
+### Added
+- **DevSuite Homepage** — New central portal (`home.html`) featuring a glassmorphic dashboard of all available developer tools.
+- **JSON Linter & Formatter** (`/json`) — Monaco-powered JSON validation, formatting, minification, and key sorting.
+- **YAML Linter & Validator** (`/yaml`) — YAML parsing and formatting powered by `js-yaml`, with one-click conversion to JSON.
+- **Regex Tester** (`/regex`) — Real-time regex match highlighting inside Monaco, group capture display, and interactive flag toggles.
+- **Base64 Coder** (`/base64`) — Encode/decode strings and files, URL-safe mode, and a visual JWT decoding panel.
+- **Shared Linter Layout** (`linter.css`) — A unified split-pane layout and styling system for all non-diff tools.
+
+### Changed
+- App routing updated in `main.py`: Root `/` now serves the DevSuite homepage. The Diff Checker moved to `/diff`.
+- Diff Checker UI updated to include a "← DevSuite" navigation back-link.
+- `app.js` updated to parse URL parameters, enabling deep-linking to the Folder Diff tab (`/diff?tab=folder`).
+
+
 ## [3.0.0] - 2026-03-10
 ### Added
 - **Premium UI redesign** — glassmorphic header with gradient top rim, electric indigo/blue accent system, and JetBrains Mono for code panels.

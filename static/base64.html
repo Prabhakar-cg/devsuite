@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 Encoder / Decoder — DevSuite</title>
+    <meta name="description" content="Encode and decode Base64 strings, JWT tokens, and files. URL-safe mode. 100% local.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/linter.css">
+    <style>
+        /* JWT section */
+        .jwt-section {
+            flex-shrink: 0; border-top: 1px solid var(--glass-border);
+            display: none; flex-direction: column; max-height: 200px; overflow: hidden;
+        }
+        .jwt-section.visible { display: flex; }
+        .jwt-header-bar {
+            padding: 0.35rem 1rem;
+            background: rgba(15,20,42,0.65); border-bottom: 1px solid var(--glass-border);
+            font-size: 0.67rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--accent-2);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .jwt-parts { display: flex; flex: 1; overflow: hidden; }
+        .jwt-part {
+            flex: 1; overflow: auto; padding: 0.5rem 0.85rem;
+            border-right: 1px solid var(--glass-border); font-family: var(--font-mono);
+            font-size: 0.72rem; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+        }
+        .jwt-part:last-child { border-right: none; }
+        .jwt-part-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 4px; }
+        .jwt-header-color  { color: #fb923c; }
+        .jwt-payload-color { color: #34d399; }
+        .jwt-sig-color     { color: #a78bfa; }
+
+        /* Toggle pill */
+        .toggle-group { display: flex; background: var(--bg-neu); border: 1px solid var(--glass-border); border-radius: var(--radius-xs); overflow: hidden; }
+        .toggle-opt {
+            font-size: 0.72rem; font-weight: 600; padding: 0.28rem 0.65rem;
+            cursor: pointer; color: var(--text-muted); transition: var(--transition);
+            border: none; background: none; font-family: var(--font-sans); white-space: nowrap;
+        }
+        .toggle-opt:hover { color: var(--text-primary); }
+        .toggle-opt.active { background: var(--accent-subtle); color: var(--accent-2); }
+        .toolbar-sep { width: 1px; height: 20px; background: var(--glass-border); flex-shrink: 0; margin: 0 0.1rem; }
+
+        /* file drop zone label */
+        #file-input { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- HEADER -->
+<header class="tool-header">
+    <div class="header-left">
+        <a href="/" class="back-link">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            DevSuite
+        </a>
+        <div class="tool-identity">
+            <div class="tool-icon" style="background:linear-gradient(135deg,#0284c7,#38bdf8);box-shadow:0 0 14px rgba(2,132,199,0.45);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+                    <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+                </svg>
+            </div>
+            <span class="tool-name">Base64 <span class="tool-accent">Coder</span></span>
+            <span class="tool-version">+ JWT v1.0</span>
+        </div>
+    </div>
+    <div class="header-right">
+        <span id="char-count" class="line-badge">0 chars</span>
+    </div>
+</header>
+
+<!-- ACTION TOOLBAR -->
+<div class="action-toolbar">
+    <div id="status-pill" class="status-pill idle"><span class="status-dot"></span><span id="status-text">Ready</span></div>
+    <div class="toolbar-sep"></div>
+
+    <button id="btn-encode" class="btn btn-primary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+        Encode
+    </button>
+    <button id="btn-decode" class="btn btn-ghost">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 1 3 5 7 9"/><path d="M21 11V9a4 4 0 00-4-4H3"/><polyline points="17 23 21 19 17 15"/><path d="M3 13v2a4 4 0 004 4h14"/></svg>
+        Decode
+    </button>
+
+    <div class="toolbar-sep"></div>
+
+    <div class="toggle-group">
+        <button class="toggle-opt active" id="mode-std" title="Standard Base64">Standard</button>
+        <button class="toggle-opt" id="mode-url" title="URL-safe Base64 (replaces +/ with -_)">URL-safe</button>
+    </div>
+
+    <button id="btn-decode-jwt" class="btn btn-ghost" title="Decode as JWT — splits header.payload.signature">
+        🔐 JWT
+    </button>
+
+    <div class="toolbar-sep"></div>
+
+    <label class="btn btn-ghost" style="cursor:pointer;" title="Load a file as input">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Load File
+        <input id="file-input" type="file">
+    </label>
+
+    <button id="btn-clear" class="btn btn-ghost">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        Clear
+    </button>
+
+    <div class="toolbar-spacer"></div>
+
+    <button id="btn-swap" class="btn btn-ghost" title="Swap input ↔ output">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><line x1="3" y1="5" x2="21" y2="5"/><polyline points="7 23 3 19 7 15"/><line x1="21" y1="19" x2="3" y2="19"/></svg>
+        Swap
+    </button>
+    <button id="btn-copy-output" class="btn btn-ghost" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy Output
+    </button>
+</div>
+
+<!-- SPLIT PANE -->
+<main class="tool-main">
+    <div class="split-pane" style="flex-direction:column;">
+        <div class="split-pane" style="flex:1;min-height:0;">
+
+            <!-- Input -->
+            <div class="pane-editor">
+                <div class="pane-header">
+                    <span class="pane-label">Input</span>
+                    <div class="pane-actions">
+                        <span id="char-count-2" class="line-badge">0 chars</span>
+                        <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;">📋 Paste</button>
+                    </div>
+                </div>
+                <div id="input-editor" class="monaco-host"></div>
+            </div>
+
+            <!-- Output -->
+            <div class="pane-output">
+                <div class="pane-header">
+                    <span class="pane-label" id="output-label">Output</span>
+                    <span id="output-char-count" class="line-badge" style="display:none;"></span>
+                </div>
+                <div id="output-empty" class="output-empty">
+                    <span class="output-empty-icon">🔀</span>
+                    <span>Click Encode or Decode to see output</span>
+                </div>
+                <div id="output-editor" class="output-monaco-host" style="display:none;"></div>
+
+                <!-- Error panel inside output pane -->
+                <div id="error-panel" class="error-panel">
+                    <span class="error-icon">⚠️</span>
+                    <div class="error-body">
+                        <div id="error-message" class="error-message"></div>
+                        <div id="error-hint" class="error-hint"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- JWT breakdown section -->
+        <div class="jwt-section" id="jwt-section">
+            <div class="jwt-header-bar">
+                <span>JWT Decoded</span>
+                <button onclick="document.getElementById('jwt-section').classList.remove('visible')" class="btn btn-ghost" style="padding:1px 6px;font-size:0.7rem;">✕</button>
+            </div>
+            <div class="jwt-parts">
+                <div class="jwt-part">
+                    <div class="jwt-part-label jwt-header-color">Header</div>
+                    <div id="jwt-header" class="jwt-header-color"></div>
+                </div>
+                <div class="jwt-part">
+                    <div class="jwt-part-label jwt-payload-color">Payload</div>
+                    <div id="jwt-payload" class="jwt-payload-color"></div>
+                </div>
+                <div class="jwt-part">
+                    <div class="jwt-part-label jwt-sig-color">Signature</div>
+                    <div id="jwt-sig" class="jwt-sig-color" style="word-break:break-all;font-size:0.65rem;color:var(--text-muted)"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    function toast(msg, type = 'info', ms = 2500) {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div'); t.className = `toast ${type}`;
+        t.innerHTML = `<span>${msg}</span><button class="toast-close" onclick="this.parentElement.classList.add('hide');setTimeout(()=>this.parentElement.remove(),300)">✕</button>`;
+        c.appendChild(t); setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, ms);
+    }
+
+    require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+    window.MonacoEnvironment = { getWorkerUrl: () => URL.createObjectURL(new Blob([`
+        self.MonacoEnvironment={baseUrl:'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/'};
+        importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/base/worker/workerMain.js');
+    `], { type: 'text/javascript' })) };
+
+    require(['vs/editor/editor.main'], () => {
+        let inputEditor, outputEditor, outputModel;
+        let lastOutput = '', urlSafe = false;
+
+        inputEditor = monaco.editor.create(document.getElementById('input-editor'), {
+            value: '', language: 'plaintext', theme: 'vs-dark',
+            automaticLayout: true, fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 22, minimap: { enabled: false }, scrollBeyondLastLine: false,
+            padding: { top: 12, bottom: 12 }, wordWrap: 'on',
+        });
+
+        outputModel = monaco.editor.createModel('', 'plaintext');
+        outputEditor = monaco.editor.create(document.getElementById('output-editor'), {
+            model: outputModel, theme: 'vs-dark', readOnly: true,
+            automaticLayout: true, fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 22, minimap: { enabled: false }, scrollBeyondLastLine: false,
+            padding: { top: 12, bottom: 12 }, wordWrap: 'on',
+        });
+
+        const statusPill   = document.getElementById('status-pill');
+        const statusText   = document.getElementById('status-text');
+        const charCount2   = document.getElementById('char-count-2');
+        const outputEmpty  = document.getElementById('output-empty');
+        const outputEditorEl = document.getElementById('output-editor');
+        const outputCharCount = document.getElementById('output-char-count');
+        const outputLabel  = document.getElementById('output-label');
+        const copyBtn      = document.getElementById('btn-copy-output');
+        const errorPanel   = document.getElementById('error-panel');
+        const errorMsg     = document.getElementById('error-message');
+        const errorHint    = document.getElementById('error-hint');
+
+        function setStatus(s, text) { statusPill.className = `status-pill ${s}`; statusText.textContent = text; }
+
+        inputEditor.onDidChangeModelContent(() => {
+            const v = inputEditor.getValue();
+            charCount2.textContent = v.length.toLocaleString() + ' chars';
+            document.getElementById('char-count').textContent = v.length.toLocaleString() + ' chars';
+        });
+
+        function showError(msg, hint = '') {
+            errorMsg.textContent = msg; errorHint.textContent = hint;
+            errorPanel.classList.add('visible'); setStatus('invalid', 'Error');
+        }
+        function clearError() { errorPanel.classList.remove('visible'); }
+
+        function showOutput(text, label) {
+            outputModel.setValue(text);
+            outputEmpty.style.display = 'none'; outputEditorEl.style.display = '';
+            outputCharCount.style.display = '';
+            outputCharCount.textContent = text.length.toLocaleString() + ' chars';
+            outputLabel.textContent = label; lastOutput = text; copyBtn.disabled = false;
+            clearError();
+        }
+
+        /* ── Base64 helpers using TextEncoder for full UTF-8 support ── */
+        function encodeB64(str) {
+            const bytes = new TextEncoder().encode(str);
+            let bin = '';
+            bytes.forEach(b => bin += String.fromCharCode(b));
+            let b64 = btoa(bin);
+            if (urlSafe) b64 = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            return b64;
+        }
+
+        function decodeB64(str) {
+            let s = str.trim();
+            if (urlSafe || /[-_]/.test(s)) {
+                s = s.replace(/-/g, '+').replace(/_/g, '/');
+                while (s.length % 4) s += '=';
+            }
+            const bin = atob(s);
+            const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+            return new TextDecoder().decode(bytes);
+        }
+
+        /* ── ENCODE ── */
+        document.getElementById('btn-encode').addEventListener('click', () => {
+            const raw = inputEditor.getValue();
+            if (!raw) { toast('Nothing to encode', 'warning'); return; }
+            try {
+                const encoded = encodeB64(raw);
+                showOutput(encoded, urlSafe ? 'Encoded (URL-safe)' : 'Encoded (Standard)');
+                setStatus('valid', 'Encoded ✓');
+                toast('Encoded!', 'success', 1800);
+            } catch(e) { showError('Encoding failed: ' + e.message); toast('Encode error', 'error'); }
+        });
+
+        /* ── DECODE ── */
+        document.getElementById('btn-decode').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to decode', 'warning'); return; }
+            try {
+                const decoded = decodeB64(raw);
+                showOutput(decoded, 'Decoded');
+                setStatus('valid', 'Decoded ✓');
+                toast('Decoded!', 'success', 1800);
+            } catch(e) {
+                showError('Invalid Base64: ' + e.message, 'Check the input is a valid Base64 string');
+                toast('Invalid Base64', 'error');
+            }
+        });
+
+        /* ── JWT DECODE ── */
+        document.getElementById('btn-decode-jwt').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            const parts = raw.split('.');
+            if (parts.length !== 3) {
+                toast('Not a valid JWT (expected 3 parts separated by dots)', 'error'); return;
+            }
+            try {
+                function jwtPart(p) {
+                    let s = p.replace(/-/g, '+').replace(/_/g, '/');
+                    while (s.length % 4) s += '=';
+                    return JSON.parse(decodeB64(s));
+                }
+                const header  = jwtPart(parts[0]);
+                const payload = jwtPart(parts[1]);
+
+                document.getElementById('jwt-header').textContent  = JSON.stringify(header, null, 2);
+                document.getElementById('jwt-payload').textContent = JSON.stringify(payload, null, 2);
+                document.getElementById('jwt-sig').textContent     = parts[2] + '\n(signature — verify server-side)';
+                document.getElementById('jwt-section').classList.add('visible');
+                setStatus('valid', 'JWT decoded');
+                toast('JWT decoded!', 'success');
+            } catch(e) { toast('Could not decode JWT parts: ' + e.message, 'error'); }
+        });
+
+        /* URL-safe toggle */
+        document.getElementById('mode-std').addEventListener('click', () => {
+            urlSafe = false;
+            document.getElementById('mode-std').classList.add('active');
+            document.getElementById('mode-url').classList.remove('active');
+        });
+        document.getElementById('mode-url').addEventListener('click', () => {
+            urlSafe = true;
+            document.getElementById('mode-url').classList.add('active');
+            document.getElementById('mode-std').classList.remove('active');
+        });
+
+        /* SWAP */
+        document.getElementById('btn-swap').addEventListener('click', () => {
+            if (!lastOutput) { toast('Nothing to swap — run encode or decode first', 'warning'); return; }
+            inputEditor.setValue(lastOutput);
+            outputModel.setValue(''); outputEmpty.style.display = ''; outputEditorEl.style.display = 'none';
+            outputCharCount.style.display = 'none'; copyBtn.disabled = true; lastOutput = '';
+            setStatus('idle', 'Ready'); clearError();
+        });
+
+        /* CLEAR */
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            inputEditor.setValue(''); outputModel.setValue('');
+            outputEmpty.style.display = ''; outputEditorEl.style.display = 'none';
+            outputCharCount.style.display = 'none'; copyBtn.disabled = true; lastOutput = '';
+            document.getElementById('jwt-section').classList.remove('visible');
+            setStatus('idle', 'Ready'); clearError();
+        });
+
+        /* PASTE */
+        document.getElementById('btn-paste').addEventListener('click', async () => {
+            try { const t = await navigator.clipboard.readText(); inputEditor.setValue(t); toast('Pasted!', 'success', 1500); }
+            catch { toast('Clipboard access denied', 'warning'); }
+        });
+
+        /* FILE INPUT */
+        document.getElementById('file-input').addEventListener('change', e => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => { inputEditor.setValue(ev.target.result); toast('File loaded', 'success', 1800); };
+            // For binary files, read as base64 immediately
+            if (file.type.startsWith('text') || file.size < 500_000) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsDataURL(file); // gives data:...;base64,xxxx
+            }
+            e.target.value = '';
+        });
+
+        /* COPY OUTPUT */
+        copyBtn.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(lastOutput); toast('Copied!', 'success', 1500); }
+            catch { toast('Copy failed', 'error'); }
+        });
+    });
+})();
+</script>
+</body>
+</html>

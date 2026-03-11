@@ -1,31 +1,37 @@
-# DiffChecker.io — Diff Checker from Hell
+# DevSuite — Developer Tools from Hell
 
-A beautiful, locally-hosted diff tool powered by **FastAPI** and the **Monaco Editor** (the engine behind VS Code). 100% private — all file reading is done client-side with the FileReader API.
+A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the **Monaco Editor**. 100% private — all file reading and data processing is done locally. No data ever leaves your machine.
 
-## Features
+## Supported Tools
 
-### ⚡ Core Diffing
-- **Side-by-side & Inline** comparison modes, switchable at any time.
-- **Merge arrows** in each gutter — click to copy individual hunks left→right or right→left.
-- **Merge All** buttons — copy all changes in one direction instantly.
-- **Folder Diff** — compare two entire directory trees; sidebar lists changed, added, and removed files with filter chips.
+### 1. Diff Checker
+- **Side-by-side & Inline** comparison modes.
+- **Merge arrows** to copy individual hunks left→right or right→left.
+- **Folder Diff** — compare entire directory trees with filter chips.
+- Export as `.patch` or copy unified diff.
 
-### 🎨 Premium UI
-- Glassmorphic header with gradient accent line.
-- Electric indigo/blue design system with JetBrains Mono for code.
-- **Live Diff Stats Bar** — color-coded `+additions / −removals / hunks` chips.
-- Multi-type toast notifications (success / error / warning / info) with slide-in animation.
-- Gradient scrollbar, glowing status dots, segmented button groups.
+### 2. JSON Linter & Formatter
+- Validate JSON with real-time exact line/column error pointers.
+- Pretty-print (format), minify, and sort keys alphabetically.
 
-### 🛠 Developer Quality-of-Life
-- **Keyboard shortcuts** — `Ctrl/Cmd + Enter` to compare; `Escape` to return to edit.
-- **📋 Paste** button per panel — reads clipboard directly.
-- **Copy** icon button per panel — copies content to clipboard.
-- **Line count badges** — live count in each panel header.
-- **Export Patch** — download as `.patch` or copy unified diff to clipboard.
-- **Language auto-detect** via `highlight.js`; manual override via the Lang dropdown.
-- **20+ languages** — Python, JS, TS, Go, Rust, Java, C/C++, SQL, YAML, Dockerfile, Shell, and more.
-- **3 themes** — Dark, Light, High Contrast.
+### 3. YAML Linter & Validator
+- Parse and validate YAML configs (Kubernetes, Docker Compose, Actions).
+- Format clean YAML or convert directly to JSON (pretty and minified).
+
+### 4. Regex Tester
+- Real-time match highlighting right inside the Monaco Editor.
+- Group captures and named group display.
+- Global `g`, case-insensitive `i`, multiline `m`, and dotall `s` flag toggles.
+
+### 5. Base64 Encoder / Decoder
+- Encode/Decode strings and files with full UTF-8 support.
+- URL-safe mode.
+- JWT decoding panel (splits header, payload, signature).
+
+## 🎨 Premium UI
+- Glassmorphic UI with dynamic gradients and ambient glow.
+- Neumorphic buttons and customized scrollbars.
+- **3 themes**: Dark, Light, High Contrast.
 
 ## Getting Started
 
@@ -55,20 +61,22 @@ pip install -r requirements.txt
 uvicorn main:app --port 8000 --reload
 ```
 
-## Privacy
-
-All file reading uses the browser's **FileReader API** — no file content is ever sent to the server. The `/upload` endpoint exists only as a fallback and is not used by default.
+## Privacy & Security
+All tools run strictly on your machine. File reading uses the browser's **FileReader API**, and parsing/generation (JSON/YAML/Regex/Base64) runs purely in-browser using JS and Web Workers.
 
 ## Project Structure
 
 ```
 DiffChecker/
-├── main.py                  # FastAPI app — serves static files + /upload fallback
+├── main.py                  # FastAPI app — serves all HTML endpoints
 ├── requirements.txt         # fastapi, uvicorn, python-multipart
 ├── start.sh                 # One-shot setup & run script
 └── static/
-    ├── index.html           # SPA entry point
-    ├── style.css            # Premium design system
-    ├── app.js               # All client-side logic (diff, merge, export, etc.)
-    └── test_merge.html      # Unit-test harness for merge logic
+    ├── home.html & css      # Main DevSuite homepage
+    ├── index.html & app.js  # Text/Folder Diff tool
+    ├── json.html            # JSON Linter
+    ├── yaml.html            # YAML Linter
+    ├── regex.html           # Regex Tester
+    ├── base64.html          # Base64 Coder
+    └── linter.css           # Shared styling for linter/tester tools
 ```

@@ -13,6 +13,31 @@
 
     <!-- App Styles -->
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 3px 10px 3px 6px;
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            transition: var(--transition);
+            letter-spacing: 0.02em;
+        }
+        .back-link:hover {
+            color: var(--accent-2);
+            border-color: var(--border-accent);
+            background: var(--accent-subtle);
+        }
+        .back-link svg { opacity: 0.7; }
+        .back-link:hover svg { opacity: 1; }
+    </style>
 </head>
 <body>
 
@@ -20,18 +45,24 @@
          HEADER
          ============================================================ -->
     <header class="app-header">
-        <!-- Logo -->
-        <div class="logo-wrap">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 4c0-1.1.9-2 2-2"/><path d="M20 2c1.1 0 2 .9 2 2"/><path d="M22 8c0 1.1-.9 2-2 2"/>
-                    <path d="M16 10c-1.1 0-2-.9-2-2"/><path d="M4 14c0-1.1.9-2 2-2"/><path d="M10 12c1.1 0 2 .9 2 2"/>
-                    <path d="M12 18c0 1.1-.9 2-2 2"/><path d="M6 20c-1.1 0-2-.9-2-2"/>
-                </svg>
+        <!-- Logo + Back Link -->
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            <a href="/" class="back-link" title="Back to DevSuite">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                DevSuite
+            </a>
+            <div class="logo-wrap">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 4c0-1.1.9-2 2-2"/><path d="M20 2c1.1 0 2 .9 2 2"/><path d="M22 8c0 1.1-.9 2-2 2"/>
+                        <path d="M16 10c-1.1 0-2-.9-2-2"/><path d="M4 14c0-1.1.9-2 2-2"/><path d="M10 12c1.1 0 2 .9 2 2"/>
+                        <path d="M12 18c0 1.1-.9 2-2 2"/><path d="M6 20c-1.1 0-2-.9-2-2"/>
+                    </svg>
+                </div>
+                <span class="logo-name">
+                    Diff<span class="accent">Checker</span><span class="domain">.io</span>
+                </span>
             </div>
-            <span class="logo-name">
-                Diff<span class="accent">Checker</span><span class="domain">.io</span>
-            </span>
         </div>
 
         <!-- Header Controls -->
@@ -74,9 +105,10 @@
             <div class="control-group">
                 <label class="control-label" for="theme-select">Theme</label>
                 <select id="theme-select">
-                    <option value="vs-dark">Dark</option>
-                    <option value="vs">Light</option>
+                    <option value="vs-dark">Midnight Dark</option>
+                    <option value="vs">Clean Light</option>
                     <option value="hc-black">High Contrast</option>
+                    <option value="ios-glass">Frosted Glass</option>
                 </select>
             </div>
         </div>

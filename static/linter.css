@@ -1,0 +1,353 @@
+/* ============================================================
+   DevSuite — Shared Linter / Tool Page CSS
+   Used by: json.html, yaml.html, and future tool pages
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Tokens (mirrors style.css root) ── */
+:root {
+    --bg-void:        #07091a;
+    --bg-main:        #0b0e1f;
+    --bg-surface:     #0f1326;
+    --bg-panel:       #10142a;
+    --bg-raised:      #131829;
+    --bg-neu:         #0e1226;
+    --glass-bg:       rgba(15,19,40,0.52);
+    --glass-border:   rgba(255,255,255,0.07);
+    --glass-shine:    rgba(255,255,255,0.05);
+    --glass-blur:     blur(28px) saturate(160%);
+    --glass-shadow:   0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+    --text-primary:   #eef2ff;
+    --text-secondary: #8b96b2;
+    --text-muted:     #3d4b6b;
+    --accent-1:       #6366f1;
+    --accent-2:       #3b82f6;
+    --accent-glow:    rgba(99,102,241,0.4);
+    --accent-subtle:  rgba(99,102,241,0.12);
+    --green:          #10b981;
+    --green-subtle:   rgba(16,185,129,0.14);
+    --red:            #f43f5e;
+    --red-subtle:     rgba(244,63,94,0.14);
+    --amber:          #f59e0b;
+    --amber-subtle:   rgba(245,158,11,0.14);
+    --border:         rgba(255,255,255,0.065);
+    --border-accent:  rgba(99,102,241,0.5);
+    --radius:         14px;
+    --radius-sm:      10px;
+    --radius-xs:      7px;
+    --neu-raise:      4px 4px 12px rgba(0,0,0,0.6), -2px -2px 8px rgba(255,255,255,0.038);
+    --neu-press:      inset 3px 3px 8px rgba(0,0,0,0.55), inset -2px -2px 6px rgba(255,255,255,0.03);
+    --transition:     all 0.25s cubic-bezier(0.4,0,0.2,1);
+    --font-sans:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono:      'JetBrains Mono', monospace;
+}
+
+/* ── Body + animated mesh ── */
+html, body {
+    height: 100%;
+    font-family: var(--font-sans);
+    background: var(--bg-void);
+    color: var(--text-primary);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 80% 60% at 10% 5%,  rgba(99,102,241,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse 65% 55% at 88% 10%,  rgba(59,130,246,0.13) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 60% at 55% 90%,  rgba(99,102,241,0.10) 0%, transparent 60%),
+        linear-gradient(160deg, #07091a 0%, #0b0e24 45%, #09111f 100%);
+    animation: meshPulse 12s ease-in-out infinite alternate;
+}
+@keyframes meshPulse { from { opacity: 0.85; } to { opacity: 1; } }
+body > * { position: relative; z-index: 1; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--accent-1), var(--accent-2));
+    border-radius: 6px;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.tool-header {
+    height: 58px; flex-shrink: 0;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    padding: 0 1.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    position: relative; z-index: 10;
+}
+.tool-header::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-1), var(--accent-2), transparent);
+    opacity: 0.7;
+    animation: rimShimmer 4s ease-in-out infinite alternate;
+}
+@keyframes rimShimmer { from { opacity: 0.5; } to { opacity: 1; } }
+
+.header-left { display: flex; align-items: center; gap: 0.75rem; }
+
+/* Back link */
+.back-link {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--text-muted); text-decoration: none;
+    padding: 3px 10px 3px 6px;
+    border: 1px solid var(--glass-border); border-radius: 20px;
+    background: var(--glass-bg); backdrop-filter: blur(12px);
+    transition: var(--transition);
+}
+.back-link:hover { color: var(--accent-2); border-color: var(--border-accent); background: var(--accent-subtle); }
+
+/* Tool identity */
+.tool-identity { display: flex; align-items: center; gap: 0.6rem; }
+.tool-icon {
+    width: 32px; height: 32px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 14px var(--accent-glow);
+    flex-shrink: 0; position: relative; overflow: hidden;
+}
+.tool-icon::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 50%; height: 50%;
+    background: rgba(255,255,255,0.2);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.tool-icon svg { width: 17px; height: 17px; color: #fff; position: relative; }
+.tool-icon-emerald { background: linear-gradient(135deg, #059669, #10b981); }
+.tool-icon-amber   { background: linear-gradient(135deg, #d97706, #f59e0b); }
+
+.tool-name { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.2px; }
+.tool-name .tool-accent { color: var(--accent-2); }
+.tool-version {
+    font-size: 0.58rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-muted); background: var(--bg-raised);
+    border: 1px solid var(--border); border-radius: 20px; padding: 1px 7px;
+}
+
+.header-right { display: flex; align-items: center; gap: 0.5rem; }
+
+/* ============================================================
+   MAIN LAYOUT — ACTION BAR + SPLIT PANE
+   ============================================================ */
+.tool-main {
+    display: flex; flex-direction: column;
+    flex: 1; min-height: 0; overflow: hidden;
+}
+
+/* ── Action Toolbar ── */
+.action-toolbar {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    padding: 0.6rem 1.25rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: 0 2px 16px rgba(0,0,0,0.25), inset 0 1px 0 var(--glass-shine);
+    flex-shrink: 0;
+}
+
+/* Status pills in toolbar */
+.status-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.72rem; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px;
+    transition: var(--transition);
+    font-family: var(--font-mono);
+}
+.status-pill.idle     { background: var(--bg-raised); border: 1px solid var(--border); color: var(--text-muted); }
+.status-pill.valid    { background: var(--green-subtle); border: 1px solid rgba(16,185,129,0.3); color: var(--green); }
+.status-pill.invalid  { background: var(--red-subtle);   border: 1px solid rgba(244,63,94,0.3);  color: var(--red); }
+.status-pill.loading  { background: var(--amber-subtle);  border: 1px solid rgba(245,158,11,0.3); color: var(--amber); }
+
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.status-pill.valid   .status-dot { box-shadow: 0 0 6px var(--green); }
+.status-pill.invalid .status-dot { box-shadow: 0 0 6px var(--red); }
+
+.toolbar-spacer { flex: 1; }
+
+/* ── Buttons ── */
+.btn {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-family: var(--font-sans); font-size: 0.78rem; font-weight: 500;
+    border-radius: var(--radius-xs); cursor: pointer;
+    transition: var(--transition); border: 1px solid transparent;
+    padding: 0.32rem 0.7rem; white-space: nowrap; user-select: none;
+}
+.btn-ghost {
+    background: var(--bg-neu); color: var(--text-secondary);
+    border-color: var(--glass-border); box-shadow: var(--neu-raise);
+}
+.btn-ghost:hover {
+    color: var(--text-primary); border-color: rgba(255,255,255,0.1);
+    box-shadow: 6px 6px 16px rgba(0,0,0,0.65), -3px -3px 10px rgba(255,255,255,0.04);
+    transform: translateY(-1px);
+}
+.btn-ghost:active { box-shadow: var(--neu-press); transform: translateY(0); }
+.btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: var(--neu-flat); }
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: #fff; border: none; box-shadow: 0 4px 20px var(--accent-glow);
+    position: relative; overflow: hidden;
+}
+.btn-primary::after {
+    content: ''; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+    transform: skewX(-20deg); transition: left 0.5s ease;
+}
+.btn-primary:hover::after { left: 120%; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 28px var(--accent-glow); filter: brightness(1.08); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-success {
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: #fff; border: none; box-shadow: 0 4px 16px rgba(16,185,129,0.35);
+}
+.btn-success:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(16,185,129,0.45); filter: brightness(1.06); }
+.btn-success:active { transform: translateY(0); }
+
+/* Separator */
+.toolbar-sep {
+    width: 1px; height: 20px; background: var(--glass-border);
+    flex-shrink: 0; margin: 0 0.15rem;
+}
+
+/* ============================================================
+   SPLIT PANE
+   ============================================================ */
+.split-pane {
+    display: flex; flex: 1; min-height: 0; overflow: hidden; gap: 0;
+}
+
+/* Editor side */
+.pane-editor {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+    border-right: 1px solid var(--glass-border);
+    background: rgba(10,13,28,0.45);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+
+/* Output side */
+.pane-output {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+    background: rgba(8,11,22,0.5);
+}
+
+/* Pane header strip */
+.pane-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.45rem 1rem; flex-shrink: 0;
+    background: rgba(15,20,42,0.65);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--glass-border);
+    min-height: 38px;
+}
+.pane-label {
+    font-size: 0.67rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--text-secondary);
+}
+.pane-actions { display: flex; align-items: center; gap: 0.3rem; }
+
+/* Line count badge */
+.line-badge {
+    font-size: 0.62rem; font-family: var(--font-mono); color: var(--text-muted);
+    background: var(--bg-neu); border: 1px solid var(--border);
+    border-radius: 20px; padding: 1px 7px;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.4), -1px -1px 3px rgba(255,255,255,0.025);
+}
+
+/* Monaco host in panes */
+.monaco-host {
+    flex: 1; min-height: 0; width: 100%;
+}
+
+/* ============================================================
+   ERROR PANEL
+   ============================================================ */
+.error-panel {
+    flex-shrink: 0;
+    background: rgba(244,63,94,0.08);
+    border-top: 1px solid rgba(244,63,94,0.25);
+    padding: 0.55rem 1rem;
+    display: none;
+    gap: 0.5rem;
+    align-items: flex-start;
+    max-height: 120px;
+    overflow-y: auto;
+    animation: slideUpFade 0.3s ease-out;
+}
+@keyframes slideUpFade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+.error-panel.visible { display: flex; }
+
+.error-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+.error-body { flex: 1; }
+.error-message {
+    font-size: 0.82rem; font-weight: 600; color: #fda4af; line-height: 1.4;
+    font-family: var(--font-mono);
+}
+.error-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ============================================================
+   OUTPUT AREA (formatted/minified result)
+   ============================================================ */
+.output-monaco-host {
+    flex: 1; min-height: 0; width: 100%;
+}
+
+/* Empty state inside output */
+.output-empty {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--text-muted); gap: 0.6rem; font-size: 0.88rem;
+    opacity: 0.6;
+}
+.output-empty-icon { font-size: 2.2rem; opacity: 0.35; }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+#toast-container {
+    position: fixed; top: 68px; right: 1.2rem;
+    display: flex; flex-direction: column; gap: 0.5rem;
+    z-index: 9999; pointer-events: none;
+}
+.toast {
+    display: flex; align-items: flex-start; gap: 0.6rem;
+    padding: 0.7rem 1rem; border-radius: var(--radius-sm);
+    font-size: 0.82rem; font-weight: 500; max-width: 340px;
+    pointer-events: auto;
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 var(--glass-shine);
+    border: 1px solid transparent;
+    animation: toastIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes toastIn { from { opacity:0; transform:translateX(60px) scale(0.9); } to { opacity:1; transform:none; } }
+.toast.hide { animation: toastOut 0.3s ease-out both; }
+@keyframes toastOut { to { opacity:0; transform:translateX(60px) scale(0.9); } }
+.toast.success { background: rgba(16,185,129,0.14); border-color: rgba(16,185,129,0.3); color: #6ee7b7; }
+.toast.error   { background: rgba(244,63,94,0.14);  border-color: rgba(244,63,94,0.3);  color: #fda4af; }
+.toast.info    { background: rgba(99,102,241,0.14); border-color: rgba(99,102,241,0.3); color: #a5b4fc; }
+.toast.warning { background: rgba(245,158,11,0.14); border-color: rgba(245,158,11,0.3); color: #fcd34d; }
+.toast-close {
+    cursor: pointer; opacity: 0.45; font-size: 1rem; line-height: 1;
+    background: none; border: none; color: inherit; flex-shrink: 0; transition: opacity 0.15s;
+}
+.toast-close:hover { opacity: 1; }

@@ -19,6 +19,18 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
+    // AUTO-SELECT TAB FROM URL PARAM (?tab=folder)
+    // ==========================================
+    (function applyTabFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab');
+        if (tab) {
+            const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+            if (btn) btn.click();
+        }
+    })();
+
+    // ==========================================
     // DOM REFERENCES
     // ==========================================
     const originalInput      = document.getElementById('original-input');
@@ -860,14 +872,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     themeSelect.addEventListener('change', (e) => {
         const theme = e.target.value;
-        if (window.monaco) monaco.editor.setTheme(theme);
-        // Swap body background for light theme
-        if (theme === 'vs') {
-            document.body.style.background = '#fff';
-            document.body.style.color = '#111827';
+
+        // Always clear previous overrides first
+        document.documentElement.removeAttribute('data-theme');
+        document.body.style.background = '';
+        document.body.style.color      = '';
+
+        if (theme === 'ios-glass') {
+            if (window.monaco) monaco.editor.setTheme('vs-dark');
+            document.documentElement.setAttribute('data-theme', 'ios-glass');
+            document.body.style.background = '#dce8ff';
+            document.body.style.color      = '#1c1c1e';
+        } else if (theme === 'hc-black') {
+            if (window.monaco) monaco.editor.setTheme('hc-black');
+            document.documentElement.setAttribute('data-theme', 'high-contrast');
+            document.body.style.background = '#000000';
+            document.body.style.color      = '#ffffff';
+        } else if (theme === 'vs') {
+            if (window.monaco) monaco.editor.setTheme('vs');
+            document.body.style.background = '#ffffff';
+            document.body.style.color      = '#111827';
         } else {
-            document.body.style.background = '';
-            document.body.style.color = '';
+            if (window.monaco) monaco.editor.setTheme(theme);
         }
     });
 
