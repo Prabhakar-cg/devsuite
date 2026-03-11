@@ -1,19 +1,25 @@
 /**
- * DiffChecker.io — Application Logic
- * ------------------------------------
- * Handles: Text Diff, Folder Diff, Monaco Editor Init, Merge Arrows,
- * Drag-and-Drop File Upload, Binary File Validation, Language Auto-detection.
- *
- * Architecture:
- *  - 100% client-side file reading via FileReader API (maximum privacy).
- *  - Falls back to `/upload` FastAPI endpoint only if explicitly needed.
- *  - Monaco Diff Editor renders both Text and Folder diffs.
+ * DiffChecker.io — Application Logic v3.0
+ * -----------------------------------------
+ * Features:
+ *  - Text Diff with Monaco Editor (side-by-side + inline)
+ *  - Folder Diff with file tree sidebar + filter chips
+ *  - Live diff stats (additions / deletions / hunks)
+ *  - Keyboard shortcut: Ctrl/Cmd+Enter to compare, Escape to edit
+ *  - Paste from clipboard per panel
+ *  - Copy panel content to clipboard
+ *  - Line count badges updated on input
+ *  - Export unified patch (.patch download or clipboard copy)
+ *  - Multi-type toast notifications (success, error, warning, info)
+ *  - Drag-and-drop + click-to-upload file loading (client-side, privacy-first)
+ *  - Merge arrows (glyph margin decorations) + Merge All buttons
+ *  - Language auto-detection via highlight.js + file extension
  */
 
 document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
-    // DOM ELEMENT REFERENCES
+    // DOM REFERENCES
     // ==========================================
     const originalInput      = document.getElementById('original-input');
     const modifiedInput      = document.getElementById('modified-input');
@@ -26,17 +32,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorHost         = document.getElementById('monaco-diff-editor');
     const langLabelContainer = document.getElementById('detected-language-label');
     const langNameSpan       = document.getElementById('lang-name');
+    const statsBar           = document.getElementById('stats-bar');
 
-    // Shared Settings
+    // Stats chips
+    const statAdditionsCount = document.getElementById('stat-additions-count');
+    const statDeletionsCount = document.getElementById('stat-deletions-count');
+    const statChangesCount   = document.getElementById('stat-changes-count');
+
+    // Shared controls
     const languageSelect     = document.getElementById('language-select');
     const themeSelect        = document.getElementById('theme-select');
-    const clearBtns          = document.querySelectorAll('.clear-btn');
 
     // Tabs
     const tabBtns            = document.querySelectorAll('.tab-btn');
     const tabContents        = document.querySelectorAll('.tab-content');
 
-    // File Upload (new)
+    // File Upload
     const dropOriginal       = document.getElementById('drop-original');
     const dropModified       = document.getElementById('drop-modified');
     const fileOriginal       = document.getElementById('file-original');
@@ -44,13 +55,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const labelOriginal      = document.getElementById('label-original');
     const labelModified      = document.getElementById('label-modified');
 
-    // Error Toast
-    const errorToast         = document.getElementById('error-toast');
-    const errorMessage       = document.getElementById('error-message');
-
-    // Merge Buttons
+    // Merge
     const mergeAllRightBtn   = document.getElementById('merge-all-right-btn');
     const mergeAllLeftBtn    = document.getElementById('merge-all-left-btn');
+
+    // Export
+    const exportBtn          = document.getElementById('export-btn');
+    const exportMenu         = document.getElementById('export-menu');
+    const exportPatchBtn     = document.getElementById('export-patch-btn');
+    const exportCopyBtn      = document.getElementById('export-copy-btn');
+
+    // Line count badges
+    const linesOriginal      = document.getElementById('lines-original');
+    const linesModified      = document.getElementById('lines-modified');
+
+    // Paste buttons
+    const pasteOriginalBtn   = document.getElementById('paste-original-btn');
+    const pasteModifiedBtn   = document.getElementById('paste-modified-btn');
+
+    // Copy panel buttons
+    const copyPanelBtns      = document.querySelectorAll('.copy-panel-btn');
+
+    // Clear buttons
+    const clearBtns          = document.querySelectorAll('.clear-btn');
 
     // Folder Diff
     const origFolderInput        = document.getElementById('original-folder-input');
@@ -63,34 +90,97 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderResultsContainer = document.getElementById('folder-results-container');
     const fileTreeEl             = document.getElementById('file-tree');
     const folderEditorHost       = document.getElementById('folder-editor-wrapper');
-    const folderEmptyState       = folderEditorHost.querySelector('.empty-state');
+    const changedFilesCount      = document.getElementById('changed-files-count');
 
     // ==========================================
     // STATE
     // ==========================================
-    let textDiffEditor     = null;
-    let textOriginalModel  = null;
-    let textModifiedModel  = null;
+    let textDiffEditor      = null;
+    let textOriginalModel   = null;
+    let textModifiedModel   = null;
 
-    let folderDiffEditor   = null;
+    let folderDiffEditor    = null;
     let folderOriginalModel = null;
     let folderModifiedModel = null;
 
-    let originalFiles    = new Map();
-    let modifiedFiles    = new Map();
-    let fileDiffStatusMap = new Map();
+    let originalFiles       = new Map();
+    let modifiedFiles       = new Map();
+    let fileDiffStatusMap   = new Map();
+    let currentFolderFilter = 'all';
 
 
     // ==========================================
-    // UTILITY: Error Toast
+    // TOAST NOTIFICATION SYSTEM
     // ==========================================
-    function showError(message, durationMs = 5000) {
-        errorMessage.textContent = message;
-        errorToast.classList.remove('hidden');
-        clearTimeout(showError._timer);
-        showError._timer = setTimeout(() => {
-            errorToast.classList.add('hidden');
-        }, durationMs);
+    const toastContainer = document.getElementById('toast-container');
+
+    const TOAST_ICONS = {
+        success: '✅',
+        error:   '❌',
+        warning: '⚠️',
+        info:    'ℹ️'
+    };
+
+    function showToast(message, type = 'info', durationMs = 4500) {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+            <span class="toast-icon">${TOAST_ICONS[type] || 'ℹ️'}</span>
+            <span class="toast-body">${message}</span>
+            <button class="toast-close" aria-label="Dismiss">✕</button>
+        `;
+        toastContainer.appendChild(toast);
+
+        const dismiss = () => {
+            toast.classList.add('hide');
+            toast.addEventListener('animationend', () => toast.remove(), { once: true });
+        };
+
+        toast.querySelector('.toast-close').addEventListener('click', dismiss);
+        setTimeout(dismiss, durationMs);
+    }
+
+    // Backward compat helper
+    function showError(message) { showToast(message, 'error'); }
+
+
+    // ==========================================
+    // LINE COUNT BADGES
+    // ==========================================
+    function countLines(text) {
+        if (!text) return 0;
+        return text.split('\n').length;
+    }
+
+    function updateLineCounts() {
+        const ol = countLines(originalInput.value);
+        const ml = countLines(modifiedInput.value);
+        linesOriginal.textContent = `${ol} line${ol !== 1 ? 's' : ''}`;
+        linesModified.textContent = `${ml} line${ml !== 1 ? 's' : ''}`;
+    }
+
+    originalInput.addEventListener('input', updateLineCounts);
+    modifiedInput.addEventListener('input', updateLineCounts);
+    updateLineCounts();
+
+
+    // ==========================================
+    // DIFF STATS BAR
+    // ==========================================
+    function updateDiffStats(diffEditor) {
+        const changes = diffEditor.getLineChanges() || [];
+        let additions = 0, deletions = 0;
+
+        changes.forEach(c => {
+            const origLines = (c.originalEndLineNumber - c.originalStartLineNumber + 1) || 0;
+            const modLines  = (c.modifiedEndLineNumber  - c.modifiedStartLineNumber  + 1) || 0;
+            additions += modLines  > 0 ? modLines  : 0;
+            deletions += origLines > 0 ? origLines : 0;
+        });
+
+        statAdditionsCount.textContent = additions;
+        statDeletionsCount.textContent = deletions;
+        statChangesCount.textContent   = changes.length;
     }
 
 
@@ -98,7 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // MONACO INITIALIZATION
     // ==========================================
     require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
-    // Web worker proxy for syntax highlighting performance
     window.MonacoEnvironment = { getWorkerUrl: () => proxy };
     let proxy = URL.createObjectURL(new Blob([`
         self.MonacoEnvironment = { baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/' };
@@ -106,50 +195,36 @@ document.addEventListener('DOMContentLoaded', () => {
     `], { type: 'text/javascript' }));
 
     require(['vs/editor/editor.main'], () => {
-        console.log('[DiffChecker] Monaco Editor loaded successfully.');
+        console.log('[DiffChecker] Monaco loaded.');
     });
 
 
     // ==========================================
-    // FILE UPLOAD (DRAG-AND-DROP + CLICK)
+    // FILE UPLOAD — BINARY CHECK + CLIENT-SIDE
     // ==========================================
-
-    /**
-     * BINARY FILE DETECTION
-     * Checks based on MIME type and also by scanning the first 512 bytes for null-bytes.
-     */
     function isBinaryFile(file, bytes) {
         const binaryMimes = ['image/', 'video/', 'audio/', 'application/pdf',
                              'application/zip', 'application/octet-stream'];
         if (binaryMimes.some(m => file.type.startsWith(m))) return true;
-
-        // Scan first 512 bytes for null bytes (strong indicator of binary)
         const arr = new Uint8Array(bytes.slice(0, 512));
-        for (let i = 0; i < arr.length; i++) {
-            if (arr[i] === 0) return true;
-        }
+        for (let i = 0; i < arr.length; i++) { if (arr[i] === 0) return true; }
         return false;
     }
 
-    /**
-     * Reads a File object on the client side (no server upload).
-     * Validates it's not binary. Populates the given textarea on success.
-     */
     function handleFileUpload(file, labelEl, textareaEl) {
         if (!file) return;
-
         const arrayReader = new FileReader();
-        arrayReader.onload = function (e) {
+        arrayReader.onload = (e) => {
             if (isBinaryFile(file, e.target.result)) {
-                showError(`"${file.name}" appears to be a binary file. Only text-based files are supported.`);
+                showError(`"${file.name}" is a binary file — only text files are supported.`);
                 return;
             }
-
-            // Good file — now read as text
             const textReader = new FileReader();
             textReader.onload = (ev) => {
                 textareaEl.value = ev.target.result;
-                labelEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                labelEl.textContent = `${file.name}`;
+                updateLineCounts();
+                showToast(`Loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, 'success', 3000);
             };
             textReader.onerror = () => showError(`Failed to read "${file.name}".`);
             textReader.readAsText(file, 'UTF-8');
@@ -158,14 +233,10 @@ document.addEventListener('DOMContentLoaded', () => {
         arrayReader.readAsArrayBuffer(file);
     }
 
-    /**
-     * Wires up click-to-upload and drag-and-drop for a dropzone.
-     */
     function setupDropzone(dropEl, inputEl, labelEl, textareaEl) {
         inputEl.addEventListener('change', (e) => {
             if (e.target.files.length > 0) handleFileUpload(e.target.files[0], labelEl, textareaEl);
         });
-
         dropEl.addEventListener('dragover',  (e) => { e.preventDefault(); dropEl.classList.add('drag-active'); });
         dropEl.addEventListener('dragleave', ()  => dropEl.classList.remove('drag-active'));
         dropEl.addEventListener('drop', (e) => {
@@ -180,26 +251,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ==========================================
+    // PASTE FROM CLIPBOARD
+    // ==========================================
+    async function pasteToTextarea(textarea) {
+        try {
+            const text = await navigator.clipboard.readText();
+            textarea.value = text;
+            textarea.focus();
+            updateLineCounts();
+            showToast('Pasted from clipboard.', 'success', 2500);
+        } catch {
+            showToast('Clipboard access denied. Please paste manually (Ctrl+V).', 'warning');
+        }
+    }
+
+    pasteOriginalBtn.addEventListener('click', () => pasteToTextarea(originalInput));
+    pasteModifiedBtn.addEventListener('click', () => pasteToTextarea(modifiedInput));
+
+
+    // ==========================================
+    // COPY PANEL CONTENT
+    // ==========================================
+    copyPanelBtns.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const targetId = btn.getAttribute('data-target');
+            const target   = document.getElementById(targetId);
+            if (!target || !target.value) {
+                showToast('Nothing to copy — panel is empty.', 'warning', 2500);
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(target.value);
+                showToast('Copied to clipboard!', 'success', 2000);
+            } catch {
+                showToast('Failed to copy to clipboard.', 'error');
+            }
+        });
+    });
+
+
+    // ==========================================
+    // CLEAR BUTTONS
+    // ==========================================
+    clearBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = document.getElementById(btn.getAttribute('data-target'));
+            if (target) { target.value = ''; updateLineCounts(); }
+        });
+    });
+
+
+    // ==========================================
     // TAB SWITCHING
     // ==========================================
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             tabBtns.forEach(b => b.classList.remove('active'));
-            tabContents.forEach(c => { c.classList.remove('active'); });
-
+            tabContents.forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
-            const target = document.getElementById(btn.dataset.tab);
-            target.classList.add('active');
+            document.getElementById(btn.dataset.tab).classList.add('active');
 
-            // Refresh editor layout when switching back
             setTimeout(() => {
                 const id = btn.dataset.tab;
-                if (id === 'text-diff' && textDiffEditor && !textDiffContainer.classList.contains('hidden')) {
-                    textDiffEditor.layout();
-                } else if (id === 'folder-diff' && folderDiffEditor) {
-                    folderDiffEditor.layout();
-                }
-            }, 50);
+                if (id === 'text-diff'   && textDiffEditor   && !textDiffContainer.classList.contains('hidden')) textDiffEditor.layout();
+                if (id === 'folder-diff' && folderDiffEditor) folderDiffEditor.layout();
+            }, 60);
         });
     });
 
@@ -207,32 +323,54 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // TEXT DIFF LOGIC
     // ==========================================
-    compareBtn.addEventListener('click', () => {
+    function triggerCompare() {
         const originalText = originalInput.value;
         const modifiedText = modifiedInput.value;
+        if (!originalText.trim() && !modifiedText.trim()) {
+            showToast('Both panels are empty — paste or upload some content first.', 'warning');
+            return;
+        }
 
-        // Use direct style toggling — more reliable than Tailwind's `hidden` class
-        // because CSS specificity between generated utility classes can be unpredictable.
-        inputPanels.style.display    = 'none';
-        actionBarText.style.display  = 'none';
-        textDiffContainer.style.display = 'flex';
-        textDiffContainer.style.flexDirection = 'column';
-        textDiffContainer.style.flex = '1';
-        textDiffContainer.style.overflow = 'hidden';
-        // Remove the initial Tailwind hidden class if still present
+        // Show loading state
+        compareBtn.classList.add('loading');
+        compareBtn.disabled = true;
+
+        inputPanels.style.display        = 'none';
+        actionBarText.style.display      = 'none';
         textDiffContainer.classList.remove('hidden');
+        textDiffContainer.style.display  = 'flex';
+        textDiffContainer.style.flexDirection = 'column';
+        textDiffContainer.style.flex     = '1';
+        textDiffContainer.style.overflow = 'hidden';
 
         if (!textDiffEditor) {
-            // Defer Monaco creation by one animation frame so the browser has
-            // painted the container with real non-zero pixel dimensions first.
-            // Without this, Monaco may initialize into a 0x0 box and never recover.
             requestAnimationFrame(() => {
-                setTimeout(() => initTextDiffEditor(originalText, modifiedText), 30);
+                setTimeout(() => {
+                    initTextDiffEditor(originalText, modifiedText);
+                    compareBtn.classList.remove('loading');
+                    compareBtn.disabled = false;
+                }, 30);
             });
         } else {
             textOriginalModel.setValue(originalText);
             textModifiedModel.setValue(modifiedText);
             updateEditorLanguage(textOriginalModel, textModifiedModel, originalText);
+            compareBtn.classList.remove('loading');
+            compareBtn.disabled = false;
+        }
+    }
+
+    compareBtn.addEventListener('click', triggerCompare);
+
+    // Keyboard shortcut: Ctrl/Cmd + Enter
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab;
+            if (activeTab === 'text-diff') triggerCompare();
+        }
+        if (e.key === 'Escape' && !textDiffContainer.classList.contains('hidden')) {
+            editBtn.click();
         }
     });
 
@@ -240,45 +378,48 @@ document.addEventListener('DOMContentLoaded', () => {
         if (textOriginalModel && textModifiedModel) {
             originalInput.value = textOriginalModel.getValue();
             modifiedInput.value = textModifiedModel.getValue();
+            updateLineCounts();
         }
-        textDiffContainer.style.display   = 'none';
-        inputPanels.style.display         = 'flex';
-        inputPanels.style.flex            = '1';
-        inputPanels.style.overflow        = 'hidden';
-        actionBarText.style.display       = 'flex';
+        textDiffContainer.style.display = 'none';
+        textDiffContainer.classList.add('hidden');
+        inputPanels.style.display       = 'flex';
+        inputPanels.style.flex          = '1';
+        inputPanels.style.overflow      = 'hidden';
+        actionBarText.style.display     = 'flex';
     });
 
     toggleInlineBtn.addEventListener('click', () => {
         if (!textDiffEditor) return;
         const nowInline = toggleInlineBtn.classList.contains('active');
         textDiffEditor.updateOptions({ renderSideBySide: nowInline });
-        if (nowInline) {
-            toggleInlineBtn.classList.remove('active');
-            toggleInlineBtn.textContent = 'Inline View';
-        } else {
-            toggleInlineBtn.classList.add('active');
-            toggleInlineBtn.textContent = 'Side-by-Side View';
-        }
-        // Re-render merge buttons after layout change
+        toggleInlineBtn.classList.toggle('active', !nowInline);
+        toggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
         setTimeout(() => textDiffEditor.layout(), 50);
     });
 
     function initTextDiffEditor(originalTxt, modifiedTxt) {
-        if (!window.monaco) return showError('Editor is still loading. Please try again in a moment.');
+        if (!window.monaco) {
+            showError('Editor is still loading — please try again in a moment.');
+            compareBtn.classList.remove('loading');
+            compareBtn.disabled = false;
+            return;
+        }
 
         textDiffEditor = monaco.editor.createDiffEditor(editorHost, {
-            theme:               themeSelect.value,
-            renderSideBySide:    true,
-            automaticLayout:     true,
-            scrollBeyondLastLine:false,
-            fontSize:            14,
-            minimap:             { enabled: false },
-            padding:             { top: 16, bottom: 16 },
-            originalEditable:    true,
-            enableSplitViewResizing: true,
-            ignoreTrimWhitespace: false,
-            glyphMargin:            true,    // required for merge arrow decorations
-            renderMarginRevertIcon: false     // suppress built-in arrow so both gutters look identical
+            theme:                  themeSelect.value,
+            renderSideBySide:       true,
+            automaticLayout:        true,
+            scrollBeyondLastLine:   false,
+            fontSize:               14,
+            fontFamily:             "'JetBrains Mono', 'Fira Code', 'Menlo', monospace",
+            lineHeight:             22,
+            minimap:                { enabled: false },
+            padding:                { top: 16, bottom: 16 },
+            originalEditable:       true,
+            enableSplitViewResizing:true,
+            ignoreTrimWhitespace:   false,
+            glyphMargin:            true,
+            renderMarginRevertIcon: false
         });
 
         textOriginalModel = monaco.editor.createModel(originalTxt, 'plaintext');
@@ -286,22 +427,18 @@ document.addEventListener('DOMContentLoaded', () => {
         textDiffEditor.setModel({ original: textOriginalModel, modified: textModifiedModel });
         updateEditorLanguage(textOriginalModel, textModifiedModel, originalTxt);
         setupFloatingMergeIcons(textDiffEditor);
+
+        textDiffEditor.onDidUpdateDiff(() => updateDiffStats(textDiffEditor));
     }
 
 
     // ==========================================
-    // MERGE ARROWS — Monaco Glyph Margin Decorations
+    // MERGE ARROWS — Glyph Margin Decorations
     // ==========================================
-    // This uses Monaco's native API: delta-decorations on the glyph margin
-    // of each sub-editor. Monaco handles scroll sync and positioning.
-    // Right arrow (→) in original editor = copy original → modified.
-    // Left  arrow (←) in modified editor = copy modified → original.
-
     function setupFloatingMergeIcons(diffEditor) {
         const origEditor = diffEditor.getOriginalEditor();
         const modEditor  = diffEditor.getModifiedEditor();
 
-        // Enable glyph margin on both editors
         origEditor.updateOptions({ glyphMargin: true });
         modEditor.updateOptions({ glyphMargin: true });
 
@@ -309,40 +446,33 @@ document.addEventListener('DOMContentLoaded', () => {
         let modDecs  = [];
 
         function applyDecorations() {
-            // Re-assert glyphMargin on every call — Monaco can reset these during re-layout
             origEditor.updateOptions({ glyphMargin: true });
             modEditor.updateOptions({ glyphMargin: true });
 
             const changes = diffEditor.getLineChanges() || [];
-            const oNew = [];
-            const mNew = [];
+            const oNew = [], mNew = [];
 
             changes.forEach(change => {
-                // → arrow on the ORIGINAL editor start line
                 const oLine = change.originalStartLineNumber > 0
-                    ? change.originalStartLineNumber
-                    : change.modifiedStartLineNumber;
+                    ? change.originalStartLineNumber : change.modifiedStartLineNumber;
                 if (oLine > 0) {
                     oNew.push({
                         range: new monaco.Range(oLine, 1, oLine, 1),
                         options: {
                             glyphMarginClassName:    'merge-glyph-arrow-right',
-                            glyphMarginHoverMessage: { value: '**Copy →** to File 2' },
+                            glyphMarginHoverMessage: { value: '**Copy →** to Modified' },
                             description:             'merge-right'
                         }
                     });
                 }
-
-                // ← arrow on the MODIFIED editor start line
                 const mLine = change.modifiedStartLineNumber > 0
-                    ? change.modifiedStartLineNumber
-                    : change.originalStartLineNumber;
+                    ? change.modifiedStartLineNumber : change.originalStartLineNumber;
                 if (mLine > 0) {
                     mNew.push({
                         range: new monaco.Range(mLine, 1, mLine, 1),
                         options: {
                             glyphMarginClassName:    'merge-glyph-arrow-left',
-                            glyphMarginHoverMessage: { value: '**Copy ←** to File 1' },
+                            glyphMarginHoverMessage: { value: '**Copy ←** to Original' },
                             description:             'merge-left'
                         }
                     });
@@ -353,30 +483,26 @@ document.addEventListener('DOMContentLoaded', () => {
             modDecs  = modEditor.deltaDecorations(modDecs,  mNew);
         }
 
-        // Click → right (in original editor gutter)
         origEditor.onMouseDown(e => {
             if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
-            const line    = e.target.position.lineNumber;
+            const line = e.target.position.lineNumber;
             const changes = diffEditor.getLineChanges() || [];
-            const change  = changes.find(c => {
-                const start = c.originalStartLineNumber;
-                const end   = c.originalEndLineNumber || start;
-                return line >= start && line <= end;
+            const change = changes.find(c => {
+                const s = c.originalStartLineNumber, end = c.originalEndLineNumber || s;
+                return line >= s && line <= end;
             });
-            if (change) handleMergeClick(diffEditor, change, 'to-right');
+            if (change) { handleMergeClick(diffEditor, change, 'to-right'); showToast('Merged hunk to Modified.', 'success', 2000); }
         });
 
-        // Click ← left (in modified editor gutter)
         modEditor.onMouseDown(e => {
             if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
-            const line    = e.target.position.lineNumber;
+            const line = e.target.position.lineNumber;
             const changes = diffEditor.getLineChanges() || [];
-            const change  = changes.find(c => {
-                const start = c.modifiedStartLineNumber;
-                const end   = c.modifiedEndLineNumber || start;
-                return line >= start && line <= end;
+            const change = changes.find(c => {
+                const s = c.modifiedStartLineNumber, end = c.modifiedEndLineNumber || s;
+                return line >= s && line <= end;
             });
-            if (change) handleMergeClick(diffEditor, change, 'to-left');
+            if (change) { handleMergeClick(diffEditor, change, 'to-left'); showToast('Merged hunk to Original.', 'success', 2000); }
         });
 
         diffEditor.onDidUpdateDiff(applyDecorations);
@@ -388,36 +514,104 @@ document.addEventListener('DOMContentLoaded', () => {
         const modModel  = diffEditor.getModel().modified;
 
         if (direction === 'to-right') {
-            const oStart = change.originalStartLineNumber;
-            const oEnd   = change.originalEndLineNumber;
-            const text   = oEnd !== 0
-                ? origModel.getValueInRange(new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)))
-                : '';
-            const mStart = change.modifiedStartLineNumber;
-            const mEnd   = change.modifiedEndLineNumber;
-            const range  = new monaco.Range(mStart, 1, mEnd === 0 ? mStart : mEnd, mEnd === 0 ? 1 : modModel.getLineMaxColumn(mEnd));
+            const oStart = change.originalStartLineNumber, oEnd = change.originalEndLineNumber;
+            const mStart = change.modifiedStartLineNumber, mEnd = change.modifiedEndLineNumber;
+            let text, range;
+
+            if (oEnd === 0) {
+                // Pure deletion: orig has nothing here → delete the modified lines entirely.
+                // Extend range to include the trailing newline (to line mEnd+1 col 1) so no
+                // blank line ghost remains.
+                if (mEnd < modModel.getLineCount()) {
+                    range = new monaco.Range(mStart, 1, mEnd + 1, 1);
+                } else {
+                    // Last line(s) — delete from end of preceding line to avoid orphan newline
+                    const prevEndCol = mStart > 1 ? modModel.getLineMaxColumn(mStart - 1) : 1;
+                    range = new monaco.Range(Math.max(mStart - 1, 1), prevEndCol,
+                                            mEnd, modModel.getLineMaxColumn(mEnd));
+                }
+                text = '';
+
+            } else if (mEnd === 0) {
+                // Pure insertion: orig has lines oStart..oEnd that don't exist in modified.
+                // Monaco sets mStart = the line in modified AFTER WHICH to insert.
+                //   → insert at the END of line mStart (append \n + source text).
+                // Special edge case: mStart === 0 means insert before the very first line.
+                const srcText = origModel.getValueInRange(
+                    new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
+                if (mStart === 0) {
+                    // Prepend to start of file
+                    text  = srcText + '\n';
+                    range = new monaco.Range(1, 1, 1, 1);
+                } else {
+                    // Append AFTER line mStart
+                    const endCol = modModel.getLineMaxColumn(mStart);
+                    text  = '\n' + srcText;
+                    range = new monaco.Range(mStart, endCol, mStart, endCol);
+                }
+
+            } else {
+                // Modification: replace the modified range with the original text.
+                text  = origModel.getValueInRange(
+                    new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
+                range = new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd));
+            }
             modModel.pushEditOperations([], [{ range, text }], () => null);
-        } else {
-            const mStart = change.modifiedStartLineNumber;
-            const mEnd   = change.modifiedEndLineNumber;
-            const text   = mEnd !== 0
-                ? modModel.getValueInRange(new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)))
-                : '';
-            const oStart = change.originalStartLineNumber;
-            const oEnd   = change.originalEndLineNumber;
-            const range  = new monaco.Range(oStart, 1, oEnd === 0 ? oStart : oEnd, oEnd === 0 ? 1 : origModel.getLineMaxColumn(oEnd));
+
+        } else { // to-left
+            const mStart = change.modifiedStartLineNumber, mEnd = change.modifiedEndLineNumber;
+            const oStart = change.originalStartLineNumber, oEnd = change.originalEndLineNumber;
+            let text, range;
+
+            if (mEnd === 0) {
+                // Pure deletion: modified has nothing here → delete the original lines entirely.
+                if (oEnd < origModel.getLineCount()) {
+                    range = new monaco.Range(oStart, 1, oEnd + 1, 1);
+                } else {
+                    const prevEndCol = oStart > 1 ? origModel.getLineMaxColumn(oStart - 1) : 1;
+                    range = new monaco.Range(Math.max(oStart - 1, 1), prevEndCol,
+                                            oEnd, origModel.getLineMaxColumn(oEnd));
+                }
+                text = '';
+
+            } else if (oEnd === 0) {
+                // Pure insertion: modified has lines mStart..mEnd that don't exist in original.
+                // Monaco sets oStart = the line in original AFTER WHICH to insert.
+                const srcText = modModel.getValueInRange(
+                    new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
+                if (oStart === 0) {
+                    text  = srcText + '\n';
+                    range = new monaco.Range(1, 1, 1, 1);
+                } else {
+                    const endCol = origModel.getLineMaxColumn(oStart);
+                    text  = '\n' + srcText;
+                    range = new monaco.Range(oStart, endCol, oStart, endCol);
+                }
+
+            } else {
+                // Modification: replace the original range with the modified text.
+                text  = modModel.getValueInRange(
+                    new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
+                range = new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd));
+            }
             origModel.pushEditOperations([], [{ range, text }], () => null);
         }
     }
 
     function applyMergeAll(direction) {
-        const editor = folderResultsContainer.classList.contains('hidden') ? textDiffEditor : folderDiffEditor;
-        if (!editor || !editor.getModel()) return showError('No active editor to merge.');
+        const editor = !folderResultsContainer.classList.contains('hidden') ? folderDiffEditor : textDiffEditor;
+        if (!editor || !editor.getModel()) return showToast('No active diff editor.', 'warning');
         const changes = editor.getLineChanges() || [];
-        if (changes.length === 0) return showError('No differences detected.');
+        if (changes.length === 0) return showToast('No differences detected — nothing to merge.', 'info');
         const origModel = editor.getModel().original;
         const modModel  = editor.getModel().modified;
-        direction === 'to-right' ? modModel.setValue(origModel.getValue()) : origModel.setValue(modModel.getValue());
+        if (direction === 'to-right') {
+            modModel.setValue(origModel.getValue());
+            showToast('Merged all changes → Modified.', 'success');
+        } else {
+            origModel.setValue(modModel.getValue());
+            showToast('Merged all changes ← Original.', 'success');
+        }
     }
 
     if (mergeAllRightBtn) mergeAllRightBtn.addEventListener('click', () => applyMergeAll('to-right'));
@@ -425,13 +619,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ==========================================
-    // FOLDER DIFF LOGIC
+    // EXPORT PATCH
+    // ==========================================
+    exportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exportMenu.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', () => exportMenu.classList.add('hidden'));
+
+    function buildUnifiedDiff(origText, modText) {
+        const origLines = origText.split('\n');
+        const modLines  = modText.split('\n');
+        let patch = `--- Original\n+++ Modified\n`;
+        // Simple unified diff — group using Monaco's changes for accuracy
+        const editor = !folderResultsContainer.classList.contains('hidden') ? folderDiffEditor : textDiffEditor;
+        if (!editor || !editor.getModel()) return patch + origLines.map(l => `-${l}`).join('\n') + '\n';
+        const changes = editor.getLineChanges() || [];
+        if (changes.length === 0) return patch + '(no differences)\n';
+
+        changes.forEach(c => {
+            const oS = c.originalStartLineNumber, oE = c.originalEndLineNumber || 0;
+            const mS = c.modifiedStartLineNumber,  mE = c.modifiedEndLineNumber  || 0;
+            patch += `@@ -${oS},${Math.max(oE - oS + 1, 0)} +${mS},${Math.max(mE - mS + 1, 0)} @@\n`;
+            for (let i = oS; i <= oE && oE > 0; i++) patch += `-${origLines[i - 1] ?? ''}\n`;
+            for (let i = mS; i <= mE && mE > 0; i++) patch += `+${modLines[i  - 1] ?? ''}\n`;
+        });
+        return patch;
+    }
+
+    exportPatchBtn.addEventListener('click', () => {
+        if (!textOriginalModel || !textModifiedModel) {
+            showToast('Run a comparison first before exporting.', 'warning');
+            return;
+        }
+        const patch = buildUnifiedDiff(textOriginalModel.getValue(), textModifiedModel.getValue());
+        const blob = new Blob([patch], { type: 'text/plain' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = 'diff.patch'; a.click();
+        URL.revokeObjectURL(url);
+        showToast('Patch file downloaded.', 'success');
+        exportMenu.classList.add('hidden');
+    });
+
+    exportCopyBtn.addEventListener('click', async () => {
+        if (!textOriginalModel || !textModifiedModel) {
+            showToast('Run a comparison first before exporting.', 'warning');
+            return;
+        }
+        const patch = buildUnifiedDiff(textOriginalModel.getValue(), textModifiedModel.getValue());
+        try {
+            await navigator.clipboard.writeText(patch);
+            showToast('Unified diff copied to clipboard!', 'success');
+        } catch {
+            showToast('Failed to copy to clipboard.', 'error');
+        }
+        exportMenu.classList.add('hidden');
+    });
+
+
+    // ==========================================
+    // FOLDER DIFF
     // ==========================================
     origFolderInput.addEventListener('change', (e) => {
         originalFiles.clear();
         if (e.target.files.length > 0) {
             const root = e.target.files[0].webkitRelativePath.split('/')[0];
             origFolderName.textContent = `${root}/ (${e.target.files.length} files)`;
+            origFolderName.classList.add('selected');
             Array.from(e.target.files).forEach(f => {
                 const rel = f.webkitRelativePath.substring(f.webkitRelativePath.indexOf('/') + 1);
                 originalFiles.set(rel, f);
@@ -445,6 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.files.length > 0) {
             const root = e.target.files[0].webkitRelativePath.split('/')[0];
             modFolderName.textContent = `${root}/ (${e.target.files.length} files)`;
+            modFolderName.classList.add('selected');
             Array.from(e.target.files).forEach(f => {
                 const rel = f.webkitRelativePath.substring(f.webkitRelativePath.indexOf('/') + 1);
                 modifiedFiles.set(rel, f);
@@ -454,11 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function checkFoldersReady() {
-        if (originalFiles.size > 0 && modifiedFiles.size > 0) {
-            compareFoldersBtn.removeAttribute('disabled');
-        } else {
-            compareFoldersBtn.setAttribute('disabled', 'true');
-        }
+        compareFoldersBtn.disabled = !(originalFiles.size > 0 && modifiedFiles.size > 0);
     }
 
     compareFoldersBtn.addEventListener('click', async () => {
@@ -476,8 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (!inOrig && inMod) {
                 fileDiffStatusMap.set(path, { status: 'added' });
             } else {
-                const o = originalFiles.get(path);
-                const m = modifiedFiles.get(path);
+                const o = originalFiles.get(path), m = modifiedFiles.get(path);
                 fileDiffStatusMap.set(path, {
                     status: (o.size !== m.size || o.lastModified !== m.lastModified) ? 'modified' : 'unchanged'
                 });
@@ -486,15 +738,26 @@ document.addEventListener('DOMContentLoaded', () => {
         renderFileTree();
     });
 
+    // Filter chips
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-filter'));
+            chip.classList.add('active-filter');
+            currentFolderFilter = chip.dataset.filter;
+            renderFileTree();
+        });
+    });
+
     function renderFileTree() {
         fileTreeEl.innerHTML = '';
         const paths = Array.from(fileDiffStatusMap.keys()).sort();
-        let hasChanges = false;
+        let visibleCount = 0;
 
         paths.forEach(path => {
             const meta = fileDiffStatusMap.get(path);
             if (meta.status === 'unchanged') return;
-            hasChanges = true;
+            if (currentFolderFilter !== 'all' && meta.status !== currentFolderFilter) return;
+            visibleCount++;
 
             const li = document.createElement('li');
             li.className = 'tree-item';
@@ -517,25 +780,29 @@ document.addEventListener('DOMContentLoaded', () => {
             fileTreeEl.appendChild(li);
         });
 
-        if (!hasChanges) {
+        if (changedFilesCount) changedFilesCount.textContent = visibleCount;
+
+        if (visibleCount === 0) {
             const li = document.createElement('li');
-            li.className = 'px-4 py-3 text-sm text-slate-400';
-            li.textContent = 'No differences detected between the two folders.';
+            li.style.cssText = 'padding:1rem 0.85rem; font-size:0.8rem; color:var(--text-muted);';
+            li.textContent = currentFolderFilter === 'all'
+                ? 'No differences detected between the two folders.'
+                : `No ${currentFolderFilter} files.`;
             fileTreeEl.appendChild(li);
         }
     }
 
     async function openFileDiff(path, status) {
-        if (folderEmptyState) folderEmptyState.style.display = 'none';
+        const emptyState = folderEditorHost.querySelector('.empty-state');
+        if (emptyState) emptyState.style.display = 'none';
         let origTxt = '', modTxt = '';
         try {
             if (status === 'modified' || status === 'removed') origTxt = await originalFiles.get(path).text();
             if (status === 'modified' || status === 'added')   modTxt  = await modifiedFiles.get(path).text();
-        } catch (e) {
+        } catch {
             origTxt = 'Error reading original file.';
             modTxt  = 'Error reading modified file.';
         }
-
         if (!folderDiffEditor) {
             initFolderDiffEditor(origTxt, modTxt, path);
         } else {
@@ -546,41 +813,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initFolderDiffEditor(origTxt, modTxt, path) {
-        if (folderEmptyState) folderEmptyState.remove();
+        const emptyState = folderEditorHost.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
 
         folderDiffEditor = monaco.editor.createDiffEditor(folderEditorHost, {
-            theme:               themeSelect.value,
-            renderSideBySide:    true,
-            automaticLayout:     true,
-            scrollBeyondLastLine:false,
-            fontSize:            14,
-            minimap:             { enabled: false },
-            padding:             { top: 16, bottom: 16 },
-            originalEditable:    true
+            theme:                  themeSelect.value,
+            renderSideBySide:       true,
+            automaticLayout:        true,
+            scrollBeyondLastLine:   false,
+            fontSize:               14,
+            fontFamily:             "'JetBrains Mono', 'Fira Code', 'Menlo', monospace",
+            lineHeight:             22,
+            minimap:                { enabled: false },
+            padding:                { top: 16, bottom: 16 },
+            originalEditable:       true,
+            glyphMargin:            true,
+            renderMarginRevertIcon: false
         });
 
         folderOriginalModel = monaco.editor.createModel(origTxt, 'plaintext');
         folderModifiedModel = monaco.editor.createModel(modTxt,  'plaintext');
         folderDiffEditor.setModel({ original: folderOriginalModel, modified: folderModifiedModel });
         updateEditorLanguage(folderOriginalModel, folderModifiedModel, origTxt || modTxt, path);
-        setupFloatingMergeIcons(folderDiffEditor, folderEditorHost);
+        setupFloatingMergeIcons(folderDiffEditor);
     }
 
 
     // ==========================================
-    // SHARED UTILITIES
+    // LANGUAGE DETECTION + SELECTION
     // ==========================================
-
-    // Clear textarea buttons
-    clearBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const targetId = e.currentTarget.getAttribute('data-target');
-            const target = document.getElementById(targetId);
-            if (target) target.value = '';
-        });
-    });
-
-    // Language selector
     languageSelect.addEventListener('change', (e) => {
         const lang = e.target.value;
         if (lang !== 'auto') {
@@ -597,24 +858,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Theme selector — also toggles CSS variables for light theme
     themeSelect.addEventListener('change', (e) => {
         const theme = e.target.value;
         if (window.monaco) monaco.editor.setTheme(theme);
+        // Swap body background for light theme
         if (theme === 'vs') {
-            document.body.classList.remove('bg-slate-900');
-            document.body.classList.add('bg-white', 'text-slate-900');
+            document.body.style.background = '#fff';
+            document.body.style.color = '#111827';
         } else {
-            document.body.classList.remove('bg-white', 'text-slate-900');
-            document.body.classList.add('bg-slate-900');
+            document.body.style.background = '';
+            document.body.style.color = '';
         }
     });
 
-    // Language detection from file extension
     function getLanguageFromPath(path) {
         if (!path) return null;
         const filename = path.split('/').pop().toLowerCase();
-        if (filename === 'dockerfile') return 'dockerfile';
+        if (filename === 'dockerfile')  return 'dockerfile';
         if (filename === 'jenkinsfile') return 'groovy';
         const ext = filename.split('.').pop();
         const map = {
@@ -624,12 +884,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'sh':'shell','bash':'shell','c':'c','cpp':'cpp','h':'c','hpp':'cpp',
             'cs':'csharp','go':'go','rs':'rust','php':'php','rb':'ruby','java':'java',
             'swift':'swift','kt':'kotlin','sql':'sql','tf':'terraform','tfvars':'terraform',
-            'log':'plaintext','txt':'plaintext'
+            'log':'plaintext','txt':'plaintext','gitignore':'plaintext','env':'plaintext'
         };
         return map[ext] || null;
     }
 
-    // Auto-detect via highlight.js, fallback to plaintext
     function detectLanguage(text) {
         if (!text || !window.hljs) return null;
         try {
@@ -649,7 +908,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Apply language to both models, optionally from path hint
     function updateEditorLanguage(origModel, modModel, textHint, pathHint = null) {
         let lang = languageSelect.value;
         if (lang === 'auto') {
@@ -665,7 +923,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modModel)  monaco.editor.setModelLanguage(modModel,  lang);
     }
 
-    // Window resize — ensure both editors relayout
+
+    // ==========================================
+    // WINDOW RESIZE
+    // ==========================================
     window.addEventListener('resize', () => {
         if (textDiffEditor)   textDiffEditor.layout();
         if (folderDiffEditor) folderDiffEditor.layout();

@@ -1,13 +1,31 @@
-# Diff checker from Hell
+# DiffChecker.io — Diff Checker from Hell
 
-A beautiful, local web-based Diff Checker powered by FastAPI and the Monaco Editor (the same technology behind VS Code). 
+A beautiful, locally-hosted diff tool powered by **FastAPI** and the **Monaco Editor** (the engine behind VS Code). 100% private — all file reading is done client-side with the FileReader API.
 
 ## Features
-- **Premium UI:** Dark mode, vibrant accents, and smooth micro-animations.
-- **Advanced Diffing:** Inline and side-by-side comparison modes, using industry-standard diffing algorithms.
-- **Syntax Highlighting:** Supports comprehensive formatting out of the box (Python, JS, Go, Rust, React, etc.).
-- **DevOps Support:** Specialized syntax mapping for Ansible, Jenkinsfile, and Terraform.
-- **Auto-Detect Language:** Automatically detects the programming language of pasted code to apply the correct grammar.
+
+### ⚡ Core Diffing
+- **Side-by-side & Inline** comparison modes, switchable at any time.
+- **Merge arrows** in each gutter — click to copy individual hunks left→right or right→left.
+- **Merge All** buttons — copy all changes in one direction instantly.
+- **Folder Diff** — compare two entire directory trees; sidebar lists changed, added, and removed files with filter chips.
+
+### 🎨 Premium UI
+- Glassmorphic header with gradient accent line.
+- Electric indigo/blue design system with JetBrains Mono for code.
+- **Live Diff Stats Bar** — color-coded `+additions / −removals / hunks` chips.
+- Multi-type toast notifications (success / error / warning / info) with slide-in animation.
+- Gradient scrollbar, glowing status dots, segmented button groups.
+
+### 🛠 Developer Quality-of-Life
+- **Keyboard shortcuts** — `Ctrl/Cmd + Enter` to compare; `Escape` to return to edit.
+- **📋 Paste** button per panel — reads clipboard directly.
+- **Copy** icon button per panel — copies content to clipboard.
+- **Line count badges** — live count in each panel header.
+- **Export Patch** — download as `.patch` or copy unified diff to clipboard.
+- **Language auto-detect** via `highlight.js`; manual override via the Lang dropdown.
+- **20+ languages** — Python, JS, TS, Go, Rust, Java, C/C++, SQL, YAML, Dockerfile, Shell, and more.
+- **3 themes** — Dark, Light, High Contrast.
 
 ## Getting Started
 
@@ -15,17 +33,15 @@ A beautiful, local web-based Diff Checker powered by FastAPI and the Monaco Edit
 - Python 3.8+
 
 ### Quick Start
-You can easily install the dependencies and start the local server using the provided setup script:
 
 ```bash
 chmod +x start.sh
 ./start.sh
 ```
 
-Then, open your browser and navigate to **[http://localhost:8000](http://localhost:8000)**.
+Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 
 ### Manual Setup
-If you prefer not to use the script, you can run the application manually from the repository root:
 
 ```bash
 # 1. Create and activate a virtual environment
@@ -36,5 +52,23 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Start the server
-uvicorn main:app --port 8000
+uvicorn main:app --port 8000 --reload
+```
+
+## Privacy
+
+All file reading uses the browser's **FileReader API** — no file content is ever sent to the server. The `/upload` endpoint exists only as a fallback and is not used by default.
+
+## Project Structure
+
+```
+DiffChecker/
+├── main.py                  # FastAPI app — serves static files + /upload fallback
+├── requirements.txt         # fastapi, uvicorn, python-multipart
+├── start.sh                 # One-shot setup & run script
+└── static/
+    ├── index.html           # SPA entry point
+    ├── style.css            # Premium design system
+    ├── app.js               # All client-side logic (diff, merge, export, etc.)
+    └── test_merge.html      # Unit-test harness for merge logic
 ```
