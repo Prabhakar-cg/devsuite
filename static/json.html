@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Linter & Formatter — DevSuite</title>
+    <meta name="description" content="Validate, format and minify JSON locally. Zero data leaves your machine.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/linter.css">
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- ====================================================
+     HEADER
+     ==================================================== -->
+<header class="tool-header">
+    <div class="header-left">
+        <a href="/" class="back-link">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            DevSuite
+        </a>
+        <div class="tool-identity">
+            <div class="tool-icon tool-icon-emerald">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 3H7a2 2 0 00-2 2v5a2 2 0 01-2 2 2 2 0 012 2v5c0 1.1.9 2 2 2h1"/>
+                    <path d="M16 21h1a2 2 0 002-2v-5c0-1.1.9-2 2-2a2 2 0 01-2-2V5a2 2 0 00-2-2h-1"/>
+                </svg>
+            </div>
+            <span class="tool-name">JSON <span class="tool-accent">Linter</span></span>
+            <span class="tool-version">Formatter v1.0</span>
+        </div>
+    </div>
+    <div class="header-right">
+        <span id="char-count" class="line-badge">0 chars</span>
+    </div>
+</header>
+
+<!-- ====================================================
+     ACTION TOOLBAR
+     ==================================================== -->
+<div class="action-toolbar">
+    <div id="status-pill" class="status-pill idle">
+        <span class="status-dot"></span>
+        <span id="status-text">Ready</span>
+    </div>
+    <div class="toolbar-sep"></div>
+    <button id="btn-validate" class="btn btn-primary" title="Validate JSON (Ctrl+Enter)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Validate
+    </button>
+    <button id="btn-format" class="btn btn-ghost" title="Pretty-print with 2-space indent">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+        Format
+    </button>
+    <button id="btn-minify" class="btn btn-ghost" title="Compact single-line JSON">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 8 2 5 5 2"/><line x1="2" y1="5" x2="12" y2="5"/><polyline points="19 16 22 19 19 22"/><line x1="22" y1="19" x2="12" y2="19"/></svg>
+        Minify
+    </button>
+    <button id="btn-sort-keys" class="btn btn-ghost" title="Sort all object keys alphabetically">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Sort Keys
+    </button>
+    <div class="toolbar-sep"></div>
+    <button id="btn-to-yaml" class="btn btn-ghost" title="Convert JSON to YAML">
+        → YAML
+    </button>
+    <div class="toolbar-sep"></div>
+    <button id="btn-clear" class="btn btn-ghost" title="Clear editor">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        Clear
+    </button>
+    <div class="toolbar-spacer"></div>
+    <button id="btn-copy-output" class="btn btn-ghost" disabled title="Copy output to clipboard">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy Output
+    </button>
+</div>
+
+<!-- ====================================================
+     SPLIT PANE
+     ==================================================== -->
+<main class="tool-main">
+    <div class="split-pane">
+
+        <!-- Input (Editor) -->
+        <div class="pane-editor">
+            <div class="pane-header">
+                <span class="pane-label">Input JSON</span>
+                <div class="pane-actions">
+                    <span id="line-count" class="line-badge">0 lines</span>
+                    <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;">📋 Paste</button>
+                </div>
+            </div>
+            <div id="input-editor" class="monaco-host"></div>
+            <!-- Error panel sits at bottom of input pane -->
+            <div id="error-panel" class="error-panel">
+                <span class="error-icon">⚠️</span>
+                <div class="error-body">
+                    <div id="error-message" class="error-message"></div>
+                    <div id="error-hint"   class="error-hint"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output -->
+        <div class="pane-output">
+            <div class="pane-header">
+                <span class="pane-label" id="output-label">Output</span>
+                <div class="pane-actions">
+                    <span id="output-line-count" class="line-badge" style="display:none;">0 lines</span>
+                </div>
+            </div>
+            <div id="output-empty" class="output-empty">
+                <span class="output-empty-icon">{ }</span>
+                <span>Run Validate, Format or Minify to see output</span>
+            </div>
+            <div id="output-editor" class="output-monaco-host" style="display:none;"></div>
+        </div>
+
+    </div>
+</main>
+
+<!-- Monaco & js-yaml -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    /* ── Toast helper ── */
+    function toast(msg, type = 'info', ms = 3000) {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.innerHTML = `<span>${msg}</span><button class="toast-close" onclick="this.parentElement.classList.add('hide');setTimeout(()=>this.parentElement.remove(),300)">✕</button>`;
+        c.appendChild(t);
+        setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, ms);
+    }
+
+    /* ── Monaco setup ── */
+    require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+    const proxy = URL.createObjectURL(new Blob([`
+        self.MonacoEnvironment = { baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/' };
+        importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/base/worker/workerMain.js');
+    `], { type: 'text/javascript' }));
+    window.MonacoEnvironment = { getWorkerUrl: () => proxy };
+
+    require(['vs/editor/editor.main'], () => {
+
+        const darkTheme = 'vs-dark';
+        let inputEditor, outputEditor;
+        let outputModel;
+        let lastOutput = '';
+
+        /* ── Create input editor ── */
+        inputEditor = monaco.editor.create(document.getElementById('input-editor'), {
+            value: '',
+            language: 'json',
+            theme: darkTheme,
+            automaticLayout: true,
+            fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 22, minimap: { enabled: false },
+            scrollBeyondLastLine: false, padding: { top: 12, bottom: 12 },
+            wordWrap: 'on',
+            placeholder: '{\n  "paste": "your JSON here"\n}'
+        });
+
+        /* ── Create output editor (read-only) ── */
+        outputModel = monaco.editor.createModel('', 'json');
+        outputEditor = monaco.editor.create(document.getElementById('output-editor'), {
+            model: outputModel,
+            theme: darkTheme,
+            readOnly: true,
+            automaticLayout: true,
+            fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 22, minimap: { enabled: false },
+            scrollBeyondLastLine: false, padding: { top: 12, bottom: 12 },
+            wordWrap: 'on',
+        });
+
+        /* ── Helpers ── */
+        const statusPill = document.getElementById('status-pill');
+        const statusText = document.getElementById('status-text');
+        const charCount  = document.getElementById('char-count');
+        const lineCount  = document.getElementById('line-count');
+        const errorPanel = document.getElementById('error-panel');
+        const errorMsg   = document.getElementById('error-message');
+        const errorHint  = document.getElementById('error-hint');
+        const outputEmpty       = document.getElementById('output-empty');
+        const outputEditorEl    = document.getElementById('output-editor');
+        const outputLineCount   = document.getElementById('output-line-count');
+        const outputLabel       = document.getElementById('output-label');
+        const copyBtn           = document.getElementById('btn-copy-output');
+
+        function setStatus(s, text) {
+            statusPill.className = `status-pill ${s}`;
+            statusText.textContent = text;
+        }
+
+        function updateCounts() {
+            const v = inputEditor.getValue();
+            charCount.textContent = v.length.toLocaleString() + ' chars';
+            const lines = v ? v.split('\n').length : 0;
+            lineCount.textContent = lines + ' line' + (lines !== 1 ? 's' : '');
+        }
+
+        function showError(msg, hint = '') {
+            errorMsg.textContent = msg;
+            errorHint.textContent = hint;
+            errorPanel.classList.add('visible');
+            setStatus('invalid', 'Invalid JSON');
+        }
+
+        function clearError() {
+            errorPanel.classList.remove('visible');
+        }
+
+        function showOutput(text, label = 'Output', lang = 'json') {
+            const lines = text.split('\n').length;
+            monaco.editor.setModelLanguage(outputModel, lang);
+            outputModel.setValue(text);
+            outputEmpty.style.display = 'none';
+            outputEditorEl.style.display = '';
+            outputLineCount.style.display = '';
+            outputLineCount.textContent = lines + ' lines';
+            outputLabel.textContent = label;
+            lastOutput = text;
+            copyBtn.disabled = false;
+        }
+
+        function parseJson(raw) {
+            try {
+                return { ok: true, data: JSON.parse(raw) };
+            } catch (e) {
+                return { ok: false, error: e };
+            }
+        }
+
+        function sortKeysDeep(obj) {
+            if (Array.isArray(obj)) return obj.map(sortKeysDeep);
+            if (obj !== null && typeof obj === 'object') {
+                return Object.fromEntries(
+                    Object.keys(obj).sort().map(k => [k, sortKeysDeep(obj[k])])
+                );
+            }
+            return obj;
+        }
+
+        /* ── Input changes → live validation ── */
+        let liveTimer;
+        inputEditor.onDidChangeModelContent(() => {
+            updateCounts();
+            clearTimeout(liveTimer);
+            liveTimer = setTimeout(liveValidate, 600);
+        });
+
+        function liveValidate() {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { setStatus('idle', 'Ready'); clearError(); return; }
+            const r = parseJson(raw);
+            if (r.ok) { setStatus('valid', 'Valid JSON'); clearError(); }
+            else { showError(r.error.message, 'Fix the error above and re-validate'); }
+        }
+
+        /* ── VALIDATE ── */
+        document.getElementById('btn-validate').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Editor is empty — paste some JSON first', 'warning'); return; }
+            const r = parseJson(raw);
+            if (r.ok) {
+                setStatus('valid', 'Valid JSON ✓');
+                clearError();
+                const preview = JSON.stringify(r.data, null, 2);
+                showOutput(preview, 'Validated — Preview');
+                toast('JSON is valid!', 'success', 2500);
+            } else {
+                showError(r.error.message, 'Check the error and try again');
+                toast('Invalid JSON — see error below', 'error');
+            }
+        });
+
+        /* ── FORMAT ── */
+        document.getElementById('btn-format').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to format', 'warning'); return; }
+            const r = parseJson(raw);
+            if (!r.ok) { showError(r.error.message, 'Fix JSON errors before formatting'); toast('Cannot format invalid JSON', 'error'); return; }
+            const formatted = JSON.stringify(r.data, null, 2);
+            showOutput(formatted, 'Formatted (2-space indent)');
+            setStatus('valid', 'Valid JSON');
+            clearError();
+            toast('JSON formatted!', 'success', 2000);
+        });
+
+        /* ── MINIFY ── */
+        document.getElementById('btn-minify').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to minify', 'warning'); return; }
+            const r = parseJson(raw);
+            if (!r.ok) { showError(r.error.message, 'Fix JSON errors before minifying'); toast('Cannot minify invalid JSON', 'error'); return; }
+            const minified = JSON.stringify(r.data);
+            showOutput(minified, 'Minified');
+            setStatus('valid', 'Valid JSON');
+            clearError();
+            toast('JSON minified!', 'success', 2000);
+        });
+
+        /* ── SORT KEYS ── */
+        document.getElementById('btn-sort-keys').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to sort', 'warning'); return; }
+            const r = parseJson(raw);
+            if (!r.ok) { showError(r.error.message, 'Fix JSON errors before sorting'); toast('Cannot sort invalid JSON', 'error'); return; }
+            const sorted = JSON.stringify(sortKeysDeep(r.data), null, 2);
+            showOutput(sorted, 'Sorted Keys');
+            setStatus('valid', 'Valid JSON');
+            clearError();
+            toast('Keys sorted alphabetically!', 'success', 2000);
+        });
+
+        /* ── TO YAML ── */
+        document.getElementById('btn-to-yaml').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to convert', 'warning'); return; }
+            const r = parseJson(raw);
+            if (!r.ok) { showError(r.error.message, 'Fix JSON errors before converting'); toast('Cannot convert invalid JSON', 'error'); return; }
+            try {
+                const yamlStr = jsyaml.dump(r.data, { indent: 2, lineWidth: -1 });
+                showOutput(yamlStr, 'YAML (Converted)', 'yaml');
+                setStatus('valid', 'Valid JSON');
+                clearError();
+                toast('Converted to YAML!', 'success', 2000);
+            } catch (e) {
+                showError(e.message, 'YAML conversion failed');
+                toast('Conversion error', 'error');
+            }
+        });
+
+        /* ── CLEAR ── */
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            inputEditor.setValue('');
+            outputModel.setValue('');
+            outputEmpty.style.display = '';
+            outputEditorEl.style.display = 'none';
+            outputLineCount.style.display = 'none';
+            outputLabel.textContent = 'Output';
+            copyBtn.disabled = true;
+            lastOutput = '';
+            clearError();
+            setStatus('idle', 'Ready');
+        });
+
+        /* ── PASTE ── */
+        document.getElementById('btn-paste').addEventListener('click', async () => {
+            try {
+                const txt = await navigator.clipboard.readText();
+                inputEditor.setValue(txt);
+                toast('Pasted from clipboard', 'success', 2000);
+            } catch { toast('Clipboard access denied — paste manually (Ctrl+V)', 'warning'); }
+        });
+
+        /* ── COPY OUTPUT ── */
+        copyBtn.addEventListener('click', async () => {
+            if (!lastOutput) return;
+            try {
+                await navigator.clipboard.writeText(lastOutput);
+                toast('Copied to clipboard!', 'success', 2000);
+            } catch { toast('Failed to copy', 'error'); }
+        });
+
+        /* ── Keyboard shortcut: Ctrl+Enter ── */
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('btn-validate').click();
+            }
+        });
+
+        updateCounts();
+    });
+})();
+</script>
+</body>
+</html>

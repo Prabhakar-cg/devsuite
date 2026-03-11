@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiffChecker.io — Local Private Diff Tool</title>
+    <meta name="description" content="A fast, private, locally-hosted diff checker with Monaco Editor. No data leaks, no tracking.">
+
+    <!-- Google Fonts: Inter + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- App Styles -->
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 3px 10px 3px 6px;
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            transition: var(--transition);
+            letter-spacing: 0.02em;
+        }
+        .back-link:hover {
+            color: var(--accent-2);
+            border-color: var(--border-accent);
+            background: var(--accent-subtle);
+        }
+        .back-link svg { opacity: 0.7; }
+        .back-link:hover svg { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================
+         HEADER
+         ============================================================ -->
+    <header class="app-header">
+        <!-- Logo + Back Link -->
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            <a href="/" class="back-link" title="Back to DevSuite">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                DevSuite
+            </a>
+            <div class="logo-wrap">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 4c0-1.1.9-2 2-2"/><path d="M20 2c1.1 0 2 .9 2 2"/><path d="M22 8c0 1.1-.9 2-2 2"/>
+                        <path d="M16 10c-1.1 0-2-.9-2-2"/><path d="M4 14c0-1.1.9-2 2-2"/><path d="M10 12c1.1 0 2 .9 2 2"/>
+                        <path d="M12 18c0 1.1-.9 2-2 2"/><path d="M6 20c-1.1 0-2-.9-2-2"/>
+                    </svg>
+                </div>
+                <span class="logo-name">
+                    Diff<span class="accent">Checker</span><span class="domain">.io</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Header Controls -->
+        <div class="header-controls">
+            <!-- Keyboard hint -->
+            <span class="kbd-badge" title="Keyboard shortcut: compare">⌘ / Ctrl + ↵</span>
+
+            <!-- Language -->
+            <div class="control-group">
+                <label class="control-label" for="language-select">Lang</label>
+                <select id="language-select">
+                    <option value="auto">Auto Detect</option>
+                    <option value="python">Python</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="java">Java</option>
+                    <option value="c">C</option>
+                    <option value="cpp">C++</option>
+                    <option value="csharp">C#</option>
+                    <option value="go">Go</option>
+                    <option value="rust">Rust</option>
+                    <option value="php">PHP</option>
+                    <option value="ruby">Ruby</option>
+                    <option value="swift">Swift</option>
+                    <option value="kotlin">Kotlin</option>
+                    <option value="sql">SQL</option>
+                    <option value="yaml">YAML</option>
+                    <option value="groovy">Jenkinsfile</option>
+                    <option value="dockerfile">Dockerfile</option>
+                    <option value="shell">Shell Script</option>
+                    <option value="json">JSON</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="markdown">Markdown</option>
+                    <option value="plaintext">Plain Text</option>
+                </select>
+            </div>
+
+            <!-- Theme -->
+            <div class="control-group">
+                <label class="control-label" for="theme-select">Theme</label>
+                <select id="theme-select">
+                    <option value="vs-dark">Midnight Dark</option>
+                    <option value="vs">Clean Light</option>
+                    <option value="hc-black">High Contrast</option>
+                    <option value="ios-glass">Frosted Glass</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============================================================
+         TOAST CONTAINER
+         ============================================================ -->
+    <div id="toast-container"></div>
+
+    <!-- ============================================================
+         TABS
+         ============================================================ -->
+    <div class="tabs-bar">
+        <button class="tab-btn active" data-tab="text-diff" id="tab-text-diff">
+            <span class="tab-icon">⟨⟩</span> Text Diff
+        </button>
+        <button class="tab-btn" data-tab="folder-diff" id="tab-folder-diff">
+            <span class="tab-icon">📁</span> Folder Diff
+        </button>
+    </div>
+
+    <!-- ============================================================
+         MAIN
+         ============================================================ -->
+    <main>
+
+        <!-- ====================================================
+             TEXT DIFF TAB
+             ==================================================== -->
+        <div class="tab-content active" id="text-diff">
+
+            <!-- Input Panels -->
+            <div class="input-panels" id="input-panels">
+
+                <!-- Original Panel -->
+                <div class="input-panel" id="panel-original">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <span class="panel-label">File 1</span>
+                            <span class="line-count-badge" id="lines-original">0 lines</span>
+                        </div>
+                        <div class="panel-actions">
+                            <button class="btn btn-ghost" id="paste-original-btn" title="Paste from clipboard">
+                                📋 Paste
+                            </button>
+                            <label class="btn-upload" id="drop-original" title="Upload a file">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                <span class="filename" id="label-original">Upload File</span>
+                                <input type="file" id="file-original">
+                            </label>
+                            <button class="btn btn-ghost copy-panel-btn" data-target="original-input" title="Copy content">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                                </svg>
+                            </button>
+                            <button class="btn btn-ghost clear-btn" data-target="original-input" title="Clear">✕</button>
+                        </div>
+                    </div>
+                    <textarea id="original-input" spellcheck="false"
+                              placeholder="Paste File 1 content here…&#10;&#10;Tip: Upload a file or drag &amp; drop it onto this panel."></textarea>
+                </div>
+
+                <!-- Modified Panel -->
+                <div class="input-panel" id="panel-modified">
+                    <div class="panel-header">
+                        <div class="panel-title-wrap">
+                            <span class="panel-label">File 2</span>
+                            <span class="line-count-badge" id="lines-modified">0 lines</span>
+                        </div>
+                        <div class="panel-actions">
+                            <button class="btn btn-ghost" id="paste-modified-btn" title="Paste from clipboard">
+                                📋 Paste
+                            </button>
+                            <label class="btn-upload" id="drop-modified" title="Upload a file">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                </svg>
+                                <span class="filename" id="label-modified">Upload File</span>
+                                <input type="file" id="file-modified">
+                            </label>
+                            <button class="btn btn-ghost copy-panel-btn" data-target="modified-input" title="Copy content">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                                </svg>
+                            </button>
+                            <button class="btn btn-ghost clear-btn" data-target="modified-input" title="Clear">✕</button>
+                        </div>
+                    </div>
+                    <textarea id="modified-input" spellcheck="false"
+                              placeholder="Paste File 2 content here…&#10;&#10;Tip: The diff will highlight exactly what changed between the two files."></textarea>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="action-bar" id="action-bar-text">
+                <button id="compare-btn" class="btn btn-primary">
+                    <span class="compare-btn-label">Compare</span>
+                    <svg class="compare-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                    <span class="btn-spinner"></span>
+                </button>
+            </div>
+
+            <!-- Monaco Diff Wrapper (hidden until compare clicked) -->
+            <div class="diff-wrapper hidden" id="diff-container">
+
+                <!-- Diff Stats Bar -->
+                <div class="stats-bar" id="stats-bar">
+                    <span class="stats-bar-title">Changes</span>
+                    <span class="stat-chip additions" id="stat-additions">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span id="stat-additions-count">0</span> added
+                    </span>
+                    <span class="stat-chip deletions" id="stat-deletions">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span id="stat-deletions-count">0</span> removed
+                    </span>
+                    <span class="stat-chip changes" id="stat-changes">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+                        <span id="stat-changes-count">0</span> hunks
+                    </span>
+                    <div class="stats-bar-spacer"></div>
+                    <span id="detected-language-label" class="lang-badge hidden">
+                        <span id="lang-name"></span>
+                    </span>
+                    <div class="stats-bar-actions">
+                        <div class="btn-group">
+                            <button id="merge-all-right-btn" class="btn btn-ghost">→ Copy to File 2</button>
+                            <button id="merge-all-left-btn"  class="btn btn-ghost">Copy to File 1 ←</button>
+                        </div>
+                        <button id="toggle-inline-btn" class="btn btn-ghost">Inline View</button>
+                        <!-- Export Menu -->
+                        <div class="export-menu-wrap">
+                            <button id="export-btn" class="btn btn-ghost">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                Export
+                            </button>
+                            <div class="export-menu hidden" id="export-menu">
+                                <button class="export-menu-item" id="export-patch-btn">
+                                    📄 Download as .patch
+                                </button>
+                                <button class="export-menu-item" id="export-copy-btn">
+                                    📋 Copy unified diff
+                                </button>
+                            </div>
+                        </div>
+                        <button id="edit-btn" class="btn btn-ghost">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            Edit
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Monaco Diff Editor -->
+                <div id="monaco-diff-editor" class="editor-host"></div>
+            </div>
+
+        </div><!-- end #text-diff -->
+
+        <!-- ====================================================
+             FOLDER DIFF TAB
+             ==================================================== -->
+        <div class="tab-content" id="folder-diff">
+
+            <!-- Folder Setup Cards -->
+            <div class="folder-setup-panels" id="folder-setup-panels-wrapper">
+                <!-- Folder 1 -->
+                <div class="folder-card">
+                    <span class="folder-card-label">Folder 1 — Original</span>
+                    <div class="folder-card-body">
+                        <input type="file" id="original-folder-input" webkitdirectory directory multiple class="hidden">
+                        <button class="btn btn-ghost" onclick="document.getElementById('original-folder-input').click()" style="padding:0.45rem 0.9rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                            </svg>
+                            Select Folder
+                        </button>
+                        <span id="original-folder-name" class="folder-card-name">No folder selected</span>
+                    </div>
+                </div>
+                <!-- Folder 2 -->
+                <div class="folder-card">
+                    <span class="folder-card-label">Folder 2 — Modified</span>
+                    <div class="folder-card-body">
+                        <input type="file" id="modified-folder-input" webkitdirectory directory multiple class="hidden">
+                        <button class="btn btn-ghost" onclick="document.getElementById('modified-folder-input').click()" style="padding:0.45rem 0.9rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                            </svg>
+                            Select Folder
+                        </button>
+                        <span id="modified-folder-name" class="folder-card-name">No folder selected</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compare Folders Button -->
+            <div class="folder-action-bar" id="action-bar-folder">
+                <button id="compare-folders-btn" class="btn btn-primary" disabled>
+                    Compare Folders
+                    <svg class="compare-btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Folder Results -->
+            <div class="folder-results-container hidden" id="folder-results-container">
+
+                <!-- Sidebar File Tree -->
+                <div class="sidebar">
+                    <div class="sidebar-header">
+                        <span class="sidebar-title">Changed Files</span>
+                        <span class="line-count-badge" id="changed-files-count">0</span>
+                    </div>
+                    <!-- Filter Chips -->
+                    <div class="filter-chips">
+                        <span class="filter-chip active-filter" data-filter="all">All</span>
+                        <span class="filter-chip modified" data-filter="modified">● Modified</span>
+                        <span class="filter-chip added"    data-filter="added">● Added</span>
+                        <span class="filter-chip removed"  data-filter="removed">● Removed</span>
+                    </div>
+                    <ul id="file-tree" class="file-tree"></ul>
+                </div>
+
+                <!-- Folder Monaco Editor -->
+                <div class="folder-editor-wrapper" id="folder-editor-wrapper">
+                    <div class="empty-state">
+                        <span class="empty-state-icon">⟨⟩</span>
+                        <span>Select a file from the sidebar to view its diff</span>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- end #folder-diff -->
+
+    </main>
+
+    <!-- RequireJS for Monaco Editor loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+    <!-- Highlight.js for Language Auto-Detection -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- App Logic -->
+    <script src="/static/app.js?v=51"></script>
+</body>
+</html>

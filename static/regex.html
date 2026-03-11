@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regex Tester — DevSuite</title>
+    <meta name="description" content="Test regular expressions with real-time match highlighting, group captures, and flag toggles. 100% local.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/linter.css">
+    <style>
+        /* ── Regex-specific overrides ── */
+        .regex-input-row {
+            display: flex; align-items: center; gap: 0; flex-shrink: 0;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 0.55rem 1.25rem; gap: 0.5rem;
+        }
+        .regex-slash {
+            font-family: var(--font-mono); font-size: 1.4rem; color: var(--text-muted);
+            line-height: 1; padding: 0 2px; flex-shrink: 0;
+        }
+        #regex-pattern {
+            flex: 1; background: var(--bg-surface); color: var(--text-primary);
+            border: 1px solid var(--glass-border); border-radius: var(--radius-xs);
+            padding: 0.45rem 0.75rem; font-family: var(--font-mono); font-size: 0.9rem;
+            outline: none; transition: var(--transition);
+        }
+        #regex-pattern:focus { border-color: var(--border-accent); box-shadow: 0 0 0 3px var(--accent-subtle); }
+        #regex-pattern.invalid { border-color: rgba(244,63,94,0.5); box-shadow: 0 0 0 3px rgba(244,63,94,0.1); }
+        #regex-pattern.valid   { border-color: rgba(16,185,129,0.5); }
+
+        .flags-wrap { display: flex; gap: 0.25rem; flex-shrink: 0; }
+        .flag-btn {
+            font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700;
+            width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+            border-radius: 6px; border: 1px solid var(--glass-border);
+            background: var(--bg-neu); color: var(--text-muted);
+            cursor: pointer; transition: var(--transition); user-select: none;
+        }
+        .flag-btn:hover   { color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+        .flag-btn.active  { background: var(--accent-subtle); color: var(--accent-2); border-color: var(--border-accent); box-shadow: 0 0 8px var(--accent-glow); }
+
+        /* ── Match results pane ── */
+        .match-pane {
+            flex: 1; min-height: 0; overflow-y: auto; padding: 0.75rem;
+            display: flex; flex-direction: column; gap: 0.5rem;
+        }
+        .match-empty {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: var(--text-muted); gap: 0.5rem; font-size: 0.85rem; opacity: 0.6;
+        }
+        .match-empty-icon { font-size: 2rem; opacity: 0.3; }
+
+        .match-summary {
+            font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--text-muted);
+            padding-bottom: 0.4rem; border-bottom: 1px solid var(--glass-border);
+        }
+        .match-summary .count-badge {
+            background: var(--accent-subtle); color: var(--accent-2);
+            border: 1px solid var(--border-accent); border-radius: 20px;
+            padding: 1px 8px; font-size: 0.7rem; margin-left: 0.3rem;
+        }
+
+        .match-item {
+            background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2);
+            border-radius: var(--radius-xs); padding: 0.55rem 0.75rem;
+            display: flex; flex-direction: column; gap: 0.3rem;
+        }
+        .match-item-head {
+            display: flex; align-items: center; gap: 0.5rem;
+            font-size: 0.7rem; color: var(--text-muted);
+        }
+        .match-index { font-weight: 700; color: var(--accent-2); font-size: 0.68rem; }
+        .match-pos   { font-family: var(--font-mono); }
+        .match-value {
+            font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-primary);
+            background: rgba(0,0,0,0.3); border-radius: 4px; padding: 2px 6px;
+            word-break: break-all;
+        }
+        .match-groups { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 2px; }
+        .group-chip {
+            font-size: 0.65rem; font-family: var(--font-mono);
+            background: rgba(16,185,129,0.12); color: #6ee7b7;
+            border: 1px solid rgba(16,185,129,0.25); border-radius: 4px;
+            padding: 1px 6px;
+        }
+        .group-chip .group-label { color: var(--text-muted); margin-right: 3px; }
+
+        /* Highlight decorations in Monaco */
+        .regex-match-highlight { background: rgba(255, 230, 80, 0.25) !important; border-bottom: 2px solid #fbbf24 !important; }
+    </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- HEADER -->
+<header class="tool-header">
+    <div class="header-left">
+        <a href="/" class="back-link">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            DevSuite
+        </a>
+        <div class="tool-identity">
+            <div class="tool-icon" style="background:linear-gradient(135deg,#be185d,#f43f5e);box-shadow:0 0 14px rgba(190,24,93,0.45);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+            </div>
+            <span class="tool-name">Regex <span class="tool-accent">Tester</span></span>
+            <span class="tool-version">v1.0</span>
+        </div>
+    </div>
+    <div class="header-right">
+        <div id="status-pill" class="status-pill idle"><span class="status-dot"></span><span id="status-text">Ready</span></div>
+    </div>
+</header>
+
+<!-- REGEX PATTERN INPUT ROW -->
+<div class="regex-input-row">
+    <span class="regex-slash">/</span>
+    <input id="regex-pattern" type="text" placeholder="([A-Za-z]+)\s+(\d+)" spellcheck="false" autocomplete="off">
+    <span class="regex-slash">/</span>
+    <div class="flags-wrap">
+        <button class="flag-btn active" data-flag="g" title="Global — find all matches">g</button>
+        <button class="flag-btn" data-flag="i" title="Case-insensitive">i</button>
+        <button class="flag-btn" data-flag="m" title="Multiline — ^ and $ match line boundaries">m</button>
+        <button class="flag-btn" data-flag="s" title="Dotall — . matches newlines">s</button>
+    </div>
+    <button id="btn-clear" class="btn btn-ghost" style="margin-left:0.5rem;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        Clear
+    </button>
+</div>
+
+<!-- SPLIT PANE -->
+<main class="tool-main">
+    <div class="split-pane">
+
+        <!-- Test String (Monaco) -->
+        <div class="pane-editor">
+            <div class="pane-header">
+                <span class="pane-label">Test String</span>
+                <span id="line-count" class="line-badge">0 lines</span>
+            </div>
+            <div id="input-editor" class="monaco-host"></div>
+        </div>
+
+        <!-- Match Results -->
+        <div class="pane-output">
+            <div class="pane-header">
+                <span class="pane-label" id="output-label">Matches</span>
+                <div class="pane-actions">
+                    <span id="match-count-badge" class="line-badge" style="display:none;"></span>
+                    <button id="btn-copy-matches" class="btn btn-ghost" disabled style="padding:2px 8px;font-size:0.7rem;">Copy</button>
+                </div>
+            </div>
+            <div class="match-pane" id="match-pane">
+                <div class="match-empty" id="match-empty">
+                    <span class="match-empty-icon">🔎</span>
+                    <span>Enter a pattern and test string to see matches</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    function toast(msg, type = 'info', ms = 2500) {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div'); t.className = `toast ${type}`;
+        t.innerHTML = `<span>${msg}</span><button class="toast-close" onclick="this.parentElement.classList.add('hide');setTimeout(()=>this.parentElement.remove(),300)">✕</button>`;
+        c.appendChild(t);
+        setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, ms);
+    }
+
+    require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+    window.MonacoEnvironment = { getWorkerUrl: () => URL.createObjectURL(new Blob([`
+        self.MonacoEnvironment={baseUrl:'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/'};
+        importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/base/worker/workerMain.js');
+    `], { type: 'text/javascript' })) };
+
+    require(['vs/editor/editor.main'], () => {
+
+        let editor, decorations = [];
+        let activeFlags = new Set(['g']);
+
+        editor = monaco.editor.create(document.getElementById('input-editor'), {
+            value: 'Hello World 42\nFoo Bar 100\nregex testing 2026',
+            language: 'plaintext', theme: 'vs-dark',
+            automaticLayout: true, fontSize: 14,
+            fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 22, minimap: { enabled: false },
+            scrollBeyondLastLine: false, padding: { top: 12, bottom: 12 },
+            wordWrap: 'on',
+        });
+
+        const patternEl    = document.getElementById('regex-pattern');
+        const statusPill   = document.getElementById('status-pill');
+        const statusText   = document.getElementById('status-text');
+        const lineCount    = document.getElementById('line-count');
+        const matchPane    = document.getElementById('match-pane');
+        const matchEmpty   = document.getElementById('match-empty');
+        const matchBadge   = document.getElementById('match-count-badge');
+        const copyMatchBtn = document.getElementById('btn-copy-matches');
+
+        function setStatus(s, text) { statusPill.className = `status-pill ${s}`; statusText.textContent = text; }
+
+        function getFlags() { return [...activeFlags].join(''); }
+
+        function buildRegex(pattern, flags) {
+            try { return { ok: true, re: new RegExp(pattern, flags) }; }
+            catch(e) { return { ok: false, error: e.message }; }
+        }
+
+        let debounceTimer;
+        function scheduleRun() { clearTimeout(debounceTimer); debounceTimer = setTimeout(runMatch, 180); }
+
+        function runMatch() {
+            const pattern = patternEl.value;
+            const text    = editor.getValue();
+
+            lineCount.textContent = text.split('\n').length + ' lines';
+
+            if (!pattern) {
+                patternEl.className = '';
+                decorations = editor.deltaDecorations(decorations, []);
+                renderEmpty('Enter a pattern above');
+                setStatus('idle', 'Ready');
+                return;
+            }
+
+            const flags = getFlags();
+            const r = buildRegex(pattern, flags);
+            if (!r.ok) {
+                patternEl.className = 'invalid';
+                decorations = editor.deltaDecorations(decorations, []);
+                renderEmpty('⚠ ' + r.error);
+                setStatus('invalid', 'Invalid pattern');
+                return;
+            }
+
+            patternEl.className = 'valid';
+
+            // Collect all matches
+            const re = r.re;
+            const matches = [];
+            let m;
+
+            if (flags.includes('g')) {
+                re.lastIndex = 0;
+                while ((m = re.exec(text)) !== null) {
+                    matches.push({ index: m.index, value: m[0], groups: [...m].slice(1), namedGroups: m.groups || {} });
+                    if (m[0].length === 0) re.lastIndex++; // avoid infinite loop on zero-width match
+                }
+            } else {
+                m = re.exec(text);
+                if (m) matches.push({ index: m.index, value: m[0], groups: [...m].slice(1), namedGroups: m.groups || {} });
+            }
+
+            // Monaco decorations (highlight matches)
+            const model = editor.getModel();
+            const newDecos = matches.map(match => {
+                const start = model.getPositionAt(match.index);
+                const end   = model.getPositionAt(match.index + match.value.length);
+                return {
+                    range: new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column),
+                    options: { inlineClassName: 'regex-match-highlight' }
+                };
+            });
+            decorations = editor.deltaDecorations(decorations, newDecos);
+
+            // Render results list
+            renderMatches(matches, flags);
+        }
+
+        function renderEmpty(msg) {
+            matchPane.innerHTML = `<div class="match-empty"><span class="match-empty-icon">🔎</span><span>${msg}</span></div>`;
+            matchBadge.style.display = 'none'; matchBadge.textContent = '';
+            copyMatchBtn.disabled = true;
+        }
+
+        function renderMatches(matches, flags) {
+            if (!matches.length) {
+                renderEmpty('No matches found');
+                setStatus('idle', '0 matches');
+                return;
+            }
+
+            const count = matches.length;
+            setStatus('valid', `${count} match${count !== 1 ? 'es' : ''}`);
+            matchBadge.style.display = '';
+            matchBadge.textContent = count + ' match' + (count !== 1 ? 'es' : '');
+            copyMatchBtn.disabled = false;
+
+            let html = `<div class="match-summary">Matches <span class="count-badge">${count}</span></div>`;
+
+            matches.forEach((match, i) => {
+                const value = escHtml(match.value);
+                const start = match.index, end = match.index + match.value.length;
+                let groupsHtml = '';
+                if (match.groups.length) {
+                    groupsHtml = '<div class="match-groups">' +
+                        match.groups.map((g, gi) => {
+                            const name = Object.keys(match.namedGroups).find(k => match.namedGroups[k] === g);
+                            const label = name ? `$${name}` : `$${gi + 1}`;
+                            return `<span class="group-chip"><span class="group-label">${label}:</span>${escHtml(g ?? 'undefined')}</span>`;
+                        }).join('') + '</div>';
+                }
+                html += `
+                    <div class="match-item">
+                        <div class="match-item-head">
+                            <span class="match-index">#${i + 1}</span>
+                            <span class="match-pos">pos ${start}–${end}</span>
+                            <span class="match-pos">len ${match.value.length}</span>
+                        </div>
+                        <div class="match-value">${value || '<span style="color:var(--text-muted)">empty string</span>'}</div>
+                        ${groupsHtml}
+                    </div>`;
+            });
+
+            matchPane.innerHTML = html;
+        }
+
+        function escHtml(str) {
+            if (str == null) return 'null';
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // Flag toggles
+        document.querySelectorAll('.flag-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const f = btn.dataset.flag;
+                if (activeFlags.has(f)) { activeFlags.delete(f); btn.classList.remove('active'); }
+                else { activeFlags.add(f); btn.classList.add('active'); }
+                scheduleRun();
+            });
+        });
+
+        patternEl.addEventListener('input', scheduleRun);
+        editor.onDidChangeModelContent(scheduleRun);
+
+        // Copy matches
+        copyMatchBtn.addEventListener('click', async () => {
+            const items = [...document.querySelectorAll('.match-value')].map(el => el.textContent).join('\n');
+            try { await navigator.clipboard.writeText(items); toast('Match values copied!', 'success'); }
+            catch { toast('Could not copy', 'error'); }
+        });
+
+        // Clear
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            patternEl.value = ''; editor.setValue('');
+            decorations = editor.deltaDecorations(decorations, []);
+            renderEmpty('Enter a pattern and test string to see matches');
+            setStatus('idle', 'Ready'); patternEl.className = '';
+        });
+
+        // Initial run
+        runMatch();
+    });
+})();
+</script>
+</body>
+</html>
