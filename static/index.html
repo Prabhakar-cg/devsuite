@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiffChecker.io — Local Private Diff Tool</title>
-    <meta name="description" content="A fast, private, locally-hosted diff checker with Monaco Editor. No data leaks, no tracking.">
+    <title>DevSuite — Local Private Diff Tool</title>
+    <meta name="description" content="A fast, private, locally-hosted diff checker with Monaco Editor.">
 
     <!-- Google Fonts: Inter + JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
 
     <!-- App Styles -->
     <link rel="stylesheet" href="/static/style.css">
@@ -30,15 +33,23 @@
             transition: var(--transition);
             letter-spacing: 0.02em;
         }
+
         .back-link:hover {
             color: var(--accent-2);
             border-color: var(--border-accent);
             background: var(--accent-subtle);
         }
-        .back-link svg { opacity: 0.7; }
-        .back-link:hover svg { opacity: 1; }
+
+        .back-link svg {
+            opacity: 0.7;
+        }
+
+        .back-link:hover svg {
+            opacity: 1;
+        }
     </style>
 </head>
+
 <body>
 
     <!-- ============================================================
@@ -48,15 +59,24 @@
         <!-- Logo + Back Link -->
         <div style="display:flex; align-items:center; gap:0.75rem;">
             <a href="/" class="back-link" title="Back to DevSuite">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                </svg>
                 DevSuite
             </a>
             <div class="logo-wrap">
                 <div class="logo-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 4c0-1.1.9-2 2-2"/><path d="M20 2c1.1 0 2 .9 2 2"/><path d="M22 8c0 1.1-.9 2-2 2"/>
-                        <path d="M16 10c-1.1 0-2-.9-2-2"/><path d="M4 14c0-1.1.9-2 2-2"/><path d="M10 12c1.1 0 2 .9 2 2"/>
-                        <path d="M12 18c0 1.1-.9 2-2 2"/><path d="M6 20c-1.1 0-2-.9-2-2"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M14 4c0-1.1.9-2 2-2" />
+                        <path d="M20 2c1.1 0 2 .9 2 2" />
+                        <path d="M22 8c0 1.1-.9 2-2 2" />
+                        <path d="M16 10c-1.1 0-2-.9-2-2" />
+                        <path d="M4 14c0-1.1.9-2 2-2" />
+                        <path d="M10 12c1.1 0 2 .9 2 2" />
+                        <path d="M12 18c0 1.1-.9 2-2 2" />
+                        <path d="M6 20c-1.1 0-2-.9-2-2" />
                     </svg>
                 </div>
                 <span class="logo-name">
@@ -156,22 +176,27 @@
                                 📋 Paste
                             </button>
                             <label class="btn-upload" id="drop-original" title="Upload a file">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                 </svg>
                                 <span class="filename" id="label-original">Upload File</span>
                                 <input type="file" id="file-original">
                             </label>
-                            <button class="btn btn-ghost copy-panel-btn" data-target="original-input" title="Copy content">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                            <button class="btn btn-ghost copy-panel-btn" data-target="original-input"
+                                title="Copy content">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
                                 </svg>
                             </button>
-                            <button class="btn btn-ghost clear-btn" data-target="original-input" title="Clear">✕</button>
+                            <button class="btn btn-ghost clear-btn" data-target="original-input"
+                                title="Clear">✕</button>
                         </div>
                     </div>
                     <textarea id="original-input" spellcheck="false"
-                              placeholder="Paste File 1 content here…&#10;&#10;Tip: Upload a file or drag &amp; drop it onto this panel."></textarea>
+                        placeholder="Paste File 1 content here…&#10;&#10;Tip: Upload a file or drag &amp; drop it onto this panel."></textarea>
                 </div>
 
                 <!-- Modified Panel -->
@@ -186,22 +211,27 @@
                                 📋 Paste
                             </button>
                             <label class="btn-upload" id="drop-modified" title="Upload a file">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                 </svg>
                                 <span class="filename" id="label-modified">Upload File</span>
                                 <input type="file" id="file-modified">
                             </label>
-                            <button class="btn btn-ghost copy-panel-btn" data-target="modified-input" title="Copy content">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                            <button class="btn btn-ghost copy-panel-btn" data-target="modified-input"
+                                title="Copy content">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
                                 </svg>
                             </button>
-                            <button class="btn btn-ghost clear-btn" data-target="modified-input" title="Clear">✕</button>
+                            <button class="btn btn-ghost clear-btn" data-target="modified-input"
+                                title="Clear">✕</button>
                         </div>
                     </div>
                     <textarea id="modified-input" spellcheck="false"
-                              placeholder="Paste File 2 content here…&#10;&#10;Tip: The diff will highlight exactly what changed between the two files."></textarea>
+                        placeholder="Paste File 2 content here…&#10;&#10;Tip: The diff will highlight exactly what changed between the two files."></textarea>
                 </div>
             </div>
 
@@ -209,8 +239,10 @@
             <div class="action-bar" id="action-bar-text">
                 <button id="compare-btn" class="btn btn-primary">
                     <span class="compare-btn-label">Compare</span>
-                    <svg class="compare-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                    <svg class="compare-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <polyline points="12 5 19 12 12 19" />
                     </svg>
                     <span class="btn-spinner"></span>
                 </button>
@@ -223,15 +255,28 @@
                 <div class="stats-bar" id="stats-bar">
                     <span class="stats-bar-title">Changes</span>
                     <span class="stat-chip additions" id="stat-additions">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
                         <span id="stat-additions-count">0</span> added
                     </span>
                     <span class="stat-chip deletions" id="stat-deletions">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
                         <span id="stat-deletions-count">0</span> removed
                     </span>
                     <span class="stat-chip changes" id="stat-changes">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <polyline points="16 3 21 3 21 8" />
+                            <line x1="4" y1="20" x2="21" y2="3" />
+                            <polyline points="21 16 21 21 16 21" />
+                            <line x1="15" y1="15" x2="21" y2="21" />
+                        </svg>
                         <span id="stat-changes-count">0</span> hunks
                     </span>
                     <div class="stats-bar-spacer"></div>
@@ -241,14 +286,17 @@
                     <div class="stats-bar-actions">
                         <div class="btn-group">
                             <button id="merge-all-right-btn" class="btn btn-ghost">→ Copy to File 2</button>
-                            <button id="merge-all-left-btn"  class="btn btn-ghost">Copy to File 1 ←</button>
+                            <button id="merge-all-left-btn" class="btn btn-ghost">Copy to File 1 ←</button>
                         </div>
                         <button id="toggle-inline-btn" class="btn btn-ghost">Inline View</button>
                         <!-- Export Menu -->
                         <div class="export-menu-wrap">
                             <button id="export-btn" class="btn btn-ghost">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
                                 </svg>
                                 Export
                             </button>
@@ -262,8 +310,10 @@
                             </div>
                         </div>
                         <button id="edit-btn" class="btn btn-ghost">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                             Edit
                         </button>
@@ -288,9 +338,11 @@
                     <span class="folder-card-label">Folder 1 — Original</span>
                     <div class="folder-card-body">
                         <input type="file" id="original-folder-input" webkitdirectory directory multiple class="hidden">
-                        <button class="btn btn-ghost" onclick="document.getElementById('original-folder-input').click()" style="padding:0.45rem 0.9rem;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                        <button class="btn btn-ghost" onclick="document.getElementById('original-folder-input').click()"
+                            style="padding:0.45rem 0.9rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
                             </svg>
                             Select Folder
                         </button>
@@ -302,9 +354,11 @@
                     <span class="folder-card-label">Folder 2 — Modified</span>
                     <div class="folder-card-body">
                         <input type="file" id="modified-folder-input" webkitdirectory directory multiple class="hidden">
-                        <button class="btn btn-ghost" onclick="document.getElementById('modified-folder-input').click()" style="padding:0.45rem 0.9rem;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                        <button class="btn btn-ghost" onclick="document.getElementById('modified-folder-input').click()"
+                            style="padding:0.45rem 0.9rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
                             </svg>
                             Select Folder
                         </button>
@@ -317,8 +371,9 @@
             <div class="folder-action-bar" id="action-bar-folder">
                 <button id="compare-folders-btn" class="btn btn-primary" disabled>
                     Compare Folders
-                    <svg class="compare-btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                    <svg class="compare-btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
                     </svg>
                 </button>
             </div>
@@ -336,8 +391,8 @@
                     <div class="filter-chips">
                         <span class="filter-chip active-filter" data-filter="all">All</span>
                         <span class="filter-chip modified" data-filter="modified">● Modified</span>
-                        <span class="filter-chip added"    data-filter="added">● Added</span>
-                        <span class="filter-chip removed"  data-filter="removed">● Removed</span>
+                        <span class="filter-chip added" data-filter="added">● Added</span>
+                        <span class="filter-chip removed" data-filter="removed">● Removed</span>
                     </div>
                     <ul id="file-tree" class="file-tree"></ul>
                 </div>
@@ -362,4 +417,5 @@
     <!-- App Logic -->
     <script src="/static/app.js?v=51"></script>
 </body>
+
 </html>

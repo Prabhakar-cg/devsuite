@@ -291,9 +291,9 @@ body > * { position: relative; z-index: 1; }
     align-items: flex-start;
     max-height: 120px;
     overflow-y: auto;
-    animation: slideUpFade 0.3s ease-out;
+    animation: slide-up-fade 0.3s ease-out;
 }
-@keyframes slideUpFade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@keyframes slide-up-fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 .error-panel.visible { display: flex; }
 
 .error-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }

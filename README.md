@@ -1,5 +1,5 @@
 # DevSuite — Developer Tools from Hell
-
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the **Monaco Editor**. 100% private — all file reading and data processing is done locally. No data ever leaves your machine.
 
 ## Supported Tools
@@ -36,7 +36,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 ## Getting Started
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.10+
 
 ### Quick Start
 
@@ -67,7 +67,7 @@ All tools run strictly on your machine. File reading uses the browser's **FileRe
 ## Project Structure
 
 ```
-DiffChecker/
+DevSuite/
 ├── main.py                  # FastAPI app — serves all HTML endpoints
 ├── requirements.txt         # fastapi, uvicorn, python-multipart
 ├── start.sh                 # One-shot setup & run script

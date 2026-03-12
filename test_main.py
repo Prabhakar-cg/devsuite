@@ -1,5 +1,5 @@
 """
-Comprehensive tests for the DiffChecker FastAPI backend.
+Comprehensive tests for the DevSuite FastAPI backend.
 
 This test suite covers all endpoints, file upload functionality,
 error handling, and edge cases.

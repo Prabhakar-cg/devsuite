@@ -1,7 +1,7 @@
 DevSuite Test Suite
 ===================
 
-This directory contains comprehensive tests for the DevSuite DiffChecker application.
+This directory contains comprehensive tests for the DevSuite DevSuite application.
 
 Test Files
 ----------
