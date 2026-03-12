@@ -220,10 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
     `], { type: 'text/javascript' }));
 
     require(['vs/editor/editor.main'], () => {
-        console.log('[DiffChecker] Monaco loaded.');
+        console.log('[DevSuite] Monaco loaded.');
         URL.revokeObjectURL(proxy);
     }, (err) => {
-        console.error('[DiffChecker] Monaco failed to load from CDN', err);
+        console.error('[DevSuite] Monaco failed to load from CDN', err);
         showError('Warning: Failed to load Monaco Editor from CDN. Check your connection or disable tracking blockers.');
     });
 

@@ -67,7 +67,7 @@ All tools run strictly on your machine. File reading uses the browser's **FileRe
 ## Project Structure
 
 ```
-DiffChecker/
+DevSuite/
 ├── main.py                  # FastAPI app — serves all HTML endpoints
 ├── requirements.txt         # fastapi, uvicorn, python-multipart
 ├── start.sh                 # One-shot setup & run script
