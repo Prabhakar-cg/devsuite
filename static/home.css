@@ -40,11 +40,14 @@
 html, body {
     min-height: 100%;
     font-family: var(--font-sans);
-    background: var(--bg-void);
     color: var(--text-primary);
     font-size: 15px;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+}
+
+body {
+    background: var(--bg-void); /* Default fallback if no theme */
 }
 
 /* ── Animated gradient mesh wallpaper ── */

@@ -245,6 +245,75 @@ body>* {
     font-weight: 500;
 }
 
+/* ---- Tool Identity (Dynamic Header) ---- */
+.tool-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.tool-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 14px var(--accent-glow);
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    transition: var(--transition);
+}
+
+.tool-icon::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 50%;
+    height: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.tool-icon svg {
+    width: 17px;
+    height: 17px;
+    color: #fff;
+    position: relative;
+}
+
+/* Specific icon colors */
+.tool-icon-indigo { background: linear-gradient(135deg, #6366f1, #3b82f6); box-shadow: 0 0 16px rgba(99, 102, 241, 0.4); }
+.tool-icon-amber  { background: linear-gradient(135deg, #d97706, #f59e0b); box-shadow: 0 0 16px rgba(245, 158, 11, 0.4); }
+.tool-icon-emerald { background: linear-gradient(135deg, #059669, #10b981); box-shadow: 0 0 16px rgba(16, 185, 129, 0.4); }
+
+.tool-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    color: var(--text-primary);
+}
+
+.tool-name .tool-accent {
+    color: var(--accent-2);
+}
+
+.tool-version {
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1px 7px;
+    width: fit-content;
+}
+
 /* Keyboard shortcut badge — neumorphic pill */
 .kbd-badge {
     display: inline-flex;

@@ -104,6 +104,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderEditorHost = document.getElementById('folder-editor-wrapper');
     const changedFilesCount = document.getElementById('changed-files-count');
 
+    // Header dynamic elements
+    const toolHeaderIcon = document.getElementById('tool-header-icon');
+    const toolHeaderName = document.getElementById('tool-header-name');
+
+    const FEATURE_ICONS = {
+        'text-diff': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <circle cx="9" cy="9" r="1"/>
+        </svg>`,
+        'folder-diff': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="14" r="2" />
+        </svg>`
+    };
+
+    const FEATURE_NAMES = {
+        'text-diff': `Text <span class="tool-accent">Diff</span>`,
+        'folder-diff': `Folder <span class="tool-accent">Diff</span>`
+    };
+
     // ==========================================
     // STATE
     // ==========================================
@@ -340,13 +363,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     for (const btn of tabBtns) {
         btn.addEventListener('click', () => {
+            const id = btn.dataset.tab;
             for (const b of tabBtns) b.classList.remove('active');
             for (const c of tabContents) c.classList.remove('active');
             btn.classList.add('active');
-            document.getElementById(btn.dataset.tab).classList.add('active');
+            document.getElementById(id).classList.add('active');
+
+            // Update Header Icon and Name
+            if (toolHeaderIcon) {
+                toolHeaderIcon.innerHTML = FEATURE_ICONS[id] || '';
+                toolHeaderIcon.className = `tool-icon tool-icon-${id === 'folder-diff' ? 'amber' : 'indigo'}`;
+            }
+            if (toolHeaderName) {
+                toolHeaderName.innerHTML = FEATURE_NAMES[id] || 'Diff Tool';
+            }
 
             setTimeout(() => {
-                const id = btn.dataset.tab;
                 if (id === 'text-diff' && textDiffEditor && !textDiffContainer.classList.contains('hidden')) textDiffEditor.layout();
                 if (id === 'folder-diff' && folderDiffEditor) folderDiffEditor.layout();
             }, 60);
@@ -914,29 +946,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     themeSelect.addEventListener('change', (e) => {
-        const theme = e.target.value;
-
-        // Always clear previous overrides first
-        document.documentElement.removeAttribute('data-theme');
-        document.body.style.background = '';
-        document.body.style.color = '';
-
-        if (theme === 'ios-glass') {
-            if (window.monaco) monaco.editor.setTheme('vs-dark');
-            document.documentElement.setAttribute('data-theme', 'ios-glass');
-            document.body.style.background = '#dce8ff';
-            document.body.style.color = '#1c1c1e';
-        } else if (theme === 'hc-black') {
-            if (window.monaco) monaco.editor.setTheme('hc-black');
-            document.documentElement.setAttribute('data-theme', 'high-contrast');
-            document.body.style.background = '#000000';
-            document.body.style.color = '#ffffff';
-        } else if (theme === 'vs') {
-            if (window.monaco) monaco.editor.setTheme('vs');
-            document.body.style.background = '#ffffff';
-            document.body.style.color = '#111827';
-        } else {
-            if (window.monaco) monaco.editor.setTheme(theme);
+        if (typeof window.setDevSuiteTheme === 'function') {
+            window.setDevSuiteTheme(e.target.value);
         }
     });
 

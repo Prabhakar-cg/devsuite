@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/home.css">
+    <script src="/static/theme.js"></script>
 </head>
 <body>
 
@@ -28,7 +29,13 @@
             </div>
         </a>
 
-        <div class="header-actions">
+        <div class="header-actions" style="display:flex; align-items:center; gap:1rem;">
+            <select class="global-theme-select" aria-label="DevSuite Theme">
+                <option value="vs-dark">Midnight Dark</option>
+                <option value="vs">Clean Light</option>
+                <option value="hc-black">High Contrast</option>
+                <option value="ios-glass">Frosted Glass</option>
+            </select>
             <span class="header-badge">✦ Runs Locally</span>
         </div>
     </header>
@@ -73,7 +80,7 @@
                     <span class="badge badge-live">Live</span>
                 </div>
                 <div>
-                    <div class="card-title">Text Diff</div>
+                    <div class="card-title">DevSuite Text Diff</div>
                     <div class="card-desc">
                         Side-by-side and inline diff view for any two text files or snippets. Monaco Editor powered with syntax highlighting, merge arrows, and export.
                     </div>
@@ -99,7 +106,7 @@
                     <span class="badge badge-live">Live</span>
                 </div>
                 <div>
-                    <div class="card-title">Folder Diff</div>
+                    <div class="card-title">DevSuite Folder Diff</div>
                     <div class="card-desc">
                         Compare entire directory trees. Browse changed files in a sidebar, view per-file diffs, filter by Added / Modified / Removed.
                     </div>
@@ -166,7 +173,7 @@
                 </div>
             </a>
 
-        </div>
+        <!-- (Removed rogue closing div here) -->
 
             <!-- Regex Tester (LIVE) -->
             <a class="tool-card active-tool" href="/regex" id="card-regex"

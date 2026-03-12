@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/linter.css">
+    <script src="/static/theme.js"></script>
 </head>
 <body>
 
@@ -35,7 +36,12 @@
             <span class="tool-version">Formatter v1.0</span>
         </div>
     </div>
-    <div class="header-right">
+        <select class="global-theme-select" aria-label="DevSuite Theme">
+            <option value="vs-dark">Midnight Dark</option>
+            <option value="vs">Clean Light</option>
+            <option value="hc-black">High Contrast</option>
+            <option value="ios-glass">Frosted Glass</option>
+        </select>
         <span id="char-count" class="line-badge">0 chars</span>
     </div>
 </header>
