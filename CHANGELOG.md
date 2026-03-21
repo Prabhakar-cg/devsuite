@@ -2,7 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.0.0] - 2026-03-21
+### Added
+- **Crypto Suite** (`/crypto`) — Four-tab cryptographic toolkit:
+  - Hash Generator (MD5, SHA-1, SHA-256, SHA-512) with copy buttons per hash.
+  - AES Encrypt/Decrypt with CBC, ECB, and CTR mode selection.
+  - RSA Key Pair generation (2048/4096-bit) with in-browser encrypt/decrypt.
+  - HMAC Sign & Verify (SHA-256, SHA-512) with a visual OK/INVALID banner.
+  - Base64 / JWT decode tab (splits header, payload, signature).
+- **Link & QR Studio** (`/url-shortener`) — Renamed and extended URL Shortener:
+  - Local URL shortener that generates short `/r/<id>` links served by the local DevSuite instance.
+  - QR Code and Code128 Barcode generated for every shortened link using the short URL.
+  - PNG download button for both the QR Code and the Barcode.
+  - Recent links panel backed by `localStorage`.
+- **`url_db.json`** — Persistent URL shortener database; survives server restarts.
+- **`test_local_server.py`** — Basic HTTP smoke test with proper error handling, replacing the old `test_puppeteer.py`.
+
+### Changed
+- **Link & QR Studio** barcode payload changed from truncated `original_url` to `short_url` for reliable Code128 encoding.
+- **`requirements.txt`** — Updated `fastapi` and `uvicorn` to valid, available PyPI versions (`>=0.100.0`, `>=0.25.0`).
+- **`style.css`** — Removed ~80 lines of duplicated `.tool-identity`/`.tool-icon`/`.tool-name`/`.tool-version` rules (already provided by `linter.css`). Added semantic CSS classes for folder diff layout elements extracted from `index.html`.
+- **`index.html`** — Folder diff elements now use semantic CSS classes instead of inline `style=` attributes.
+- **`theme.js`** — `applyThemeDOM` now also writes to `document.body.style.background` and `document.body.style.color` so external CSS selectors and scripts can read the current theme.
+- Home dashboard card renamed from "URL Shortener" to "Link & QR Studio".
+
+### Security
+- **DOM XSS hardening** — Replaced all `innerHTML` assignments that used untrusted data (folder names, file names, regex match values, toast messages, error text) with safe DOM construction via `createElement` + `textContent` / `createTextNode` across `app.js`, `crypto.html`, `regex.html`, and `url-shortener.html`.
+- **Self-hosted libraries** — `crypto-js.min.js` (v4.2.0) and `bwip-js-min.js` (v3.4.1) are now served from `/static/` instead of external CDNs, eliminating supply-chain risk.
+- **HTTP Security Headers** — Added `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, and `Referrer-Policy` middleware in `main.py`.
+- **URL validation** — `POST /api/shorten` now rejects empty or whitespace-only input and validates scheme + host via `urllib.parse` before storing.
+- **Collision-safe `short_id`** — Generator now retries up to 10 times to guarantee a unique ID, preventing silent overwrites.
+- **`crypto.html` HTML structure** — Corrected misplaced `</head>` / `<body>` element order; `toast-container` now lives strictly inside a properly opened `<body>`.
+- **`app.js` null safety** — Added guard for `folderToggleInlineBtn` before attaching event listener. Removed dead empty `if` block.
+- **Duplicate event listener removed** — Eliminated duplicate `themeSelect` change listener in `app.js` (handled by `theme.js`).
+- **`.gitignore`** — Added entries for `url_db.json`, test cache, build artifacts, and coverage reports.
+
+### Removed
+- `test_puppeteer.py` — Replaced by `test_local_server.py` (correct name, proper error handling, no unused imports).
+- External CDN dependencies for `crypto-js` and `bwip-js` (now self-hosted).
+
 ## [4.0.0] - 2026-03-11
+
 ### Added
 - **DevSuite Homepage** — New central portal (`home.html`) featuring a glassmorphic dashboard of all available developer tools.
 - **JSON Linter & Formatter** (`/json`) — Monaco-powered JSON validation, formatting, minification, and key sorting.

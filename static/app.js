@@ -521,14 +521,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    folderToggleInlineBtn.addEventListener('click', () => {
-        if (!folderDiffEditor) return;
-        const nowInline = folderToggleInlineBtn.classList.contains('active');
-        folderDiffEditor.updateOptions({ renderSideBySide: nowInline });
-        folderToggleInlineBtn.classList.toggle('active', !nowInline);
-        folderToggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
-        setTimeout(() => folderDiffEditor.layout(), 50);
-    });
+    if (folderToggleInlineBtn) {
+        folderToggleInlineBtn.addEventListener('click', () => {
+            if (!folderDiffEditor) return;
+            const nowInline = folderToggleInlineBtn.classList.contains('active');
+            folderDiffEditor.updateOptions({ renderSideBySide: nowInline });
+            folderToggleInlineBtn.classList.toggle('active', !nowInline);
+            folderToggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
+            setTimeout(() => folderDiffEditor.layout(), 50);
+        });
+    }
 
     /**
      * Initialize the text diff Monaco editor and its models, set the editor language, wire merge controls, and start diff statistics updates.
@@ -891,8 +893,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (folderTitleLeft && folderTitleRight) {
             const leftName = origFolderName.textContent.split(' ')[0] || 'Folder 1';
             const rightName = modFolderName.textContent.split(' ')[0] || 'Folder 2';
-            folderTitleLeft.innerHTML = `<div style="font-size:0.6rem; opacity:0.6; font-weight:400; letter-spacing:0.05em; margin-bottom:2px;">FOLDER 1</div><div style="color:var(--text-primary); text-align: left;"><span style="opacity:0.5;">/</span> ${leftName}</div>`;
-            folderTitleRight.innerHTML = `<div style="font-size:0.6rem; opacity:0.6; font-weight:400; letter-spacing:0.05em; margin-bottom:2px;">FOLDER 2</div><div style="color:var(--text-primary); text-align: left;"><span style="opacity:0.5;">/</span> ${rightName}</div>`;
+
+            const buildFolderTitleNode = (container, labelText, folderName) => {
+                container.textContent = '';
+                
+                const labelDiv = document.createElement('div');
+                labelDiv.style.cssText = "font-size:0.6rem; opacity:0.6; font-weight:400; letter-spacing:0.05em; margin-bottom:2px;";
+                labelDiv.textContent = labelText;
+                
+                const pathDiv = document.createElement('div');
+                pathDiv.style.cssText = "color:var(--text-primary); text-align: left;";
+                
+                const slashSpan = document.createElement('span');
+                slashSpan.style.opacity = "0.5";
+                slashSpan.textContent = '/';
+                
+                pathDiv.appendChild(slashSpan);
+                pathDiv.appendChild(document.createTextNode(' ' + folderName));
+                
+                container.appendChild(labelDiv);
+                container.appendChild(pathDiv);
+            };
+
+            buildFolderTitleNode(folderTitleLeft, 'FOLDER 1', leftName);
+            buildFolderTitleNode(folderTitleRight, 'FOLDER 2', rightName);
             if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
         }
 
@@ -1114,11 +1138,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (activeDiffFileName) activeDiffFileName.textContent = fileName || path.split('/').pop();
 
-        // Hide left pane title if inline view activated
-        if (folderDiffEditor && folderToggleInlineBtn.classList.contains('active')) {
-            // Already inline, no need to touch CSS directly since it's hard to sync
-        }
-        
         let origTxt = '', modTxt = '';
         try {
             if (status === 'modified' || status === 'removed') origTxt = await originalFiles.get(path).text();
@@ -1200,12 +1219,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const active = document.querySelector('.tree-item.active .file-path-text');
                 updateEditorLanguage(folderOriginalModel, folderModifiedModel, folderOriginalModel.getValue(), active?.textContent);
             }
-        }
-    });
-
-    themeSelect.addEventListener('change', (e) => {
-        if (typeof window.setDevSuiteTheme === 'function') {
-            window.setDevSuiteTheme(e.target.value);
         }
     });
 

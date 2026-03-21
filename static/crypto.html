@@ -271,7 +271,8 @@
         /* Small copy icon */
         .copy-icon { width:13px;height:13px;display:inline-block;vertical-align:middle; }
     </style>
-
+</head>
+<body>
 
 <div id="toast-container"></div>
 
@@ -562,7 +563,7 @@
 </main>
 
 <!-- CryptoJS for MD5, SHA-1, legacy AES CBC -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<script src="/static/crypto-js.min.js"></script>
 
 <script>
 (function() {
@@ -573,7 +574,14 @@ function toast(msg, type='info', ms=2800) {
     const c = document.getElementById('toast-container');
     const el = document.createElement('div');
     el.className = `toast ${type}`;
-    el.innerHTML = `<span>${msg}</span><button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+    const span = document.createElement('span');
+    span.textContent = msg;
+    const btn = document.createElement('button');
+    btn.className = 'toast-close';
+    btn.onclick = function() { this.parentElement.remove(); };
+    btn.textContent = '✕';
+    el.appendChild(span);
+    el.appendChild(btn);
     c.appendChild(el);
     setTimeout(() => { el.classList.add('hide'); setTimeout(() => el.remove(), 300); }, ms);
 }
@@ -670,8 +678,13 @@ document.getElementById('hash-run-btn').addEventListener('click', async () => {
 
         toast('Hashes generated', 'success', 2000);
     } catch(e) {
-        container.innerHTML = `<div style="padding:1rem;color:var(--crypto-red);">Error: ${e.message}</div>`;
-        toast('Hash error: ' + e.message, 'error');
+        container.innerHTML = '';
+        const errDiv = document.createElement('div');
+        errDiv.style.cssText = 'padding:1rem;color:var(--crypto-red);';
+        errDiv.textContent = 'Error: ' + e.message;
+        container.appendChild(errDiv);
+        console.error('Hash error:', e);
+        toast('Hash error', 'error');
     }
 });
 
@@ -684,7 +697,11 @@ const aesOutput = document.getElementById('aes-output');
 const aesStatus = document.getElementById('aes-status');
 
 function setAesStatus(text, type) {
-    aesStatus.innerHTML = `<span class="badge-${type}">${text}</span>`;
+    aesStatus.innerHTML = '';
+    const span = document.createElement('span');
+    span.className = `badge-${type}`;
+    span.textContent = text;
+    aesStatus.appendChild(span);
 }
 
 document.getElementById('aes-paste-btn').addEventListener('click', async () => {
@@ -713,7 +730,8 @@ document.getElementById('aes-encrypt-btn').addEventListener('click', () => {
         toast('Encrypted!', 'success');
     } catch(e) {
         setAesStatus('Error', 'err');
-        toast('Encrypt error: ' + e.message, 'error');
+        console.error('Encrypt error:', e);
+        toast('Encrypt error', 'error');
     }
 });
 
@@ -741,7 +759,8 @@ document.getElementById('aes-decrypt-btn').addEventListener('click', () => {
     } catch(e) {
         setAesStatus('Failed ✗', 'err');
         aesOutput.value = '';
-        toast('Decrypt error: ' + e.message, 'error');
+        console.error('Decrypt error:', e);
+        toast('Decrypt error', 'error');
     }
 });
 
@@ -801,7 +820,8 @@ document.getElementById('rsa-gen-btn').addEventListener('click', async () => {
         toast('RSA keypair generated!', 'success');
     } catch(e) {
         rsaGenStatus.innerHTML = `<span class="badge-err">Error</span>`;
-        toast('Keygen error: ' + e.message, 'error');
+        console.error('Keygen error:', e);
+        toast('Keygen error', 'error');
     }
 });
 
@@ -831,7 +851,8 @@ document.getElementById('rsa-encrypt-btn').addEventListener('click', async () =>
         rsaOutput.value = btoa(String.fromCharCode(...new Uint8Array(cipher)));
         toast('Encrypted with public key!', 'success');
     } catch(e) {
-        toast('Encrypt error: ' + e.message, 'error');
+        console.error('Encrypt error:', e);
+        toast('Encrypt error', 'error');
     }
 });
 
@@ -845,7 +866,8 @@ document.getElementById('rsa-decrypt-btn').addEventListener('click', async () =>
         rsaOutput.value = new TextDecoder().decode(plain);
         toast('Decrypted with private key!', 'success');
     } catch(e) {
-        toast('Decrypt error: ' + e.message, 'error');
+        console.error('Decrypt error:', e);
+        toast('Decrypt error', 'error');
     }
 });
 
@@ -880,7 +902,8 @@ document.getElementById('hmac-sign-btn').addEventListener('click', async () => {
         hmacSig.value = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
         toast('Signed!', 'success');
     } catch(e) {
-        toast('Sign error: ' + e.message, 'error');
+        console.error('Sign error:', e);
+        toast('Sign error', 'error');
     }
 });
 
@@ -903,7 +926,8 @@ document.getElementById('hmac-verify-btn').addEventListener('click', async () =>
             : '✗ Signature is INVALID — key mismatch or message was modified.';
         toast(ok ? 'Signature valid ✓' : 'Signature invalid ✗', ok ? 'success' : 'error');
     } catch(e) {
-        toast('Verify error: ' + e.message, 'error');
+        console.error('Verify error:', e);
+        toast('Verify error', 'error');
     }
 });
 
@@ -928,7 +952,11 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
     }
 
     function setB64Status(text, type) {
-        b64Status.innerHTML = `<span class="badge-${type}">${text}</span>`;
+        b64Status.innerHTML = '';
+    const span = document.createElement('span');
+    span.className = `badge-${type}`;
+    span.textContent = text;
+    b64Status.appendChild(span);
     }
 
     function encodeB64(str) {
@@ -958,7 +986,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
             b64Output.value = encodeB64(raw);
             setB64Status('Encoded ✓', 'ok');
             toast('Encoded!', 'success', 1800);
-        } catch(e) { setB64Status('Error', 'err'); toast('Encode error: ' + e.message, 'error'); }
+        } catch(e) { setB64Status('Error', 'err'); console.error('Encode error:', e); toast('Encode error', 'error'); }
     });
 
     document.getElementById('b64-decode-btn').addEventListener('click', () => {
@@ -968,7 +996,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
             b64Output.value = decodeB64(raw);
             setB64Status('Decoded ✓', 'ok');
             toast('Decoded!', 'success', 1800);
-        } catch(e) { setB64Status('Invalid ✗', 'err'); toast('Invalid Base64: ' + e.message, 'error'); }
+        } catch(e) { setB64Status('Invalid ✗', 'err'); console.error('Invalid Base64:', e); toast('Invalid Base64', 'error'); }
     });
 
     document.getElementById('b64-jwt-btn').addEventListener('click', () => {
@@ -986,7 +1014,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
             document.getElementById('b64-jwt-sig').textContent     = parts[2] + '\n(signature — verify server-side)';
             jwtPanel.style.display = 'flex';
             toast('JWT decoded!', 'success');
-        } catch(e) { toast('JWT decode error: ' + e.message, 'error'); }
+        } catch(e) { console.error('JWT decode error:', e); toast('JWT decode error', 'error'); }
     });
 
 

@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/linter.css">
     <script src="/static/theme.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bwip-js/3.4.1/bwip-js-min.js"></script>
+    <script src="/static/bwip-js-min.js"></script>
     <style>
         /* Tool-specific Layout Variables mapped to generic tokens */
         :root {
@@ -356,15 +356,15 @@
                 try {
                     bwipjs.toCanvas('qr-canvas', {
                         bcid: 'qrcode',
-                        text: data.original_url,
+                        text: data.short_url,
                         scale: 4,
                         includetext: false
                     });
                     
-                    // Code128 can get very wide with long URLs, but we will encode the original URL 
+                    // Code128 can get very wide with long URLs, but we will encode the short URL 
                     bwipjs.toCanvas('barcode-canvas', {
                         bcid: 'code128',
-                        text: data.original_url.length > 80 ? data.original_url.substring(0, 80) : data.original_url, 
+                        text: data.short_url, 
                         scale: 2,
                         height: 12,
                         includetext: true,

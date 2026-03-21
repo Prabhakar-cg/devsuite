@@ -379,29 +379,29 @@
 
             <!-- Folder Results -->
             <!-- Folder Results -->
-            <div class="folder-results-container hidden" id="folder-results-container" style="flex-direction: column;">
+            <div class="folder-results-container hidden" id="folder-results-container">
 
                 <!-- Global Folders Title Header -->
-                <div id="folder-diff-titles" class="diff-editor-titles hidden" style="display: flex; background: rgba(10, 14, 30, 0.4); border-bottom: 1px solid var(--glass-border); border-top: 1px solid var(--glass-border); font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); font-family: var(--font-mono); flex-shrink: 0;">
-                    <div class="diff-title-pane" id="folder-title-left" style="flex: 1; padding: 0.4rem 1.5rem; text-align: center; border-right: 1px solid var(--glass-border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Folder 1 (Original)</div>
-                    <div class="diff-title-pane" id="folder-title-right" style="flex: 1; padding: 0.4rem 1.5rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Folder 2 (Modified)</div>
+                <div id="folder-diff-titles" class="diff-editor-titles folder-diff-titles hidden">
+                    <div class="diff-title-pane" id="folder-title-left">Folder 1 (Original)</div>
+                    <div class="diff-title-pane" id="folder-title-right">Folder 2 (Modified)</div>
                 </div>
 
                 <!-- Dual Tree View Layer -->
-                <div class="dual-tree-layer" id="dual-tree-layer" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                <div class="dual-tree-layer" id="dual-tree-layer">
                     <!-- Filter Chips -->
-                    <div class="filter-chips" style="padding: 0.6rem 1rem; border-bottom: 1px solid var(--glass-border); background: rgba(10, 14, 30, 0.2);">
+                    <div class="filter-chips">
                         <span class="filter-chip active-filter" data-filter="all">All</span>
                         <span class="filter-chip modified" data-filter="modified">● Differs</span>
                         <span class="filter-chip added" data-filter="added">● Only F2</span>
                         <span class="filter-chip removed" data-filter="removed">● Only F1</span>
                         <span class="line-count-badge" id="changed-files-count" style="margin-left: auto;">0</span>
                     </div>
-                    <ul id="file-tree" class="dual-file-tree" style="list-style: none; flex: 1; overflow-y: auto; padding: 0; margin: 0;"></ul>
+                    <ul id="file-tree" class="dual-file-tree"></ul>
                 </div>
 
                 <!-- Folder Monaco Editor -->
-                <div class="folder-editor-wrapper hidden" id="folder-editor-wrapper" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="folder-editor-wrapper hidden" id="folder-editor-wrapper">
                     
                     <!-- Folder Diff Stats Bar (hidden initially) -->
                     <div class="stats-bar hidden" id="folder-stats-bar">
@@ -446,7 +446,7 @@
                         </div>
                     </div>
 
-                    <div id="folder-monaco-diff-editor" class="editor-host hidden" style="flex: 1;"></div>
+                    <div id="folder-monaco-diff-editor" class="editor-host hidden"></div>
                 </div>
             </div>
 

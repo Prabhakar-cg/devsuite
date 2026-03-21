@@ -9,6 +9,8 @@ for maximum privacy. The /upload endpoint is a fallback for edge cases.
 import os
 import string
 import secrets
+import json
+import urllib.parse
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -26,8 +28,26 @@ os.makedirs(static_dir, exist_ok=True)
 # Serve static assets (JS, CSS, images) from the /static route
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-# URL Shortener Database (In-memory)
-url_db = {}
+# URL Shortener Database
+DB_FILE = os.path.join(os.path.dirname(__file__), "url_db.json")
+
+def load_db():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            pass
+    return {}
+
+def save_db(db):
+    try:
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(db, f)
+    except Exception:
+        pass
+
+url_db = load_db()
 
 class ShortenRequest(BaseModel):
     url: str
@@ -193,14 +213,27 @@ def shorten_url(req: ShortenRequest, request: Request):
         }
     """
     url = req.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL cannot be empty")
+        
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
         
+    parsed = urllib.parse.urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Invalid URL format")
+
     alphabet = string.ascii_letters + string.digits
-    short_id = "".join(secrets.choice(alphabet) for _ in range(6))
+    for _ in range(10):
+        short_id = "".join(secrets.choice(alphabet) for _ in range(6))
+        if short_id not in url_db:
+            break
+    else:
+        raise HTTPException(status_code=500, detail="Failed to generate unique short ID")
     
-    # Store in memory
+    # Store in memory and persist
     url_db[short_id] = url
+    save_db(url_db)
     
     # Return the full short URL
     base_url = str(request.base_url).rstrip("/")

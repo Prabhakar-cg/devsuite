@@ -25,3 +25,16 @@ __pycache__/
 # Project specific
 db.sqlite3
 *.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribution / build
+dist/
+build/
+*.egg-info/
+
+# DevSuite runtime data (auto-generated, not source code)
+url_db.json

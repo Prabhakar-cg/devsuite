@@ -276,8 +276,14 @@ function applyThemeDOM(theme) {
                 color: ${color} !important;
             }
         `;
+        // Also set inline body styles so external selectors/scripts can read them
+        document.body.style.background = bg;
+        document.body.style.color = color;
     } else {
         dynamicStyle.textContent = '';
+        // Clear inline body styles when reverting to default theme
+        document.body.style.background = '';
+        document.body.style.color = '';
     }
 }
 
