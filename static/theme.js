@@ -232,6 +232,16 @@
     applyThemeDOM(savedTheme);
 })();
 
+/**
+ * Apply the selected visual theme to the document and update an injected dynamic style for body background and text color.
+ *
+ * Recognizes the following theme identifiers:
+ * - "ios-glass": sets `data-theme="ios-glass"` and applies a light blue gradient background with dark text.
+ * - "hc-black": sets `data-theme="high-contrast"` and applies a black background with white text.
+ * - "vs": sets `data-theme="vs"` and applies a white background with dark text.
+ * For unrecognized values the `data-theme` attribute is removed and any dynamic body styles injected by this function are cleared.
+ * @param {string} theme - Theme identifier to apply ("ios-glass", "hc-black", "vs", or other to clear dynamic theme).
+ */
 function applyThemeDOM(theme) {
     document.documentElement.removeAttribute('data-theme');
     
@@ -292,6 +302,14 @@ window.setDevSuiteTheme = function(theme) {
     window.dispatchEvent(new CustomEvent('devsuite-theme-changed', { detail: { theme } }));
 };
 
+/**
+ * Attach change listeners to theme select elements and initialize their values from storage.
+ *
+ * Finds elements matching '.global-theme-select' and '#theme-select', sets each select's value
+ * to the persisted theme from localStorage key 'devsuite-theme' (defaults to 'vs-dark'),
+ * marks selects to avoid duplicate bindings, and registers a 'change' listener that calls
+ * window.setDevSuiteTheme with the newly selected theme.
+ */
 function attachThemeListeners() {
     const themeSelects = document.querySelectorAll('.global-theme-select, #theme-select');
     const savedTheme = localStorage.getItem('devsuite-theme') || 'vs-dark';

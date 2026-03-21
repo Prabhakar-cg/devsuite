@@ -254,7 +254,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
     // DIFF STATS BAR
-    // ==========================================
+    /**
+     * Update the UI's diff statistics (additions, deletions, and number of changes) from a Monaco diff editor.
+     * @param {object} diffEditor - Monaco diff editor instance used to derive line changes.
+     * @param {boolean} [isFolder=false] - When true, update the folder-specific stats elements; otherwise update the text-mode stats elements.
+     */
     function updateDiffStats(diffEditor, isFolder = false) {
         const changes = diffEditor.getLineChanges() || [];
         let additions = 0, deletions = 0;
@@ -526,6 +530,14 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => folderDiffEditor.layout(), 50);
     });
 
+    /**
+     * Initialize the text diff Monaco editor and its models, set the editor language, wire merge controls, and start diff statistics updates.
+     *
+     * If the Monaco environment is not available, shows an error toast and re-enables the compare button instead of initializing.
+     *
+     * @param {string} originalTxt - Initial content for the original (left) side model.
+     * @param {string} modifiedTxt - Initial content for the modified (right) side model.
+     */
     function initTextDiffEditor(originalTxt, modifiedTxt) {
         if (!window.monaco) {
             showError('Editor is still loading — please try again in a moment.');
@@ -566,7 +578,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
     // MERGE ARROWS — Glyph Margin Decorations
-    // ==========================================
+    /**
+     * Adds clickable merge glyphs to a Monaco diff editor and wires handlers to copy individual hunks between sides.
+     *
+     * Sets glyph-margin-related editor options on both original and modified sub-editors, creates and updates glyph decorations
+     * for each line change, and registers mouse handlers that invoke the merge action when a glyph is clicked. Also subscribes
+     * to diff updates to refresh decorations.
+     *
+     * @param {import('monaco-editor').editor.IStandaloneDiffEditor} diffEditor - The Monaco diff editor to augment.
+     */
     function setupFloatingMergeIcons(diffEditor) {
         const origEditor = diffEditor.getOriginalEditor();
         const modEditor = diffEditor.getModifiedEditor();
@@ -577,6 +597,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const origCollection = origEditor.createDecorationsCollection();
         const modCollection = modEditor.createDecorationsCollection();
 
+        /**
+         * Add glyph-margin merge arrow decorations to the diff editor's original and modified panes.
+         *
+         * Scans the current line changes and places a right-arrow glyph on original-side change start lines
+         * and a left-arrow glyph on modified-side change start lines; also ensures the underlying editors'
+         * options support the glyph margin before applying the decorations.
+         */
         function applyDecorations() {
             origEditor.updateOptions({ glyphMargin: true, folding: false, showFoldingControls: 'never', lineDecorationsWidth: 0, renderMarginRevertIcon: false });
             modEditor.updateOptions({ glyphMargin: true, folding: false, showFoldingControls: 'never', lineDecorationsWidth: 0, renderMarginRevertIcon: false });
@@ -917,6 +944,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    /**
+     * Render the folder-diff file tree into the file tree container using the current comparison state and filter.
+     *
+     * Builds a hierarchical, dual-column tree from `fileDiffStatusMap`, omitting unchanged files and applying
+     * `currentFolderFilter`. Folder nodes display aggregate statuses (added/removed/mixed) and are expandable;
+     * file rows show status indicators in left/right columns and are clickable to open the file diff
+     * (calls `openFileDiff(fullPath, status, name)`). Updates the visible changed files count and shows a
+     * friendly message when no differences match the current filter.
+     */
     function renderFileTree() {
         fileTreeEl.innerHTML = '';
         const paths = Array.from(fileDiffStatusMap.keys()).sort();
@@ -1059,6 +1095,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Open and display a file pair in the folder diff editor and switch the UI to the folder editor view.
+     *
+     * Loads the original and/or modified file contents according to `status`, updates the active filename shown
+     * in the folder UI, and either initializes the folder diff editor or updates its existing models and language.
+     *
+     * @param {string} path - Relative path of the file within the compared folders.
+     * @param {'added'|'removed'|'modified'|'unchanged'} status - Diff status that determines which side(s) to load.
+     * @param {string} [fileName] - Optional display name for the active file; if omitted, the basename of `path` is used.
+     */
     async function openFileDiff(path, status, fileName = '') {
         if (dualTreeLayer) dualTreeLayer.classList.add('hidden'); // switch layout
         if (folderEditorWrapper) folderEditorWrapper.classList.remove('hidden');
@@ -1091,6 +1137,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Initialize and display the folder-mode Monaco diff editor for a given file path.
+     *
+     * Creates and shows folder editor UI elements, constructs original and modified Monaco models
+     * from the provided texts, attaches them to a diff editor, applies language detection based
+     * on the text and path, enables merge glyphs, and registers a diff-update hook to refresh
+     * folder diff statistics.
+     *
+     * @param {string} origTxt - The original file contents (may be empty or null).
+     * @param {string} modTxt - The modified file contents (may be empty or null).
+     * @param {string} path - The file path or name used as a hint for language detection.
+     */
     function initFolderDiffEditor(origTxt, modTxt, path) {
         if (folderEditorWrapper) folderEditorWrapper.classList.remove('hidden');
         if (folderEditorHost) folderEditorHost.classList.remove('hidden');
@@ -1211,6 +1269,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (textDiffEditor) textDiffEditor.layout();
         if (folderDiffEditor) folderDiffEditor.layout();
     });
+    /**
+     * Activates the tab specified by the page URL's `tab` query parameter, if present.
+     *
+     * Reads the `tab` value from the current URL (e.g. `?tab=text-diff`), finds the corresponding
+     * element matching `.tab-btn[data-tab="<value>"]`, and triggers a click on it to switch tabs.
+     */
     function applyTabFromUrl() {
         const params = new URLSearchParams(window.location.search);
         const tab = params.get('tab');
