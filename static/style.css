@@ -245,22 +245,61 @@ body>* {
     font-weight: 500;
 }
 
-/* Keyboard shortcut badge — neumorphic pill */
-.kbd-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    background: var(--bg-neu);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 0.68rem;
+/* Specific icon colors — overrides for this page only */
+.tool-icon-indigo { background: linear-gradient(135deg, #6366f1, #3b82f6); box-shadow: 0 0 16px rgba(99, 102, 241, 0.4); }
+.tool-icon-amber  { background: linear-gradient(135deg, #d97706, #f59e0b); box-shadow: 0 0 16px rgba(245, 158, 11, 0.4); }
+.tool-icon-emerald { background: linear-gradient(135deg, #059669, #10b981); box-shadow: 0 0 16px rgba(16, 185, 129, 0.4); }
+
+
+
+/* ---- Folder Diff Layout Classes (extracted from index.html inline styles) ---- */
+.folder-results-container { flex-direction: column; }
+
+.folder-diff-titles {
+    display: flex;
+    background: rgba(10, 14, 30, 0.4);
+    border-bottom: 1px solid var(--glass-border);
+    border-top: 1px solid var(--glass-border);
+    font-size: 0.72rem;
+    font-weight: 600;
     color: var(--text-secondary);
     font-family: var(--font-mono);
-    white-space: nowrap;
-    font-weight: 500;
-    box-shadow: var(--neu-flat);
+    flex-shrink: 0;
 }
+
+.folder-diff-titles .diff-title-pane {
+    flex: 1;
+    padding: 0.4rem 1.5rem;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.folder-diff-titles .diff-title-pane:first-child {
+    border-right: 1px solid var(--glass-border);
+}
+
+.dual-tree-layer {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.filter-chips {
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(10, 14, 30, 0.2);
+}
+
+.dual-file-tree { list-style: none; flex: 1; overflow-y: auto; padding: 0; margin: 0; }
+
+.folder-editor-wrapper { flex: 1; display: flex; flex-direction: column; }
+
+.editor-host { flex: 1; }
+
+
 
 /* ---- Header controls ---- */
 .header-controls {
@@ -1139,6 +1178,117 @@ textarea:focus {
     padding: 0.35rem 0;
 }
 
+/* Tree Hierarchy */
+.tree-node-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.tree-folder-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    cursor: pointer;
+    font-size: 0.77rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+    border-left: 3px solid transparent;
+}
+
+.tree-folder-header:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+}
+
+.tree-folder-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+    opacity: 0.6;
+}
+
+.tree-node-container.expanded > .tree-folder-header .tree-folder-icon {
+    transform: rotate(90deg);
+}
+
+.tree-folder-children {
+    list-style: none;
+    padding-left: 0.9rem; /* subtle indentation */
+    display: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    margin-left: 1.2rem;
+}
+
+.tree-node-container.expanded > .tree-folder-children {
+    display: block;
+}
+
+.tree-status-badge {
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    margin-left: auto;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.tree-status-badge.added {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--green);
+}
+
+.tree-status-badge.removed {
+    background: rgba(244, 63, 94, 0.15);
+    color: var(--red);
+}
+
+/* Dual Tree Architecture */
+.dual-tree-row {
+    display: flex;
+    width: 100%;
+    font-size: 0.77rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+}
+.dual-tree-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+.dual-tree-row.active {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--accent-2);
+}
+
+.dual-tree-cell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0.9rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0;
+    gap: 0.5rem;
+}
+.dual-tree-cell.left-cell {
+    border-right: 1px solid var(--glass-border);
+}
+.dual-tree-cell.empty-cell {
+    visibility: hidden; /* Takes up space, completely empty visuals */
+}
+
+/* Base override for default single tree to clean up CSS */
 .tree-item {
     display: flex;
     align-items: center;

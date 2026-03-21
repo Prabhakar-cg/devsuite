@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Suite — DevSuite</title>
+    <meta name="description" content="Hash Generator, AES Encryption, RSA Keygen, and HMAC Signing. 100% in-browser, no data sent to server.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/linter.css">
+    <script src="/static/theme.js"></script>
+    <style>
+        /* ══════════════════════════════════════════
+           LOCAL DESIGN TOKENS — 4-theme system
+           Default = Midnight Dark / High Contrast
+        ══════════════════════════════════════════ */
+        :root {
+            --crypto-purple:      #a855f7;
+            --crypto-purple-soft: rgba(168,85,247,0.15);
+            --crypto-green:       #10b981;
+            --crypto-green-soft:  rgba(16,185,129,0.12);
+            --crypto-red:         #f43f5e;
+            --crypto-red-soft:    rgba(244,63,94,0.12);
+
+            /* surface colours — dark default */
+            --cs-bg-tabs:      rgba(10,14,30,0.55);
+            --cs-bg-controls:  rgba(10,14,30,0.3);
+            --cs-bg-col:       transparent;
+            --cs-bg-col-hdr:   rgba(10,14,30,0.35);
+            --cs-bg-textarea:  transparent;
+            --cs-bg-textarea-ro: transparent;
+            --cs-bg-input:     rgba(255,255,255,0.05);
+            --cs-bg-hash:      transparent;
+            --cs-bg-hash-hover:rgba(255,255,255,0.025);
+
+            /* text colours — dark default */
+            --cs-text:         #e2e8f0;
+            --cs-text-ro:      #94a3b8;
+            --cs-text-ph:      rgba(148,163,184,0.55);
+            --cs-text-hdr:     #64748b;
+            --cs-text-label:   #64748b;
+            --cs-text-hash:    #cbd5e1;
+            --cs-text-algo:    #a855f7;
+            --cs-text-key:     #94a3b8;
+
+            /* border */
+            --cs-border:       rgba(255,255,255,0.07);
+            --cs-border-input: rgba(255,255,255,0.12);
+
+            /* tab active */
+            --cs-tab-inactive: #64748b;
+            --cs-tab-active:   #a855f7;
+        }
+
+        /* ── Clean Light ── */
+        html[data-theme="vs"] {
+            --cs-bg-tabs:       #f1f5f9;
+            --cs-bg-controls:   #e2e8f0;
+            --cs-bg-col:        #ffffff;
+            --cs-bg-col-hdr:    #f8fafc;
+            --cs-bg-textarea:   #ffffff;
+            --cs-bg-textarea-ro:#f8fafc;
+            --cs-bg-input:      #ffffff;
+            --cs-bg-hash:       #ffffff;
+            --cs-bg-hash-hover: #f1f5f9;
+
+            --cs-text:         #0f172a;
+            --cs-text-ro:      #334155;
+            --cs-text-ph:      #94a3b8;
+            --cs-text-hdr:     #475569;
+            --cs-text-label:   #475569;
+            --cs-text-hash:    #0f172a;
+            --cs-text-algo:    #7c3aed;
+            --cs-text-key:     #334155;
+
+            --cs-border:       rgba(0,0,0,0.08);
+            --cs-border-input: rgba(0,0,0,0.15);
+            --cs-tab-inactive: #475569;
+            --cs-tab-active:   #7c3aed;
+        }
+
+        /* ── Frosted Glass ── */
+        html[data-theme="ios-glass"] {
+            --cs-bg-tabs:       rgba(200,220,255,0.45);
+            --cs-bg-controls:   rgba(210,225,255,0.5);
+            --cs-bg-col:        rgba(255,255,255,0.4);
+            --cs-bg-col-hdr:    rgba(220,235,255,0.55);
+            --cs-bg-textarea:   rgba(255,255,255,0.55);
+            --cs-bg-textarea-ro:rgba(220,235,255,0.6);
+            --cs-bg-input:      rgba(255,255,255,0.65);
+            --cs-bg-hash:       rgba(255,255,255,0.4);
+            --cs-bg-hash-hover: rgba(210,228,255,0.7);
+
+            --cs-text:         #1c1c1e;
+            --cs-text-ro:      #2c2c3e;
+            --cs-text-ph:      rgba(60,60,100,0.45);
+            --cs-text-hdr:     rgba(60,60,100,0.65);
+            --cs-text-label:   rgba(60,60,100,0.65);
+            --cs-text-hash:    #1c1c1e;
+            --cs-text-algo:    #5b21b6;
+            --cs-text-key:     #2c2c3e;
+
+            --cs-border:       rgba(99,130,255,0.18);
+            --cs-border-input: rgba(99,130,255,0.25);
+            --cs-tab-inactive: rgba(60,60,100,0.65);
+            --cs-tab-active:   #5b21b6;
+        }
+
+        /* ── High Contrast ── */
+        html[data-theme="high-contrast"] {
+            --cs-text:         #ffffff;
+            --cs-text-ro:      #cccccc;
+            --cs-text-ph:      #888888;
+            --cs-text-hdr:     #aaaaaa;
+            --cs-text-label:   #aaaaaa;
+            --cs-text-hash:    #ffffff;
+            --cs-text-algo:    #c084fc;
+            --cs-text-key:     #cccccc;
+            --cs-border:       rgba(255,255,255,0.2);
+            --cs-border-input: rgba(255,255,255,0.25);
+        }
+
+        /* ══════════════════════════════════════════
+           LAYOUT
+        ══════════════════════════════════════════ */
+
+        /* ── Tab bar ── */
+        .crypto-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--cs-border);
+            background: var(--cs-bg-tabs);
+            flex-shrink: 0;
+            overflow-x: auto;
+        }
+        .crypto-tab {
+            padding: 0.65rem 1.35rem;
+            font-size: 0.78rem; font-weight: 600;
+            color: var(--cs-tab-inactive);
+            cursor: pointer; border: none; background: none;
+            font-family: var(--font-sans);
+            border-bottom: 2px solid transparent;
+            transition: color 0.15s, border-color 0.15s;
+            display: flex; align-items: center; gap: 0.45rem;
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .crypto-tab:hover  { color: var(--cs-text); }
+        .crypto-tab.active { color: var(--cs-tab-active); border-bottom-color: var(--cs-tab-active); }
+        .crypto-tab .tab-icon { font-size: 1rem; }
+
+        .crypto-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+        .crypto-panel.active { display: flex; }
+
+        /* ── Section layout ── */
+        .cs-body {
+            display: flex; flex: 1; gap: 0; overflow: hidden; min-height: 0;
+        }
+        .cs-col {
+            display: flex; flex-direction: column; flex: 1;
+            border-right: 1px solid var(--cs-border); overflow: hidden;
+            background: var(--cs-bg-col);
+        }
+        .cs-col:last-child { border-right: none; }
+
+        .cs-col-header {
+            padding: 0.5rem 1rem;
+            background: var(--cs-bg-col-hdr);
+            border-bottom: 1px solid var(--cs-border);
+            font-size: 0.67rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--cs-text-hdr);
+            display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .cs-textarea {
+            flex: 1; resize: none; border: none; outline: none;
+            background: var(--cs-bg-textarea);
+            font-family: var(--font-mono); font-size: 0.84rem; line-height: 1.7;
+            color: var(--cs-text);
+            padding: 0.85rem 1rem; min-height: 0;
+        }
+        .cs-textarea::placeholder { color: var(--cs-text-ph); opacity: 1; }
+        .cs-textarea::selection   { background: rgba(168,85,247,0.35); color: var(--cs-text); }
+        .cs-textarea:read-only    { color: var(--cs-text-ro); background: var(--cs-bg-textarea-ro); }
+
+        /* ── Controls bar ── */
+        .cs-controls {
+            padding: 0.65rem 1rem; display: flex; align-items: center; gap: 0.5rem;
+            border-bottom: 1px solid var(--cs-border);
+            background: var(--cs-bg-controls); flex-wrap: wrap; flex-shrink: 0;
+        }
+        .cs-label {
+            font-size: 0.7rem; font-weight: 600; color: var(--cs-text-label);
+            text-transform: uppercase; letter-spacing: 0.06em;
+        }
+        .cs-input {
+            background: var(--cs-bg-input); border: 1px solid var(--cs-border-input);
+            border-radius: 6px; padding: 0.3rem 0.65rem;
+            font-family: var(--font-mono); font-size: 0.78rem; color: var(--cs-text);
+            outline: none; transition: border-color 0.15s;
+        }
+        .cs-input::placeholder { color: var(--cs-text-ph); opacity: 1; }
+        .cs-input:focus { border-color: var(--cs-tab-active); }
+        .cs-select {
+            background: var(--cs-bg-input); border: 1px solid var(--cs-border-input);
+            border-radius: 6px; padding: 0.3rem 0.55rem;
+            font-family: var(--font-sans); font-size: 0.75rem; color: var(--cs-text);
+            outline: none; cursor: pointer;
+        }
+        .cs-spacer { flex: 1; }
+
+        /* ── Hash grid ── */
+        .hash-results {
+            display: flex; flex-direction: column; gap: 0;
+            flex: 1; overflow-y: auto; background: var(--cs-bg-hash);
+        }
+        .hash-row {
+            display: flex; align-items: stretch;
+            border-bottom: 1px solid var(--cs-border);
+            transition: background 0.12s;
+        }
+        .hash-row:hover { background: var(--cs-bg-hash-hover); }
+        .hash-algo {
+            width: 90px; flex-shrink: 0; padding: 0.7rem 0.85rem;
+            font-size: 0.67rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; color: var(--cs-text-algo);
+            border-right: 1px solid var(--cs-border);
+            display: flex; align-items: center;
+        }
+        .hash-val {
+            flex: 1; padding: 0.7rem 1rem;
+            font-family: var(--font-mono); font-size: 0.75rem;
+            color: var(--cs-text-hash); word-break: break-all; line-height: 1.5;
+            display: flex; align-items: center;
+        }
+        .hash-val.empty { color: var(--cs-text-ph); font-style: italic; font-family: var(--font-sans); }
+        .hash-copy {
+            flex-shrink: 0; padding: 0 0.75rem;
+            background: none; border: none; cursor: pointer;
+            color: var(--cs-text-hdr); font-size: 0.7rem;
+            transition: color 0.15s; display: flex; align-items: center;
+        }
+        .hash-copy:hover { color: var(--cs-tab-active); }
+
+        /* ── Status badges ── */
+        .badge-ok   { background: var(--crypto-green-soft); color: var(--crypto-green); padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; }
+        .badge-err  { background: var(--crypto-red-soft);   color: var(--crypto-red);   padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; }
+        .badge-info { background: var(--crypto-purple-soft); color: var(--crypto-purple); padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; }
+
+        /* ── RSA key boxes ── */
+        .rsa-key-grid { display: flex; flex: 1; gap: 0; min-height: 0; overflow: hidden; }
+        .rsa-key-pane { display: flex; flex-direction: column; flex: 1; border-right: 1px solid var(--cs-border); overflow: hidden; background: var(--cs-bg-col); }
+        .rsa-key-pane:last-child { border-right: none; }
+        .key-textarea {
+            flex: 1; resize: none; border: none; outline: none;
+            background: var(--cs-bg-textarea-ro);
+            font-family: var(--font-mono); font-size: 0.72rem; line-height: 1.5;
+            color: var(--cs-text-key); padding: 0.75rem 1rem; word-break: break-all;
+        }
+        .key-textarea::selection { background: rgba(168,85,247,0.35); color: var(--cs-text); }
+
+        /* ── Verify result banner ── */
+        .verify-banner {
+            margin: 0.65rem 1rem; border-radius: 8px; padding: 0.65rem 1rem;
+            font-size: 0.8rem; font-weight: 600; display: none;
+        }
+        .verify-banner.ok  { display: block; background: var(--crypto-green-soft); color: var(--crypto-green); }
+        .verify-banner.err { display: block; background: var(--crypto-red-soft);   color: var(--crypto-red); }
+
+        /* Small copy icon */
+        .copy-icon { width:13px;height:13px;display:inline-block;vertical-align:middle; }
+    </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- HEADER -->
+<header class="tool-header">
+    <div class="header-left">
+        <a href="/" class="back-link">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            DevSuite
+        </a>
+        <div class="tool-identity">
+            <div class="tool-icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 0 16px rgba(168,85,247,0.4);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <span class="tool-name">Crypto <span class="tool-accent">Suite</span></span>
+            <span class="tool-version">v1.0</span>
+        </div>
+    </div>
+    <div class="header-right">
+        <span class="line-badge" style="background:var(--crypto-purple-soft);color:var(--crypto-purple);">🔒 100% In-Browser</span>
+        <select class="global-theme-select" aria-label="DevSuite Theme">
+            <option value="vs-dark">Midnight Dark</option>
+            <option value="vs">Clean Light</option>
+            <option value="hc-black">High Contrast</option>
+            <option value="ios-glass">Frosted Glass</option>
+        </select>
+    </div>
+</header>
+
+<!-- TAB BAR -->
+<div class="crypto-tabs" id="crypto-tabs">
+    <button class="crypto-tab active" data-tab="hash">
+        <span class="tab-icon">#</span> Hash Generator
+    </button>
+    <button class="crypto-tab" data-tab="aes">
+        <span class="tab-icon">🔐</span> AES Encrypt / Decrypt
+    </button>
+    <button class="crypto-tab" data-tab="rsa">
+        <span class="tab-icon">🗝️</span> RSA Keygen
+    </button>
+    <button class="crypto-tab" data-tab="hmac">
+        <span class="tab-icon">✍️</span> HMAC Signer
+    </button>
+    <button class="crypto-tab" data-tab="base64">
+        <span class="tab-icon">🔀</span> Base64 / JWT
+    </button>
+</div>
+
+<main class="tool-main" style="overflow:hidden;">
+
+    <!-- ══════════════════════════════════════════════
+         PANEL 1 — HASH GENERATOR
+    ══════════════════════════════════════════════ -->
+    <div class="crypto-panel active" id="panel-hash">
+        <div class="cs-controls">
+            <span class="cs-label">Input text or paste anything below</span>
+            <div class="cs-spacer"></div>
+            <button class="btn btn-primary" id="hash-run-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Generate Hashes
+            </button>
+            <button class="btn btn-ghost" id="hash-clear-btn">Clear</button>
+        </div>
+
+        <div class="cs-body" style="flex-direction:column;">
+            <!-- Input textarea -->
+            <div style="flex-shrink:0; border-bottom:1px solid var(--glass-border); max-height:35vh; display:flex; flex-direction:column;">
+                <div class="cs-col-header">
+                    Input
+                    <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="hash-paste-btn">📋 Paste</button>
+                </div>
+                <textarea id="hash-input" class="cs-textarea" placeholder="Enter any text to hash…" style="min-height:120px; max-height:30vh;"></textarea>
+            </div>
+
+            <!-- Results -->
+            <div class="hash-results" id="hash-results">
+                <div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:0.85rem;">
+                    Enter text above and click <strong style="color:var(--text-secondary)">Generate Hashes</strong> to see results.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PANEL 2 — AES ENCRYPT / DECRYPT
+    ══════════════════════════════════════════════ -->
+    <div class="crypto-panel" id="panel-aes">
+        <div class="cs-controls">
+            <span class="cs-label">Key:</span>
+            <input type="text" class="cs-input" id="aes-key" placeholder="Secret key (any length)" style="flex:1;max-width:320px;">
+
+            <span class="cs-label" style="margin-left:0.5rem;">Mode:</span>
+            <select class="cs-select" id="aes-mode">
+                <option value="CBC">AES-256-CBC</option>
+                <option value="ECB">AES-256-ECB</option>
+                <option value="CTR">AES-256-CTR</option>
+            </select>
+
+            <div class="cs-spacer"></div>
+            <button class="btn btn-primary" id="aes-encrypt-btn">🔐 Encrypt</button>
+            <button class="btn btn-ghost" id="aes-decrypt-btn">🔓 Decrypt</button>
+        </div>
+
+        <div class="cs-body">
+            <div class="cs-col">
+                <div class="cs-col-header">
+                    Plaintext Input
+                    <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="aes-paste-btn">📋 Paste</button>
+                </div>
+                <textarea id="aes-input" class="cs-textarea" placeholder="Enter text to encrypt…"></textarea>
+            </div>
+            <div class="cs-col">
+                <div class="cs-col-header">
+                    Output
+                    <span id="aes-status"></span>
+                </div>
+                <textarea id="aes-output" class="cs-textarea" placeholder="Result will appear here…" readonly style="color:var(--text-secondary);"></textarea>
+                <div style="padding:0.5rem 1rem; border-top: 1px solid var(--glass-border); display:flex; gap:0.5rem; flex-shrink:0;">
+                    <button class="btn btn-ghost" style="font-size:0.75rem;" id="aes-copy-btn">Copy Output</button>
+                    <button class="btn btn-ghost" style="font-size:0.75rem;" id="aes-swap-btn">↕ Swap</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PANEL 3 — RSA KEYGEN
+    ══════════════════════════════════════════════ -->
+    <div class="crypto-panel" id="panel-rsa">
+        <div class="cs-controls">
+            <span class="cs-label">Key Size:</span>
+            <select class="cs-select" id="rsa-keysize">
+                <option value="2048">2048-bit</option>
+                <option value="4096">4096-bit</option>
+            </select>
+
+            <button class="btn btn-primary" id="rsa-gen-btn">⚙️ Generate Keypair</button>
+            <span id="rsa-gen-status" style="font-size:0.75rem;color:var(--text-muted);"></span>
+
+            <div class="cs-spacer"></div>
+            <button class="btn btn-ghost" id="rsa-encrypt-btn" disabled>🔐 Encrypt with Public Key</button>
+            <button class="btn btn-ghost" id="rsa-decrypt-btn" disabled>🔓 Decrypt with Private Key</button>
+        </div>
+
+        <div class="rsa-key-grid" style="flex-shrink:0;max-height:38%;">
+            <div class="rsa-key-pane">
+                <div class="cs-col-header">
+                    Public Key (PEM)
+                    <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="rsa-copy-pub">Copy</button>
+                </div>
+                <textarea id="rsa-public-key" class="key-textarea" placeholder="Generate a keypair to see the public key…" readonly></textarea>
+            </div>
+            <div class="rsa-key-pane">
+                <div class="cs-col-header">
+                    Private Key (PEM)
+                    <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="rsa-copy-priv">Copy</button>
+                </div>
+                <textarea id="rsa-private-key" class="key-textarea" placeholder="Generate a keypair to see the private key…" readonly></textarea>
+            </div>
+        </div>
+
+        <div class="cs-body" style="border-top:1px solid var(--glass-border);">
+            <div class="cs-col">
+                <div class="cs-col-header">Plaintext / Ciphertext Input</div>
+                <textarea id="rsa-input" class="cs-textarea" placeholder="Enter plaintext to encrypt, or base64 ciphertext to decrypt…"></textarea>
+            </div>
+            <div class="cs-col">
+                <div class="cs-col-header">
+                    Output
+                    <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="rsa-copy-output">Copy</button>
+                </div>
+                <textarea id="rsa-output" class="cs-textarea" placeholder="Output will appear here…" readonly style="color:var(--text-secondary);"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PANEL 4 — HMAC SIGNER
+    ══════════════════════════════════════════════ -->
+    <div class="crypto-panel" id="panel-hmac">
+        <div class="cs-controls">
+            <span class="cs-label">Secret Key:</span>
+            <input type="text" class="cs-input" id="hmac-key" placeholder="Enter your HMAC secret" style="flex:1;max-width:320px;">
+
+            <span class="cs-label" style="margin-left:0.5rem;">Algorithm:</span>
+            <select class="cs-select" id="hmac-algo">
+                <option value="SHA-256">HMAC-SHA256</option>
+                <option value="SHA-512">HMAC-SHA512</option>
+                <option value="SHA-1">HMAC-SHA1</option>
+            </select>
+
+            <div class="cs-spacer"></div>
+            <button class="btn btn-primary" id="hmac-sign-btn">✍️ Sign</button>
+            <button class="btn btn-ghost" id="hmac-verify-btn">✅ Verify</button>
+        </div>
+
+        <div class="cs-body">
+            <div class="cs-col">
+                <div class="cs-col-header">Message</div>
+                <textarea id="hmac-message" class="cs-textarea" placeholder="Enter the message to sign or verify…"></textarea>
+            </div>
+            <div class="cs-col" style="max-width:55%;">
+                <div class="cs-col-header">
+                    Signature (Hex)
+                    <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="hmac-copy-sig">Copy</button>
+                </div>
+                <textarea id="hmac-signature" class="cs-textarea" placeholder="Signature will appear here after signing.\nPaste an existing signature here to verify." style="color:var(--text-secondary);"></textarea>
+                <div id="hmac-verify-banner" class="verify-banner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         PANEL 5 — BASE64 / JWT
+    ══════════════════════════════════════════════ -->
+    <div class="crypto-panel" id="panel-base64">
+        <div class="cs-controls">
+            <button class="btn btn-primary" id="b64-encode-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+                Encode
+            </button>
+            <button class="btn btn-ghost" id="b64-decode-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="7 1 3 5 7 9"/><path d="M21 11V9a4 4 0 00-4-4H3"/><polyline points="17 23 21 19 17 15"/><path d="M3 13v2a4 4 0 004 4h14"/></svg>
+                Decode
+            </button>
+
+            <label class="cs-label" style="margin-left:0.25rem;">Mode:</label>
+            <select class="cs-select" id="b64-mode-select" title="Standard uses +/= chars. URL-safe replaces them with - and _ for embedding in URLs.">
+                <option value="standard">Standard</option>
+                <option value="url">URL-safe (JWT-friendly)</option>
+            </select>
+
+            <button class="btn btn-ghost" id="b64-jwt-btn" title="Decode as JWT">
+                🔐 JWT Decode
+            </button>
+
+            <div class="cs-spacer"></div>
+
+            <button class="btn btn-ghost" id="b64-paste-btn">📋 Paste</button>
+            <button class="btn btn-ghost" id="b64-swap-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><line x1="3" y1="5" x2="21" y2="5"/><polyline points="7 23 3 19 7 15"/><line x1="21" y1="19" x2="3" y2="19"/></svg>
+                Swap
+            </button>
+            <button class="btn btn-ghost" id="b64-copy-btn">Copy Output</button>
+            <button class="btn btn-ghost" id="b64-clear-btn">Clear</button>
+        </div>
+
+        <div class="cs-body">
+            <div class="cs-col">
+                <div class="cs-col-header">Input</div>
+                <textarea id="b64-input" class="cs-textarea" placeholder="Enter text to encode, or a Base64 string to decode…"></textarea>
+            </div>
+            <div class="cs-col">
+                <div class="cs-col-header">
+                    Output
+                    <span id="b64-status"></span>
+                </div>
+                <textarea id="b64-output" class="cs-textarea" placeholder="Output will appear here…" readonly style="color:var(--text-secondary);"></textarea>
+            </div>
+        </div>
+
+        <!-- JWT breakdown panel -->
+        <div id="b64-jwt-panel" style="display:none; flex-shrink:0; border-top:1px solid var(--glass-border); max-height:220px; overflow:hidden; flex-direction:column;">
+            <div style="padding:0.35rem 1rem; background:rgba(15,20,42,0.65); border-bottom:1px solid var(--glass-border); font-size:0.67rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--crypto-purple); display:flex; align-items:center; justify-content:space-between;">
+                <span>JWT Decoded</span>
+                <button onclick="document.getElementById('b64-jwt-panel').style.display='none'" class="btn btn-ghost" style="padding:1px 6px;font-size:0.7rem;">✕</button>
+            </div>
+            <div style="display:flex;flex:1;overflow:hidden;">
+                <div style="flex:1;overflow:auto;padding:0.5rem 0.85rem;border-right:1px solid var(--glass-border);font-family:var(--font-mono);font-size:0.72rem;line-height:1.5;white-space:pre-wrap;word-break:break-all;">
+                    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#fb923c;margin-bottom:4px;">Header</div>
+                    <div id="b64-jwt-header" style="color:#fb923c;"></div>
+                </div>
+                <div style="flex:1;overflow:auto;padding:0.5rem 0.85rem;border-right:1px solid var(--glass-border);font-family:var(--font-mono);font-size:0.72rem;line-height:1.5;white-space:pre-wrap;word-break:break-all;">
+                    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#34d399;margin-bottom:4px;">Payload</div>
+                    <div id="b64-jwt-payload" style="color:#34d399;"></div>
+                </div>
+                <div style="flex:1;overflow:auto;padding:0.5rem 0.85rem;font-family:var(--font-mono);font-size:0.72rem;line-height:1.5;white-space:pre-wrap;word-break:break-all;">
+                    <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#a78bfa;margin-bottom:4px;">Signature</div>
+                    <div id="b64-jwt-sig" style="color:var(--text-muted);font-size:0.65rem;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- CryptoJS for MD5, SHA-1, legacy AES CBC -->
+<script src="/static/crypto-js.min.js"></script>
+
+<script>
+(function() {
+'use strict';
+
+// ── Toast ──
+function toast(msg, type='info', ms=2800) {
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    const span = document.createElement('span');
+    span.textContent = msg;
+    const btn = document.createElement('button');
+    btn.className = 'toast-close';
+    btn.onclick = function() { this.parentElement.remove(); };
+    btn.textContent = '✕';
+    el.appendChild(span);
+    el.appendChild(btn);
+    c.appendChild(el);
+    setTimeout(() => { el.classList.add('hide'); setTimeout(() => el.remove(), 300); }, ms);
+}
+
+// ── Tab switching ──
+document.querySelectorAll('.crypto-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.crypto-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.crypto-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    });
+});
+
+// ── Theme select ──
+document.querySelectorAll('.global-theme-select').forEach(sel => {
+    if (window.__themeManager) { sel.value = window.__themeManager.current; }
+    sel.addEventListener('change', () => window.__themeManager?.set(sel.value));
+});
+
+// ════════════════════════════════════════════════
+// HASH GENERATOR
+// ════════════════════════════════════════════════
+const hashInput = document.getElementById('hash-input');
+
+document.getElementById('hash-paste-btn').addEventListener('click', async () => {
+    try { hashInput.value = await navigator.clipboard.readText(); toast('Pasted!', 'success', 1500); }
+    catch { toast('Clipboard access denied', 'warning'); }
+});
+document.getElementById('hash-clear-btn').addEventListener('click', () => {
+    hashInput.value = '';
+    document.getElementById('hash-results').innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-muted);font-size:0.85rem;">Enter text above and click <strong style="color:var(--text-secondary)">Generate Hashes</strong> to see results.</div>';
+});
+
+async function sha(algo, str) {
+    const buf = await crypto.subtle.digest(algo, new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+document.getElementById('hash-run-btn').addEventListener('click', async () => {
+    const text = hashInput.value;
+    if (!text) { toast('Enter some text first', 'warning'); return; }
+
+    const container = document.getElementById('hash-results');
+    container.innerHTML = '<div style="padding:1rem;color:var(--text-muted);font-size:0.8rem;">Computing…</div>';
+
+    try {
+        const [sha256, sha512, sha1] = await Promise.all([
+            sha('SHA-256', text),
+            sha('SHA-512', text),
+            sha('SHA-1', text),
+        ]);
+        const md5 = CryptoJS.MD5(text).toString();
+
+        const results = [
+            { algo: 'MD5',     hash: md5,    note: '⚠ Broken — use for checksums only' },
+            { algo: 'SHA-1',   hash: sha1,   note: '⚠ Deprecated for security use' },
+            { algo: 'SHA-256', hash: sha256, note: '✓ Industry standard' },
+            { algo: 'SHA-512', hash: sha512, note: '✓ High security' },
+        ];
+
+        container.innerHTML = '';
+
+        // Stats row
+        const stats = document.createElement('div');
+        stats.style.cssText = 'padding:0.5rem 1rem; font-size:0.72rem; color:var(--text-muted); border-bottom:1px solid rgba(255,255,255,0.05); display:flex; gap:1rem;';
+        stats.innerHTML = `<span>Input: <strong style="color:var(--text-secondary)">${text.length.toLocaleString()} chars</strong></span><span>Encoding: UTF-8</span>`;
+        container.appendChild(stats);
+
+        results.forEach(r => {
+            const row = document.createElement('div');
+            row.className = 'hash-row';
+            row.innerHTML = `
+                <div class="hash-algo">${r.algo}</div>
+                <div class="hash-val" id="hv-${r.algo}">${r.hash}</div>
+                <button class="hash-copy" title="Copy ${r.algo} hash" data-hash="${r.hash}">
+                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                </button>`;
+            container.appendChild(row);
+
+            // Note row
+            const note = document.createElement('div');
+            note.style.cssText = 'padding:0 0 0.4rem 90px; font-size:0.67rem; color:var(--text-muted); border-bottom:1px solid rgba(255,255,255,0.04);';
+            note.textContent = r.note;
+            container.appendChild(note);
+        });
+
+        container.querySelectorAll('.hash-copy').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                await navigator.clipboard.writeText(btn.dataset.hash);
+                toast('Hash copied!', 'success', 1500);
+            });
+        });
+
+        toast('Hashes generated', 'success', 2000);
+    } catch(e) {
+        container.innerHTML = '';
+        const errDiv = document.createElement('div');
+        errDiv.style.cssText = 'padding:1rem;color:var(--crypto-red);';
+        errDiv.textContent = 'Error: ' + e.message;
+        container.appendChild(errDiv);
+        console.error('Hash error:', e);
+        toast('Hash error', 'error');
+    }
+});
+
+
+// ════════════════════════════════════════════════
+// AES ENCRYPT / DECRYPT  (via CryptoJS)
+// ════════════════════════════════════════════════
+const aesInput  = document.getElementById('aes-input');
+const aesOutput = document.getElementById('aes-output');
+const aesStatus = document.getElementById('aes-status');
+
+function setAesStatus(text, type) {
+    aesStatus.innerHTML = '';
+    const span = document.createElement('span');
+    span.className = `badge-${type}`;
+    span.textContent = text;
+    aesStatus.appendChild(span);
+}
+
+document.getElementById('aes-paste-btn').addEventListener('click', async () => {
+    try { aesInput.value = await navigator.clipboard.readText(); toast('Pasted!', 'success', 1500); }
+    catch { toast('Clipboard access denied', 'warning'); }
+});
+
+document.getElementById('aes-encrypt-btn').addEventListener('click', () => {
+    const key  = document.getElementById('aes-key').value;
+    const mode = document.getElementById('aes-mode').value;
+    const text = aesInput.value;
+    if (!key)  { toast('Enter a secret key', 'warning'); return; }
+    if (!text) { toast('Enter text to encrypt', 'warning'); return; }
+
+    try {
+        let encrypted;
+        if (mode === 'CBC') {
+            encrypted = CryptoJS.AES.encrypt(text, key, { mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
+        } else if (mode === 'ECB') {
+            encrypted = CryptoJS.AES.encrypt(text, key, { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 });
+        } else {
+            encrypted = CryptoJS.AES.encrypt(text, key, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.NoPadding });
+        }
+        aesOutput.value = encrypted.toString();
+        setAesStatus('Encrypted ✓', 'ok');
+        toast('Encrypted!', 'success');
+    } catch(e) {
+        setAesStatus('Error', 'err');
+        console.error('Encrypt error:', e);
+        toast('Encrypt error', 'error');
+    }
+});
+
+document.getElementById('aes-decrypt-btn').addEventListener('click', () => {
+    const key  = document.getElementById('aes-key').value;
+    const mode = document.getElementById('aes-mode').value;
+    const text = aesInput.value.trim();
+    if (!key)  { toast('Enter a secret key', 'warning'); return; }
+    if (!text) { toast('Enter ciphertext to decrypt', 'warning'); return; }
+
+    try {
+        let decrypted;
+        if (mode === 'CBC') {
+            decrypted = CryptoJS.AES.decrypt(text, key, { mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
+        } else if (mode === 'ECB') {
+            decrypted = CryptoJS.AES.decrypt(text, key, { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 });
+        } else {
+            decrypted = CryptoJS.AES.decrypt(text, key, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.NoPadding });
+        }
+        const result = decrypted.toString(CryptoJS.enc.Utf8);
+        if (!result) throw new Error('Wrong key or corrupted ciphertext — decryption returned empty string.');
+        aesOutput.value = result;
+        setAesStatus('Decrypted ✓', 'ok');
+        toast('Decrypted!', 'success');
+    } catch(e) {
+        setAesStatus('Failed ✗', 'err');
+        aesOutput.value = '';
+        console.error('Decrypt error:', e);
+        toast('Decrypt error', 'error');
+    }
+});
+
+document.getElementById('aes-copy-btn').addEventListener('click', async () => {
+    const v = aesOutput.value;
+    if (!v) { toast('Nothing to copy', 'warning'); return; }
+    await navigator.clipboard.writeText(v);
+    toast('Copied!', 'success', 1500);
+});
+
+document.getElementById('aes-swap-btn').addEventListener('click', () => {
+    const tmp = aesInput.value;
+    aesInput.value = aesOutput.value;
+    aesOutput.value = tmp;
+    aesStatus.innerHTML = '';
+});
+
+
+// ════════════════════════════════════════════════
+// RSA KEYGEN  (Web Crypto API — RSA-OAEP)
+// ════════════════════════════════════════════════
+let rsaKeyPair = null;
+
+const rsaGenStatus  = document.getElementById('rsa-gen-status');
+const rsaPublicKey  = document.getElementById('rsa-public-key');
+const rsaPrivateKey = document.getElementById('rsa-private-key');
+const rsaInput      = document.getElementById('rsa-input');
+const rsaOutput     = document.getElementById('rsa-output');
+
+function arrayBufferToPem(buffer, type) {
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const lines = b64.match(/.{1,64}/g).join('\n');
+    return `-----BEGIN ${type}-----\n${lines}\n-----END ${type}-----`;
+}
+
+document.getElementById('rsa-gen-btn').addEventListener('click', async () => {
+    const bits = parseInt(document.getElementById('rsa-keysize').value);
+    rsaGenStatus.textContent = `Generating ${bits}-bit keypair…`;
+    rsaPublicKey.value = '';
+    rsaPrivateKey.value = '';
+    rsaKeyPair = null;
+
+    try {
+        rsaKeyPair = await crypto.subtle.generateKey(
+            { name: 'RSA-OAEP', modulusLength: bits, publicExponent: new Uint8Array([1,0,1]), hash: 'SHA-256' },
+            true, ['encrypt', 'decrypt']
+        );
+        const [pubDer, privDer] = await Promise.all([
+            crypto.subtle.exportKey('spki',  rsaKeyPair.publicKey),
+            crypto.subtle.exportKey('pkcs8', rsaKeyPair.privateKey),
+        ]);
+        rsaPublicKey.value  = arrayBufferToPem(pubDer,  'PUBLIC KEY');
+        rsaPrivateKey.value = arrayBufferToPem(privDer, 'PRIVATE KEY');
+        rsaGenStatus.innerHTML = `<span class="badge-ok">${bits}-bit keypair ready ✓</span>`;
+        document.getElementById('rsa-encrypt-btn').disabled = false;
+        document.getElementById('rsa-decrypt-btn').disabled = false;
+        toast('RSA keypair generated!', 'success');
+    } catch(e) {
+        rsaGenStatus.innerHTML = `<span class="badge-err">Error</span>`;
+        console.error('Keygen error:', e);
+        toast('Keygen error', 'error');
+    }
+});
+
+document.getElementById('rsa-copy-pub').addEventListener('click', async () => {
+    if (!rsaPublicKey.value) { toast('Generate a keypair first', 'warning'); return; }
+    await navigator.clipboard.writeText(rsaPublicKey.value);
+    toast('Public key copied!', 'success', 1500);
+});
+document.getElementById('rsa-copy-priv').addEventListener('click', async () => {
+    if (!rsaPrivateKey.value) { toast('Generate a keypair first', 'warning'); return; }
+    await navigator.clipboard.writeText(rsaPrivateKey.value);
+    toast('Private key copied!', 'success', 1500);
+});
+document.getElementById('rsa-copy-output').addEventListener('click', async () => {
+    if (!rsaOutput.value) { toast('Nothing to copy', 'warning'); return; }
+    await navigator.clipboard.writeText(rsaOutput.value);
+    toast('Copied!', 'success', 1500);
+});
+
+document.getElementById('rsa-encrypt-btn').addEventListener('click', async () => {
+    if (!rsaKeyPair) { toast('Generate a keypair first', 'warning'); return; }
+    const text = rsaInput.value;
+    if (!text) { toast('Enter plaintext to encrypt', 'warning'); return; }
+    try {
+        const encoded = new TextEncoder().encode(text);
+        const cipher  = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, rsaKeyPair.publicKey, encoded);
+        rsaOutput.value = btoa(String.fromCharCode(...new Uint8Array(cipher)));
+        toast('Encrypted with public key!', 'success');
+    } catch(e) {
+        console.error('Encrypt error:', e);
+        toast('Encrypt error', 'error');
+    }
+});
+
+document.getElementById('rsa-decrypt-btn').addEventListener('click', async () => {
+    if (!rsaKeyPair) { toast('Generate a keypair first', 'warning'); return; }
+    const b64 = rsaInput.value.trim();
+    if (!b64) { toast('Enter base64 ciphertext to decrypt', 'warning'); return; }
+    try {
+        const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        const plain = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, rsaKeyPair.privateKey, buf);
+        rsaOutput.value = new TextDecoder().decode(plain);
+        toast('Decrypted with private key!', 'success');
+    } catch(e) {
+        console.error('Decrypt error:', e);
+        toast('Decrypt error', 'error');
+    }
+});
+
+
+// ════════════════════════════════════════════════
+// HMAC SIGNER  (Web Crypto API)
+// ════════════════════════════════════════════════
+const hmacMsg   = document.getElementById('hmac-message');
+const hmacSig   = document.getElementById('hmac-signature');
+const hmacBanner = document.getElementById('hmac-verify-banner');
+
+async function hmacKey(secret, algo) {
+    const keyMat = await crypto.subtle.importKey(
+        'raw', new TextEncoder().encode(secret),
+        { name: 'HMAC', hash: algo },
+        false, ['sign', 'verify']
+    );
+    return keyMat;
+}
+
+document.getElementById('hmac-sign-btn').addEventListener('click', async () => {
+    const secret = document.getElementById('hmac-key').value;
+    const algo   = document.getElementById('hmac-algo').value;
+    const msg    = hmacMsg.value;
+    if (!secret) { toast('Enter a secret key', 'warning'); return; }
+    if (!msg)    { toast('Enter a message to sign', 'warning'); return; }
+    hmacBanner.className = 'verify-banner';
+
+    try {
+        const key = await hmacKey(secret, algo);
+        const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+        hmacSig.value = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
+        toast('Signed!', 'success');
+    } catch(e) {
+        console.error('Sign error:', e);
+        toast('Sign error', 'error');
+    }
+});
+
+document.getElementById('hmac-verify-btn').addEventListener('click', async () => {
+    const secret = document.getElementById('hmac-key').value;
+    const algo   = document.getElementById('hmac-algo').value;
+    const msg    = hmacMsg.value;
+    const sigHex = hmacSig.value.trim();
+    if (!secret) { toast('Enter a secret key', 'warning'); return; }
+    if (!msg)    { toast('Enter the original message', 'warning'); return; }
+    if (!sigHex) { toast('Enter a signature to verify', 'warning'); return; }
+
+    try {
+        const sigBytes = Uint8Array.from(sigHex.match(/.{1,2}/g), h => parseInt(h, 16));
+        const key = await hmacKey(secret, algo);
+        const ok  = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(msg));
+        hmacBanner.className = `verify-banner ${ok ? 'ok' : 'err'}`;
+        hmacBanner.innerHTML = ok
+            ? '✓ Signature is VALID — the message has not been tampered with.'
+            : '✗ Signature is INVALID — key mismatch or message was modified.';
+        toast(ok ? 'Signature valid ✓' : 'Signature invalid ✗', ok ? 'success' : 'error');
+    } catch(e) {
+        console.error('Verify error:', e);
+        toast('Verify error', 'error');
+    }
+});
+
+document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
+    const v = hmacSig.value;
+    if (!v) { toast('Nothing to copy', 'warning'); return; }
+    await navigator.clipboard.writeText(v);
+    toast('Signature copied!', 'success', 1500);
+});
+
+
+// ════════════════════════════════════════════════
+// BASE64 / JWT
+// ════════════════════════════════════════════════
+(function() {
+    const b64Input   = document.getElementById('b64-input');
+    const b64Output  = document.getElementById('b64-output');
+    const b64Status  = document.getElementById('b64-status');
+    const jwtPanel   = document.getElementById('b64-jwt-panel');
+    function isUrlSafe() {
+        return document.getElementById('b64-mode-select').value === 'url';
+    }
+
+    function setB64Status(text, type) {
+        b64Status.innerHTML = '';
+    const span = document.createElement('span');
+    span.className = `badge-${type}`;
+    span.textContent = text;
+    b64Status.appendChild(span);
+    }
+
+    function encodeB64(str) {
+        const bytes = new TextEncoder().encode(str);
+        let bin = '';
+        bytes.forEach(b => bin += String.fromCharCode(b));
+        let b64 = btoa(bin);
+        if (isUrlSafe()) b64 = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        return b64;
+    }
+
+    function decodeB64(str) {
+        let s = str.trim();
+        if (isUrlSafe() || /[-_]/.test(s)) {
+            s = s.replace(/-/g, '+').replace(/_/g, '/');
+            while (s.length % 4) s += '=';
+        }
+        const bin   = atob(s);
+        const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
+    }
+
+    document.getElementById('b64-encode-btn').addEventListener('click', () => {
+        const raw = b64Input.value;
+        if (!raw) { toast('Enter text to encode', 'warning'); return; }
+        try {
+            b64Output.value = encodeB64(raw);
+            setB64Status('Encoded ✓', 'ok');
+            toast('Encoded!', 'success', 1800);
+        } catch(e) { setB64Status('Error', 'err'); console.error('Encode error:', e); toast('Encode error', 'error'); }
+    });
+
+    document.getElementById('b64-decode-btn').addEventListener('click', () => {
+        const raw = b64Input.value.trim();
+        if (!raw) { toast('Enter Base64 to decode', 'warning'); return; }
+        try {
+            b64Output.value = decodeB64(raw);
+            setB64Status('Decoded ✓', 'ok');
+            toast('Decoded!', 'success', 1800);
+        } catch(e) { setB64Status('Invalid ✗', 'err'); console.error('Invalid Base64:', e); toast('Invalid Base64', 'error'); }
+    });
+
+    document.getElementById('b64-jwt-btn').addEventListener('click', () => {
+        const raw   = b64Input.value.trim();
+        const parts = raw.split('.');
+        if (parts.length !== 3) { toast('Not a valid JWT (need 3 dot-separated parts)', 'error'); return; }
+        try {
+            function jwtDecode(p) {
+                let s = p.replace(/-/g, '+').replace(/_/g, '/');
+                while (s.length % 4) s += '=';
+                return JSON.parse(decodeB64(s));
+            }
+            document.getElementById('b64-jwt-header').textContent  = JSON.stringify(jwtDecode(parts[0]), null, 2);
+            document.getElementById('b64-jwt-payload').textContent = JSON.stringify(jwtDecode(parts[1]), null, 2);
+            document.getElementById('b64-jwt-sig').textContent     = parts[2] + '\n(signature — verify server-side)';
+            jwtPanel.style.display = 'flex';
+            toast('JWT decoded!', 'success');
+        } catch(e) { console.error('JWT decode error:', e); toast('JWT decode error', 'error'); }
+    });
+
+
+    document.getElementById('b64-paste-btn').addEventListener('click', async () => {
+        try { b64Input.value = await navigator.clipboard.readText(); toast('Pasted!', 'success', 1500); }
+        catch { toast('Clipboard access denied', 'warning'); }
+    });
+
+    document.getElementById('b64-swap-btn').addEventListener('click', () => {
+        const tmp = b64Input.value;
+        b64Input.value  = b64Output.value;
+        b64Output.value = tmp;
+        b64Status.innerHTML = '';
+    });
+
+    document.getElementById('b64-copy-btn').addEventListener('click', async () => {
+        if (!b64Output.value) { toast('Nothing to copy', 'warning'); return; }
+        await navigator.clipboard.writeText(b64Output.value);
+        toast('Copied!', 'success', 1500);
+    });
+
+    document.getElementById('b64-clear-btn').addEventListener('click', () => {
+        b64Input.value = ''; b64Output.value = '';
+        b64Status.innerHTML = ''; jwtPanel.style.display = 'none';
+    });
+})();
+
+})();
+</script>
+</body>
+</html>

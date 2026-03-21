@@ -7,9 +7,14 @@ for maximum privacy. The /upload endpoint is a fallback for edge cases.
 """
 
 import os
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import string
+import secrets
+import json
+import urllib.parse
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from pydantic import BaseModel
 
 app = FastAPI(
     title="DevSuite",
@@ -23,10 +28,45 @@ os.makedirs(static_dir, exist_ok=True)
 # Serve static assets (JS, CSS, images) from the /static route
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+# URL Shortener Database
+DB_FILE = os.path.join(os.path.dirname(__file__), "url_db.json")
+
+def load_db():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            pass
+    return {}
+
+def save_db(db):
+    try:
+        with open(DB_FILE, "w", encoding="utf-8") as f:
+            json.dump(db, f)
+    except Exception:
+        pass
+
+url_db = load_db()
+
+class ShortenRequest(BaseModel):
+    url: str
+
 
 @app.middleware("http")
 async def add_security_headers(request, call_next):
-    """Add standard security headers to all responses."""
+    """
+    Attach a standard set of HTTP security headers to every outgoing response.
+    
+    Designed for use as FastAPI HTTP middleware: invokes the downstream handler and augments the returned response with headers that mitigate clickjacking, MIME-type sniffing, some XSS vectors, enforce HSTS, and provide a restrictive Content Security Policy.
+    
+    Parameters:
+        request: The incoming ASGI/Starlette request object.
+        call_next: A callable that accepts the request and returns a response from the downstream route/handler.
+    
+    Returns:
+        The downstream response with the security headers added.
+    """
     response = await call_next(request)
     # Prevent clickjacking
     response.headers["X-Frame-Options"] = "DENY"
@@ -107,7 +147,15 @@ def read_regex_tool():
 
 @app.get("/base64", response_class=HTMLResponse, summary="Serve Base64 Encoder/Decoder tool")
 def read_base64_tool():
-    """Serve the Base64 Encoder/Decoder tool."""
+    """
+    Provide the HTML for the Base64 encoder/decoder tool page.
+    
+    Returns:
+        html (str): Contents of the `base64.html` file.
+    
+    Raises:
+        HTTPException: with status_code=404 if `base64.html` is not found.
+    """
     html_path = os.path.join(static_dir, "base64.html")
     try:
         with open(html_path, "r", encoding="utf-8") as f:
@@ -116,12 +164,118 @@ def read_base64_tool():
         raise HTTPException(status_code=404, detail="base64.html not found.") from None
 
 
+@app.get("/crypto", response_class=HTMLResponse, summary="Serve Crypto Suite tool")
+def read_crypto_tool():
+    """Serve the Crypto Suite tool (Hash, AES, RSA, HMAC)."""
+    html_path = os.path.join(static_dir, "crypto.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="crypto.html not found.") from None
+
+
+@app.get("/url-shortener", response_class=HTMLResponse, summary="Serve URL Shortener tool")
+def read_url_shortener_tool():
+    """
+    Return the URL Shortener HTML page from the static directory.
+    
+    Returns:
+        html (str): Contents of "url-shortener.html".
+    
+    Raises:
+        HTTPException: status_code 404 if "url-shortener.html" is not found.
+    """
+    html_path = os.path.join(static_dir, "url-shortener.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="url-shortener.html not found.") from None
+
+
+@app.post("/api/shorten", summary="Create a short URL")
+def shorten_url(req: ShortenRequest, request: Request):
+    """
+    Create and store a 6-character short identifier for the provided URL and return the short link and original URL.
+    
+    The input URL is trimmed of surrounding whitespace; if it lacks an HTTP scheme, `https://` is prepended. A random 6-character alphanumeric `short_id` is generated, stored in the in-memory datastore, and used to build the redirectable short URL from `request.base_url`.
+    
+    Parameters:
+        req (ShortenRequest): Request model containing the `url` to shorten.
+        request (Request): FastAPI request used to derive the application's base URL.
+    
+    Returns:
+        dict: {
+            "short_id": str — the generated 6-character identifier,
+            "short_url": str — the full short URL that redirects to the original,
+            "original_url": str — the normalized original URL stored for this id
+        }
+    """
+    url = req.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL cannot be empty")
+        
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "https://" + url
+        
+    parsed = urllib.parse.urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Invalid URL format")
+
+    alphabet = string.ascii_letters + string.digits
+    for _ in range(10):
+        short_id = "".join(secrets.choice(alphabet) for _ in range(6))
+        if short_id not in url_db:
+            break
+    else:
+        raise HTTPException(status_code=500, detail="Failed to generate unique short ID")
+    
+    # Store in memory and persist
+    url_db[short_id] = url
+    save_db(url_db)
+    
+    # Return the full short URL
+    base_url = str(request.base_url).rstrip("/")
+    short_url = f"{base_url}/r/{short_id}"
+    return {"short_id": short_id, "short_url": short_url, "original_url": url}
+
+
+@app.get("/r/{short_id}", summary="Redirect to original URL")
+def redirect_short_url(short_id: str):
+    """
+    Redirects a short identifier to the stored original URL.
+    
+    Returns:
+        RedirectResponse: A 302 redirect response to the original URL.
+    
+    Raises:
+        HTTPException: If the provided `short_id` does not exist (status code 404).
+    """
+    if short_id in url_db:
+        return RedirectResponse(url=url_db[short_id], status_code=302)
+    raise HTTPException(status_code=404, detail="Short URL not found.")
+
+
 @app.post("/upload", summary="Upload a text file for diffing")
 async def upload_file(file: UploadFile = File(...)):
     """
-    Fallback endpoint: accepts a text file, validates it is not binary,
-    and returns its decoded string content as JSON.
-    Client-side JS is preferred for privacy; this is a safety net.
+    Accepts an uploaded text file, validates it is not binary and within size limits, and returns its decoded text and metadata.
+    
+    Parameters:
+        file (UploadFile): The uploaded file to inspect and decode.
+    
+    Returns:
+        dict: A mapping with keys:
+            - "filename": the original filename.
+            - "content": the file decoded as a UTF-8 string (invalid bytes replaced).
+            - "size_bytes": the raw byte length of the uploaded file.
+    
+    Raises:
+        HTTPException: Raised with status code 400 if the Content-Type indicates a binary media type
+            or if a null byte is detected in the initial chunk (file appears binary).
+        HTTPException: Raised with status code 413 if the uploaded file exceeds 50MB.
+        HTTPException: Raised with status code 500 for unexpected server-side errors while processing the file.
     """
     # Reject obviously binary MIME types immediately
     binary_mimes = ("image/", "video/", "audio/", "application/pdf",

@@ -15,7 +15,8 @@
         rel="stylesheet">
 
     <!-- App Styles -->
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=57">
+    <script src="/static/theme.js"></script>
     <style>
         .back-link {
             display: inline-flex;
@@ -65,23 +66,21 @@
                 </svg>
                 DevSuite
             </a>
-            <div class="logo-wrap">
-                <div class="logo-icon">
+            <div class="tool-identity" id="tool-identity">
+                <div class="tool-icon tool-icon-indigo" id="tool-header-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                         stroke-linejoin="round">
-                        <path d="M14 4c0-1.1.9-2 2-2" />
-                        <path d="M20 2c1.1 0 2 .9 2 2" />
-                        <path d="M22 8c0 1.1-.9 2-2 2" />
-                        <path d="M16 10c-1.1 0-2-.9-2-2" />
-                        <path d="M4 14c0-1.1.9-2 2-2" />
-                        <path d="M10 12c1.1 0 2 .9 2 2" />
-                        <path d="M12 18c0 1.1-.9 2-2 2" />
-                        <path d="M6 20c-1.1 0-2-.9-2-2" />
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <polyline points="10 9 9 9 8 9" />
                     </svg>
                 </div>
-                <span class="logo-name">
-                    Diff<span class="accent">Checker</span><span class="domain">.io</span>
+                <span class="tool-name" id="tool-header-name">
+                    Text <span class="tool-accent">Diff</span>
                 </span>
+                <span class="tool-version" id="tool-header-version">V3.0</span>
             </div>
         </div>
 
@@ -124,7 +123,7 @@
             <!-- Theme -->
             <div class="control-group">
                 <label class="control-label" for="theme-select">Theme</label>
-                <select id="theme-select">
+                <select id="theme-select" class="global-theme-select" aria-label="DevSuite Theme">
                     <option value="vs-dark">Midnight Dark</option>
                     <option value="vs">Clean Light</option>
                     <option value="hc-black">High Contrast</option>
@@ -140,14 +139,14 @@
     <div id="toast-container"></div>
 
     <!-- ============================================================
-         TABS
+         TABS (Hidden as per user request to separate tools)
          ============================================================ -->
-    <div class="tabs-bar">
+    <div class="tabs-bar" style="display: none;">
         <button class="tab-btn active" data-tab="text-diff" id="tab-text-diff">
-            <span class="tab-icon">⟨⟩</span> Text Diff
+            <span class="tab-icon">⟨⟩</span> DevSuite Text Diff
         </button>
         <button class="tab-btn" data-tab="folder-diff" id="tab-folder-diff">
-            <span class="tab-icon">📁</span> Folder Diff
+            <span class="tab-icon">📁</span> DevSuite Folder Diff
         </button>
     </div>
 
@@ -285,8 +284,8 @@
                     </span>
                     <div class="stats-bar-actions">
                         <div class="btn-group">
-                            <button id="merge-all-right-btn" class="btn btn-ghost">→ Copy to File 2</button>
-                            <button id="merge-all-left-btn" class="btn btn-ghost">Copy to File 1 ←</button>
+                            <button id="merge-all-right-btn" class="btn btn-ghost">→ Copy to Right</button>
+                            <button id="merge-all-left-btn" class="btn btn-ghost">Copy to Left ←</button>
                         </div>
                         <button id="toggle-inline-btn" class="btn btn-ghost">Inline View</button>
                         <!-- Export Menu -->
@@ -379,30 +378,75 @@
             </div>
 
             <!-- Folder Results -->
+            <!-- Folder Results -->
             <div class="folder-results-container hidden" id="folder-results-container">
 
-                <!-- Sidebar File Tree -->
-                <div class="sidebar">
-                    <div class="sidebar-header">
-                        <span class="sidebar-title">Changed Files</span>
-                        <span class="line-count-badge" id="changed-files-count">0</span>
-                    </div>
+                <!-- Global Folders Title Header -->
+                <div id="folder-diff-titles" class="diff-editor-titles folder-diff-titles hidden">
+                    <div class="diff-title-pane" id="folder-title-left">Folder 1 (Original)</div>
+                    <div class="diff-title-pane" id="folder-title-right">Folder 2 (Modified)</div>
+                </div>
+
+                <!-- Dual Tree View Layer -->
+                <div class="dual-tree-layer" id="dual-tree-layer">
                     <!-- Filter Chips -->
                     <div class="filter-chips">
                         <span class="filter-chip active-filter" data-filter="all">All</span>
-                        <span class="filter-chip modified" data-filter="modified">● Modified</span>
-                        <span class="filter-chip added" data-filter="added">● Added</span>
-                        <span class="filter-chip removed" data-filter="removed">● Removed</span>
+                        <span class="filter-chip modified" data-filter="modified">● Differs</span>
+                        <span class="filter-chip added" data-filter="added">● Only F2</span>
+                        <span class="filter-chip removed" data-filter="removed">● Only F1</span>
+                        <span class="line-count-badge" id="changed-files-count" style="margin-left: auto;">0</span>
                     </div>
-                    <ul id="file-tree" class="file-tree"></ul>
+                    <ul id="file-tree" class="dual-file-tree"></ul>
                 </div>
 
                 <!-- Folder Monaco Editor -->
-                <div class="folder-editor-wrapper" id="folder-editor-wrapper">
-                    <div class="empty-state">
-                        <span class="empty-state-icon">⟨⟩</span>
-                        <span>Select a file from the sidebar to view its diff</span>
+                <div class="folder-editor-wrapper hidden" id="folder-editor-wrapper">
+                    
+                    <!-- Folder Diff Stats Bar (hidden initially) -->
+                    <div class="stats-bar hidden" id="folder-stats-bar">
+                        <button class="btn btn-primary" id="back-to-folders-btn" style="margin-right: 1rem; padding: 0.35rem 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            Back to Folders
+                        </button>
+                        <span class="stats-bar-title" id="active-diff-file-name" style="margin-right: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-1);"></span>
+
+                        <span class="stat-chip additions" id="folder-stat-additions">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span id="folder-stat-additions-count">0</span> added
+                        </span>
+                        <span class="stat-chip deletions" id="folder-stat-deletions">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span id="folder-stat-deletions-count">0</span> removed
+                        </span>
+                        <span class="stat-chip changes" id="folder-stat-changes">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="16 3 21 3 21 8" />
+                                <line x1="4" y1="20" x2="21" y2="3" />
+                                <polyline points="21 16 21 21 16 21" />
+                                <line x1="15" y1="15" x2="21" y2="21" />
+                            </svg>
+                            <span id="folder-stat-changes-count">0</span> hunks
+                        </span>
+                        <div class="stats-bar-spacer" style="flex: 0;"></div>
+                        <span id="folder-detected-language-label" class="lang-badge hidden">
+                            <span id="folder-lang-name"></span>
+                        </span>
+                        <div class="stats-bar-actions">
+                            <div class="btn-group">
+                                <button id="folder-merge-all-right-btn" class="btn btn-ghost">→ Copy to Right</button>
+                                <button id="folder-merge-all-left-btn" class="btn btn-ghost">Copy to Left ←</button>
+                            </div>
+                            <button id="folder-toggle-inline-btn" class="btn btn-ghost">Inline View</button>
+                        </div>
                     </div>
+
+                    <div id="folder-monaco-diff-editor" class="editor-host hidden"></div>
                 </div>
             </div>
 
@@ -415,7 +459,7 @@
     <!-- Highlight.js for Language Auto-Detection -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <!-- App Logic -->
-    <script src="/static/app.js?v=51"></script>
+    <script src="/static/app.js?v=57"></script>
 </body>
 
 </html>

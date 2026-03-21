@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/linter.css">
+    <script src="/static/theme.js"></script>
     <style>
         /* ── Regex-specific overrides ── */
         .regex-input-row {
@@ -118,6 +119,12 @@
         </div>
     </div>
     <div class="header-right">
+        <select class="global-theme-select" aria-label="DevSuite Theme">
+            <option value="vs-dark">Midnight Dark</option>
+            <option value="vs">Clean Light</option>
+            <option value="hc-black">High Contrast</option>
+            <option value="ios-glass">Frosted Glass</option>
+        </select>
         <div id="status-pill" class="status-pill idle"><span class="status-dot"></span><span id="status-text">Ready</span></div>
     </div>
 </header>
@@ -333,38 +340,75 @@
             matchBadge.textContent = count + ' match' + (count !== 1 ? 'es' : '');
             copyMatchBtn.disabled = false;
 
-            let html = `<div class="match-summary">Matches <span class="count-badge">${count}</span></div>`;
+            matchPane.textContent = '';
+            
+            const summaryRow = document.createElement('div');
+            summaryRow.className = 'match-summary';
+            summaryRow.textContent = 'Matches ';
+            const badge = document.createElement('span');
+            badge.className = 'count-badge';
+            badge.textContent = count;
+            summaryRow.appendChild(badge);
+            matchPane.appendChild(summaryRow);
 
             matches.forEach((match, i) => {
-                const value = escHtml(match.value);
-                const start = match.index, end = match.index + match.value.length;
-                let groupsHtml = '';
-                if (match.groups.length) {
-                    groupsHtml = '<div class="match-groups">' +
-                        match.groups.map((g, gi) => {
-                            const name = Object.keys(match.namedGroups).find(k => match.namedGroups[k] === g);
-                            const label = name ? `$${name}` : `$${gi + 1}`;
-                            return `<span class="group-chip"><span class="group-label">${label}:</span>${escHtml(g ?? 'undefined')}</span>`;
-                        }).join('') + '</div>';
+                const item = document.createElement('div');
+                item.className = 'match-item';
+
+                const head = document.createElement('div');
+                head.className = 'match-item-head';
+                
+                const idxSpan = document.createElement('span');
+                idxSpan.className = 'match-index';
+                idxSpan.textContent = '#' + (i + 1);
+                
+                const posSpan1 = document.createElement('span');
+                posSpan1.className = 'match-pos';
+                posSpan1.textContent = `pos ${match.index}–${match.index + match.value.length}`;
+
+                const posSpan2 = document.createElement('span');
+                posSpan2.className = 'match-pos';
+                posSpan2.textContent = `len ${match.value.length}`;
+                
+                head.appendChild(idxSpan);
+                head.appendChild(posSpan1);
+                head.appendChild(posSpan2);
+                item.appendChild(head);
+
+                const valDiv = document.createElement('div');
+                valDiv.className = 'match-value';
+                if (match.value) {
+                    valDiv.textContent = match.value;
+                } else {
+                    const emptySpan = document.createElement('span');
+                    emptySpan.style.color = 'var(--text-muted)';
+                    emptySpan.textContent = 'empty string';
+                    valDiv.appendChild(emptySpan);
                 }
-                html += `
-                    <div class="match-item">
-                        <div class="match-item-head">
-                            <span class="match-index">#${i + 1}</span>
-                            <span class="match-pos">pos ${start}–${end}</span>
-                            <span class="match-pos">len ${match.value.length}</span>
-                        </div>
-                        <div class="match-value">${value || '<span style="color:var(--text-muted)">empty string</span>'}</div>
-                        ${groupsHtml}
-                    </div>`;
+                item.appendChild(valDiv);
+
+                if (match.groups.length) {
+                    const groupsDiv = document.createElement('div');
+                    groupsDiv.className = 'match-groups';
+                    match.groups.forEach((g, gi) => {
+                        const name = Object.keys(match.namedGroups).find(k => match.namedGroups[k] === g);
+                        const label = name ? `$${name}` : `$${gi + 1}`;
+                        
+                        const chip = document.createElement('span');
+                        chip.className = 'group-chip';
+                        
+                        const lblSpan = document.createElement('span');
+                        lblSpan.className = 'group-label';
+                        lblSpan.textContent = label + ':';
+                        
+                        chip.appendChild(lblSpan);
+                        chip.appendChild(document.createTextNode(g ?? 'undefined'));
+                        groupsDiv.appendChild(chip);
+                    });
+                    item.appendChild(groupsDiv);
+                }
+                matchPane.appendChild(item);
             });
-
-            matchPane.innerHTML = html;
-        }
-
-        function escHtml(str) {
-            if (str == null) return 'null';
-            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         }
 
         // Flag toggles

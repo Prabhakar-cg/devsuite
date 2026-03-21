@@ -92,7 +92,7 @@ body > * { position: relative; z-index: 1; }
     box-shadow: var(--glass-shadow);
     padding: 0 1.5rem;
     display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    position: relative; z-index: 10;
+    position: sticky; top: 0; z-index: 20;
 }
 .tool-header::before {
     content: '';
@@ -142,7 +142,7 @@ body > * { position: relative; z-index: 1; }
     border: 1px solid var(--border); border-radius: 20px; padding: 1px 7px;
 }
 
-.header-right { display: flex; align-items: center; gap: 0.5rem; }
+.header-right { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 
 /* ============================================================
    MAIN LAYOUT — ACTION BAR + SPLIT PANE

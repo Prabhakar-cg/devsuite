@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/home.css">
+    <script src="/static/theme.js"></script>
 </head>
 <body>
 
@@ -28,7 +29,13 @@
             </div>
         </a>
 
-        <div class="header-actions">
+        <div class="header-actions" style="display:flex; align-items:center; gap:1rem;">
+            <select class="global-theme-select" aria-label="DevSuite Theme">
+                <option value="vs-dark">Midnight Dark</option>
+                <option value="vs">Clean Light</option>
+                <option value="hc-black">High Contrast</option>
+                <option value="ios-glass">Frosted Glass</option>
+            </select>
             <span class="header-badge">✦ Runs Locally</span>
         </div>
     </header>
@@ -73,7 +80,7 @@
                     <span class="badge badge-live">Live</span>
                 </div>
                 <div>
-                    <div class="card-title">Text Diff</div>
+                    <div class="card-title">DevSuite Text Diff</div>
                     <div class="card-desc">
                         Side-by-side and inline diff view for any two text files or snippets. Monaco Editor powered with syntax highlighting, merge arrows, and export.
                     </div>
@@ -88,7 +95,7 @@
             </a>
 
             <!-- Folder Diff -->
-            <a class="tool-card active-tool" href="/diff?tab=folder" id="card-folder-diff"
+            <a class="tool-card active-tool" href="/diff?tab=folder-diff" id="card-folder-diff"
                style="--card-glow: rgba(124,58,237,0.14); --card-border-hover: rgba(124,58,237,0.45);">
                 <div class="card-header">
                     <div class="card-icon-wrap card-icon-violet">
@@ -99,7 +106,7 @@
                     <span class="badge badge-live">Live</span>
                 </div>
                 <div>
-                    <div class="card-title">Folder Diff</div>
+                    <div class="card-title">DevSuite Folder Diff</div>
                     <div class="card-desc">
                         Compare entire directory trees. Browse changed files in a sidebar, view per-file diffs, filter by Added / Modified / Removed.
                     </div>
@@ -166,7 +173,7 @@
                 </div>
             </a>
 
-        </div>
+        <!-- (Removed rogue closing div here) -->
 
             <!-- Regex Tester (LIVE) -->
             <a class="tool-card active-tool" href="/regex" id="card-regex"
@@ -195,30 +202,58 @@
                 </div>
             </a>
 
-            <!-- Base64 (LIVE) -->
-            <a class="tool-card active-tool" href="/base64" id="card-base64"
-               style="--card-glow: rgba(2,132,199,0.14); --card-border-hover: rgba(56,189,248,0.45);">
+
+            <!-- Crypto Suite (LIVE) -->
+            <a class="tool-card active-tool" href="/crypto" id="card-crypto"
+               style="--card-glow: rgba(124,58,237,0.18); --card-border-hover: rgba(168,85,247,0.5);">
                 <div class="card-header">
-                    <div class="card-icon-wrap card-icon-sky">
+                    <div class="card-icon-wrap" style="background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 0 14px rgba(168,85,247,0.35);">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
-                            <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                     </div>
                     <span class="badge badge-live">Live</span>
                 </div>
                 <div>
-                    <div class="card-title">Base64 Encoder / Decoder</div>
+                    <div class="card-title">Crypto Suite</div>
                     <div class="card-desc">
-                        Encode and decode Base64 strings with full UTF-8 support, URL-safe mode, JWT decoder panel, and file input.
+                        Hash Generator (MD5, SHA-256, SHA-512), AES-256 Encrypt/Decrypt, RSA Keygen, and HMAC Signing. 100% in-browser.
                     </div>
                 </div>
                 <div class="card-footer">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">Encode</span>
-                    <span class="tag-chip">Decode</span>
-                    <span class="tag-chip">JWT</span>
-                    <span class="tag-chip">URL-safe</span>
+                    <span class="tag-chip">Hash</span>
+                    <span class="tag-chip">AES</span>
+                    <span class="tag-chip">RSA</span>
+                    <span class="tag-chip">HMAC</span>
+                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+            </a>
+
+            <!-- URL Shortener (LIVE) -->
+            <a class="tool-card active-tool" href="/url-shortener" id="card-url"
+               style="--card-glow: rgba(56,189,248,0.18); --card-border-hover: rgba(56,189,248,0.5);">
+                <div class="card-header">
+                    <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0284c7,#38bdf8);box-shadow:0 0 14px rgba(56,189,248,0.35);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                    </div>
+                    <span class="badge badge-live">Live</span>
+                </div>
+                <div>
+                    <div class="card-title">Link &amp; QR Studio</div>
+                    <div class="card-desc">
+                        Create entirely offline, fast local short links (e.g., /r/xyz123) and instantly generate scannable QR Codes and Barcodes to share them locally. Keeps traffic 100% inside DevSuite.
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
+                    <span class="tag-chip">Short Links</span>
+                    <span class="tag-chip">QR Codes</span>
+                    <span class="tag-chip">Barcodes</span>
                     <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </div>
             </a>

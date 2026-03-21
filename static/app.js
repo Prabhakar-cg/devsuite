@@ -19,16 +19,12 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
-    // AUTO-SELECT TAB FROM URL PARAM (?tab=folder)
+    // AUTO-SELECT TAB FROM URL PARAM (MOVED TO BOTTOM)
     // ==========================================
-    (function applyTabFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        const tab = params.get('tab');
-        if (tab) {
-            const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
-            if (btn) btn.click();
-        }
-    })();
+    // The immediate invocation of applyTabFromUrl was moved 
+    // to the end of DOMContentLoaded to fix a race condition
+    // where tabs weren't switching correctly because listeners 
+    // hadn't been attached yet.
 
     // ==========================================
     // DOM REFERENCES
@@ -101,8 +97,75 @@ document.addEventListener('DOMContentLoaded', () => {
     const actionBarFolder = document.getElementById('action-bar-folder');
     const folderResultsContainer = document.getElementById('folder-results-container');
     const fileTreeEl = document.getElementById('file-tree');
-    const folderEditorHost = document.getElementById('folder-editor-wrapper');
+    
+    // Updated references for Folder Editor Host
+    const folderEditorWrapper = document.getElementById('folder-editor-wrapper');
+    const folderEditorHost = document.getElementById('folder-monaco-diff-editor');
+    const dualTreeLayer = document.getElementById('dual-tree-layer');
+    const backToFoldersBtn = document.getElementById('back-to-folders-btn');
+    const activeDiffFileName = document.getElementById('active-diff-file-name');
+    const folderDiffTitles = document.getElementById('folder-diff-titles');
+    const folderTitleLeft = document.getElementById('folder-title-left');
+    const folderTitleRight = document.getElementById('folder-title-right');
+    
     const changedFilesCount = document.getElementById('changed-files-count');
+
+    // Folder Stats Bar
+    const folderStatsBar = document.getElementById('folder-stats-bar');
+    const folderStatAdditionsCount = document.getElementById('folder-stat-additions-count');
+    const folderStatDeletionsCount = document.getElementById('folder-stat-deletions-count');
+    const folderStatChangesCount = document.getElementById('folder-stat-changes-count');
+    const folderLangLabelContainer = document.getElementById('folder-detected-language-label');
+    const folderLangNameSpan = document.getElementById('folder-lang-name');
+    const folderMergeAllRightBtn = document.getElementById('folder-merge-all-right-btn');
+    const folderMergeAllLeftBtn = document.getElementById('folder-merge-all-left-btn');
+    const folderToggleInlineBtn = document.getElementById('folder-toggle-inline-btn');
+
+    // Header dynamic elements
+    const toolHeaderIcon = document.getElementById('tool-header-icon');
+    const toolHeaderName = document.getElementById('tool-header-name');
+    const toolIdentity = document.getElementById('tool-identity');
+
+    const FEATURE_ICONS = {
+        'text-diff': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9" />
+        </svg>`,
+        'folder-diff': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>`
+    };
+
+    const FEATURE_NAMES = {
+        'text-diff': `Text <span class="tool-accent">Diff</span>`,
+        'folder-diff': `Folder <span class="tool-accent">Diff</span>`
+    };
+
+    if (toolIdentity) {
+        toolIdentity.style.cursor = 'pointer';
+        toolIdentity.title = 'Reset to setup screen';
+        toolIdentity.style.transition = 'opacity 0.15s ease';
+        toolIdentity.addEventListener('mouseenter', () => toolIdentity.style.opacity = '0.8');
+        toolIdentity.addEventListener('mouseleave', () => toolIdentity.style.opacity = '1');
+        toolIdentity.addEventListener('click', () => {
+            const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab;
+            if (activeTab === 'folder-diff') {
+                folderResultsContainer.classList.add('hidden');
+                folderSetupPanelsWrap.classList.remove('hidden');
+                actionBarFolder.classList.remove('hidden');
+            } else if (activeTab === 'text-diff') {
+                textDiffContainer.style.display = 'none';
+                textDiffContainer.classList.add('hidden');
+                inputPanels.style.display = 'flex';
+                inputPanels.style.flex = '1';
+                inputPanels.style.overflow = 'hidden';
+                actionBarText.style.display = 'flex';
+            }
+        });
+    }
 
     // ==========================================
     // STATE
@@ -191,8 +254,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
     // DIFF STATS BAR
-    // ==========================================
-    function updateDiffStats(diffEditor) {
+    /**
+     * Update the UI's diff statistics (additions, deletions, and number of changes) from a Monaco diff editor.
+     * @param {object} diffEditor - Monaco diff editor instance used to derive line changes.
+     * @param {boolean} [isFolder=false] - When true, update the folder-specific stats elements; otherwise update the text-mode stats elements.
+     */
+    function updateDiffStats(diffEditor, isFolder = false) {
         const changes = diffEditor.getLineChanges() || [];
         let additions = 0, deletions = 0;
 
@@ -203,9 +270,15 @@ document.addEventListener('DOMContentLoaded', () => {
             deletions += origLines > 0 ? origLines : 0;
         });
 
-        statAdditionsCount.textContent = additions;
-        statDeletionsCount.textContent = deletions;
-        statChangesCount.textContent = changes.length;
+        if (isFolder) {
+            folderStatAdditionsCount.textContent = additions;
+            folderStatDeletionsCount.textContent = deletions;
+            folderStatChangesCount.textContent = changes.length;
+        } else {
+            statAdditionsCount.textContent = additions;
+            statDeletionsCount.textContent = deletions;
+            statChangesCount.textContent = changes.length;
+        }
     }
 
 
@@ -340,13 +413,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     for (const btn of tabBtns) {
         btn.addEventListener('click', () => {
+            const id = btn.dataset.tab;
             for (const b of tabBtns) b.classList.remove('active');
             for (const c of tabContents) c.classList.remove('active');
             btn.classList.add('active');
-            document.getElementById(btn.dataset.tab).classList.add('active');
+            document.getElementById(id).classList.add('active');
+
+            // Update Header Icon and Name
+            if (toolHeaderIcon) {
+                toolHeaderIcon.innerHTML = FEATURE_ICONS[id] || '';
+                toolHeaderIcon.className = `tool-icon tool-icon-${id === 'folder-diff' ? 'amber' : 'indigo'}`;
+            }
+            if (toolHeaderName) {
+                toolHeaderName.innerHTML = FEATURE_NAMES[id] || 'Diff Tool';
+            }
 
             setTimeout(() => {
-                const id = btn.dataset.tab;
                 if (id === 'text-diff' && textDiffEditor && !textDiffContainer.classList.contains('hidden')) textDiffEditor.layout();
                 if (id === 'folder-diff' && folderDiffEditor) folderDiffEditor.layout();
             }, 60);
@@ -431,6 +513,33 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => textDiffEditor.layout(), 50);
     });
 
+    if (backToFoldersBtn) {
+        backToFoldersBtn.addEventListener('click', () => {
+            folderEditorWrapper.classList.add('hidden');
+            if (dualTreeLayer) dualTreeLayer.classList.remove('hidden');
+            document.querySelectorAll('.dual-tree-row').forEach(el => el.classList.remove('active'));
+        });
+    }
+
+    if (folderToggleInlineBtn) {
+        folderToggleInlineBtn.addEventListener('click', () => {
+            if (!folderDiffEditor) return;
+            const nowInline = folderToggleInlineBtn.classList.contains('active');
+            folderDiffEditor.updateOptions({ renderSideBySide: nowInline });
+            folderToggleInlineBtn.classList.toggle('active', !nowInline);
+            folderToggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
+            setTimeout(() => folderDiffEditor.layout(), 50);
+        });
+    }
+
+    /**
+     * Initialize the text diff Monaco editor and its models, set the editor language, wire merge controls, and start diff statistics updates.
+     *
+     * If the Monaco environment is not available, shows an error toast and re-enables the compare button instead of initializing.
+     *
+     * @param {string} originalTxt - Initial content for the original (left) side model.
+     * @param {string} modifiedTxt - Initial content for the modified (right) side model.
+     */
     function initTextDiffEditor(originalTxt, modifiedTxt) {
         if (!window.monaco) {
             showError('Editor is still loading — please try again in a moment.');
@@ -453,7 +562,10 @@ document.addEventListener('DOMContentLoaded', () => {
             enableSplitViewResizing: true,
             ignoreTrimWhitespace: false,
             glyphMargin: true,
-            renderMarginRevertIcon: false
+            renderMarginRevertIcon: false,
+            folding: false,
+            showFoldingControls: 'never',
+            lineDecorationsWidth: 0
         });
 
         textOriginalModel = monaco.editor.createModel(originalTxt, 'plaintext');
@@ -462,26 +574,41 @@ document.addEventListener('DOMContentLoaded', () => {
         updateEditorLanguage(textOriginalModel, textModifiedModel, originalTxt);
         setupFloatingMergeIcons(textDiffEditor);
 
-        textDiffEditor.onDidUpdateDiff(() => updateDiffStats(textDiffEditor));
+        textDiffEditor.onDidUpdateDiff(() => updateDiffStats(textDiffEditor, false));
     }
 
 
     // ==========================================
     // MERGE ARROWS — Glyph Margin Decorations
-    // ==========================================
+    /**
+     * Adds clickable merge glyphs to a Monaco diff editor and wires handlers to copy individual hunks between sides.
+     *
+     * Sets glyph-margin-related editor options on both original and modified sub-editors, creates and updates glyph decorations
+     * for each line change, and registers mouse handlers that invoke the merge action when a glyph is clicked. Also subscribes
+     * to diff updates to refresh decorations.
+     *
+     * @param {import('monaco-editor').editor.IStandaloneDiffEditor} diffEditor - The Monaco diff editor to augment.
+     */
     function setupFloatingMergeIcons(diffEditor) {
         const origEditor = diffEditor.getOriginalEditor();
         const modEditor = diffEditor.getModifiedEditor();
 
-        origEditor.updateOptions({ glyphMargin: true });
-        modEditor.updateOptions({ glyphMargin: true });
+        origEditor.updateOptions({ glyphMargin: true, folding: false, showFoldingControls: 'never', lineDecorationsWidth: 0, renderMarginRevertIcon: false });
+        modEditor.updateOptions({ glyphMargin: true, folding: false, showFoldingControls: 'never', lineDecorationsWidth: 0, renderMarginRevertIcon: false });
 
         const origCollection = origEditor.createDecorationsCollection();
         const modCollection = modEditor.createDecorationsCollection();
 
+        /**
+         * Add glyph-margin merge arrow decorations to the diff editor's original and modified panes.
+         *
+         * Scans the current line changes and places a right-arrow glyph on original-side change start lines
+         * and a left-arrow glyph on modified-side change start lines; also ensures the underlying editors'
+         * options support the glyph margin before applying the decorations.
+         */
         function applyDecorations() {
-            origEditor.updateOptions({ glyphMargin: true });
-            modEditor.updateOptions({ glyphMargin: true });
+            origEditor.updateOptions({ glyphMargin: true, folding: false, showFoldingControls: 'never', lineDecorationsWidth: 0, renderMarginRevertIcon: false });
+            modEditor.updateOptions({ glyphMargin: true, folding: false, showFoldingControls: 'never', lineDecorationsWidth: 0, renderMarginRevertIcon: false });
 
             const changes = diffEditor.getLineChanges() || [];
             const oNew = [], mNew = [];
@@ -650,6 +777,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (mergeAllRightBtn) mergeAllRightBtn.addEventListener('click', () => applyMergeAll('to-right'));
     if (mergeAllLeftBtn) mergeAllLeftBtn.addEventListener('click', () => applyMergeAll('to-left'));
+    
+    if (folderMergeAllRightBtn) folderMergeAllRightBtn.addEventListener('click', () => applyMergeAll('to-right'));
+    if (folderMergeAllLeftBtn) folderMergeAllLeftBtn.addEventListener('click', () => applyMergeAll('to-left'));
 
 
     // ==========================================
@@ -752,7 +882,43 @@ document.addEventListener('DOMContentLoaded', () => {
         folderSetupPanelsWrap.classList.add('hidden');
         actionBarFolder.classList.add('hidden');
         folderResultsContainer.classList.remove('hidden');
+        
+        // Reset Master-Detail state to ensure Dual Tree is always visible on new compare
+        if (dualTreeLayer) dualTreeLayer.classList.remove('hidden');
+        if (folderEditorWrapper) folderEditorWrapper.classList.add('hidden');
+
         fileDiffStatusMap.clear();
+
+        // Populate titles
+        if (folderTitleLeft && folderTitleRight) {
+            const leftName = origFolderName.textContent.split(' ')[0] || 'Folder 1';
+            const rightName = modFolderName.textContent.split(' ')[0] || 'Folder 2';
+
+            const buildFolderTitleNode = (container, labelText, folderName) => {
+                container.textContent = '';
+                
+                const labelDiv = document.createElement('div');
+                labelDiv.style.cssText = "font-size:0.6rem; opacity:0.6; font-weight:400; letter-spacing:0.05em; margin-bottom:2px;";
+                labelDiv.textContent = labelText;
+                
+                const pathDiv = document.createElement('div');
+                pathDiv.style.cssText = "color:var(--text-primary); text-align: left;";
+                
+                const slashSpan = document.createElement('span');
+                slashSpan.style.opacity = "0.5";
+                slashSpan.textContent = '/';
+                
+                pathDiv.appendChild(slashSpan);
+                pathDiv.appendChild(document.createTextNode(' ' + folderName));
+                
+                container.appendChild(labelDiv);
+                container.appendChild(pathDiv);
+            };
+
+            buildFolderTitleNode(folderTitleLeft, 'FOLDER 1', leftName);
+            buildFolderTitleNode(folderTitleRight, 'FOLDER 2', rightName);
+            if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
+        }
 
         showToast('Comparing folders (analyzing metadata and small file hashes)...', 'info', 3000);
 
@@ -802,10 +968,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    /**
+     * Render the folder-diff file tree into the file tree container using the current comparison state and filter.
+     *
+     * Builds a hierarchical, dual-column tree from `fileDiffStatusMap`, omitting unchanged files and applying
+     * `currentFolderFilter`. Folder nodes display aggregate statuses (added/removed/mixed) and are expandable;
+     * file rows show status indicators in left/right columns and are clickable to open the file diff
+     * (calls `openFileDiff(fullPath, status, name)`). Updates the visible changed files count and shows a
+     * friendly message when no differences match the current filter.
+     */
     function renderFileTree() {
         fileTreeEl.innerHTML = '';
         const paths = Array.from(fileDiffStatusMap.keys()).sort();
         let visibleCount = 0;
+
+        const treeNodes = {
+            '': { name: '/', fullPath: '', isFile: false, status: 'folder', children: [] }
+        };
+        const rootNodes = [treeNodes['']];
 
         paths.forEach(path => {
             const meta = fileDiffStatusMap.get(path);
@@ -813,26 +993,50 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentFolderFilter !== 'all' && meta.status !== currentFolderFilter) return;
             visibleCount++;
 
-            const li = document.createElement('li');
-            li.className = 'tree-item';
+            const parts = path.split('/');
+            let currentLevel = treeNodes[''].children;
+            let currentPath = '';
 
-            const dot = document.createElement('div');
-            dot.className = `status-indicator status-${meta.status}`;
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                const isFile = (i === parts.length - 1);
+                currentPath += (i === 0 ? '' : '/') + part;
 
-            const txt = document.createElement('span');
-            txt.className = 'file-path-text';
-            txt.textContent = path;
-            txt.title = path;
-
-            li.appendChild(dot);
-            li.appendChild(txt);
-            li.addEventListener('click', () => {
-                document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
-                li.classList.add('active');
-                openFileDiff(path, meta.status);
-            });
-            fileTreeEl.appendChild(li);
+                if (!treeNodes[currentPath]) {
+                    const node = {
+                        name: part,
+                        fullPath: currentPath,
+                        isFile: isFile,
+                        status: isFile ? meta.status : 'folder',
+                        children: isFile ? null : []
+                    };
+                    treeNodes[currentPath] = node;
+                    currentLevel.push(node);
+                }
+                
+                if (!isFile) {
+                    currentLevel = treeNodes[currentPath].children;
+                }
+            }
         });
+
+        function computeFolderStatuses(nodes) {
+            nodes.forEach(node => {
+                if (!node.isFile) {
+                    computeFolderStatuses(node.children);
+                    if (node.children.length > 0) {
+                        const firstStatus = node.children[0].status;
+                        const allSame = node.children.every(c => c.status === firstStatus);
+                        if (allSame && (firstStatus === 'added' || firstStatus === 'removed')) {
+                            node.status = firstStatus;
+                        } else {
+                            node.status = 'mixed';
+                        }
+                    }
+                }
+            });
+        }
+        computeFolderStatuses(rootNodes);
 
         if (changedFilesCount) changedFilesCount.textContent = visibleCount;
 
@@ -843,12 +1047,97 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? 'No differences detected between the two folders.'
                 : `No ${currentFolderFilter} files.`;
             fileTreeEl.appendChild(li);
+        } else {
+            function buildTreeUI(nodes, container, depth = 0) {
+                const paddingAuth = `${(depth * 1.2) + 0.9}rem`;
+                nodes.forEach(node => {
+                    const row = document.createElement('li');
+                    row.className = 'dual-tree-row';
+                    
+                    const leftCell = document.createElement('div');
+                    leftCell.className = `dual-tree-cell left-cell ${node.status === 'added' ? 'empty-cell' : ''}`;
+                    leftCell.style.paddingLeft = paddingAuth;
+
+                    const rightCell = document.createElement('div');
+                    rightCell.className = `dual-tree-cell right-cell ${node.status === 'removed' ? 'empty-cell' : ''}`;
+                    rightCell.style.paddingLeft = paddingAuth;
+
+                    if (node.isFile) {
+                        row.classList.add('file-row');
+                        const dot = `<div class="status-indicator status-${node.status}"></div>`;
+                        const txt = `<span class="file-path-text" title="${node.fullPath}">${node.name}</span>`;
+
+                        if (node.status !== 'added') leftCell.innerHTML = dot + txt;
+                        if (node.status !== 'removed') rightCell.innerHTML = dot + txt;
+
+                        row.appendChild(leftCell);
+                        row.appendChild(rightCell);
+
+                        row.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            document.querySelectorAll('.dual-tree-row').forEach(el => el.classList.remove('active'));
+                            row.classList.add('active');
+                            openFileDiff(node.fullPath, node.status, node.name);
+                        });
+                        container.appendChild(row);
+                    } else {
+                        row.classList.add('folder-row');
+                        const caret = `<div class="tree-folder-icon" style="margin-right:0.25rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>`;
+                        const icon = `<div style="opacity:0.7; display:flex; align-items:center; margin-right:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"></path></svg></div>`;
+                        const txt = `<span class="file-path-text">${node.name}</span>`;
+                        
+                        if (node.status !== 'added') leftCell.innerHTML = caret + icon + txt;
+                        if (node.status !== 'removed') rightCell.innerHTML = caret + icon + txt;
+
+                        row.appendChild(leftCell);
+                        row.appendChild(rightCell);
+
+                        const liContainer = document.createElement('li');
+                        liContainer.className = 'tree-node-container expanded';
+                        liContainer.style.width = '100%';
+
+                        const childrenUl = document.createElement('ul');
+                        childrenUl.className = 'dual-folder-children';
+
+                        row.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            liContainer.classList.toggle('expanded');
+                        });
+
+                        buildTreeUI(node.children, childrenUl, depth + 1);
+
+                        liContainer.appendChild(row);
+                        liContainer.appendChild(childrenUl);
+                        container.appendChild(liContainer);
+                    }
+                });
+            }
+            
+            buildTreeUI(rootNodes, fileTreeEl);
+
+            // Removing auto-open so the user can actually see the dual folder tree first.
         }
     }
 
-    async function openFileDiff(path, status) {
-        const emptyState = folderEditorHost.querySelector('.empty-state');
-        if (emptyState) emptyState.style.display = 'none';
+    /**
+     * Open and display a file pair in the folder diff editor and switch the UI to the folder editor view.
+     *
+     * Loads the original and/or modified file contents according to `status`, updates the active filename shown
+     * in the folder UI, and either initializes the folder diff editor or updates its existing models and language.
+     *
+     * @param {string} path - Relative path of the file within the compared folders.
+     * @param {'added'|'removed'|'modified'|'unchanged'} status - Diff status that determines which side(s) to load.
+     * @param {string} [fileName] - Optional display name for the active file; if omitted, the basename of `path` is used.
+     */
+    async function openFileDiff(path, status, fileName = '') {
+        if (dualTreeLayer) dualTreeLayer.classList.add('hidden'); // switch layout
+        if (folderEditorWrapper) folderEditorWrapper.classList.remove('hidden');
+        if (folderEditorHost) folderEditorHost.classList.remove('hidden');
+        if (folderStatsBar) folderStatsBar.classList.remove('hidden');
+        if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
+
+        if (activeDiffFileName) activeDiffFileName.textContent = fileName || path.split('/').pop();
+
         let origTxt = '', modTxt = '';
         try {
             if (status === 'modified' || status === 'removed') origTxt = await originalFiles.get(path).text();
@@ -867,9 +1156,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Initialize and display the folder-mode Monaco diff editor for a given file path.
+     *
+     * Creates and shows folder editor UI elements, constructs original and modified Monaco models
+     * from the provided texts, attaches them to a diff editor, applies language detection based
+     * on the text and path, enables merge glyphs, and registers a diff-update hook to refresh
+     * folder diff statistics.
+     *
+     * @param {string} origTxt - The original file contents (may be empty or null).
+     * @param {string} modTxt - The modified file contents (may be empty or null).
+     * @param {string} path - The file path or name used as a hint for language detection.
+     */
     function initFolderDiffEditor(origTxt, modTxt, path) {
-        const emptyState = folderEditorHost.querySelector('.empty-state');
-        if (emptyState) emptyState.remove();
+        if (folderEditorWrapper) folderEditorWrapper.classList.remove('hidden');
+        if (folderEditorHost) folderEditorHost.classList.remove('hidden');
+        if (folderStatsBar) folderStatsBar.classList.remove('hidden');
+        if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
 
         folderDiffEditor = monaco.editor.createDiffEditor(folderEditorHost, {
             theme: themeSelect.value,
@@ -883,7 +1186,10 @@ document.addEventListener('DOMContentLoaded', () => {
             padding: { top: 16, bottom: 16 },
             originalEditable: true,
             glyphMargin: true,
-            renderMarginRevertIcon: false
+            renderMarginRevertIcon: false,
+            folding: false,
+            showFoldingControls: 'never',
+            lineDecorationsWidth: 0
         });
 
         folderOriginalModel = monaco.editor.createModel(origTxt, 'plaintext');
@@ -891,6 +1197,9 @@ document.addEventListener('DOMContentLoaded', () => {
         folderDiffEditor.setModel({ original: folderOriginalModel, modified: folderModifiedModel });
         updateEditorLanguage(folderOriginalModel, folderModifiedModel, origTxt || modTxt, path);
         setupFloatingMergeIcons(folderDiffEditor);
+        
+        // Wire up stats dynamically
+        folderDiffEditor.onDidUpdateDiff(() => updateDiffStats(folderDiffEditor, true));
     }
 
 
@@ -910,33 +1219,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const active = document.querySelector('.tree-item.active .file-path-text');
                 updateEditorLanguage(folderOriginalModel, folderModifiedModel, folderOriginalModel.getValue(), active?.textContent);
             }
-        }
-    });
-
-    themeSelect.addEventListener('change', (e) => {
-        const theme = e.target.value;
-
-        // Always clear previous overrides first
-        document.documentElement.removeAttribute('data-theme');
-        document.body.style.background = '';
-        document.body.style.color = '';
-
-        if (theme === 'ios-glass') {
-            if (window.monaco) monaco.editor.setTheme('vs-dark');
-            document.documentElement.setAttribute('data-theme', 'ios-glass');
-            document.body.style.background = '#dce8ff';
-            document.body.style.color = '#1c1c1e';
-        } else if (theme === 'hc-black') {
-            if (window.monaco) monaco.editor.setTheme('hc-black');
-            document.documentElement.setAttribute('data-theme', 'high-contrast');
-            document.body.style.background = '#000000';
-            document.body.style.color = '#ffffff';
-        } else if (theme === 'vs') {
-            if (window.monaco) monaco.editor.setTheme('vs');
-            document.body.style.background = '#ffffff';
-            document.body.style.color = '#111827';
-        } else {
-            if (window.monaco) monaco.editor.setTheme(theme);
         }
     });
 
@@ -1000,5 +1282,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (textDiffEditor) textDiffEditor.layout();
         if (folderDiffEditor) folderDiffEditor.layout();
     });
+    /**
+     * Activates the tab specified by the page URL's `tab` query parameter, if present.
+     *
+     * Reads the `tab` value from the current URL (e.g. `?tab=text-diff`), finds the corresponding
+     * element matching `.tab-btn[data-tab="<value>"]`, and triggers a click on it to switch tabs.
+     */
+    function applyTabFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab');
+        if (tab) {
+            const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+            if (btn) btn.click();
+        }
+    }
+    applyTabFromUrl();
 
 });
