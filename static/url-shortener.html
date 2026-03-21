@@ -356,15 +356,18 @@
                 try {
                     bwipjs.toCanvas('qr-canvas', {
                         bcid: 'qrcode',
-                        text: data.short_url,
+                        text: data.original_url,
                         scale: 4,
                         includetext: false
                     });
                     
-                    // Code128 can get very wide with long URLs, but we will encode the short URL 
+                    // Truncate for Code128 if needed — encode the full original URL
+                    const barcodeText = data.original_url.length > 80
+                        ? data.original_url.substring(0, 80)
+                        : data.original_url;
                     bwipjs.toCanvas('barcode-canvas', {
                         bcid: 'code128',
-                        text: data.short_url, 
+                        text: barcodeText,
                         scale: 2,
                         height: 12,
                         includetext: true,
