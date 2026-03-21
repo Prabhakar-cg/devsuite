@@ -1208,6 +1208,117 @@ textarea:focus {
     padding: 0.35rem 0;
 }
 
+/* Tree Hierarchy */
+.tree-node-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.tree-folder-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    cursor: pointer;
+    font-size: 0.77rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+    border-left: 3px solid transparent;
+}
+
+.tree-folder-header:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+}
+
+.tree-folder-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+    opacity: 0.6;
+}
+
+.tree-node-container.expanded > .tree-folder-header .tree-folder-icon {
+    transform: rotate(90deg);
+}
+
+.tree-folder-children {
+    list-style: none;
+    padding-left: 0.9rem; /* subtle indentation */
+    display: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    margin-left: 1.2rem;
+}
+
+.tree-node-container.expanded > .tree-folder-children {
+    display: block;
+}
+
+.tree-status-badge {
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    margin-left: auto;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.tree-status-badge.added {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--green);
+}
+
+.tree-status-badge.removed {
+    background: rgba(244, 63, 94, 0.15);
+    color: var(--red);
+}
+
+/* Dual Tree Architecture */
+.dual-tree-row {
+    display: flex;
+    width: 100%;
+    font-size: 0.77rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+}
+.dual-tree-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+.dual-tree-row.active {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--accent-2);
+}
+
+.dual-tree-cell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0.9rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0;
+    gap: 0.5rem;
+}
+.dual-tree-cell.left-cell {
+    border-right: 1px solid var(--glass-border);
+}
+.dual-tree-cell.empty-cell {
+    visibility: hidden; /* Takes up space, completely empty visuals */
+}
+
+/* Base override for default single tree to clean up CSS */
 .tree-item {
     display: flex;
     align-items: center;

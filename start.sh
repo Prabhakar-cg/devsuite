@@ -2,7 +2,7 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-echo "Starting setup for Diff checker from Hell..."
+echo "Starting setup for Local dev suite..."
 
 # Create virtual environment if it doesn't exist
 if [ ! -d ".venv" ]; then
