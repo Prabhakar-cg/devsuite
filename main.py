@@ -7,9 +7,12 @@ for maximum privacy. The /upload endpoint is a fallback for edge cases.
 """
 
 import os
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import string
+import secrets
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
+from pydantic import BaseModel
 
 app = FastAPI(
     title="DevSuite",
@@ -22,6 +25,12 @@ os.makedirs(static_dir, exist_ok=True)
 
 # Serve static assets (JS, CSS, images) from the /static route
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+# URL Shortener Database (In-memory)
+url_db = {}
+
+class ShortenRequest(BaseModel):
+    url: str
 
 
 @app.middleware("http")
@@ -114,6 +123,55 @@ def read_base64_tool():
             return f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="base64.html not found.") from None
+
+
+@app.get("/crypto", response_class=HTMLResponse, summary="Serve Crypto Suite tool")
+def read_crypto_tool():
+    """Serve the Crypto Suite tool (Hash, AES, RSA, HMAC)."""
+    html_path = os.path.join(static_dir, "crypto.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="crypto.html not found.") from None
+
+
+@app.get("/url-shortener", response_class=HTMLResponse, summary="Serve URL Shortener tool")
+def read_url_shortener_tool():
+    """Serve the URL Shortener tool."""
+    html_path = os.path.join(static_dir, "url-shortener.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="url-shortener.html not found.") from None
+
+
+@app.post("/api/shorten", summary="Create a short URL")
+def shorten_url(req: ShortenRequest, request: Request):
+    """Generate a random 6-character short link for a given URL (Offline)."""
+    url = req.url.strip()
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "https://" + url
+        
+    alphabet = string.ascii_letters + string.digits
+    short_id = "".join(secrets.choice(alphabet) for _ in range(6))
+    
+    # Store in memory
+    url_db[short_id] = url
+    
+    # Return the full short URL
+    base_url = str(request.base_url).rstrip("/")
+    short_url = f"{base_url}/r/{short_id}"
+    return {"short_id": short_id, "short_url": short_url, "original_url": url}
+
+
+@app.get("/r/{short_id}", summary="Redirect to original URL")
+def redirect_short_url(short_id: str):
+    """Redirect a short ID to its original URL."""
+    if short_id in url_db:
+        return RedirectResponse(url=url_db[short_id], status_code=302)
+    raise HTTPException(status_code=404, detail="Short URL not found.")
 
 
 @app.post("/upload", summary="Upload a text file for diffing")

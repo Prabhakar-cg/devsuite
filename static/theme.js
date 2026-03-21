@@ -42,40 +42,80 @@
 
         html[data-theme="ios-glass"] {
             color-scheme: light;
-            --bg-void: #dce8ff;
-            --bg-main: #eef2ff;
-            --bg-surface: rgba(255, 255, 255, 0.65);
-            --bg-panel: rgba(255, 255, 255, 0.75);
-            --bg-raised: rgba(255, 255, 255, 0.85);
-            --bg-neu: rgba(255, 255, 255, 0.6);
-            --glass-bg: rgba(255, 255, 255, 0.55);
-            --glass-border: rgba(0, 0, 0, 0.08);
-            --glass-shine: rgba(255, 255, 255, 0.7);
+            --bg-void: #c5d8ff;
+            --bg-main: #d4e4ff;
+            --bg-surface: rgba(255, 255, 255, 0.45);
+            --bg-panel: rgba(255, 255, 255, 0.55);
+            --bg-raised: rgba(255, 255, 255, 0.7);
+            --bg-neu: rgba(255, 255, 255, 0.5);
+            --glass-bg: rgba(255, 255, 255, 0.35);
+            --glass-border: rgba(99, 130, 255, 0.18);
+            --glass-shine: rgba(255, 255, 255, 0.6);
+            --glass-blur: blur(24px) saturate(180%);
             --text-primary: #1c1c1e;
-            --text-secondary: rgba(60, 60, 67, 0.85);
+            --text-secondary: rgba(44, 44, 54, 0.85);
             --text-muted: rgba(60, 60, 67, 0.55);
-            --border: rgba(0, 0, 0, 0.08);
-            --neu-raise: 0 8px 32px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-            --neu-press: inset 0 2px 5px rgba(0,0,0,0.06);
-            --neu-flat: 0 2px 5px rgba(0,0,0,0.05);
+            --border: rgba(99, 130, 255, 0.15);
+            --neu-raise: 0 8px 32px rgba(80,100,220,0.12), 0 2px 6px rgba(80,100,220,0.06);
+            --neu-press: inset 0 2px 5px rgba(80,100,220,0.1);
+            --neu-flat: 0 2px 5px rgba(80,100,220,0.06);
         }
 
         /* Override hardcoded dark elements in light themes */
         html[data-theme="vs"] textarea,
-        html[data-theme="ios-glass"] textarea,
+        html[data-theme="ios-glass"] textarea { color: var(--text-primary) !important; }
+
         html[data-theme="vs"] .pane-editor,
+        html[data-theme="vs"] .pane-output {
+            background: #ffffff !important;
+            border-color: rgba(0,0,0,0.08) !important;
+        }
         html[data-theme="ios-glass"] .pane-editor,
-        html[data-theme="vs"] .pane-output,
-        html[data-theme="ios-glass"] .pane-output,
+        html[data-theme="ios-glass"] .pane-output {
+            background: rgba(255,255,255,0.45) !important;
+            backdrop-filter: blur(24px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+            border-color: rgba(99,130,255,0.18) !important;
+        }
         html[data-theme="vs"] .sidebar,
         html[data-theme="ios-glass"] .sidebar,
         html[data-theme="vs"] .sidebar-header,
-        html[data-theme="ios-glass"] .sidebar-header,
+        html[data-theme="ios-glass"] .sidebar-header { background: var(--bg-surface) !important; }
+
         html[data-theme="vs"] .panel-header,
+        html[data-theme="vs"] .pane-header {
+            background: #f1f5f9 !important;
+            border-bottom-color: rgba(0,0,0,0.08) !important;
+        }
         html[data-theme="ios-glass"] .panel-header,
-        html[data-theme="vs"] .pane-header,
         html[data-theme="ios-glass"] .pane-header {
-            background: var(--bg-surface) !important;
+            background: rgba(255,255,255,0.4) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border-bottom-color: rgba(99,130,255,0.15) !important;
+        }
+        html[data-theme="vs"] .tool-header {
+            background: #ffffff !important;
+            border-bottom-color: rgba(0,0,0,0.1) !important;
+            box-shadow: 0 1px 8px rgba(0,0,0,0.08) !important;
+        }
+        html[data-theme="ios-glass"] .tool-header {
+            background: rgba(255,255,255,0.5) !important;
+            backdrop-filter: blur(30px) saturate(200%) !important;
+            -webkit-backdrop-filter: blur(30px) saturate(200%) !important;
+            border-bottom-color: rgba(99,130,255,0.2) !important;
+            box-shadow: 0 1px 20px rgba(80,100,220,0.1) !important;
+        }
+        html[data-theme="vs"] .action-toolbar {
+            background: #f8fafc !important;
+            border-bottom-color: rgba(0,0,0,0.08) !important;
+            box-shadow: none !important;
+        }
+        html[data-theme="ios-glass"] .action-toolbar {
+            background: rgba(255,255,255,0.4) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border-bottom-color: rgba(99,130,255,0.15) !important;
         }
 
         html[data-theme="vs"] textarea:focus,
@@ -94,6 +134,64 @@
 
         html[data-theme="vs"] .toast.info,
         html[data-theme="ios-glass"] .toast.info { color: #4338ca !important; }
+
+        /* ── Crypto Suite: light theme fixes ── */
+        html[data-theme="vs"] .crypto-tabs,
+        html[data-theme="ios-glass"] .crypto-tabs {
+            background: var(--bg-surface) !important;
+            border-bottom-color: var(--glass-border) !important;
+        }
+        html[data-theme="vs"] .crypto-tab,
+        html[data-theme="ios-glass"] .crypto-tab {
+            color: var(--text-secondary) !important;
+        }
+        html[data-theme="vs"] .crypto-tab:hover,
+        html[data-theme="ios-glass"] .crypto-tab:hover {
+            color: var(--text-primary) !important;
+        }
+        html[data-theme="vs"] .crypto-tab.active,
+        html[data-theme="ios-glass"] .crypto-tab.active {
+            color: #7c3aed !important;
+            border-bottom-color: #7c3aed !important;
+        }
+        html[data-theme="vs"] .cs-controls,
+        html[data-theme="ios-glass"] .cs-controls {
+            background: var(--bg-raised) !important;
+        }
+        html[data-theme="vs"] .cs-col-header,
+        html[data-theme="ios-glass"] .cs-col-header {
+            background: var(--bg-surface) !important;
+            color: var(--text-muted) !important;
+        }
+        html[data-theme="vs"] .cs-textarea,
+        html[data-theme="ios-glass"] .cs-textarea {
+            background: var(--bg-panel) !important;
+            color: var(--text-primary) !important;
+        }
+        html[data-theme="vs"] .cs-textarea:read-only,
+        html[data-theme="ios-glass"] .cs-textarea:read-only {
+            color: var(--text-secondary) !important;
+        }
+        html[data-theme="vs"] .hash-results,
+        html[data-theme="ios-glass"] .hash-results {
+            background: var(--bg-panel) !important;
+        }
+        html[data-theme="vs"] .hash-val,
+        html[data-theme="ios-glass"] .hash-val {
+            color: var(--text-primary) !important;
+        }
+        html[data-theme="vs"] .hash-algo,
+        html[data-theme="ios-glass"] .hash-algo {
+            color: #7c3aed !important;
+        }
+        html[data-theme="vs"] .key-textarea,
+        html[data-theme="ios-glass"] .key-textarea {
+            color: var(--text-secondary) !important;
+        }
+        html[data-theme="vs"] .cs-label,
+        html[data-theme="ios-glass"] .cs-label {
+            color: var(--text-muted) !important;
+        }
 
         .global-theme-select {
             background: var(--bg-neu);
@@ -142,7 +240,7 @@ function applyThemeDOM(theme) {
 
     if (theme === 'ios-glass') {
         document.documentElement.setAttribute('data-theme', 'ios-glass');
-        bg = '#dce8ff';
+        bg = 'linear-gradient(135deg, #a8c0ff 0%, #c7d8ff 35%, #b8d0ff 65%, #a0b8f8 100%)';
         color = '#1c1c1e';
     } else if (theme === 'hc-black') {
         document.documentElement.setAttribute('data-theme', 'high-contrast');
@@ -163,9 +261,9 @@ function applyThemeDOM(theme) {
     
     if (bg && color) {
         dynamicStyle.textContent = `
-            body { 
-                background: ${bg} !important; 
-                color: ${color} !important; 
+            body {
+                background: ${bg} !important;
+                color: ${color} !important;
             }
         `;
     } else {
