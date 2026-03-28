@@ -40,6 +40,29 @@
             --neu-flat: 2px 2px 5px rgba(0,0,0,0.04), -2px -2px 5px rgba(255,255,255,0.7);
         }
 
+        html[data-theme="high-contrast"] {
+            color-scheme: dark;
+            --bg-void: #000000;
+            --bg-main: #000000;
+            --bg-surface: #000000;
+            --bg-panel: #000000;
+            --bg-raised: #141414;
+            --bg-neu: #000000;
+            --glass-bg: rgba(0, 0, 0, 0.95);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --glass-shine: rgba(255, 255, 255, 0.1);
+            --glass-blur: none;
+            --text-primary: #ffffff;
+            --text-secondary: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border: rgba(255, 255, 255, 0.4);
+            --border-accent: rgba(255, 255, 255, 0.7);
+            --neu-raise: none;
+            --neu-press: none;
+            --neu-flat: none;
+            --shadow-glow: none;
+        }
+
         html[data-theme="ios-glass"] {
             color-scheme: light;
             --bg-void: #c5d8ff;
@@ -277,13 +300,17 @@ function applyThemeDOM(theme) {
             }
         `;
         // Also set inline body styles so external selectors/scripts can read them
-        document.body.style.background = bg;
-        document.body.style.color = color;
+        if (document.body) {
+            document.body.style.background = bg;
+            document.body.style.color = color;
+        }
     } else {
         dynamicStyle.textContent = '';
         // Clear inline body styles when reverting to default theme
-        document.body.style.background = '';
-        document.body.style.color = '';
+        if (document.body) {
+            document.body.style.background = '';
+            document.body.style.color = '';
+        }
     }
 }
 

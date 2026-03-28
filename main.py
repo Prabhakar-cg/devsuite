@@ -11,6 +11,8 @@ import string
 import secrets
 import json
 import urllib.parse
+import urllib.request
+import urllib.error
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -193,6 +195,16 @@ def read_url_shortener_tool():
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="url-shortener.html not found.") from None
 
+@app.get("/api-tester", response_class=HTMLResponse, summary="Serve Local API Tester tool")
+def read_api_tester_tool():
+    """Serve the API Tester tool."""
+    html_path = os.path.join(static_dir, "api-tester.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="api-tester.html not found.") from None
+
 
 @app.post("/api/shorten", summary="Create a short URL")
 def shorten_url(req: ShortenRequest, request: Request):
@@ -312,6 +324,71 @@ async def upload_file(file: UploadFile = File(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail="Server error processing file") from e
+
+
+@app.get("/api/collections", summary="Get API Tester Collections")
+def get_collections():
+    """Reads saved collections from ~/.devsuite/collections.json"""
+    col_path = os.path.join(os.path.expanduser("~"), ".devsuite", "collections.json")
+    if os.path.exists(col_path):
+        try:
+            with open(col_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            pass
+    return {"items": []}
+
+@app.post("/api/collections", summary="Save API Tester Collections")
+def save_collections(data: dict):
+    """Writes collections to ~/.devsuite/collections.json"""
+    devsuite_dir = os.path.join(os.path.expanduser("~"), ".devsuite")
+    os.makedirs(devsuite_dir, exist_ok=True)
+    col_path = os.path.join(devsuite_dir, "collections.json")
+    try:
+        with open(col_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ProxyRequest(BaseModel):
+    url: str
+    method: str = "GET"
+    headers: dict = {}
+    body: str | None = None
+
+@app.post("/api/proxy", summary="Bypass CORS for API Tester")
+async def proxy_request(req: ProxyRequest):
+    """Provides a local CORS bypass proxy using urllib for the API tester tool."""
+    try:
+        req_body = req.body.encode('utf-8') if req.body else None
+        
+        headers_to_pass = {}
+        for k, v in req.headers.items():
+            if k.lower() not in ("host", "connection", "origin", "referer", "accept-encoding"):
+                headers_to_pass[k] = v
+
+        request = urllib.request.Request(req.url, data=req_body, headers=headers_to_pass, method=req.method.upper())
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                body = response.read().decode('utf-8', errors='replace')
+                return {
+                    "proxy_response": True,
+                    "status": response.status,
+                    "headers": dict(response.headers),
+                    "body": body
+                }
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8', errors='replace') if hasattr(e, 'read') and e.read else ""
+            return {
+                "proxy_response": True,
+                "status": e.code,
+                "headers": dict(e.headers),
+                "body": body
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

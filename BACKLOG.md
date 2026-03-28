@@ -65,7 +65,7 @@
 | N-3 | **Color Studio**: Gradient generator, contrast checker, and palette exporter (HEX/HSL/RGB). | M | `[ ]` |
 | N-4 | **ID Generator**: Bulk generate UUIDs, ULIDs, and CUIDs with entropy inspection. | S | `[ ]` |
 | N-5 | **Markdown Lab**: Real-time Monaco → Rendered HTML preview for README testing. | M | `[ ]` |
-| N-6 | **HTTP Request Builder**: Lightweight, local-only tool for testing APIs without an external client. | XL | `[ ]` |
+| N-6 | **HTTP Request Builder**: Lightweight, local-only tool for testing APIs without an external client. | XL | `[x]` |
 
 ---
 

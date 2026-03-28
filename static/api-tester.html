@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Tester — DevSuite</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/linter.css">
+    <link rel="stylesheet" href="/static/api-tester.css">
+    
+    <!-- Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+    <script src="/static/theme.js?v=2"></script>
+    <script src="/static/api-client.js?v=2"></script>
+</head>
+<body>
+    
+    <!-- Header -->
+    <header class="app-header">
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            <a href="/" class="back-link">← DevSuite</a>
+            <div class="tool-identity" id="tool-identity">
+                <!-- We use Violet accent for API Tester per design -->
+                <div class="tool-icon tool-icon-violet" id="tool-header-icon" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);color:#fff;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                </div>
+                <span class="tool-name" id="tool-header-name">
+                    API <span class="tool-accent" style="color:#a855f7;">Tester</span>
+                </span>
+                <span class="tool-version" id="tool-header-version">V1.0</span>
+            </div>
+        </div>
+        <div class="header-controls">
+            <select class="global-theme-select">
+                <option value="vs-dark">Midnight Dark</option>
+                <option value="vs">Clean Light</option>
+                <option value="hc-black">High Contrast</option>
+                <option value="ios-glass">Frosted Glass</option>
+            </select>
+            <button id="save-collection-btn" class="btn-small" style="background:var(--accent-1); color:#fff; border:none; margin-left:1rem;">Save Setup</button>
+        </div>
+    </header>
+
+    <!-- Main Tool Container -->
+    <div class="api-tester-container">
+        
+        <!-- Sidebar: History & Collections -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span>Collections</span>
+                <button id="refresh-collections-btn" class="btn-small" style="border:none; background:transparent;">↺</button>
+            </div>
+            <div class="sidebar-content" id="collections-list">
+                <!-- Injected natively via JS -->
+            </div>
+        </div>
+
+        <!-- Request/Response Column -->
+        <div class="main-area">
+            
+            <div class="request-bar">
+                <select id="req-method" class="method-select">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                    <option value="PATCH">PATCH</option>
+                </select>
+                <input type="text" id="req-url" class="url-input" placeholder="https://api.example.com/v1/users">
+                <button id="btn-send" class="send-btn">Send</button>
+            </div>
+
+            <div class="panes">
+                
+                <!-- Request Configuration Pane -->
+                <div class="request-pane">
+                    <div class="tabs-header" id="req-tabs">
+                        <button class="tab-btn active" data-target="tab-params">Params</button>
+                        <button class="tab-btn" data-target="tab-headers">Headers</button>
+                        <button class="tab-btn" data-target="tab-auth">Auth</button>
+                        <button class="tab-btn" data-target="tab-body">Body</button>
+                    </div>
+
+                    <div id="tab-params" class="tab-content active req-tab-content">
+                        <div id="params-list"></div>
+                        <button class="btn-small" id="btn-add-param" style="margin-top:0.5rem;">+ Add Param</button>
+                    </div>
+
+                    <div id="tab-headers" class="tab-content req-tab-content">
+                        <div id="headers-list"></div>
+                        <button class="btn-small" id="btn-add-header" style="margin-top:0.5rem;">+ Add Header</button>
+                    </div>
+
+                    <div id="tab-auth" class="tab-content req-tab-content">
+                        <select id="auth-type" class="method-select" style="margin-bottom:1rem; width:100%;">
+                            <option value="none">No Auth</option>
+                            <option value="bearer">Bearer Token</option>
+                            <option value="basic">Basic Auth</option>
+                        </select>
+                        <div id="auth-bearer-config" style="display:none;">
+                            <input type="text" id="auth-token" class="url-input" style="width:100%;" placeholder="Token">
+                        </div>
+                        <div id="auth-basic-config" style="display:none;">
+                            <input type="text" id="auth-username" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="Username">
+                            <input type="password" id="auth-password" class="url-input" style="width:100%;" placeholder="Password">
+                        </div>
+                    </div>
+
+                    <div id="tab-body" class="tab-content req-tab-content" style="display:flex; flex-direction:column; padding:0;">
+                        <div style="padding:0.5rem 1rem; border-bottom:1px solid var(--border);">
+                            <label><input type="radio" name="bodyType" value="none" checked> None</label>
+                            <label style="margin-left:1rem;"><input type="radio" name="bodyType" value="json"> JSON</label>
+                            <label style="margin-left:1rem;"><input type="radio" name="bodyType" value="form-data"> Form Data</label>
+                        </div>
+                        
+                        <!-- JSON Body Editor (Monaco) -->
+                        <div id="req-body-editor-wrap" class="editor-container" style="display:none; flex:1;">
+                            <div id="req-body-editor" style="width:100%; height:100%;"></div>
+                        </div>
+
+                        <!-- Form Data UI -->
+                        <div id="req-form-data-wrap" style="display:none; padding:1rem; flex:1; overflow-y:auto;">
+                            <div id="form-data-list"></div>
+                            <button class="btn-small" id="btn-add-form-data" style="margin-top:0.5rem;">+ Add Field</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Response Pane -->
+                <div class="response-pane">
+                    
+                    <div class="response-meta" id="resp-meta" style="display:none;">
+                        <div>Status: <span id="resp-status" class="meta-value"></span></div>
+                        <div>Time: <span id="resp-time" class="meta-value"></span></div>
+                        <div>Size: <span id="resp-size" class="meta-value"></span></div>
+                    </div>
+
+                    <div class="tabs-header" id="resp-tabs">
+                        <button class="tab-btn active" data-target="resp-body">Response Body</button>
+                        <button class="tab-btn" data-target="resp-headers">Headers</button>
+                    </div>
+
+                    <div id="resp-body" class="tab-content active resp-tab-content" style="padding:0; display:flex; flex-direction:column; position:relative; flex:1;">
+                        <div id="resp-editor" style="width:100%; height:100%; position:absolute; top:0; left:0;"></div>
+                        <div id="resp-placeholder" style="display:flex; align-items:center; justify-content:center; flex:1; color:var(--text-muted); font-size:0.9rem;">
+                            Enter a URL and click Send to see the response.
+                        </div>
+                    </div>
+
+                    <div id="resp-headers" class="tab-content resp-tab-content">
+                        <!-- Natively injected as key=value -->
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+    
+    <script src="/static/api-tester.js?v=2"></script>
+</body>
+</html>

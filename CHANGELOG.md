@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.1.0] - 2026-03-28
+### Added
+- **Local API Tester** (`/api-tester`) — Full-featured REST client for local development.
+  - Request Collections: Organizable folders for API requests.
+  - Local History: Persistent log of all local API interactions stored in `~/.devsuite/collections.json`.
+  - Privacy Guard: Hardened local-only storage logic for API keys/tokens.
+
 ## [5.0.0] - 2026-03-21
 ### Added
 - **Crypto Suite** (`/crypto`) — Four-tab cryptographic toolkit:
