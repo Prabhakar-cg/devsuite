@@ -36,5 +36,5 @@
 - **Tests**: Always execute backend tests (`pytest test_main.py test_new_features.py`) before final validation.
 
 ## 5. Salient Modules
-- **API Tester (`api-tester.html` / `api-client.js`)**: A local-first REST client capable of bypassing CORS. The UI dispatches requests to `POST /api/proxy` in `main.py`, which securely relays them to external targets using `httpx` and streams the unmodified response back to the client. Request history syncs locally via `/api/collections`. 
+- **API Tester (`api-tester.html` / `api-client.js`)**: A local-first REST client capable of bypassing CORS. The UI dispatches requests to `POST /api/proxy` in `main.py`, which securely relays them to external targets using `urllib.request` and streams the unmodified response back to the client. Request history syncs locally via `/api/collections`. 
 - **Diff Editor (`app.js`)**: Powers both Text & Folder diffs. Manages Monaco instances and implements direct right/left hunk merging.

@@ -13,6 +13,8 @@ import json
 import urllib.parse
 import urllib.request
 import urllib.error
+import socket
+import ipaddress
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -362,8 +364,36 @@ class ProxyRequest(BaseModel):
 async def proxy_request(req: ProxyRequest):
     """Provides a local CORS bypass proxy using urllib for the API tester tool."""
     try:
+        # Parse and validate the URL scheme
+        parsed = urllib.parse.urlparse(req.url)
+        if parsed.scheme not in ('http', 'https'):
+            raise HTTPException(status_code=400, detail="Only HTTP and HTTPS schemes are allowed")
+
+        if not parsed.hostname:
+            raise HTTPException(status_code=400, detail="Invalid URL: no hostname")
+
+        # Resolve hostname and check for private/reserved IP addresses
+        try:
+            addr_info = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == 'https' else 80), socket.AF_UNSPEC, socket.SOCK_STREAM)
+        except (socket.gaierror, socket.herror) as e:
+            raise HTTPException(status_code=400, detail=f"DNS resolution failed: {e}")
+
+        for family, socktype, proto, canonname, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            try:
+                ip_obj = ipaddress.ip_address(ip_str)
+                # Reject loopback, private, link-local, multicast, and reserved addresses
+                if ip_obj.is_loopback or ip_obj.is_private or ip_obj.is_link_local or ip_obj.is_multicast or ip_obj.is_reserved:
+                    raise HTTPException(status_code=403, detail=f"Access to private/reserved IP addresses is forbidden: {ip_str}")
+                # Special check for cloud metadata endpoint
+                if ip_str.startswith("169.254."):
+                    raise HTTPException(status_code=403, detail="Access to cloud metadata endpoints is forbidden")
+            except ValueError:
+                # Not a valid IP address, skip
+                pass
+
         req_body = req.body.encode('utf-8') if req.body else None
-        
+
         headers_to_pass = {}
         for k, v in req.headers.items():
             if k.lower() not in ("host", "connection", "origin", "referer", "accept-encoding"):
@@ -387,6 +417,8 @@ async def proxy_request(req: ProxyRequest):
                 "headers": dict(e.headers),
                 "body": body
             }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

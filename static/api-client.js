@@ -48,7 +48,15 @@ window.ApiClient = class ApiClient {
             if (config.auth.type === 'bearer' && config.auth.token) {
                 headers.set('Authorization', `Bearer ${config.auth.token}`);
             } else if (config.auth.type === 'basic' && config.auth.username) {
-                const credentials = btoa(`${config.auth.username}:${config.auth.password || ''}`);
+                // UTF-8 safe Base64 encoding for credentials
+                const credentialsStr = `${config.auth.username}:${config.auth.password || ''}`;
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(credentialsStr);
+                let binaryString = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    binaryString += String.fromCharCode(bytes[i]);
+                }
+                const credentials = btoa(binaryString);
                 headers.set('Authorization', `Basic ${credentials}`);
             }
         }

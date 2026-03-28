@@ -87,6 +87,12 @@
     cursor: pointer;
 }
 
+.method-select:focus-visible {
+    outline: 2px solid var(--accent-1);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
 .url-input {
     flex: 1;
     background: var(--bg-neu);
