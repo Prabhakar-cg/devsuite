@@ -9,7 +9,13 @@ All notable changes to this project will be documented in this file.
   - Local History: Persistent log of all local API interactions stored in `~/.devsuite/collections.json`.
   - Privacy Guard: Hardened local-only storage logic for API keys/tokens.
 
+## [5.0.1] - 2026-03-21
+### Fixed
+- **Diff tool icon** — Restored `.tool-icon`, `.tool-identity`, `.tool-name`, `.tool-version`, and `.kbd-badge` CSS rules that were accidentally removed from `style.css` during the audit cleanup. `index.html` loads `style.css` exclusively (not `linter.css`), so the removal caused the header icon to render unstyled and oversized.
+- **QR Code & Barcode** — Reverted both codes to encode `data.original_url` (the real destination URL) instead of `data.short_url`. The short URL is always a `127.0.0.1` local address, which is unusable when scanned by a phone or external device. Added a 80-char truncation guard for the Code128 barcode on very long URLs.
+
 ## [5.0.0] - 2026-03-21
+
 ### Added
 - **Crypto Suite** (`/crypto`) — Four-tab cryptographic toolkit:
   - Hash Generator (MD5, SHA-1, SHA-256, SHA-512) with copy buttons per hash.

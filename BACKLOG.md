@@ -71,4 +71,3 @@
 
 ## Effort Scale
 `XS` < 1 hr · `S` 1–3 hrs · `M` 3–8 hrs · `L` 1–2 days · `XL` 2+ days
-
