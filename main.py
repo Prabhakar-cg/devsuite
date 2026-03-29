@@ -26,6 +26,15 @@ app = FastAPI(
     version="2.0.0"
 )
 
+# Allowlist of hostnames that the /api/proxy endpoint is permitted to contact.
+# Adjust this set to match the APIs you intend to test via the proxy.
+ALLOWED_PROXY_HOSTS = {
+    # Example public APIs:
+    "api.github.com",
+    "jsonplaceholder.typicode.com",
+    "httpbin.org",
+}
+
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(static_dir, exist_ok=True)
 
@@ -372,9 +381,18 @@ async def proxy_request(req: ProxyRequest):
         if not parsed.hostname:
             raise HTTPException(status_code=400, detail="Invalid URL: no hostname")
 
+        # Enforce hostname allowlist to prevent full SSRF to arbitrary targets.
+        if parsed.hostname not in ALLOWED_PROXY_HOSTS:
+            raise HTTPException(status_code=400, detail="Target host is not allowed")
+
         # Resolve hostname and check for private/reserved IP addresses
         try:
-            addr_info = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == 'https' else 80), socket.AF_UNSPEC, socket.SOCK_STREAM)
+            addr_info = socket.getaddrinfo(
+                parsed.hostname,
+                parsed.port or (443 if parsed.scheme == 'https' else 80),
+                socket.AF_UNSPEC,
+                socket.SOCK_STREAM,
+            )
         except (socket.gaierror, socket.herror) as e:
             raise HTTPException(status_code=400, detail=f"DNS resolution failed: {e}")
 
