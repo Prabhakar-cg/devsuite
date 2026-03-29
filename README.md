@@ -128,7 +128,7 @@ devsuite/
     ├── crypto.html          # Crypto Suite (Hash, AES, RSA, HMAC)
     ├── url-shortener.html   # Link & QR Studio
     ├── api-tester.html      # Local API Tester module
-    ├── api-client.js        # Core Fetch-wrapper and typescript-like client for the API Tester
+    ├── api-client.js        # Core Fetch-wrapper and compiled JS client used by API Tester
     ├── linter.css           # Shared layout for linter/tester/crypto tools
     ├── crypto-js.min.js     # Self-hosted CryptoJS v4.2.0
     └── bwip-js-min.js       # Self-hosted bwip-js v3.4.1 (barcode rendering)

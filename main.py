@@ -360,7 +360,7 @@ def save_collections(data: dict):
             json.dump(data, f, indent=2)
         return {"status": "ok"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 class ProxyRequest(BaseModel):
@@ -438,7 +438,7 @@ async def proxy_request(req: ProxyRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 if __name__ == "__main__":

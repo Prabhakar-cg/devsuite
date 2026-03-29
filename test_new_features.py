@@ -406,7 +406,7 @@ class TestUrlNormalization:
         resp = client.post("/api/shorten", json={"url": "https://example.com   \n"})
         assert resp.json()["original_url"] == "https://example.com"
 
-    def test_only_spaces_url_becomes_https_prepended(self):
+    def test_only_spaces_url_rejected_with_400(self):
         """A URL that is only spaces after stripping is rejected with 400."""
         resp = client.post("/api/shorten", json={"url": "   "})
         assert resp.status_code == 400

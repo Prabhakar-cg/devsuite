@@ -388,4 +388,8 @@ els.saveBtn.addEventListener('click', () => {
 document.getElementById('refresh-collections-btn').addEventListener('click', loadCollections);
 
 // Init
-setTimeout(loadCollections, 500);
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    loadCollections();
+} else {
+    document.addEventListener('DOMContentLoaded', loadCollections);
+}
