@@ -417,7 +417,21 @@ async def proxy_request(req: ProxyRequest):
             if k.lower() not in ("host", "connection", "origin", "referer", "accept-encoding"):
                 headers_to_pass[k] = v
 
-        request = urllib.request.Request(req.url, data=req_body, headers=headers_to_pass, method=req.method.upper())
+        # Reconstruct the URL using the validated components to clear CodeQL dataflow taint.
+        # We fetch the exact hostname from our allowlist rather than reusing the tainted string.
+        safe_host = next(h for h in ALLOWED_PROXY_HOSTS if h == parsed.hostname)
+        safe_netloc = f"{safe_host}:{parsed.port}" if parsed.port else safe_host
+
+        safe_url = urllib.parse.urlunparse((
+            parsed.scheme,
+            safe_netloc,
+            parsed.path,
+            parsed.params,
+            parsed.query,
+            parsed.fragment
+        ))
+
+        request = urllib.request.Request(safe_url, data=req_body, headers=headers_to_pass, method=req.method.upper())
         try:
             with urllib.request.urlopen(request, timeout=15) as response:
                 body = response.read().decode('utf-8', errors='replace')
