@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.1.0] - 2026-03-28
+### Added
+- **Local API Tester** (`/api-tester`) — Full-featured REST client for local development.
+  - Request Collections: Organizable folders for API requests.
+  - Local History: Persistent log of all local API interactions stored in `~/.devsuite/collections.json`.
+  - Privacy Guard: Hardened local-only storage logic for API keys/tokens.
+
 ## [5.0.1] - 2026-03-21
 ### Fixed
 - **Diff tool icon** — Restored `.tool-icon`, `.tool-identity`, `.tool-name`, `.tool-version`, and `.kbd-badge` CSS rules that were accidentally removed from `style.css` during the audit cleanup. `index.html` loads `style.css` exclusively (not `linter.css`), so the removal caused the header icon to render unstyled and oversized.

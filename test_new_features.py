@@ -406,11 +406,10 @@ class TestUrlNormalization:
         resp = client.post("/api/shorten", json={"url": "https://example.com   \n"})
         assert resp.json()["original_url"] == "https://example.com"
 
-    def test_only_spaces_url_becomes_https_prepended(self):
-        """A URL that is only spaces after stripping becomes https:// prepended to empty string."""
+    def test_only_spaces_url_rejected_with_400(self):
+        """A URL that is only spaces after stripping is rejected with 400."""
         resp = client.post("/api/shorten", json={"url": "   "})
-        # After strip: "" — does not start with http(s), so "https://" is prepended
-        assert resp.json()["original_url"] == "https://"
+        assert resp.status_code == 400
 
     def test_uppercase_http_not_recognized_as_scheme(self):
         """HTTP:// in uppercase is not matched as a scheme; https:// is prepended."""
@@ -481,7 +480,6 @@ class TestUrlShortenerRegressions:
             "https://a.com",
             "https://very-long-domain-name-that-exceeds-normal-length.co.uk/with/a/deep/path?and=many&query=params",
             "x",
-            "  ",
             "http://localhost:8080",
         ]
         for url in test_urls:

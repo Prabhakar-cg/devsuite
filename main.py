@@ -11,6 +11,10 @@ import string
 import secrets
 import json
 import urllib.parse
+import urllib.request
+import urllib.error
+import socket
+import ipaddress
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -21,6 +25,15 @@ app = FastAPI(
     description="A private, locally-hosted diff checker with Monaco Editor.",
     version="2.0.0"
 )
+
+# Allowlist of hostnames that the /api/proxy endpoint is permitted to contact.
+# Adjust this set to match the APIs you intend to test via the proxy.
+ALLOWED_PROXY_HOSTS = {
+    # Example public APIs:
+    "api.github.com",
+    "jsonplaceholder.typicode.com",
+    "httpbin.org",
+}
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(static_dir, exist_ok=True)
@@ -193,6 +206,16 @@ def read_url_shortener_tool():
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="url-shortener.html not found.") from None
 
+@app.get("/api-tester", response_class=HTMLResponse, summary="Serve Local API Tester tool")
+def read_api_tester_tool():
+    """Serve the API Tester tool."""
+    html_path = os.path.join(static_dir, "api-tester.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="api-tester.html not found.") from None
+
 
 @app.post("/api/shorten", summary="Create a short URL")
 def shorten_url(req: ShortenRequest, request: Request):
@@ -312,6 +335,124 @@ async def upload_file(file: UploadFile = File(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail="Server error processing file") from e
+
+
+@app.get("/api/collections", summary="Get API Tester Collections")
+def get_collections():
+    """Reads saved collections from ~/.devsuite/collections.json"""
+    col_path = os.path.join(os.path.expanduser("~"), ".devsuite", "collections.json")
+    if os.path.exists(col_path):
+        try:
+            with open(col_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            pass
+    return {"items": []}
+
+@app.post("/api/collections", summary="Save API Tester Collections")
+def save_collections(data: dict):
+    """Writes collections to ~/.devsuite/collections.json"""
+    devsuite_dir = os.path.join(os.path.expanduser("~"), ".devsuite")
+    os.makedirs(devsuite_dir, exist_ok=True)
+    col_path = os.path.join(devsuite_dir, "collections.json")
+    try:
+        with open(col_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class ProxyRequest(BaseModel):
+    url: str
+    method: str = "GET"
+    headers: dict = {}
+    body: str | None = None
+
+@app.post("/api/proxy", summary="Bypass CORS for API Tester")
+async def proxy_request(req: ProxyRequest):
+    """Provides a local CORS bypass proxy using urllib for the API tester tool."""
+    try:
+        # Parse and validate the URL scheme
+        parsed = urllib.parse.urlparse(req.url)
+        if parsed.scheme not in ('http', 'https'):
+            raise HTTPException(status_code=400, detail="Only HTTP and HTTPS schemes are allowed")
+
+        if not parsed.hostname:
+            raise HTTPException(status_code=400, detail="Invalid URL: no hostname")
+
+        # Enforce hostname allowlist to prevent full SSRF to arbitrary targets.
+        if parsed.hostname not in ALLOWED_PROXY_HOSTS:
+            raise HTTPException(status_code=400, detail="Target host is not allowed")
+
+        # Resolve hostname and check for private/reserved IP addresses
+        try:
+            addr_info = socket.getaddrinfo(
+                parsed.hostname,
+                parsed.port or (443 if parsed.scheme == 'https' else 80),
+                socket.AF_UNSPEC,
+                socket.SOCK_STREAM,
+            )
+        except (socket.gaierror, socket.herror) as e:
+            raise HTTPException(status_code=400, detail=f"DNS resolution failed: {e}")
+
+        for family, socktype, proto, canonname, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            try:
+                ip_obj = ipaddress.ip_address(ip_str)
+                # Reject loopback, private, link-local, multicast, and reserved addresses
+                if ip_obj.is_loopback or ip_obj.is_private or ip_obj.is_link_local or ip_obj.is_multicast or ip_obj.is_reserved:
+                    raise HTTPException(status_code=403, detail=f"Access to private/reserved IP addresses is forbidden: {ip_str}")
+                # Special check for cloud metadata endpoint
+                if ip_str.startswith("169.254."):
+                    raise HTTPException(status_code=403, detail="Access to cloud metadata endpoints is forbidden")
+            except ValueError:
+                # Not a valid IP address, skip
+                pass
+
+        req_body = req.body.encode('utf-8') if req.body else None
+
+        headers_to_pass = {}
+        for k, v in req.headers.items():
+            if k.lower() not in ("host", "connection", "origin", "referer", "accept-encoding"):
+                headers_to_pass[k] = v
+
+        # Reconstruct the URL using the validated components to clear CodeQL dataflow taint.
+        # We fetch the exact hostname from our allowlist rather than reusing the tainted string.
+        safe_host = next(h for h in ALLOWED_PROXY_HOSTS if h == parsed.hostname)
+        safe_netloc = f"{safe_host}:{parsed.port}" if parsed.port else safe_host
+
+        safe_url = urllib.parse.urlunparse((
+            parsed.scheme,
+            safe_netloc,
+            parsed.path,
+            parsed.params,
+            parsed.query,
+            parsed.fragment
+        ))
+
+        request = urllib.request.Request(safe_url, data=req_body, headers=headers_to_pass, method=req.method.upper())
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                body = response.read().decode('utf-8', errors='replace')
+                return {
+                    "proxy_response": True,
+                    "status": response.status,
+                    "headers": dict(response.headers),
+                    "body": body
+                }
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8', errors='replace') if hasattr(e, 'read') and e.read else ""
+            return {
+                "proxy_response": True,
+                "status": e.code,
+                "headers": dict(e.headers),
+                "body": body
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 if __name__ == "__main__":

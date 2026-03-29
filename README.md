@@ -43,6 +43,12 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - PNG download for both codes.
 - Recent links panel backed by `localStorage`.
 
+### 8. API Tester
+- **Local-first REST client** — A high-speed REST client for testing endpoints.
+- **Request Engine** — Supports GET, POST, PUT, DELETE, PATCH, Custom Headers, and Body.
+- **Local CORS Proxy** — Built-in FastAPI proxy to bypass browser CORS restrictions.
+- **Persistent Collections** — Saved in `~/.devsuite/collections.json`.
+
 ---
 
 ## 🎨 Premium UI
@@ -66,6 +72,12 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 
 ### Prerequisites
 - Python 3.10+
+- Node.js & npm (Required to compile `.ts` files to `.js`)
+- TypeScript (`npm install -g typescript`)
+
+> [!NOTE] 
+> Custom CSS and JS files run directly in the browser without any prior compilation or additional software required!
+> However, modifying `.ts` files (like `api-client.ts`) requires compiling to `.js` via the TypeScript Compiler (`tsc`).
 
 ### Quick Start
 
@@ -73,6 +85,8 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 chmod +x start.sh
 ./start.sh
 ```
+
+*(On a fresh Debian/Ubuntu system, `start.sh` will auto-detect and attempt to install `python3`, `python3-venv`, `nodejs`, `npm`, and `typescript` as necessary.)*
 
 Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 
@@ -113,6 +127,8 @@ devsuite/
     ├── base64.html          # Base64 Encoder / Decoder
     ├── crypto.html          # Crypto Suite (Hash, AES, RSA, HMAC)
     ├── url-shortener.html   # Link & QR Studio
+    ├── api-tester.html      # Local API Tester module
+    ├── api-client.js        # Core Fetch-wrapper and compiled JS client used by API Tester
     ├── linter.css           # Shared layout for linter/tester/crypto tools
     ├── crypto-js.min.js     # Self-hosted CryptoJS v4.2.0
     └── bwip-js-min.js       # Self-hosted bwip-js v3.4.1 (barcode rendering)
