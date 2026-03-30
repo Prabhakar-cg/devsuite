@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.0.0] - 2026-03-30
+
+### Added
+- **Secure Terminal** (`/ssh`) — Full-featured multi-tab SSH client powered by `asyncssh` and `xterm.js`.
+  - Multi-tab terminal UI — open parallel sessions to different hosts, each in its own tab.
+  - Password and Private Key (PEM) authentication.
+  - End-to-end encrypted session profiles stored locally in `~/.devsuite/ssh_profiles.json` via AES (CryptoJS), unlocked with a Master Password.
+  - Tree-style sidebar with collapsible group folders and a quick-search/filter.
+  - **SFTP Browser** sub-feature (via the "SFTP" vertical strip tab) — browse, navigate and inspect remote filesystems without leaving the terminal page.
+    - Grid file view with type icons, file sizes, up/back navigation, refresh, disconnect.
+    - Shares the same unlocked session profiles — no second password required.
+  - **WSL / Local Terminal** — auto-discovers installed WSL distributions on Windows; spawns local PTY shells for `Local Terminal` and each WSL distro.
+  - Inline **Delete Session** (🗑️) icon on sidebar items — no need to open the edit modal.
+  - Terminal resize events propagated to the remote PTY on window resize and pane drag.
+- **`/sftp` route** — standalone SFTP Browser page (`sftp-browser.html`) for direct deep-linking.
+
+### Changed
+- Secure Terminal vertical strip cleaned up: removed non-functional **Tools** and **Macros** placeholder buttons; only **Sessions** and **SFTP** remain (both functional).
+- Modal button renamed from "Delete Server" → **"Delete Session"**.
+- SFTP panel moved from a split-pane inside the terminal view to a **dedicated sub-tab** in the vertical strip, giving the terminal full width.
+- Home dashboard card description updated to reflect the SFTP sub-feature.
+
+### Fixed
+- **SFTP `start_sftp_client` coroutine bug** — `asyncssh.SSHClientConnection.start_sftp_client` is an awaitable coroutine, not an async context manager. Changed from `async with conn.start_sftp_client()` to `sftp = await conn.start_sftp_client(); async with sftp:`, resolving silent SFTP connection failures.
+
 ## [5.1.0] - 2026-03-28
 ### Added
 - **Local API Tester** (`/api-tester`) — Full-featured REST client for local development.
