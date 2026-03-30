@@ -494,7 +494,7 @@ def get_ssh_profiles():
             with open(col_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except json.JSONDecodeError:
-            pass
+            raise HTTPException(status_code=500, detail="Corrupt ssh_profiles.json")
     return {"encrypted_blob": ""}
 
 @app.post("/api/ssh/profiles", summary="Save SSH Profiles")
@@ -511,6 +511,13 @@ def save_ssh_profiles(data: dict):
 
 @app.websocket("/api/ssh/terminal")
 async def ssh_terminal(websocket: WebSocket):
+    # Validate Origin header
+    origin = websocket.headers.get("origin", "")
+    allowed_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
+    if origin and origin not in allowed_origins:
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
+
     await websocket.accept()
     try:
         data = await websocket.receive_text()
@@ -521,11 +528,22 @@ async def ssh_terminal(websocket: WebSocket):
         password = config.get("password")
         private_key = config.get("private_key")
         
+        # Load system known_hosts for host key verification
+        known_hosts_paths = [
+            os.path.expanduser("~/.ssh/known_hosts"),
+            "/etc/ssh/ssh_known_hosts"
+        ]
+        known_hosts_path = None
+        for path in known_hosts_paths:
+            if os.path.exists(path):
+                known_hosts_path = path
+                break
+
         connect_kwargs = {
             "host": host,
             "port": port,
             "username": username,
-            "known_hosts": None
+            "known_hosts": known_hosts_path
         }
         if password:
             connect_kwargs["password"] = password
@@ -585,11 +603,22 @@ class SFTPRequest(BaseModel):
 @app.post("/api/sftp/list", summary="List files via SFTP")
 async def sftp_list(req: SFTPRequest):
     try:
+        # Load system known_hosts for host key verification
+        known_hosts_paths = [
+            os.path.expanduser("~/.ssh/known_hosts"),
+            "/etc/ssh/ssh_known_hosts"
+        ]
+        known_hosts_path = None
+        for path in known_hosts_paths:
+            if os.path.exists(path):
+                known_hosts_path = path
+                break
+
         connect_kwargs = {
             "host": req.host,
             "port": req.port,
             "username": req.username,
-            "known_hosts": None
+            "known_hosts": known_hosts_path
         }
         if req.password:
             connect_kwargs["password"] = req.password
@@ -627,8 +656,15 @@ async def wsl_discover():
 
 @app.websocket("/api/local/terminal")
 async def local_terminal(websocket: WebSocket):
+    # Validate Origin header
+    origin = websocket.headers.get("origin", "")
+    allowed_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
+    if origin and origin not in allowed_origins:
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
+
     await websocket.accept()
-    
+
     config_raw = await websocket.receive_text()
     try:
         config = json.loads(config_raw)

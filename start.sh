@@ -11,6 +11,12 @@ command_exists () {
 
 # Helper to run commands as root when needed
 run_as_root () {
+    # Skip sudo for Windows package managers
+    if [ "$OS" = "Windows" ] || [ "$PKG_MGR" = "choco" ] || [ "$PKG_MGR" = "winget" ] || [ "$PKG_MGR" = "scoop" ]; then
+        "$@"
+        return
+    fi
+
     if [ "$(id -u)" -eq 0 ] || [ "${EUID:-$(id -u)}" -eq 0 ]; then
         "$@"
     else

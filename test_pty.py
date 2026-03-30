@@ -1,30 +1,42 @@
 import asyncio
 import os
-import pty
-import fcntl
-import struct
-import termios
+import sys
+import pytest
 
-async def main():
-    pid, fd = pty.fork()
-    if pid == 0:
-        # Child
-        os.execvp("wsl.exe", ["wsl.exe", "-l"])
-    else:
-        # Parent
-        loop = asyncio.get_running_loop()
-        
-        # Read function
-        def reader():
-            try:
-                data = os.read(fd, 1024)
-                print(f"Read: {data.decode('utf-16le') if b'\x00' in data else data.decode('utf-8')}")
-            except OSError:
-                loop.remove_reader(fd)
-                print("Finished reading")
+# Platform-specific imports
+if sys.platform != 'win32':
+    import pty
+    import fcntl
+    import struct
+    import termios
 
-        loop.add_reader(fd, reader)
-        await asyncio.sleep(2)
-        os.close(fd)
+@pytest.mark.skipif(sys.platform == 'win32', reason="PTY not available on Windows")
+def test_pty_integration():
+    """Test PTY integration for WSL/local terminal on Unix-like systems."""
+    async def run_pty_test():
+        pid, fd = pty.fork()
+        if pid == 0:
+            # Child - use a simple command that works cross-platform
+            os.execvp("echo", ["echo", "test"])
+        else:
+            # Parent
+            loop = asyncio.get_running_loop()
 
-asyncio.run(main())
+            output = []
+            # Read function
+            def reader():
+                try:
+                    data = os.read(fd, 1024)
+                    output.append(data)
+                except OSError:
+                    loop.remove_reader(fd)
+
+            loop.add_reader(fd, reader)
+            await asyncio.sleep(1)
+            loop.remove_reader(fd)
+            os.close(fd)
+
+            # Verify we received some output
+            assert len(output) > 0
+
+    asyncio.run(run_pty_test())

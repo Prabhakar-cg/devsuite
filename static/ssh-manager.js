@@ -39,23 +39,24 @@ function decryptData(ct, pwd)   {
 }
 
 async function loadProfilesBlob() {
-    try {
-        const r = await fetch('/api/ssh/profiles');
-        const d = await r.json();
-        return d.encrypted_blob || '';
-    } catch { return ''; }
+    const r = await fetch('/api/ssh/profiles');
+    if (!r.ok) throw new Error(`Failed to load profiles: ${r.status}`);
+    const d = await r.json();
+    return d.encrypted_blob || '';
 }
 
 async function saveProfilesBlob(blob) {
-    try {
-        const r = await fetch('/api/ssh/profiles', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ encrypted_blob: blob })
-        });
-        if (!r.ok) throw new Error('Failed to save profiles.');
-        showToast('Profile saved.', 'success');
-    } catch (e) { showToast(e.message, 'error'); }
+    const r = await fetch('/api/ssh/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ encrypted_blob: blob })
+    });
+    if (!r.ok) {
+        const error = new Error('Failed to save profiles.');
+        showToast(error.message, 'error');
+        throw error;
+    }
+    showToast('Profile saved.', 'success');
 }
 
 // ──────────────────────────────────────────
@@ -65,12 +66,24 @@ document.getElementById('unlock-btn').addEventListener('click', async () => {
     const pwd = document.getElementById('master-password').value;
     if (!pwd) return showToast('Master Password required.', 'error');
 
-    const blob = await loadProfilesBlob();
+    let blob;
+    try {
+        blob = await loadProfilesBlob();
+    } catch (e) {
+        showToast('Failed to load profiles: ' + e.message, 'error');
+        return;
+    }
+
     if (!blob) {
-        masterKey = pwd; profiles = [];
-        await saveProfilesBlob(encryptData('[]', pwd));
-        document.getElementById('master-password-overlay').style.display = 'none';
-        renderSidebar(); renderSftpSidebar();
+        try {
+            masterKey = pwd; profiles = [];
+            await saveProfilesBlob(encryptData('[]', pwd));
+            document.getElementById('master-password-overlay').style.display = 'none';
+            discoverWsl();
+            renderSidebar(); renderSftpSidebar();
+        } catch (e) {
+            showToast('Failed to initialize vault: ' + e.message, 'error');
+        }
         return;
     }
 
@@ -481,6 +494,10 @@ async function sftpConnectTo(profile) {
 }
 
 document.getElementById('sftp-disconnect-btn').addEventListener('click', () => {
+    // Clear active load token before disconnecting
+    if (sftpConn) {
+        sftpConn.activeLoad = null;
+    }
     sftpConn = null;
     renderSftpSidebar();
     // Reset UI
@@ -511,6 +528,10 @@ async function sftpLoadDir(path) {
     if (!sftpConn) return;
     sftpConn.path = path;
 
+    // Create load token to track this request
+    const loadToken = Symbol('loadToken');
+    sftpConn.activeLoad = loadToken;
+
     document.getElementById('sftp-path-input').value         = path;
     document.getElementById('sftp-up-btn').disabled           = (path === '/');
     document.getElementById('sftp-empty-state').style.display = 'none';
@@ -532,14 +553,25 @@ async function sftpLoadDir(path) {
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify(payload)
         });
+
+        // Check if this request is still active
+        if (!sftpConn || sftpConn.activeLoad !== loadToken) return;
+
         if (!r.ok) {
             const e = await r.json();
             throw new Error(e.detail || `Server error ${r.status}`);
         }
         const data = await r.json();
+
+        // Check again after parsing
+        if (!sftpConn || sftpConn.activeLoad !== loadToken) return;
+
         document.getElementById('sftp-loading').style.display = 'none';
         renderSftpGrid(data.files || []);
     } catch (e) {
+        // Check if this request is still active
+        if (!sftpConn || sftpConn.activeLoad !== loadToken) return;
+
         document.getElementById('sftp-loading').style.display  = 'none';
         const errEl = document.getElementById('sftp-error-msg');
         errEl.textContent  = `Error: ${e.message}`;
@@ -560,11 +592,27 @@ function renderSftpGrid(files) {
         card.className  = f.is_dir ? 'sftp-card sftp-card-dir' : 'sftp-card';
         const icon      = f.is_dir ? '📁' : getSftpFileIcon(f.name);
         const size      = f.is_dir ? '' : formatFileSize(f.size);
-        card.innerHTML  = `
-            <div class="sftp-card-icon">${icon}</div>
-            <div class="sftp-card-name" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
-            <div class="sftp-card-meta">${size}</div>
-        `;
+
+        // Create icon element
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'sftp-card-icon';
+        iconDiv.textContent = icon;
+
+        // Create name element
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'sftp-card-name';
+        nameDiv.textContent = f.name;
+        nameDiv.title = f.name;
+
+        // Create meta element
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'sftp-card-meta';
+        metaDiv.textContent = size;
+
+        card.appendChild(iconDiv);
+        card.appendChild(nameDiv);
+        card.appendChild(metaDiv);
+
         if (f.is_dir) {
             card.title = 'Double-click to open';
             card.addEventListener('dblclick', () => {

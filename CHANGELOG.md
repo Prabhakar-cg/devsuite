@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 - **Secure Terminal** (`/ssh`) — Full-featured multi-tab SSH client powered by `asyncssh` and `xterm.js`.
   - Multi-tab terminal UI — open parallel sessions to different hosts, each in its own tab.
   - Password and Private Key (PEM) authentication.
-  - End-to-end encrypted session profiles stored locally in `~/.devsuite/ssh_profiles.json` via AES (CryptoJS), unlocked with a Master Password.
+  - Session profiles stored locally in `~/.devsuite/ssh_profiles.json` are encrypted at rest via AES (CryptoJS) and unlocked with a Master Password.
   - Tree-style sidebar with collapsible group folders and a quick-search/filter.
   - **SFTP Browser** sub-feature (via the "SFTP" vertical strip tab) — browse, navigate and inspect remote filesystems without leaving the terminal page.
     - Grid file view with type icons, file sizes, up/back navigation, refresh, disconnect.

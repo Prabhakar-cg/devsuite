@@ -56,6 +56,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **SFTP Browser** (sub-tab) — Browse, navigate and inspect remote filesystems without leaving the page. Grid view with file type icons, sizes, up navigation, refresh and disconnect.
 - **WSL / Local Terminal** — Auto-discovers WSL distributions; spawns local PTY shells directly.
 - **Inline delete** — Remove sessions from the sidebar with a single click (no modal needed).
+- **Network Notice**: Session profiles are stored locally, but SSH/SFTP connections establish outbound network traffic to remote hosts. The privacy guarantee applies to offline tools only; data transmitted to SSH/SFTP servers is subject to the remote host's security and network policies.
 
 ---
 

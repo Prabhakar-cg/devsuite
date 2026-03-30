@@ -50,6 +50,7 @@
 | **Base64 Encoder** | `static/base64.html` | Inline Scripts | `main.py` (`/base64`) |
 | **Crypto Suite** | `static/crypto.html` | *`crypto-js.min.js`* (Do not read) | `main.py` (`/crypto`) |
 | **Regex Tester** | `static/regex.html` | Inline Scripts | `main.py` (`/regex`) |
+| **Secure Terminal** | `static/ssh-manager.html`, `static/sftp-browser.html` | `static/ssh-manager.js`, `static/ssh-manager.css`, `static/sftp-browser.js`, `static/sftp-browser.css`, *`xterm.js`*, *`xterm-addon-fit.js`* | `main.py` (`/ssh`, `/sftp`, `/api/ssh/terminal`, `/api/local/terminal`, `/api/sftp/list`, `/api/wsl/discover`, `/api/ssh/profiles`), `~/.devsuite/ssh_profiles.json` |
 | **Global Theme** | N/A | `static/theme.js`, `static/style.css` | None |
 
 ### Developer & AI Best Practices

@@ -37,23 +37,22 @@ function decryptData(cipher, pwd)  {
 // Shared profile blob (same endpoint as SSH manager)
 // ──────────────────────────────────────────
 async function loadBlob() {
-    try {
-        const r = await fetch('/api/ssh/profiles');
-        const d = await r.json();
-        return d.encrypted_blob || '';
-    } catch { return ''; }
+    const r = await fetch('/api/ssh/profiles');
+    if (!r.ok) throw new Error(`Failed to load profiles: ${r.status}`);
+    const d = await r.json();
+    return d.encrypted_blob || '';
 }
 
 async function saveBlob(blob) {
-    try {
-        const r = await fetch('/api/ssh/profiles', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ encrypted_blob: blob })
-        });
-        if (!r.ok) throw new Error('Save failed');
-    } catch (e) {
-        showToast(e.message, 'error');
+    const r = await fetch('/api/ssh/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ encrypted_blob: blob })
+    });
+    if (!r.ok) {
+        const error = new Error('Save failed');
+        showToast(error.message, 'error');
+        throw error;
     }
 }
 
@@ -64,15 +63,25 @@ document.getElementById('unlock-btn').addEventListener('click', async () => {
     const pwd = document.getElementById('master-password').value;
     if (!pwd) { showError('Master Password is required.'); return; }
 
-    const blob = await loadBlob();
+    let blob;
+    try {
+        blob = await loadBlob();
+    } catch (e) {
+        showError('Failed to load profiles: ' + e.message);
+        return;
+    }
 
     if (!blob) {
         // First-time: create empty vault
-        masterKey = pwd;
-        profiles  = [];
-        await saveBlob(encryptData('[]', pwd));
-        dismissOverlay();
-        renderSidebar();
+        try {
+            masterKey = pwd;
+            profiles  = [];
+            await saveBlob(encryptData('[]', pwd));
+            dismissOverlay();
+            renderSidebar();
+        } catch (e) {
+            showError('Failed to initialize vault: ' + e.message);
+        }
         return;
     }
 
@@ -225,6 +234,9 @@ async function loadDirectory(path) {
     if (!activeConn) return;
     activeConn.path = path;
 
+    // Capture current connection to detect stale responses
+    const currentConn = activeConn;
+
     // UI state
     document.getElementById('path-input').value = path;
     document.getElementById('go-up-btn').disabled = (path === '/');
@@ -240,11 +252,11 @@ async function loadDirectory(path) {
 
     try {
         const payload = {
-            host:        activeConn.profile.host,
-            port:        parseInt(activeConn.profile.port || 22),
-            username:    activeConn.profile.user,
-            password:    activeConn.profile.pass  || null,
-            private_key: activeConn.profile.key   || null,
+            host:        currentConn.profile.host,
+            port:        parseInt(currentConn.profile.port || 22),
+            username:    currentConn.profile.user,
+            password:    currentConn.profile.pass  || null,
+            private_key: currentConn.profile.key   || null,
             path:        path
         };
 
@@ -254,15 +266,25 @@ async function loadDirectory(path) {
             body:    JSON.stringify(payload)
         });
 
+        // Check if connection changed during fetch
+        if (activeConn !== currentConn) return;
+
         if (!r.ok) {
             const e = await r.json();
             throw new Error(e.detail || `Server error ${r.status}`);
         }
 
         const data = await r.json();
+
+        // Check again after parsing
+        if (activeConn !== currentConn) return;
+
         loading.style.display = 'none';
         renderFileGrid(data.files || []);
     } catch (e) {
+        // Check if connection changed during error handling
+        if (activeConn !== currentConn) return;
+
         loading.style.display = 'none';
         errEl.textContent    = `Error: ${e.message}`;
         errEl.style.display  = 'block';
@@ -289,11 +311,25 @@ function renderFileGrid(files) {
         const icon = f.is_dir ? '📁' : getFileIcon(f.name);
         const size = f.is_dir ? '' : formatSize(f.size);
 
-        card.innerHTML = `
-            <div class="sftp-file-icon">${icon}</div>
-            <div class="sftp-file-name" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
-            <div class="sftp-file-meta">${size}</div>
-        `;
+        // Create icon element
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'sftp-file-icon';
+        iconDiv.textContent = icon;
+
+        // Create name element
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'sftp-file-name';
+        nameDiv.textContent = f.name;
+        nameDiv.title = f.name;
+
+        // Create meta element
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'sftp-file-meta';
+        metaDiv.textContent = size;
+
+        card.appendChild(iconDiv);
+        card.appendChild(nameDiv);
+        card.appendChild(metaDiv);
 
         if (f.is_dir) {
             card.addEventListener('dblclick', () => {
