@@ -1,0 +1,420 @@
+.ssh-manager-container {
+    display: flex;
+    height: calc(100vh - 65px); /* Header offset */
+    background: var(--bg-1);
+    color: var(--text-color);
+}
+
+/* Vertical Strip styling (MobaXterm style) */
+.vertical-strip {
+    width: 36px;
+    background: var(--bg-3);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 1rem;
+    gap: 0.5rem;
+}
+
+.strip-btn {
+    width: 100%;
+    padding: 1.5rem 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    outline: none;
+}
+.strip-btn:hover {
+    color: var(--text-color);
+    background: rgba(14, 165, 233, 0.1);
+}
+.strip-btn.active {
+    color: #0ea5e9;
+    background: var(--bg-1);
+    border-left: 3px solid #0ea5e9;
+    font-weight: 600;
+}
+.strip-text {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+/* Sidebar styling */
+.sidebar {
+    width: 280px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-2);
+}
+
+.sidebar-header {
+    padding: 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+}
+
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    user-select: none;
+}
+
+/* Tree view styling */
+.tree-group {
+    margin-bottom: 2px;
+}
+.tree-folder-header {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    gap: 0.5rem;
+}
+.tree-folder-header:hover {
+    background: var(--bg-3);
+}
+.folder-toggle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    width: 16px;
+    text-align: center;
+    display: inline-block;
+}
+.folder-icon {
+    font-size: 1rem;
+}
+.folder-children {
+    padding-left: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Server item */
+.server-item {
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    transition: background 0.2s;
+    font-size: 0.85rem;
+}
+.server-item:hover {
+    background: var(--bg-3);
+}
+
+.server-item.active {
+    background: rgba(14, 165, 233, 0.15);
+    color: #0ea5e9;
+}
+
+.server-name-lbl {
+    flex:1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.edit-srv-icon, .del-srv-icon {
+    opacity: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding: 2px;
+    border-radius: 4px;
+}
+.edit-srv-icon:hover {
+    background: var(--border);
+    color: var(--text-color);
+}
+.del-srv-icon:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+.server-item:hover .edit-srv-icon,
+.server-item:hover .del-srv-icon {
+    opacity: 1;
+}
+
+/* Main Area */
+.main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+}
+
+/* Tab Strip */
+.tab-strip {
+    height: 38px;
+    background: var(--bg-3);
+    display: flex;
+    align-items: flex-end; /* Chrome-style tabs sit on bottom edge */
+    padding-left: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+.tab-strip::-webkit-scrollbar {
+    display: none;
+}
+.term-tab {
+    height: 32px;
+    min-width: 120px;
+    max-width: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.75rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    margin-right: -1px; /* Overlap borders slightly */
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    position: relative;
+    transition: background 0.2s, color 0.2s;
+    user-select: none;
+}
+.term-tab:hover {
+    background: var(--bg-1);
+    color: var(--text-color);
+}
+.term-tab.active {
+    background: #000; /* Terminal background */
+    color: #fff;
+    border-color: #333; /* Darker border for the active dark terminal tab */
+    z-index: 2;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+}
+.term-tab-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+.tab-close {
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.6;
+}
+.tab-close:hover {
+    background: rgba(255,255,255,0.1);
+    opacity: 1;
+}
+.term-tab.active .tab-close:hover {
+    background: #ef4444;
+}
+
+/* View Header */
+.view-header {
+    height: 40px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    justify-content: space-between;
+    font-weight: 500;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal {
+    background: var(--bg-1);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    min-width: 300px;
+}
+
+.overlay-msg {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #111; /* Dark background for landing screen */
+    color: #fff;
+    z-index: 10;
+}
+
+.resizer {
+    width: 6px;
+    cursor: col-resize;
+    background: var(--border);
+    transition: background 0.2s;
+    z-index: 5;
+}
+.resizer:hover, .resizer:active {
+    background: #0ea5e9;
+}
+
+.sftp-file-item {
+    display: flex;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+    user-select: none;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+.sftp-file-item:hover {
+    background: var(--bg-3);
+}
+.file-icon {
+    width: 20px;
+    text-align: center;
+    margin-right: 8px;
+    font-size: 1rem;
+}
+
+/* Individual terminal pane (child of #terminals-wrapper) */
+.term-pane {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    padding: 10px;
+    box-sizing: border-box;
+    display: none;
+}
+.term-pane.active { display: block; }
+
+.xterm-viewport { scrollbar-width: thin; }
+
+/* ── SFTP sidebar items ── */
+.sftp-group-lbl {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.6rem 0.65rem 0.2rem;
+}
+.sftp-sess-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+    margin-bottom: 2px;
+}
+.sftp-sess-item:hover { background: var(--bg-3); border-color: var(--border); }
+.sftp-sess-item.active {
+    background: rgba(14,165,233,0.12);
+    border-color: rgba(14,165,233,0.35);
+    color: #0ea5e9;
+}
+.sftp-sess-avatar {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg,#0ea5e9,#06b6d4);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+}
+
+/* ── SFTP file grid ── */
+.sftp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.5rem;
+}
+.sftp-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.85rem 0.5rem 0.65rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-2);
+    cursor: default;
+    transition: all 0.15s;
+    text-align: center;
+    user-select: none;
+}
+.sftp-card-dir {
+    cursor: pointer;
+}
+.sftp-card:hover {
+    border-color: #0ea5e9;
+    background: rgba(14,165,233,0.06);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
+.sftp-card-dir:hover {
+    border-color: #f59e0b;
+    background: rgba(245,158,11,0.06);
+}
+.sftp-card-icon { font-size: 1.9rem; line-height: 1; }
+.sftp-card-name {
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    word-break: break-all;
+    color: var(--text-color);
+    line-height: 1.3;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.sftp-card-meta { font-size: 0.68rem; color: var(--text-muted); }
+
+/* ── Loading spinner ── */
+.sftp-spinner-inline {
+    width: 30px; height: 30px;
+    border: 3px solid var(--border);
+    border-top-color: #0ea5e9;
+    border-radius: 50%;
+    animation: sftp-spin 0.7s linear infinite;
+}
+@keyframes sftp-spin { to { transform: rotate(360deg); } }
