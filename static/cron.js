@@ -220,11 +220,12 @@ class CronParser {
       MONTH_NAMES.forEach((m, i) => { t = t.replace(new RegExp(m, 'g'), i + 1); });
     }
     if (fieldName === 'dow') {
-      DOW_NAMES.forEach((d, i) => { t = t.replace(new RegExp(d, 'g'), i); });
-      // Quartz: SUN=1..SAT=7 mapping (numeric DOW names already handled)
-      if (this.dialect.id === 'quartz' || this.dialect.id === 'aws') {
-        // Already replaced to 0-based, will shift during schedule calc
-      }
+      const isQuartzLike = this.dialect.id === 'quartz' || this.dialect.id === 'aws';
+      // Quartz/AWS: SUN=1 .. SAT=7.  Unix/GitHub: SUN=0 .. SAT=6.
+      DOW_NAMES.forEach((d, i) => {
+        const val = isQuartzLike ? i + 1 : i;
+        t = t.replace(new RegExp(d, 'g'), val);
+      });
     }
     return t;
   }
@@ -267,9 +268,24 @@ class CronParser {
   }
 
   _parseList(token, range, fieldName, original) {
-    const items = token.split(',');
+    const items = token.split(',').map(s => s.trim());
     const values = [];
     for (const item of items) {
+      // Delegate step tokens (*/n or start/n) to _parseStep
+      if (item.includes('/')) {
+        const sub = this._parseStep(item, range, fieldName, item);
+        if (!sub.valid) return { valid: false, token: original, fieldName, error: sub.error };
+        this.expandField(sub, range).forEach(v => values.push(v));
+        continue;
+      }
+      // Delegate range tokens (a-b) to _parseRange
+      if (/^\d+-\d+$/.test(item)) {
+        const sub = this._parseRange(item, range, fieldName, item);
+        if (!sub.valid) return { valid: false, token: original, fieldName, error: sub.error };
+        sub.values.forEach(v => values.push(v));
+        continue;
+      }
+      // Plain integer
       const n = parseInt(item, 10);
       if (isNaN(n) || n < range.min || n > range.max) {
         return { valid: false, token: original, fieldName, error: `List value "${item}" invalid for ${fieldName} (${range.min}–${range.max})` };
@@ -308,6 +324,32 @@ class CronParser {
       case 'step': {
         const s = new Set();
         for (let i = result.start; i <= range.max; i += result.step) s.add(i);
+        return s;
+      }
+      case 'last':
+        // Map to the last valid value in the supplied range (e.g. day 31, or DOW 6/7)
+        return new Set([range.max]);
+      case 'weekday': {
+        // Nearest weekday to result.value within range.min..range.max.
+        // We include the target day and its immediate neighbours that are within range.
+        const s = new Set();
+        const target = result.values[0];
+        for (const offset of [0, -1, 1, -2, 2]) {
+          const v = target + offset;
+          if (v >= range.min && v <= range.max) { s.add(v); break; }
+        }
+        return s;
+      }
+      case 'hash': {
+        // #N means the Nth occurrence of `result.day` in a month;
+        // for heatmap/schedule purposes we approximate: include day values
+        // that could be the result.nth occurrence (days 1+(nth-1)*7 .. 7*nth).
+        const s = new Set();
+        const firstOccurrence = 1 + (result.nth - 1) * 7;
+        const lastOccurrence  = 7 * result.nth;
+        for (let d = Math.max(range.min, firstOccurrence); d <= Math.min(range.max, lastOccurrence); d++) {
+          s.add(d);
+        }
         return s;
       }
       default:
@@ -586,13 +628,22 @@ class CronVisualizer {
   }
 
   _bindEvents() {
+    // Set initial aria-pressed on the already-active dialect button
+    this.dialectBtns.forEach(b => {
+      b.setAttribute('aria-pressed', b.classList.contains('active') ? 'true' : 'false');
+    });
+
     // Dialect switching
     this.dialectBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         this.currentDialect = btn.dataset.dialect;
         this.parser = new CronParser(this.currentDialect);
-        this.dialectBtns.forEach(b => b.classList.remove('active'));
+        this.dialectBtns.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
         btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
         const d = DIALECTS[this.currentDialect];
         this.exprInput.placeholder = d.placeholder;
         this.exprInput.value = d.example;

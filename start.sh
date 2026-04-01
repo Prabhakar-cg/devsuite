@@ -185,9 +185,10 @@ if [ -n "$MISSING_PKGS" ]; then
                 run_as_root pacman -S --noconfirm $MISSING_PKGS
                 ;;
             choco)
-                if ! run_as_root choco install -y $MISSING_PKGS; then
+                run_as_root choco install -y $MISSING_PKGS; ret=$?
+                if [ $ret -ne 0 ]; then
                     echo ""
-                    echo "Error: Chocolatey installation failed (exit code $?)."
+                    echo "Error: Chocolatey installation failed (exit code $ret)."
                     echo "Chocolatey usually requires an elevated (Administrator) PowerShell session."
                     echo "To retry, open PowerShell as Administrator and run:"
                     echo "  Start-Process powershell -Verb RunAs -ArgumentList '-File .\\start.sh'"

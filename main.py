@@ -534,10 +534,13 @@ def save_ssh_profiles(data: dict):
 
 @app.websocket("/api/ssh/terminal")
 async def ssh_terminal(websocket: WebSocket):
-    # Validate Origin header
+    # Validate Origin header — reject missing AND disallowed origins
     origin = websocket.headers.get("origin", "")
     allowed_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
-    if origin and origin not in allowed_origins:
+    if not origin:
+        await websocket.close(code=1008, reason="Origin header required")
+        return
+    if origin not in allowed_origins:
         await websocket.close(code=1008, reason="Origin not allowed")
         return
 
@@ -561,6 +564,13 @@ async def ssh_terminal(websocket: WebSocket):
             if os.path.exists(path):
                 known_hosts_path = path
                 break
+
+        # Fail-closed: never silently disable host-key verification
+        if known_hosts_path is None:
+            raise ValueError(
+                "No known_hosts file found. Add the server's host key to "
+                "~/.ssh/known_hosts before connecting."
+            )
 
         connect_kwargs = {
             "host": host,
@@ -637,6 +647,14 @@ async def sftp_list(req: SFTPRequest):
                 known_hosts_path = path
                 break
 
+        # Fail-closed: never silently disable host-key verification
+        if known_hosts_path is None:
+            raise HTTPException(
+                status_code=412,
+                detail="No known_hosts file found. Add the server's host key to "
+                       "~/.ssh/known_hosts before connecting."
+            )
+
         connect_kwargs = {
             "host": req.host,
             "port": req.port,
@@ -691,11 +709,18 @@ def _tracked_task(coro):
 
 @app.websocket("/api/local/terminal")
 async def local_terminal(websocket: WebSocket):
-    # Validate Origin header
+    # Validate Origin header — reject missing AND disallowed origins
     origin = websocket.headers.get("origin", "")
     allowed_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
-    if origin and origin not in allowed_origins:
+    if not origin:
+        await websocket.close(code=1008, reason="Origin header required")
+        return
+    if origin not in allowed_origins:
         await websocket.close(code=1008, reason="Origin not allowed")
+        return
+
+    if not _PTY_AVAILABLE:
+        await websocket.close(code=1008, reason="Local terminal is not supported on this platform")
         return
 
     await websocket.accept()
