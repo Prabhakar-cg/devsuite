@@ -58,6 +58,15 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Inline delete** — Remove sessions from the sidebar with a single click (no modal needed).
 - **Network Notice**: Session profiles are stored locally, but SSH/SFTP connections establish outbound network traffic to remote hosts. The privacy guarantee applies to offline tools only; data transmitted to SSH/SFTP servers is subject to the remote host's security and network policies.
 
+### 10. Cron Visualizer
+- **4 dialect support** — Unix/Linux, Quartz/Spring, AWS EventBridge, GitHub Actions.
+- **Live expression parser** with per-field validation chips and plain-English human-readable description.
+- **Visual Field Builder** — click-to-toggle grids for Minute, Hour, Month, Day-of-Week; synced with the text input.
+- **Next 10 Run Times** — computed locally, no external libraries.
+- **28-Day Activity Heatmap** — CSS grid calendar with teal intensity shading based on fire frequency.
+- **Preset Library** — curated common expressions per dialect (Unix, Quartz, AWS, GitHub), click-to-load.
+- **Export** — copy raw expression, YAML (K8s / GitHub Actions), or AWS EventBridge JSON.
+
 ---
 
 ## 🎨 Premium UI
@@ -144,6 +153,9 @@ devsuite/
     ├── sftp-browser.html    # Standalone SFTP Browser page (/sftp route)
     ├── sftp-browser.js      # Standalone SFTP Browser logic
     ├── sftp-browser.css     # Standalone SFTP Browser styles
+    ├── cron.html            # Cron Visualizer tool (/cron route)
+    ├── cron.js              # Cron parser, describer, scheduler, heatmap, field builder
+    ├── cron.css             # Cron Visualizer styles (dialect tabs, heatmap, presets)
     ├── xterm.js             # Self-hosted xterm.js terminal emulator
     ├── xterm.css            # xterm.js styles
     ├── xterm-addon-fit.js   # xterm.js FitAddon (auto-resize)

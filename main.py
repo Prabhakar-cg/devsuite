@@ -21,18 +21,30 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 import asyncio
 import asyncssh
 import stat
-import pty
-import fcntl
-import struct
-import termios
+import sys
+import logging
 import subprocess
 import re
 from pydantic import BaseModel
 
+# PTY support is Linux/macOS only — import conditionally so the module loads on Windows.
+_PTY_AVAILABLE = False
+if sys.platform != 'win32':
+    try:
+        import pty
+        import fcntl
+        import struct
+        import termios
+        _PTY_AVAILABLE = True
+    except ImportError:
+        pass
+
+logger = logging.getLogger("devsuite")
+
 app = FastAPI(
     title="DevSuite",
     description="A private, locally-hosted diff checker with Monaco Editor.",
-    version="2.0.0"
+    version="2.1.0"
 )
 
 # Allowlist of hostnames that the /api/proxy endpoint is permitted to contact.
@@ -246,6 +258,17 @@ def read_sftp_tool():
             return f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="sftp-browser.html not found.") from None
+
+
+@app.get("/cron", response_class=HTMLResponse, summary="Serve Cron Visualizer tool")
+def read_cron_tool():
+    """Serve the Cron Visualizer tool (Unix, Quartz, AWS EventBridge, GitHub Actions)."""
+    html_path = os.path.join(static_dir, "cron.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="cron.html not found.") from None
 
 
 @app.post("/api/shorten", summary="Create a short URL")
@@ -563,7 +586,7 @@ async def ssh_terminal(websocket: WebSocket):
                             # asyncssh reads string by default, we send text
                             await websocket.send_text(str(data))
                     except Exception:
-                        pass
+                        logger.debug("read_from_ssh: stream ended or error", exc_info=True)
                 
                 async def write_to_ssh():
                     try:
@@ -582,15 +605,15 @@ async def ssh_terminal(websocket: WebSocket):
                     except WebSocketDisconnect:
                         process.terminate()
                     except Exception:
-                        pass
+                        logger.debug("write_to_ssh: error writing to SSH process", exc_info=True)
                 
                 await asyncio.gather(read_from_ssh(), write_to_ssh())
     except Exception as e:
         try:
             await websocket.send_text(f"\r\nError: {e}\r\n")
             await websocket.close()
-        except:
-            pass
+        except Exception:
+            logger.debug("ssh_terminal: failed to send error message to client", exc_info=True)
 
 class SFTPRequest(BaseModel):
     host: str
@@ -654,6 +677,18 @@ async def wsl_discover():
     except Exception as e:
         return {"wsl_instances": []}
 
+
+# Module-level set to hold references to fire-and-forget tasks so they
+# are not garbage-collected before completion.
+_pending_tasks: set = set()
+
+def _tracked_task(coro):
+    """Schedule a coroutine as an asyncio task, retaining a reference until done."""
+    task = asyncio.create_task(coro)
+    _pending_tasks.add(task)
+    task.add_done_callback(_pending_tasks.discard)
+    return task
+
 @app.websocket("/api/local/terminal")
 async def local_terminal(websocket: WebSocket):
     # Validate Origin header
@@ -669,7 +704,8 @@ async def local_terminal(websocket: WebSocket):
     try:
         config = json.loads(config_raw)
         distro = config.get("distro")
-    except:
+    except Exception:
+        logger.debug("local_terminal: failed to parse config JSON, proceeding with distro=None")
         distro = None
         
     pid, fd = pty.fork()
@@ -682,20 +718,20 @@ async def local_terminal(websocket: WebSocket):
         else:
             shell = os.environ.get("SHELL", "/bin/bash")
             os.execvp(shell, [shell])
-            
+
     loop = asyncio.get_running_loop()
     
     def on_pty_read():
         try:
             data = os.read(fd, 8192)
             if data:
-                asyncio.create_task(websocket.send_text(data.decode("utf-8", errors="replace")))
+                _tracked_task(websocket.send_text(data.decode("utf-8", errors="replace")))
             else:
                 loop.remove_reader(fd)
-                asyncio.create_task(websocket.close())
+                _tracked_task(websocket.close())
         except OSError:
             loop.remove_reader(fd)
-            asyncio.create_task(websocket.close())
+            _tracked_task(websocket.close())
 
     loop.add_reader(fd, on_pty_read)
     
@@ -720,8 +756,8 @@ async def local_terminal(websocket: WebSocket):
         try:
             loop.remove_reader(fd)
             os.close(fd)
-        except:
-            pass
+        except Exception:
+            logger.debug("local_terminal: error during cleanup", exc_info=True)
 
 
 if __name__ == "__main__":

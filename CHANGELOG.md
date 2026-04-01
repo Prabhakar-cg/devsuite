@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-04-01
+
+### Added
+- **Cron Visualizer** (`/cron`) — A rich, 100% client-side cron expression tool.
+  - **4 dialect support**: Unix/Linux (5-field), Quartz/Spring (6–7-field with `?`, `L`, `W`, `#`), AWS EventBridge (6-field with year), GitHub Actions (with inline YAML context display).
+  - **Live expression parser** — real-time field-by-field tokenization and validation with colour-coded field chips and a ✓/✗ status pill.
+  - **Human-readable description** — auto-generates a plain-English sentence (e.g. *"Every 15 minutes, between 9:00 AM and 5:00 PM, Monday through Friday"*).
+  - **Visual Field Builder** — click-to-toggle grids for Minute (0–59), Hour (0–23), Month, and Day-of-Week; bidirectionally synced with the text input.
+  - **Next 10 Run Times** panel — brute-force minute-iteration scheduler (no external lib); shows locale date, time, and relative countdown.
+  - **28-Day Activity Heatmap** — CSS grid calendar with teal intensity shading based on fire frequency; hover tooltip per day.
+  - **Preset Library** — curated common expressions per dialect (Unix, Quartz, AWS, GitHub), click-to-load.
+  - **Export** — copy raw expression, GitHub Actions / Kubernetes CronJob YAML, or AWS EventBridge JSON with one click.
+- **`GET /cron`** route added to `main.py`.
+- **Cron Visualizer card** added to the home dashboard (`home.html`) with teal accent colour.
+
 ## [6.0.0] - 2026-03-30
 
 ### Added

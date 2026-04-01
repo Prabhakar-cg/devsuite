@@ -185,7 +185,14 @@ if [ -n "$MISSING_PKGS" ]; then
                 run_as_root pacman -S --noconfirm $MISSING_PKGS
                 ;;
             choco)
-                run_as_root choco install -y $MISSING_PKGS
+                if ! run_as_root choco install -y $MISSING_PKGS; then
+                    echo ""
+                    echo "Error: Chocolatey installation failed (exit code $?)."
+                    echo "Chocolatey usually requires an elevated (Administrator) PowerShell session."
+                    echo "To retry, open PowerShell as Administrator and run:"
+                    echo "  Start-Process powershell -Verb RunAs -ArgumentList '-File .\\start.sh'"
+                    exit 1
+                fi
                 ;;
             winget)
                 # Winget doesn't strictly need root, it handles UAC
@@ -235,22 +242,26 @@ fi
 
 # Activate virtual environment
 if [ -f "$VENV_ACTIVATE" ]; then
+    # shellcheck source=/dev/null
     source "$VENV_ACTIVATE"
 else
     echo "Error: Virtual environment activation script not found at $VENV_ACTIVATE"
     exit 1
 fi
 
-# Determine how to call pip in venv
-if command_exists pip; then
-    PIP_CMD="pip"
-else
-    PIP_CMD="$PYTHON_CMD -m pip"
-fi
+# Determine how to call pip in venv using a wrapper function to avoid
+# word-splitting issues when PYTHON_CMD contains spaces.
+pip_run() {
+    if command_exists pip; then
+        pip "$@"
+    else
+        "$PYTHON_CMD" -m pip "$@"
+    fi
+}
 
 # Install dependencies explicitly to avoid caching issues across environments
 echo "Installing Python dependencies..."
-$PIP_CMD install -r requirements.txt
+pip_run install -r requirements.txt
 
 # Start the server
 echo -e "\nStarting FastAPI server on http://localhost:8000..."
