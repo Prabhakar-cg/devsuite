@@ -1,0 +1,531 @@
+/* ==============================
+   SFTP Browser — sftp-browser.css
+   ============================== */
+
+/* ---- Layout ---- */
+.sftp-layout {
+    display: flex;
+    height: calc(100vh - 65px);
+    background: var(--bg-1);
+    color: var(--text-color);
+    overflow: hidden;
+}
+
+/* ---- Sidebar ---- */
+.sftp-sidebar {
+    width: 260px;
+    min-width: 200px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-2);
+    flex-shrink: 0;
+}
+
+.sftp-sidebar-header {
+    padding: 0.85rem 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    letter-spacing: 0.02em;
+}
+
+.sftp-icon-btn {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.sftp-icon-btn svg { width: 14px; height: 14px; }
+.sftp-icon-btn:hover {
+    color: #0ea5e9;
+    border-color: #0ea5e9;
+    background: rgba(14,165,233,0.08);
+}
+
+.sftp-search {
+    margin: 0.65rem 0.75rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-3);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    font-family: var(--font-body);
+    outline: none;
+    transition: border-color 0.15s;
+}
+.sftp-search:focus { border-color: #0ea5e9; }
+
+.sftp-session-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.35rem 0.5rem 0.5rem;
+}
+
+.sftp-session-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.15s;
+    border: 1px solid transparent;
+    margin-bottom: 2px;
+}
+.sftp-session-item:hover {
+    background: var(--bg-3);
+    border-color: var(--border);
+}
+.sftp-session-item.active {
+    background: rgba(14,165,233,0.12);
+    border-color: rgba(14,165,233,0.35);
+    color: #0ea5e9;
+}
+.sftp-session-icon {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: linear-gradient(135deg,#0ea5e9,#06b6d4);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+}
+.sftp-session-info { overflow: hidden; }
+.sftp-session-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sftp-session-host {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sftp-group-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.6rem 0.65rem 0.2rem;
+}
+.sftp-no-sessions {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* ---- Main Area ---- */
+.sftp-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Empty state */
+.sftp-empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: var(--text-muted);
+    padding: 2rem;
+    text-align: center;
+}
+.sftp-empty-icon {
+    width: 72px; height: 72px;
+    border-radius: 20px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: #0ea5e9;
+}
+.sftp-empty-icon svg { width: 36px; height: 36px; }
+.sftp-empty-state h2 { font-size: 1.3rem; color: var(--text-color); }
+.sftp-empty-state p { font-size: 0.9rem; max-width: 340px; line-height: 1.6; }
+
+/* Browser Panel */
+.sftp-browser-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Toolbar */
+.sftp-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+    flex-shrink: 0;
+}
+
+.sftp-conn-info {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    min-width: 0;
+}
+.sftp-conn-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px rgba(34,197,94,0.6);
+    animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.sftp-path-nav {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.15rem 0.4rem;
+    min-width: 0;
+}
+.sftp-nav-btn {
+    width: 26px; height: 26px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.sftp-nav-btn svg { width: 14px; height: 14px; }
+.sftp-nav-btn:hover:not(:disabled) {
+    background: rgba(14,165,233,0.12);
+    color: #0ea5e9;
+}
+.sftp-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.sftp-path-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    outline: none;
+    min-width: 0;
+    cursor: default;
+}
+
+/* Breadcrumbs */
+.sftp-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0.35rem 1rem;
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-1);
+    flex-shrink: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+}
+.sftp-breadcrumb::-webkit-scrollbar { display: none; }
+.sftp-crumb {
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    transition: all 0.1s;
+}
+.sftp-crumb:hover { color: #0ea5e9; background: rgba(14,165,233,0.08); }
+.sftp-crumb.active { color: var(--text-color); cursor: default; font-weight: 500; }
+.sftp-crumb-sep { color: var(--border); padding: 0 0.1rem; user-select: none; }
+
+/* File Area */
+.sftp-file-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem 1rem;
+    position: relative;
+}
+
+.sftp-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    height: 100%;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+.sftp-spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: #0ea5e9;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.sftp-file-error {
+    padding: 1rem;
+    border-radius: 8px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    font-family: var(--font-mono);
+}
+
+/* File Grid */
+.sftp-file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.5rem;
+}
+
+.sftp-file-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 0.65rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-2);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    user-select: none;
+}
+.sftp-file-card:hover {
+    border-color: #0ea5e9;
+    background: rgba(14,165,233,0.06);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.sftp-file-card.sftp-dir-card:hover {
+    border-color: #f59e0b;
+    background: rgba(245,158,11,0.06);
+}
+
+.sftp-file-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+.sftp-file-name {
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    word-break: break-all;
+    color: var(--text-color);
+    line-height: 1.3;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.sftp-file-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* Buttons */
+.sftp-btn-primary {
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    background: #0ea5e9;
+    color: #fff;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    margin-top: 0.25rem;
+}
+.sftp-btn-primary:hover { background: #0284c7; }
+
+.sftp-btn-secondary {
+    padding: 0.55rem 1.1rem;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex: 1;
+}
+.sftp-btn-secondary:hover { border-color: var(--text-muted); color: var(--text-color); }
+
+.sftp-btn-danger {
+    padding: 0.4rem 0.85rem;
+    border-radius: 7px;
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid rgba(239,68,68,0.35);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.sftp-btn-danger:hover { background: rgba(239,68,68,0.1); }
+
+/* Modal */
+.sftp-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+.sftp-modal {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    width: 420px;
+    max-width: calc(100vw - 2rem);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.sftp-modal h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0;
+}
+.sftp-modal p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.6;
+}
+.sftp-modal-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg,#0ea5e9,#06b6d4);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    margin-bottom: 0.25rem;
+}
+.sftp-modal-icon svg { width: 24px; height: 24px; }
+
+.sftp-input {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-2);
+    color: var(--text-color);
+    font-size: 0.9rem;
+    font-family: var(--font-body);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+.sftp-input:focus { border-color: #0ea5e9; }
+.sftp-textarea {
+    height: 90px;
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+}
+
+.sftp-form-row {
+    display: flex;
+    gap: 0.5rem;
+}
+.sftp-form-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.sftp-error {
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #ef4444;
+    font-size: 0.85rem;
+}
+
+/* Toast */
+#toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 99999;
+}
+.toast {
+    padding: 0.7rem 1.1rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    max-width: 320px;
+    opacity: 1;
+    transition: opacity 0.3s;
+    backdrop-filter: blur(8px);
+}
+.toast-info    { background: rgba(14,165,233,0.92); color: #fff; }
+.toast-success { background: rgba(34,197,94,0.92);  color: #fff; }
+.toast-error   { background: rgba(239,68,68,0.92);  color: #fff; }
+
+/* Empty file grid state */
+.sftp-empty-dir {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}

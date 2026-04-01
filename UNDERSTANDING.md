@@ -1,6 +1,6 @@
 # DevSuite Component & Architecture Reference
 
-> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (v5.1+). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
+> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (v2.1.0+). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
 
 ## 1. System Tenets & Boundaries
 - **Strict Privacy**: 100% locally-hosted. No cloud telemetry, no analytics, no external services for core functionality.
@@ -35,6 +35,25 @@
 - **Busting Cache**: Updates to CSS or JS necessitate bumping the URL query parameter (e.g., `href="style.css?v=58"`) in HTML templates.
 - **Tests**: Always execute backend tests (`pytest test_main.py test_new_features.py`) before final validation.
 
-## 5. Salient Modules
-- **API Tester (`api-tester.html` / `api-client.js`)**: A local-first REST client capable of bypassing CORS. The UI dispatches requests to `POST /api/proxy` in `main.py`, which securely relays them to external targets using `urllib.request` and streams the unmodified response back to the client. Request history syncs locally via `/api/collections`. 
-- **Diff Editor (`app.js`)**: Powers both Text & Folder diffs. Manages Monaco instances and implements direct right/left hunk merging.
+## 5. Feature Map & Token-Saving Guide
+
+> **AI Instruction (CRITICAL for Context Limits):** AVOID reading all files when modifying a feature. Most components are modular. Use this map to request *only* the specific files needed for your task. Start with `grep_search` to find functions instead of reading entire 1000+ line scripts. NEVER read files ending in `.min.js` (like `bwip-js-min.js` or `crypto-js.min.js`) as they destroy the token context window.
+
+| Module / Feature | Main Frontend | JS Logic & Styling | Backend / Persistence |
+| :--- | :--- | :--- | :--- |
+| **Home/Dashboard** | `static/home.html` | `static/home.css` | `main.py` (`/`) |
+| **API Tester** | `static/api-tester.html` | `static/api-client.js`, `static/api-tester.js`, `static/api-tester.css` | `main.py` (`/api/proxy`, `/api/collections`), `~/.devsuite/collections.json` |
+| **Diff Editor** | `static/index.html` | `static/app.js`, `static/linter.css` | `main.py` (`/diff`, `/upload`) |
+| **JSON Linter** | `static/json.html` | `static/app.js`, `static/linter.css` | `main.py` (`/json`) |
+| **YAML Linter** | `static/yaml.html` | `static/app.js`, `static/linter.css` | `main.py` (`/yaml`) |
+| **URL Shortener** | `static/url-shortener.html` | *`bwip-js-min.js`* (Do not read) | `main.py` (`/api/shorten`, `/r/{id}`), `url_db.json` |
+| **Base64 Encoder** | `static/base64.html` | Inline Scripts | `main.py` (`/base64`) |
+| **Crypto Suite** | `static/crypto.html` | *`crypto-js.min.js`* (Do not read) | `main.py` (`/crypto`) |
+| **Regex Tester** | `static/regex.html` | Inline Scripts | `main.py` (`/regex`) |
+| **Secure Terminal** | `static/ssh-manager.html`, `static/sftp-browser.html` | `static/ssh-manager.js`, `static/ssh-manager.css`, `static/sftp-browser.js`, `static/sftp-browser.css`, *`xterm.js`*, *`xterm-addon-fit.js`* | `main.py` (`/ssh`, `/sftp`, `/api/ssh/terminal`, `/api/local/terminal`, `/api/sftp/list`, `/api/wsl/discover`, `/api/ssh/profiles`), `~/.devsuite/ssh_profiles.json` |
+| **Global Theme** | N/A | `static/theme.js`, `static/style.css` | None |
+
+### Developer & AI Best Practices
+1. **Targeted Updates**: If changing the API proxy behavior, only check `main.py` and `api-client.js`. Skip UI code unless strictly necessary.
+2. **Global Variables**: Most generic design elements (like colors, borders, drop shadows) are managed centrally as CSS variables (`:root`) in `static/style.css`.
+3. **Monaco Dependency**: The generic Monaco Editor functionality is tightly coupled with `static/app.js`. When working with the Diff or Linter tools, focus your analysis there.

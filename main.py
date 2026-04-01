@@ -15,15 +15,36 @@ import urllib.request
 import urllib.error
 import socket
 import ipaddress
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
+import asyncio
+import asyncssh
+import stat
+import sys
+import logging
+import subprocess
+import re
 from pydantic import BaseModel
+
+# PTY support is Linux/macOS only — import conditionally so the module loads on Windows.
+_PTY_AVAILABLE = False
+if sys.platform != 'win32':
+    try:
+        import pty
+        import fcntl
+        import struct
+        import termios
+        _PTY_AVAILABLE = True
+    except ImportError:
+        pass
+
+logger = logging.getLogger("devsuite")
 
 app = FastAPI(
     title="DevSuite",
     description="A private, locally-hosted diff checker with Monaco Editor.",
-    version="2.0.0"
+    version="2.1.0"
 )
 
 # Allowlist of hostnames that the /api/proxy endpoint is permitted to contact.
@@ -215,6 +236,39 @@ def read_api_tester_tool():
             return f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="api-tester.html not found.") from None
+
+
+@app.get("/ssh", response_class=HTMLResponse, summary="Serve SSH & SFTP Manager tool")
+def read_ssh_tool():
+    """Serve the SSH & SFTP Manager tool."""
+    html_path = os.path.join(static_dir, "ssh-manager.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="ssh-manager.html not found.") from None
+
+
+@app.get("/sftp", response_class=HTMLResponse, summary="Serve standalone SFTP Browser tool")
+def read_sftp_tool():
+    """Serve the standalone SFTP File Browser tool."""
+    html_path = os.path.join(static_dir, "sftp-browser.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="sftp-browser.html not found.") from None
+
+
+@app.get("/cron", response_class=HTMLResponse, summary="Serve Cron Visualizer tool")
+def read_cron_tool():
+    """Serve the Cron Visualizer tool (Unix, Quartz, AWS EventBridge, GitHub Actions)."""
+    html_path = os.path.join(static_dir, "cron.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="cron.html not found.") from None
 
 
 @app.post("/api/shorten", summary="Create a short URL")
@@ -453,6 +507,282 @@ async def proxy_request(req: ProxyRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/api/ssh/profiles", summary="Get SSH Profiles")
+def get_ssh_profiles():
+    col_path = os.path.join(os.path.expanduser("~"), ".devsuite", "ssh_profiles.json")
+    if os.path.exists(col_path):
+        try:
+            with open(col_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=500, detail="Corrupt ssh_profiles.json")
+    return {"encrypted_blob": ""}
+
+@app.post("/api/ssh/profiles", summary="Save SSH Profiles")
+def save_ssh_profiles(data: dict):
+    devsuite_dir = os.path.join(os.path.expanduser("~"), ".devsuite")
+    os.makedirs(devsuite_dir, exist_ok=True)
+    col_path = os.path.join(devsuite_dir, "ssh_profiles.json")
+    try:
+        with open(col_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.websocket("/api/ssh/terminal")
+async def ssh_terminal(websocket: WebSocket):
+    # Validate Origin header — reject missing AND disallowed origins
+    origin = websocket.headers.get("origin", "")
+    allowed_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
+    if not origin:
+        await websocket.close(code=1008, reason="Origin header required")
+        return
+    if origin not in allowed_origins:
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
+
+    await websocket.accept()
+    try:
+        data = await websocket.receive_text()
+        config = json.loads(data)
+        host = config.get("host")
+        port = int(config.get("port", 22))
+        username = config.get("username")
+        password = config.get("password")
+        private_key = config.get("private_key")
+        
+        # Load system known_hosts for host key verification
+        known_hosts_paths = [
+            os.path.expanduser("~/.ssh/known_hosts"),
+            "/etc/ssh/ssh_known_hosts"
+        ]
+        known_hosts_path = None
+        for path in known_hosts_paths:
+            if os.path.exists(path):
+                known_hosts_path = path
+                break
+
+        # Fail-closed: never silently disable host-key verification
+        if known_hosts_path is None:
+            raise ValueError(
+                "No known_hosts file found. Add the server's host key to "
+                "~/.ssh/known_hosts before connecting."
+            )
+
+        connect_kwargs = {
+            "host": host,
+            "port": port,
+            "username": username,
+            "known_hosts": known_hosts_path
+        }
+        if password:
+            connect_kwargs["password"] = password
+        if private_key:
+            connect_kwargs["client_keys"] = [asyncssh.import_private_key(private_key)]
+            
+        async with asyncssh.connect(**connect_kwargs) as conn:
+            # We must use create_process with a PTY to get interactive shell
+            async with conn.create_process(term_type='xterm-256color') as process:
+                
+                async def read_from_ssh():
+                    try:
+                        while True:
+                            data = await process.stdout.read(4096)
+                            if not data:
+                                break
+                            # asyncssh reads string by default, we send text
+                            await websocket.send_text(str(data))
+                    except Exception:
+                        logger.debug("read_from_ssh: stream ended or error", exc_info=True)
+                
+                async def write_to_ssh():
+                    try:
+                        while True:
+                            data = await websocket.receive_text()
+                            if data.startswith("\x1b[resize;"):
+                                parts = data.split(";")
+                                if len(parts) == 3:
+                                    try:
+                                        cols, rows = int(parts[1]), int(parts[2].strip("m"))
+                                        process.change_terminal_size(cols, rows, 0, 0)
+                                    except Exception:
+                                        pass
+                                continue
+                            process.stdin.write(data)
+                    except WebSocketDisconnect:
+                        process.terminate()
+                    except Exception:
+                        logger.debug("write_to_ssh: error writing to SSH process", exc_info=True)
+                
+                await asyncio.gather(read_from_ssh(), write_to_ssh())
+    except Exception as e:
+        try:
+            await websocket.send_text(f"\r\nError: {e}\r\n")
+            await websocket.close()
+        except Exception:
+            logger.debug("ssh_terminal: failed to send error message to client", exc_info=True)
+
+class SFTPRequest(BaseModel):
+    host: str
+    port: int = 22
+    username: str
+    password: str | None = None
+    private_key: str | None = None
+    path: str = "."
+
+@app.post("/api/sftp/list", summary="List files via SFTP")
+async def sftp_list(req: SFTPRequest):
+    try:
+        # Load system known_hosts for host key verification
+        known_hosts_paths = [
+            os.path.expanduser("~/.ssh/known_hosts"),
+            "/etc/ssh/ssh_known_hosts"
+        ]
+        known_hosts_path = None
+        for path in known_hosts_paths:
+            if os.path.exists(path):
+                known_hosts_path = path
+                break
+
+        # Fail-closed: never silently disable host-key verification
+        if known_hosts_path is None:
+            raise HTTPException(
+                status_code=412,
+                detail="No known_hosts file found. Add the server's host key to "
+                       "~/.ssh/known_hosts before connecting."
+            )
+
+        connect_kwargs = {
+            "host": req.host,
+            "port": req.port,
+            "username": req.username,
+            "known_hosts": known_hosts_path
+        }
+        if req.password:
+            connect_kwargs["password"] = req.password
+        if req.private_key:
+            connect_kwargs["client_keys"] = [asyncssh.import_private_key(req.private_key)]
+            
+        async with asyncssh.connect(**connect_kwargs) as conn:
+            sftp = await conn.start_sftp_client()
+            async with sftp:
+                files = await sftp.readdir(req.path)
+                result = []
+                for f in files:
+                    if f.filename in ('.', '..'): continue
+                    attrs = f.attrs
+                    is_dir = stat.S_ISDIR(attrs.permissions) if attrs.permissions else False
+                    result.append({
+                        "name": f.filename,
+                        "is_dir": is_dir,
+                        "size": attrs.size,
+                    })
+                result.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
+                return {"files": result, "cwd": req.path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.get("/api/wsl/discover", summary="Discover local WSL instances")
+async def wsl_discover():
+    try:
+        out = subprocess.check_output(["wsl.exe", "-l", "-q"], stderr=subprocess.STDOUT)
+        text = out.decode("utf-16le") if b"\x00" in out else out.decode("utf-8", errors="replace")
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        return {"wsl_instances": lines}
+    except Exception as e:
+        return {"wsl_instances": []}
+
+
+# Module-level set to hold references to fire-and-forget tasks so they
+# are not garbage-collected before completion.
+_pending_tasks: set = set()
+
+def _tracked_task(coro):
+    """Schedule a coroutine as an asyncio task, retaining a reference until done."""
+    task = asyncio.create_task(coro)
+    _pending_tasks.add(task)
+    task.add_done_callback(_pending_tasks.discard)
+    return task
+
+@app.websocket("/api/local/terminal")
+async def local_terminal(websocket: WebSocket):
+    # Validate Origin header — reject missing AND disallowed origins
+    origin = websocket.headers.get("origin", "")
+    allowed_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
+    if not origin:
+        await websocket.close(code=1008, reason="Origin header required")
+        return
+    if origin not in allowed_origins:
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
+
+    if not _PTY_AVAILABLE:
+        await websocket.close(code=1008, reason="Local terminal is not supported on this platform")
+        return
+
+    await websocket.accept()
+
+    config_raw = await websocket.receive_text()
+    try:
+        config = json.loads(config_raw)
+        distro = config.get("distro")
+    except Exception:
+        logger.debug("local_terminal: failed to parse config JSON, proceeding with distro=None")
+        distro = None
+        
+    pid, fd = pty.fork()
+    if pid == 0:
+        current_distro = os.environ.get("WSL_DISTRO_NAME", "")
+        if distro and distro != current_distro:
+            # Note: wsl.exe across PTY interop might hang in certain builds, 
+            # but we allow it for cross-distro attempts.
+            os.execvp("wsl.exe", ["wsl.exe", "-d", distro])
+        else:
+            shell = os.environ.get("SHELL", "/bin/bash")
+            os.execvp(shell, [shell])
+
+    loop = asyncio.get_running_loop()
+    
+    def on_pty_read():
+        try:
+            data = os.read(fd, 8192)
+            if data:
+                _tracked_task(websocket.send_text(data.decode("utf-8", errors="replace")))
+            else:
+                loop.remove_reader(fd)
+                _tracked_task(websocket.close())
+        except OSError:
+            loop.remove_reader(fd)
+            _tracked_task(websocket.close())
+
+    loop.add_reader(fd, on_pty_read)
+    
+    resize_pattern = re.compile(r"^\x1b\[resize;(\d+);(\d+)m$")
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            match = resize_pattern.match(data)
+            if match:
+                cols = int(match.group(1))
+                rows = int(match.group(2))
+                winsize = struct.pack("HHHH", rows, cols, 0, 0)
+                fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
+            else:
+                os.write(fd, data.encode("utf-8"))
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print("local_terminal error:", e)
+    finally:
+        try:
+            loop.remove_reader(fd)
+            os.close(fd)
+        except Exception:
+            logger.debug("local_terminal: error during cleanup", exc_info=True)
 
 
 if __name__ == "__main__":

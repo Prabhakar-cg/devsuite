@@ -43,11 +43,29 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - PNG download for both codes.
 - Recent links panel backed by `localStorage`.
 
-### 8. API Tester
+### 8. Local API Tester
 - **Local-first REST client** — A high-speed REST client for testing endpoints.
 - **Request Engine** — Supports GET, POST, PUT, DELETE, PATCH, Custom Headers, and Body.
 - **Local CORS Proxy** — Built-in FastAPI proxy to bypass browser CORS restrictions.
 - **Persistent Collections** — Saved in `~/.devsuite/collections.json`.
+
+### 9. Secure Terminal & SFTP
+- **Multi-tab SSH client** — Open parallel sessions to different hosts, each in its own xterm.js tab.
+- **Password & Private Key auth** — PEM key import supported.
+- **Encrypted profiles** — Session credentials AES-encrypted locally with a Master Password; stored in `~/.devsuite/ssh_profiles.json`.
+- **SFTP Browser** (sub-tab) — Browse, navigate and inspect remote filesystems without leaving the page. Grid view with file type icons, sizes, up navigation, refresh and disconnect.
+- **WSL / Local Terminal** — Auto-discovers WSL distributions; spawns local PTY shells directly.
+- **Inline delete** — Remove sessions from the sidebar with a single click (no modal needed).
+- **Network Notice**: Session profiles are stored locally, but SSH/SFTP connections establish outbound network traffic to remote hosts. The privacy guarantee applies to offline tools only; data transmitted to SSH/SFTP servers is subject to the remote host's security and network policies.
+
+### 10. Cron Visualizer
+- **4 dialect support** — Unix/Linux, Quartz/Spring, AWS EventBridge, GitHub Actions.
+- **Live expression parser** with per-field validation chips and plain-English human-readable description.
+- **Visual Field Builder** — click-to-toggle grids for Minute, Hour, Month, Day-of-Week; synced with the text input.
+- **Next 10 Run Times** — computed locally, no external libraries.
+- **28-Day Activity Heatmap** — CSS grid calendar with teal intensity shading based on fire frequency.
+- **Preset Library** — curated common expressions per dialect (Unix, Quartz, AWS, GitHub), click-to-load.
+- **Export** — copy raw expression, YAML (K8s / GitHub Actions), or AWS EventBridge JSON.
 
 ---
 
@@ -110,8 +128,8 @@ uvicorn main:app --port 8000 --reload
 
 ```
 devsuite/
-├── main.py                  # FastAPI app — routes, URL shortener API, file upload
-├── requirements.txt         # fastapi, uvicorn, python-multipart
+├── main.py                  # FastAPI app — routes, SSH/SFTP WebSocket, file upload
+├── requirements.txt         # fastapi, uvicorn, asyncssh, python-multipart
 ├── url_db.json              # Persisted URL shortener database (auto-generated)
 ├── start.sh                 # One-shot virtual environment setup & run script
 ├── test_local_server.py     # Basic smoke test for the local server
@@ -127,8 +145,20 @@ devsuite/
     ├── base64.html          # Base64 Encoder / Decoder
     ├── crypto.html          # Crypto Suite (Hash, AES, RSA, HMAC)
     ├── url-shortener.html   # Link & QR Studio
-    ├── api-tester.html      # Local API Tester module
+    ├── api-tester.html      # Local API Tester
     ├── api-client.js        # Core Fetch-wrapper and compiled JS client used by API Tester
+    ├── ssh-manager.html     # Secure Terminal & SFTP (multi-tab SSH + SFTP sub-tab)
+    ├── ssh-manager.js       # Terminal & SFTP logic (xterm.js, WebSocket, SFTP grid)
+    ├── ssh-manager.css      # Secure Terminal layout, tab strip, SFTP grid styles
+    ├── sftp-browser.html    # Standalone SFTP Browser page (/sftp route)
+    ├── sftp-browser.js      # Standalone SFTP Browser logic
+    ├── sftp-browser.css     # Standalone SFTP Browser styles
+    ├── cron.html            # Cron Visualizer tool (/cron route)
+    ├── cron.js              # Cron parser, describer, scheduler, heatmap, field builder
+    ├── cron.css             # Cron Visualizer styles (dialect tabs, heatmap, presets)
+    ├── xterm.js             # Self-hosted xterm.js terminal emulator
+    ├── xterm.css            # xterm.js styles
+    ├── xterm-addon-fit.js   # xterm.js FitAddon (auto-resize)
     ├── linter.css           # Shared layout for linter/tester/crypto tools
     ├── crypto-js.min.js     # Self-hosted CryptoJS v4.2.0
     └── bwip-js-min.js       # Self-hosted bwip-js v3.4.1 (barcode rendering)

@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-04-01
+
+### Added
+- **Cron Visualizer** (`/cron`) — A rich, 100% client-side cron expression tool.
+  - **4 dialect support**: Unix/Linux (5-field), Quartz/Spring (6–7-field with `?`, `L`, `W`, `#`), AWS EventBridge (6-field with year), GitHub Actions (with inline YAML context display).
+  - **Live expression parser** — real-time field-by-field tokenization and validation with colour-coded field chips and a ✓/✗ status pill.
+  - **Human-readable description** — auto-generates a plain-English sentence (e.g. *"Every 15 minutes, between 9:00 AM and 5:00 PM, Monday through Friday"*).
+  - **Visual Field Builder** — click-to-toggle grids for Minute (0–59), Hour (0–23), Month, and Day-of-Week; bidirectionally synced with the text input.
+  - **Next 10 Run Times** panel — brute-force minute-iteration scheduler (no external lib); shows locale date, time, and relative countdown.
+  - **28-Day Activity Heatmap** — CSS grid calendar with teal intensity shading based on fire frequency; hover tooltip per day.
+  - **Preset Library** — curated common expressions per dialect (Unix, Quartz, AWS, GitHub), click-to-load.
+  - **Export** — copy raw expression, GitHub Actions / Kubernetes CronJob YAML, or AWS EventBridge JSON with one click.
+- **`GET /cron`** route added to `main.py`.
+- **Cron Visualizer card** added to the home dashboard (`home.html`) with teal accent colour.
+
+## [6.0.0] - 2026-03-30
+
+### Added
+- **Secure Terminal** (`/ssh`) — Full-featured multi-tab SSH client powered by `asyncssh` and `xterm.js`.
+  - Multi-tab terminal UI — open parallel sessions to different hosts, each in its own tab.
+  - Password and Private Key (PEM) authentication.
+  - Session profiles stored locally in `~/.devsuite/ssh_profiles.json` are encrypted at rest via AES (CryptoJS) and unlocked with a Master Password.
+  - Tree-style sidebar with collapsible group folders and a quick-search/filter.
+  - **SFTP Browser** sub-feature (via the "SFTP" vertical strip tab) — browse, navigate and inspect remote filesystems without leaving the terminal page.
+    - Grid file view with type icons, file sizes, up/back navigation, refresh, disconnect.
+    - Shares the same unlocked session profiles — no second password required.
+  - **WSL / Local Terminal** — auto-discovers installed WSL distributions on Windows; spawns local PTY shells for `Local Terminal` and each WSL distro.
+  - Inline **Delete Session** (🗑️) icon on sidebar items — no need to open the edit modal.
+  - Terminal resize events propagated to the remote PTY on window resize and pane drag.
+- **`/sftp` route** — standalone SFTP Browser page (`sftp-browser.html`) for direct deep-linking.
+
+### Changed
+- Secure Terminal vertical strip cleaned up: removed non-functional **Tools** and **Macros** placeholder buttons; only **Sessions** and **SFTP** remain (both functional).
+- Modal button renamed from "Delete Server" → **"Delete Session"**.
+- SFTP panel moved from a split-pane inside the terminal view to a **dedicated sub-tab** in the vertical strip, giving the terminal full width.
+- Home dashboard card description updated to reflect the SFTP sub-feature.
+
+### Fixed
+- **SFTP `start_sftp_client` coroutine bug** — `asyncssh.SSHClientConnection.start_sftp_client` is an awaitable coroutine, not an async context manager. Changed from `async with conn.start_sftp_client()` to `sftp = await conn.start_sftp_client(); async with sftp:`, resolving silent SFTP connection failures.
+
 ## [5.1.0] - 2026-03-28
 ### Added
 - **Local API Tester** (`/api-tester`) — Full-featured REST client for local development.
