@@ -132,8 +132,6 @@ async def add_security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     # Basic XSS protection for older browsers
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    # Strict Transport Security (HSTS)
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     # Content Security Policy (allows local assets and CDN resources used in the app)
     csp = (
         "default-src 'self'; "
@@ -148,173 +146,98 @@ async def add_security_headers(request, call_next):
     return response
 
 
-@app.get("/", response_class=HTMLResponse, summary="Serve DevSuite homepage")
-def read_home():
-    """Serve the DevSuite landing page."""
-    html_path = os.path.join(static_dir, "home.html")
+def _serve_html(filename: str) -> str:
+    """Read and return an HTML file from the static directory."""
+    html_path = os.path.join(static_dir, filename)
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="home.html not found.") from None
+        raise HTTPException(status_code=404, detail=f"{filename} not found.") from None
+
+
+@app.get("/", response_class=HTMLResponse, summary="Serve DevSuite homepage")
+def read_home():
+    """Serve the DevSuite landing page."""
+    return _serve_html("home.html")
 
 
 @app.get("/diff", response_class=HTMLResponse, summary="Serve diff tool")
 def read_diff():
     """Serve the Text/Folder Diff tool."""
-    html_path = os.path.join(static_dir, "index.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="index.html not found.") from None
+    return _serve_html("index.html")
 
 
 @app.get("/json", response_class=HTMLResponse, summary="Serve JSON linter tool")
 def read_json_tool():
     """Serve the JSON Linter & Formatter tool."""
-    html_path = os.path.join(static_dir, "json.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="json.html not found.") from None
+    return _serve_html("json.html")
 
 
 @app.get("/yaml", response_class=HTMLResponse, summary="Serve YAML linter tool")
 def read_yaml_tool():
     """Serve the YAML Linter & Validator tool."""
-    html_path = os.path.join(static_dir, "yaml.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="yaml.html not found.") from None
+    return _serve_html("yaml.html")
 
 
 @app.get("/regex", response_class=HTMLResponse, summary="Serve Regex Tester tool")
 def read_regex_tool():
     """Serve the Regex Tester tool."""
-    html_path = os.path.join(static_dir, "regex.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="regex.html not found.") from None
+    return _serve_html("regex.html")
 
 
 @app.get("/base64", response_class=HTMLResponse, summary="Serve Base64 Encoder/Decoder tool")
 def read_base64_tool():
-    """
-    Provide the HTML for the Base64 encoder/decoder tool page.
-    
-    Returns:
-        html (str): Contents of the `base64.html` file.
-    
-    Raises:
-        HTTPException: with status_code=404 if `base64.html` is not found.
-    """
-    html_path = os.path.join(static_dir, "base64.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="base64.html not found.") from None
+    """Serve the Base64 Encoder/Decoder tool."""
+    return _serve_html("base64.html")
 
 
 @app.get("/crypto", response_class=HTMLResponse, summary="Serve Crypto Suite tool")
 def read_crypto_tool():
     """Serve the Crypto Suite tool (Hash, AES, RSA, HMAC)."""
-    html_path = os.path.join(static_dir, "crypto.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="crypto.html not found.") from None
+    return _serve_html("crypto.html")
 
 
 @app.get("/url-shortener", response_class=HTMLResponse, summary="Serve URL Shortener tool")
 def read_url_shortener_tool():
-    """
-    Return the URL Shortener HTML page from the static directory.
-    
-    Returns:
-        html (str): Contents of "url-shortener.html".
-    
-    Raises:
-        HTTPException: status_code 404 if "url-shortener.html" is not found.
-    """
-    html_path = os.path.join(static_dir, "url-shortener.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="url-shortener.html not found.") from None
+    """Serve the Link & QR Studio tool."""
+    return _serve_html("url-shortener.html")
+
 
 @app.get("/api-tester", response_class=HTMLResponse, summary="Serve Local API Tester tool")
 def read_api_tester_tool():
     """Serve the API Tester tool."""
-    html_path = os.path.join(static_dir, "api-tester.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="api-tester.html not found.") from None
+    return _serve_html("api-tester.html")
 
 
 @app.get("/ssh", response_class=HTMLResponse, summary="Serve SSH & SFTP Manager tool")
 def read_ssh_tool():
     """Serve the SSH & SFTP Manager tool."""
-    html_path = os.path.join(static_dir, "ssh-manager.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="ssh-manager.html not found.") from None
+    return _serve_html("ssh-manager.html")
 
 
 @app.get("/sftp", response_class=HTMLResponse, summary="Serve standalone SFTP Browser tool")
 def read_sftp_tool():
     """Serve the standalone SFTP File Browser tool."""
-    html_path = os.path.join(static_dir, "sftp-browser.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="sftp-browser.html not found.") from None
+    return _serve_html("sftp-browser.html")
 
 
 @app.get("/cron", response_class=HTMLResponse, summary="Serve Cron Visualizer tool")
 def read_cron_tool():
     """Serve the Cron Visualizer tool (Unix, Quartz, AWS EventBridge, GitHub Actions)."""
-    html_path = os.path.join(static_dir, "cron.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="cron.html not found.") from None
+    return _serve_html("cron.html")
 
 
 @app.get("/vault", response_class=HTMLResponse, summary="Serve Secret Vault tool")
 def read_vault_tool():
     """Serve the Secret Vault tool (KeePass-style encrypted secrets manager)."""
-    html_path = os.path.join(static_dir, "vault.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="vault.html not found.") from None
+    return _serve_html("vault.html")
 
 
 @app.get("/db-manager", response_class=HTMLResponse, summary="Serve DevDB Manager tool")
 def read_db_manager_tool():
     """Serve the DevDB Manager tool (unified encrypted database viewer and manager)."""
-    html_path = os.path.join(static_dir, "db-manager.html")
-    try:
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="db-manager.html not found.") from None
+    return _serve_html("db-manager.html")
 
 
 @app.get("/api/vault", summary="Get encrypted vault blob")
@@ -559,7 +482,10 @@ async def proxy_request(req: ProxyRequest):
                     "body": body
                 }
         except urllib.error.HTTPError as e:
-            body = e.read().decode('utf-8', errors='replace') if hasattr(e, 'read') and e.read else ""
+            try:
+                body = e.read().decode('utf-8', errors='replace') if hasattr(e, 'read') else ""
+            except Exception:
+                body = ""
             return {
                 "proxy_response": True,
                 "status": e.code,
@@ -598,6 +524,9 @@ def save_ssh_profiles(data: dict):
 # and any future tools that want to read/write named stores.
 
 _ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "url_db", "app_prefs"}
+
+# Only allow printable, non-shell-special characters for WSL distro names.
+_DISTRO_NAME_RE = re.compile(r'^[A-Za-z0-9_.\-]+$')
 
 @app.get("/api/db/meta", summary="Get DevDB metadata")
 def db_meta():
@@ -646,8 +575,11 @@ def db_export():
 @app.post("/api/db/import", summary="Import a .dsb file into DevDB")
 async def db_import(file: UploadFile = File(...)):
     """Accept a .dsb upload and merge its stores into the running DevDB."""
+    MAX_IMPORT_SIZE = 50 * 1024 * 1024  # 50 MB
     try:
-        raw = await file.read()
+        raw = await file.read(MAX_IMPORT_SIZE + 1)
+        if len(raw) > MAX_IMPORT_SIZE:
+            raise HTTPException(status_code=413, detail="Import file too large (50 MB limit)")
         imported = DevDB.from_bytes(raw)  # parses & validates the binary format
         # Merge all stores from the imported file (skip unknown store names)
         for store_name in imported.list_stores():
@@ -857,6 +789,10 @@ async def local_terminal(websocket: WebSocket):
     try:
         config = json.loads(config_raw)
         distro = config.get("distro")
+        # Reject distro names containing shell metacharacters or path separators.
+        if distro and not _DISTRO_NAME_RE.match(distro):
+            logger.warning("local_terminal: rejected invalid distro name %r", distro)
+            distro = None
     except Exception:
         logger.debug("local_terminal: failed to parse config JSON, proceeding with distro=None")
         distro = None
@@ -904,7 +840,7 @@ async def local_terminal(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        print("local_terminal error:", e)
+        logger.error("local_terminal: unexpected error: %s", e)
     finally:
         try:
             loop.remove_reader(fd)
