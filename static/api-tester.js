@@ -387,9 +387,16 @@ els.saveBtn.addEventListener('click', () => {
 
 document.getElementById('refresh-collections-btn').addEventListener('click', loadCollections);
 
-// Init
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
+// Init — gate behind master-password auth (8-hour session)
+async function initApp() {
+    const pwd = await AuthGuard.init('API Tester', '📡');
+    // pwd may be null if master password has not been configured yet;
+    // in that case, collections are still loaded (no encryption needed for plaintext store)
     loadCollections();
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initApp();
 } else {
-    document.addEventListener('DOMContentLoaded', loadCollections);
+    document.addEventListener('DOMContentLoaded', initApp);
 }

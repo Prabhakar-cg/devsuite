@@ -18,6 +18,12 @@ let autoLockTimer = null;
 const PBKDF2_ITERATIONS = 50000;
 const PBKDF2_KEYSIZE    = 256 / 32;  // 256-bit key → 8 32-bit words
 
+// ── Setup-mode state ──────────────────────────────────────────────
+// isSetupMode  = true when no master password has been configured yet
+// isNewVault   = true when the vault store has no data (brand new install)
+let isSetupMode = false;
+let isNewVault  = false;
+
 // ── Type metadata ─────────────────────────────────────────────────
 const TYPE_META = {
     password: { emoji: '🔑', label: 'Password',    badgeClass: 'badge-password', iconClass: 'icon-password' },
@@ -102,6 +108,22 @@ async function unlockVault(password) {
     const errEl = document.getElementById('lock-error');
     errEl.style.display = 'none';
 
+    // ── Setup-mode validations ──────────────────────────────────────
+    if (isSetupMode && isNewVault) {
+        // Creating a brand-new master password: enforce confirm match + min length
+        const confirm = document.getElementById('master-pw-confirm').value;
+        if (password !== confirm) {
+            errEl.textContent = '❌ Passwords do not match.';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (password.length < 8) {
+            errEl.textContent = '❌ Master password must be at least 8 characters.';
+            errEl.style.display = 'block';
+            return;
+        }
+    }
+
     const res  = await fetch('/api/vault');
     const data = await res.json();
 
@@ -131,6 +153,32 @@ async function unlockVault(password) {
         }
     } else {
         vaultEntries = [];
+    }
+
+    // ── Register master password challenge (first-time or migration) ─
+    if (isSetupMode) {
+        try {
+            const verifyIv   = CryptoJS.lib.WordArray.random(16);
+            const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
+            await fetch('/api/auth/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    salt:        salt.toString(),
+                    verify_blob: verifyBlob.toString(),
+                    verify_iv:   verifyIv.toString(),
+                }),
+            });
+            isSetupMode = false;
+            // Reset lock screen to normal-unlock appearance for future locks
+            document.getElementById('lock-setup-desc').textContent =
+                'Your secrets are encrypted with AES-256. Enter your master password to unlock.';
+            document.getElementById('master-pw-confirm-wrap').style.display = 'none';
+            document.getElementById('unlock-btn').textContent = 'Unlock Vault';
+        } catch (e) {
+            // Non-fatal — vault still works; warn in console
+            console.warn('Failed to register master password challenge:', e);
+        }
     }
 
     masterKey = key;
@@ -644,8 +692,43 @@ function relativeTime(ts) {
     return new Date(ts).toLocaleDateString();
 }
 
+// ── Detect first-run / setup mode ────────────────────────────────
+async function initVaultMode() {
+    try {
+        const [authRes, vaultRes] = await Promise.all([
+            fetch('/api/auth/status'),
+            fetch('/api/vault'),
+        ]);
+        const authData  = await authRes.json();
+        const vaultData = await vaultRes.json();
+
+        isSetupMode = !authData.is_setup;
+        isNewVault  = !vaultData.salt;
+
+        if (isSetupMode && isNewVault) {
+            // Brand-new install: ask to create the master password
+            document.getElementById('lock-setup-desc').textContent =
+                'Welcome to DevSuite! Create a master password to encrypt your Vault and all secure data. ' +
+                'This password is never stored — keep it safe!';
+            document.getElementById('master-pw-confirm-wrap').style.display = 'block';
+            document.getElementById('master-pw-input').placeholder = 'New Master Password';
+            document.getElementById('unlock-btn').textContent = 'Create Master Password';
+        } else if (isSetupMode) {
+            // Vault exists but challenge not yet registered (first upgrade from older build)
+            document.getElementById('lock-setup-desc').textContent =
+                'Enter your existing vault password to register it as the DevSuite master password.';
+            document.getElementById('unlock-btn').textContent = 'Unlock & Register';
+        }
+    } catch (e) {
+        console.warn('initVaultMode error:', e);
+    }
+}
+
 // ── Wire up UI ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+
+    // Detect first-run / setup mode before showing the lock screen
+    initVaultMode();
 
     // Lock screen
     const pwInput = document.getElementById('master-pw-input');
@@ -659,12 +742,16 @@ document.addEventListener('DOMContentLoaded', () => {
             err.style.display = 'block';
             return;
         }
+        const prevText = unlockBtn.textContent;
         unlockBtn.textContent = 'Unlocking…';
         unlockBtn.disabled = true;
         try {
             await unlockVault(pw);
         } finally {
-            unlockBtn.textContent = 'Unlock / Initialize Vault';
+            // Only restore if vault is still locked (unlockVault hides the overlay on success)
+            if (document.getElementById('lock-overlay').style.display !== 'none') {
+                unlockBtn.textContent = prevText;
+            }
             unlockBtn.disabled = false;
         }
     });

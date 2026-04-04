@@ -592,6 +592,84 @@ async def db_import(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+# ─── Auth — Master Password Management ──────────────────────────────────────
+# Client-side password verification: server stores a challenge blob (AES-encrypted
+# known plaintext).  The plaintext password never leaves the browser.
+
+@app.get("/api/auth/status", summary="Check if master password is configured")
+def auth_status():
+    """Return whether the master encryption password has been set up."""
+    prefs = _db.get_store("app_prefs") or {}
+    return {"is_setup": bool(prefs.get("master_setup_done"))}
+
+
+@app.get("/api/auth/challenge", summary="Get password verification challenge")
+def auth_challenge():
+    """Return the stored salt + encrypted-verify-blob for client-side password checking."""
+    prefs = _db.get_store("app_prefs") or {}
+    if not prefs.get("master_setup_done"):
+        raise HTTPException(status_code=404, detail="Master password not configured")
+    return {
+        "salt":        prefs.get("master_salt", ""),
+        "verify_blob": prefs.get("master_verify_blob", ""),
+        "verify_iv":   prefs.get("master_verify_iv", ""),
+    }
+
+
+@app.post("/api/auth/setup", summary="Initialize master password (first-time setup)")
+def auth_setup(data: dict):
+    """One-time setup: store the PBKDF2 salt and AES verification blob in app_prefs.
+    Called by vault.js after the user sets their master password for the first time.
+    Expects: {salt, verify_blob, verify_iv}
+    """
+    prefs = _db.get_store("app_prefs") or {}
+    if prefs.get("master_setup_done"):
+        raise HTTPException(status_code=409, detail="Master password already configured")
+
+    salt        = str(data.get("salt",        "")).strip()
+    verify_blob = str(data.get("verify_blob", "")).strip()
+    verify_iv   = str(data.get("verify_iv",   "")).strip()
+
+    if not salt or not verify_blob or not verify_iv:
+        raise HTTPException(status_code=400, detail="Missing required fields: salt, verify_blob, verify_iv")
+
+    prefs.update({
+        "master_setup_done":  True,
+        "master_salt":        salt,
+        "master_verify_blob": verify_blob,
+        "master_verify_iv":   verify_iv,
+    })
+    _db.set_store("app_prefs", prefs)
+    _db.save()
+    return {"status": "ok"}
+
+
+@app.post("/api/auth/update-challenge", summary="Update master password challenge after password change")
+def auth_update_challenge(data: dict):
+    """Replace the verification challenge when the master password is changed.
+    Expects: {salt, verify_blob, verify_iv}
+    """
+    prefs = _db.get_store("app_prefs") or {}
+    if not prefs.get("master_setup_done"):
+        raise HTTPException(status_code=404, detail="Master password not yet configured")
+
+    salt        = str(data.get("salt",        "")).strip()
+    verify_blob = str(data.get("verify_blob", "")).strip()
+    verify_iv   = str(data.get("verify_iv",   "")).strip()
+
+    if not salt or not verify_blob or not verify_iv:
+        raise HTTPException(status_code=400, detail="Missing required fields: salt, verify_blob, verify_iv")
+
+    prefs.update({
+        "master_salt":        salt,
+        "master_verify_blob": verify_blob,
+        "master_verify_iv":   verify_iv,
+    })
+    _db.set_store("app_prefs", prefs)
+    _db.save()
+    return {"status": "ok"}
+
+
 @app.websocket("/api/ssh/terminal")
 async def ssh_terminal(websocket: WebSocket):
     # Validate Origin header — reject missing AND disallowed origins

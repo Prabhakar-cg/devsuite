@@ -60,45 +60,124 @@ async function saveProfilesBlob(blob) {
 }
 
 // ──────────────────────────────────────────
-// Init & Unlock
+// Init & Unlock (via DevSuite master password)
 // ──────────────────────────────────────────
-document.getElementById('unlock-btn').addEventListener('click', async () => {
-    const pwd = document.getElementById('master-password').value;
-    if (!pwd) return showToast('Master Password required.', 'error');
 
+// After auth-guard verifies the master password, use it to decrypt SSH profiles.
+// If existing profiles were encrypted with a different (old) password, show a
+// one-time migration panel so the user can provide the old password and re-encrypt.
+
+async function _applyMasterKey(pwd) {
     let blob;
-    try {
-        blob = await loadProfilesBlob();
-    } catch (e) {
-        showToast('Failed to load profiles: ' + e.message, 'error');
-        return;
-    }
+    try { blob = await loadProfilesBlob(); }
+    catch (e) { showToast('Failed to load profiles: ' + e.message, 'error'); return; }
 
     if (!blob) {
-        try {
-            masterKey = pwd; profiles = [];
-            await saveProfilesBlob(encryptData('[]', pwd));
-            document.getElementById('master-password-overlay').style.display = 'none';
-            discoverWsl();
-            renderSidebar(); renderSftpSidebar();
-        } catch (e) {
-            showToast('Failed to initialize vault: ' + e.message, 'error');
-        }
+        // No profiles yet — initialize with master password
+        masterKey = pwd;
+        profiles  = [];
+        await saveProfilesBlob(encryptData('[]', pwd));
+        document.getElementById('master-password-overlay').style.display = 'none';
+        discoverWsl();
+        renderSidebar(); renderSftpSidebar();
         return;
     }
 
     const dec = decryptData(blob, pwd);
-    if (!dec) return showToast('Incorrect Master Password or corrupted vault.', 'error');
+    if (dec) {
+        // Master password matches — load profiles
+        try {
+            profiles  = JSON.parse(dec);
+            masterKey = pwd;
+            document.getElementById('master-password-overlay').style.display = 'none';
+            discoverWsl();
+            renderSidebar(); renderSftpSidebar();
+        } catch { showToast('Failed to parse profiles.', 'error'); }
+        return;
+    }
 
-    try {
-        profiles  = JSON.parse(dec);
-        masterKey = pwd;
-        document.getElementById('master-password-overlay').style.display = 'none';
+    // Decryption failed — profiles were encrypted with a different password.
+    // Show migration UI so the user can supply the old password.
+    _showMigrationPanel(blob, pwd);
+}
+
+function _showMigrationPanel(encryptedBlob, newPwd) {
+    const overlay = document.getElementById('master-password-overlay');
+    overlay.innerHTML = `
+        <div class="modal">
+            <h2>🔄 Migrate SSH Profiles</h2>
+            <p style="color:var(--text-muted);margin-top:0.5rem;font-size:0.9rem;line-height:1.6;">
+                Your SSH profiles were encrypted with a <strong>different password</strong>.
+                Enter the old password to migrate them to your DevSuite master password,
+                or start fresh (your existing profiles will be lost).
+            </p>
+            <input type="password" id="migrate-old-pwd" class="url-input"
+                   placeholder="Old SSH password" style="width:100%;margin:1rem 0 0.5rem;">
+            <div id="migrate-err" style="display:none;color:#ef4444;font-size:13px;margin-bottom:0.5rem;"></div>
+            <div style="display:flex;gap:8px;margin-top:0.5rem;">
+                <button id="migrate-btn" class="send-btn"
+                        style="flex:1;background:#0ea5e9;color:#fff;">Migrate</button>
+                <button id="migrate-fresh-btn" class="send-btn"
+                        style="flex:1;background:#374151;color:#e2e8f0;">Start Fresh</button>
+            </div>
+        </div>`;
+    overlay.style.display = 'flex';
+
+    document.getElementById('migrate-btn').addEventListener('click', async () => {
+        const oldPwd  = document.getElementById('migrate-old-pwd').value;
+        const errEl   = document.getElementById('migrate-err');
+        errEl.style.display = 'none';
+        if (!oldPwd) { errEl.textContent = 'Enter the old password.'; errEl.style.display = 'block'; return; }
+
+        const dec = decryptData(encryptedBlob, oldPwd);
+        if (!dec) {
+            errEl.textContent = '❌ Incorrect old password.';
+            errEl.style.display = 'block';
+            return;
+        }
+        try {
+            profiles = JSON.parse(dec);
+        } catch {
+            errEl.textContent = '❌ Could not parse profiles — data may be corrupted.';
+            errEl.style.display = 'block';
+            return;
+        }
+        // Re-encrypt with the master password and save
+        masterKey = newPwd;
+        await saveProfilesBlob(encryptData(JSON.stringify(profiles), newPwd));
+        overlay.style.display = 'none';
+        showToast('✅ SSH profiles migrated to master password', 'success');
         discoverWsl();
-        renderSidebar();
-        renderSftpSidebar();
-    } catch { showToast('Failed to parse profiles.', 'error'); }
-});
+        renderSidebar(); renderSftpSidebar();
+    });
+
+    document.getElementById('migrate-fresh-btn').addEventListener('click', async () => {
+        if (!confirm('This will delete all existing SSH profiles. Are you sure?')) return;
+        masterKey = newPwd;
+        profiles  = [];
+        await saveProfilesBlob(encryptData('[]', newPwd));
+        overlay.style.display = 'none';
+        showToast('SSH profiles reset.', 'info');
+        discoverWsl();
+        renderSidebar(); renderSftpSidebar();
+    });
+}
+
+// Boot: run auth-guard first, then unlock profiles with the master password
+(async () => {
+    const pwd = await AuthGuard.init('Secure Terminal', '🖥️');
+    if (pwd) {
+        await _applyMasterKey(pwd);
+    } else {
+        // No master password set — allow access without profile encryption
+        showToast('⚠️ No master password set — profiles are unencrypted.', 'warn');
+        document.getElementById('master-password-overlay').style.display = 'none';
+        masterKey = '';
+        profiles  = [];
+        discoverWsl();
+        renderSidebar(); renderSftpSidebar();
+    }
+})();
 
 // ──────────────────────────────────────────
 // WSL Discovery

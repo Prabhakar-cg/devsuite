@@ -5,9 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DevDB Manager — DevSuite</title>
     <meta name="description" content="Unified KeePass-style encrypted database manager for DevSuite. View stores, export/import .dsb files, manage encryption, and monitor database health." />
-    <link rel="stylesheet" href="/static/db-manager.css?v=1" />
+    <link rel="stylesheet" href="/static/db-manager.css?v=2" />
 </head>
 <body>
+
+<!-- ── Lock Overlay ───────────────────────────────────────────────────────── -->
+<div id="lock-overlay" class="db-lock-overlay">
+    <div class="db-lock-card">
+        <div class="db-lock-icon">🗄️</div>
+        <h2 class="db-lock-title">DevDB Manager</h2>
+        <p class="db-lock-desc" id="lock-desc">Enter your master password to access the database.</p>
+
+        <!-- Not-setup notice (shown when no master password has ever been created) -->
+        <div class="db-lock-notice" id="not-setup-notice" style="display:none;">
+            <span>⚠️</span>
+            <span>No master password has been set up yet. Please open the
+                <a href="/vault" class="db-lock-link">Secret Vault</a> first and create a master password.</span>
+        </div>
+
+        <!-- Password form (shown once setup is detected) -->
+        <div id="lock-form" style="display:none;">
+            <input type="password" id="lock-pw-input" class="db-lock-input"
+                   placeholder="Master Password" autocomplete="off" spellcheck="false" />
+            <div class="db-lock-error" id="lock-error" style="display:none;"></div>
+            <button class="db-lock-btn" id="lock-unlock-btn">Unlock</button>
+        </div>
+
+        <div class="db-lock-warning">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:#f59e0b">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>Same master password as Secret Vault. Never stored — cannot be recovered if forgotten.</span>
+        </div>
+    </div>
+</div>
 
 <!-- ── Header ─────────────────────────────────────────────────────────────── -->
 <header class="app-header">
@@ -275,6 +306,7 @@
 <!-- ── Toast container ─────────────────────────────────────────────────────── -->
 <div id="toast-container" aria-live="polite"></div>
 
-<script src="/static/db-manager.js?v=1"></script>
+<script src="/static/crypto-js.min.js"></script>
+<script src="/static/db-manager.js?v=2"></script>
 </body>
 </html>

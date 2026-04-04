@@ -16,6 +16,10 @@ const STORE_META = {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let _meta = null;
+let _authenticated = false;
+
+const PBKDF2_ITERATIONS = 50000;
+const PBKDF2_KEYSIZE    = 256 / 32;
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function toast(msg, type = 'info') {
@@ -60,8 +64,82 @@ function storeEntryCount(name, storeData) {
     return null;
 }
 
+// ── Lock screen ───────────────────────────────────────────────────────────────
+async function initLockScreen() {
+    const overlay = document.getElementById('lock-overlay');
+
+    // DB Manager always re-asks for the password on every page load.
+    // (Vault does the same — no session caching for either.)
+
+    // Check whether master password has been configured
+    let isSetup = false;
+    try {
+        const status = await fetch('/api/auth/status').then(r => r.json());
+        isSetup = status.is_setup;
+    } catch (e) {
+        toast('Could not check auth status: ' + e.message, 'error');
+    }
+
+    if (!isSetup) {
+        document.getElementById('not-setup-notice').style.display = 'flex';
+        document.getElementById('lock-form').style.display = 'none';
+    } else {
+        document.getElementById('lock-form').style.display = 'block';
+        // Focus password field after a tick
+        setTimeout(() => document.getElementById('lock-pw-input').focus(), 80);
+    }
+
+    overlay.style.display = 'flex';
+}
+
+async function attemptUnlock() {
+    const pw    = document.getElementById('lock-pw-input').value;
+    const errEl = document.getElementById('lock-error');
+    errEl.style.display = 'none';
+
+    if (!pw) {
+        errEl.textContent = 'Please enter the master password.';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    const btn = document.getElementById('lock-unlock-btn');
+    btn.disabled = true;
+    btn.textContent = 'Verifying…';
+
+    try {
+        const challenge = await fetch('/api/auth/challenge').then(r => r.json());
+        const salt = CryptoJS.enc.Hex.parse(challenge.salt);
+        const key  = CryptoJS.PBKDF2(pw, salt, { keySize: PBKDF2_KEYSIZE, iterations: PBKDF2_ITERATIONS });
+        const dec  = CryptoJS.AES.decrypt(challenge.verify_blob, key, {
+            iv: CryptoJS.enc.Hex.parse(challenge.verify_iv),
+        });
+        const plaintext = dec.toString(CryptoJS.enc.Utf8);
+
+        if (plaintext !== 'DEVSUITE_MASTER_OK') {
+            errEl.textContent = '❌ Incorrect master password.';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        // Success — show the manager
+        document.getElementById('lock-overlay').style.display = 'none';
+        _authenticated = true;
+        document.getElementById('lock-pw-input').value = '';
+        loadMeta();
+        toast('✅ Access granted', 'success');
+    } catch (e) {
+        errEl.textContent = '❌ Incorrect master password.';
+        errEl.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Unlock';
+    }
+}
+
 // ── Load & render metadata ─────────────────────────────────────────────────────
 async function loadMeta() {
+    if (!_authenticated) return;
     try {
         const data = await fetch('/api/db/meta').then(r => r.json());
         _meta = data;
@@ -243,8 +321,14 @@ function setupAboutPanel() {
 
 // ── DOMContentLoaded ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    // Load metadata
-    loadMeta();
+    // Show lock screen (will call loadMeta internally once authenticated)
+    initLockScreen();
+
+    // Lock screen events
+    document.getElementById('lock-unlock-btn').addEventListener('click', attemptUnlock);
+    document.getElementById('lock-pw-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') attemptUnlock();
+    });
 
     // Export
     document.getElementById('export-btn').addEventListener('click', doExport);
@@ -267,6 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // About panel
     setupAboutPanel();
 
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 30 seconds (only fires when authenticated)
     setInterval(loadMeta, 30_000);
 });
