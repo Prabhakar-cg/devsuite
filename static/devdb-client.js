@@ -1,0 +1,94 @@
+/**
+ * devdb-client.js — DevSuite Unified DB Client
+ * ─────────────────────────────────────────────
+ * Thin fetch wrapper around the /api/db/* endpoints.
+ * Any DevSuite tool can use this to read/write named stores.
+ *
+ * Usage:
+ *   import DevDB from '/static/devdb-client.js';
+ *   const store = await DevDB.getStore('collections');
+ *   await DevDB.setStore('collections', updatedStore);
+ */
+
+'use strict';
+
+const DevDB = (() => {
+
+    // ── Internal fetch helper ────────────────────────────────────────────────
+    async function _apiFetch(url, opts = {}) {
+        const res = await fetch(url, {
+            headers: { 'Content-Type': 'application/json', ...opts.headers },
+            ...opts,
+        });
+        if (!res.ok) {
+            let detail = `HTTP ${res.status}`;
+            try { const j = await res.json(); detail = j.detail || detail; } catch (_) {}
+            throw new Error(`DevDB: ${detail}`);
+        }
+        return res.json();
+    }
+
+    // ── Public API ───────────────────────────────────────────────────────────
+
+    /**
+     * Read the named store from DevDB.
+     * @param {string} name  Store name (vault | collections | ssh_profiles | url_db | app_prefs)
+     * @returns {Promise<object>}
+     */
+    async function getStore(name) {
+        return _apiFetch(`/api/db/store/${encodeURIComponent(name)}`);
+    }
+
+    /**
+     * Write (replace) the named store in DevDB.
+     * @param {string} name   Store name
+     * @param {object} data   JSON-serialisable object
+     * @returns {Promise<{status: string, store: string}>}
+     */
+    async function setStore(name, data) {
+        return _apiFetch(`/api/db/store/${encodeURIComponent(name)}`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    }
+
+    /**
+     * Fetch database metadata (path, size, stores, encryption status).
+     * @returns {Promise<object>}
+     */
+    async function getMeta() {
+        return _apiFetch('/api/db/meta');
+    }
+
+    /**
+     * Trigger a .dsb file download (browser saves the export).
+     */
+    function exportDatabase() {
+        const a = document.createElement('a');
+        a.href = '/api/db/export';
+        a.download = `devdb-${new Date().toISOString().slice(0,10)}.dsb`;
+        a.click();
+    }
+
+    /**
+     * Import a .dsb file by posting it to the server.
+     * @param {File} file   A File object from an <input type="file">
+     * @returns {Promise<{status: string, imported_stores: string[]}>}
+     */
+    async function importDatabase(file) {
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch('/api/db/import', { method: 'POST', body: form });
+        if (!res.ok) {
+            let detail = `HTTP ${res.status}`;
+            try { const j = await res.json(); detail = j.detail || detail; } catch (_) {}
+            throw new Error(`DevDB import: ${detail}`);
+        }
+        return res.json();
+    }
+
+    return { getStore, setStore, getMeta, exportDatabase, importDatabase };
+})();
+
+export default DevDB;
+export { DevDB };

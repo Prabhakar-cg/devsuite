@@ -1,11 +1,11 @@
 # DevSuite Component & Architecture Reference
 
-> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (v2.1.0+). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
+> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (v2.2.0+). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
 
 ## 1. System Tenets & Boundaries
 - **Strict Privacy**: 100% locally-hosted. No cloud telemetry, no analytics, no external services for core functionality.
 - **Tech Stack**:
-  - *Backend*: Python 3.10+, FastAPI, Uvicorn (on `localhost:8000`). No ORM/DB (uses local JSON files only, e.g. `url_db.json`).
+  - *Backend*: Python 3.10+, FastAPI, Uvicorn (on `localhost:8000`). **Unified Encrypted Storage**: Uses `DevDB` (`.dsb`) binary format (AES-256-GCM) at `~/.devsuite/devdb.dsb`. No external DB.
   - *Frontend*: Vanilla HTML/CSS/JS. **NO frameworks** (React/Vue/Svelte) and **NO build tools** (Webpack/Vite).
   - *Styles*: Vanilla CSS with CSS Custom Properties (variables). **NO Tailwind**, NO CSS-in-JS.
 - **Security**: 
@@ -16,9 +16,10 @@
 ## 2. Directory Layout
 - **Root (`/home/prabha/90scoder/devsuite/`)**:
   - `main.py`: The single backend application file containing all endpoints, proxy routes, and static file mounting logic.
+  - `devdb.py`: **Unified Storage Engine**. Manages `.dsb` files, AES-256-GCM encryption, and atomic writes.
   - `start.sh`: Scaffolds the `.venv`, installs `requirements.txt`, and boots Uvicorn.
-  - `url_db.json` & `~/.devsuite/collections.json`: Local persistence files.
-  - Test files: `test_main.py`, `test_new_features.py`, `test_regression.py`, `test_local_server.py`.
+  - `~/.devsuite/devdb.dsb`: The primary unified database file.
+  - Test files: `test_devdb.py`, `test_main.py`, `test_new_features.py`.
 - **Frontend (`/static/`)**: 
   - *Core*: One HTML file per tool (`index.html` [Diff], `json.html`, `api-tester.html`, etc.).
   - *Shared CSS*: `style.css` (design tokens, glassmorphism logic), `linter.css` (two-pane layout).
@@ -42,15 +43,15 @@
 | Module / Feature | Main Frontend | JS Logic & Styling | Backend / Persistence |
 | :--- | :--- | :--- | :--- |
 | **Home/Dashboard** | `static/home.html` | `static/home.css` | `main.py` (`/`) |
-| **API Tester** | `static/api-tester.html` | `static/api-client.js`, `static/api-tester.js`, `static/api-tester.css` | `main.py` (`/api/proxy`, `/api/collections`), `~/.devsuite/collections.json` |
-| **Diff Editor** | `static/index.html` | `static/app.js`, `static/linter.css` | `main.py` (`/diff`, `/upload`) |
+| **DevDB Manager** | `static/db-manager.html` | `static/db-manager.js`, `static/db-manager.css` | `main.py` (`/api/db/*`), `devdb.py` |
+| **Secret Vault** | `static/vault.html` | `static/vault.js`, `crypto-js.min.js` | `main.py` (`/api/vault`), **DevDB** (`vault`) |
+| **API Tester** | `static/api-tester.html` | `static/api-client.js`, `static/api-tester.js` | `main.py` (`/api/proxy`), **DevDB** (`collections`) |
+| **Diff Editor** | `static/index.html` | `static/app.js`, `static/linter.css` | `main.py` (`/upload`) |
 | **JSON Linter** | `static/json.html` | `static/app.js`, `static/linter.css` | `main.py` (`/json`) |
 | **YAML Linter** | `static/yaml.html` | `static/app.js`, `static/linter.css` | `main.py` (`/yaml`) |
-| **URL Shortener** | `static/url-shortener.html` | *`bwip-js-min.js`* (Do not read) | `main.py` (`/api/shorten`, `/r/{id}`), `url_db.json` |
-| **Base64 Encoder** | `static/base64.html` | Inline Scripts | `main.py` (`/base64`) |
-| **Crypto Suite** | `static/crypto.html` | *`crypto-js.min.js`* (Do not read) | `main.py` (`/crypto`) |
-| **Regex Tester** | `static/regex.html` | Inline Scripts | `main.py` (`/regex`) |
-| **Secure Terminal** | `static/ssh-manager.html`, `static/sftp-browser.html` | `static/ssh-manager.js`, `static/ssh-manager.css`, `static/sftp-browser.js`, `static/sftp-browser.css`, *`xterm.js`*, *`xterm-addon-fit.js`* | `main.py` (`/ssh`, `/sftp`, `/api/ssh/terminal`, `/api/local/terminal`, `/api/sftp/list`, `/api/wsl/discover`, `/api/ssh/profiles`), `~/.devsuite/ssh_profiles.json` |
+| **URL Shortener** | `static/url-shortener.html` | *`bwip-js-min.js`* | `main.py` (`/api/shorten`), **DevDB** (`url_db`) |
+| **Secure Terminal** | `static/ssh-manager.html`, `static/sftp-browser.html` | `static/ssh-manager.js`, `static/sftp-browser.js`, *`xterm.js`* | `main.py` (`/api/ssh/*`), **DevDB** (`ssh_profiles`) |
+| **Cron Visualizer** | `static/cron.html` | `static/cron.js`, `static/cron.css` | `main.py` (`/cron`) |
 | **Global Theme** | N/A | `static/theme.js`, `static/style.css` | None |
 
 ### Developer & AI Best Practices

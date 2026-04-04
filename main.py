@@ -1,10 +1,13 @@
 """
-DevSuite — FastAPI Backend
+DevSuite — FastAPI Backend  (v2.2.0)
 ---------------------------------
-Serves the static frontend and provides a file upload endpoint.
-Priority: All file reading happens client-side in JavaScript (FileReader API)
-for maximum privacy. The /upload endpoint is a fallback for edge cases.
-"""
+Serves the static frontend and provides REST/WebSocket APIs for all tools.
+
+Persistence
+-----------
+All data is stored through the DevDB engine in a single KeePass-style
+binary file at ~/.devsuite/devdb.dsb.  The server never decrypts the
+client-side AES-encrypted blobs inside the vault/ssh_profiles stores."""
 
 import os
 import string
@@ -15,9 +18,11 @@ import urllib.request
 import urllib.error
 import socket
 import ipaddress
+from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 import asyncio
 import asyncssh
 import stat
@@ -26,6 +31,7 @@ import logging
 import subprocess
 import re
 from pydantic import BaseModel
+from devdb import DevDB
 
 # PTY support is Linux/macOS only — import conditionally so the module loads on Windows.
 _PTY_AVAILABLE = False
@@ -41,10 +47,35 @@ if sys.platform != 'win32':
 
 logger = logging.getLogger("devsuite")
 
+# ─── DevDB — Unified Encrypted Database ────────────────────────────────────────
+_DEVSUITE_DIR  = Path.home() / ".devsuite"
+_DB_PATH       = _DEVSUITE_DIR / "devdb.dsb"
+_LEGACY_URL_DB = Path(__file__).parent / "url_db.json"   # in-repo legacy file
+
+_db = DevDB(_DB_PATH)
+
+
+@asynccontextmanager
+async def _lifespan(application: FastAPI):
+    """Modern FastAPI lifespan: open DevDB, migrate legacy files, seed url_db cache."""
+    global url_db
+    _db.open()
+    migrated = DevDB.migrate_legacy(_db, _DEVSUITE_DIR, _LEGACY_URL_DB)
+    if migrated:
+        _db.save()
+        logger.info("DevDB: migration complete, database saved to %s", _DB_PATH)
+    else:
+        logger.info("DevDB: opened %s (%d bytes)", _DB_PATH, _db.file_size())
+    url_db.update(_db.get_store("url_db"))
+    yield  # app is running
+    # (cleanup goes here if needed in future)
+
+
 app = FastAPI(
     title="DevSuite",
-    description="A private, locally-hosted diff checker with Monaco Editor.",
-    version="2.1.0"
+    description="A private, locally-hosted developer suite with encrypted unified storage.",
+    version="2.2.0",
+    lifespan=_lifespan,
 )
 
 # Allowlist of hostnames that the /api/proxy endpoint is permitted to contact.
@@ -62,26 +93,19 @@ os.makedirs(static_dir, exist_ok=True)
 # Serve static assets (JS, CSS, images) from the /static route
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-# URL Shortener Database
-DB_FILE = os.path.join(os.path.dirname(__file__), "url_db.json")
+# ─── URL Shortener helpers (backed by DevDB 'url_db' store) ────────────────────
+def _load_url_db() -> dict:
+    """Load the url_db store from DevDB (falls back to empty dict)."""
+    return _db.get_store("url_db")
 
-def load_db():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            pass
-    return {}
+def _save_url_db(data: dict) -> None:
+    """Persist the url_db store to DevDB."""
+    _db.set_store("url_db", data)
+    _db.save()
 
-def save_db(db):
-    try:
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(db, f)
-    except Exception:
-        pass
-
-url_db = load_db()
+# In-memory cache for the URL shortener (populated at startup via _startup_devdb)
+# This proxy ensures the rest of the shortener code has the dict in scope.
+url_db: dict = {}
 
 class ShortenRequest(BaseModel):
     url: str
@@ -271,6 +295,50 @@ def read_cron_tool():
         raise HTTPException(status_code=404, detail="cron.html not found.") from None
 
 
+@app.get("/vault", response_class=HTMLResponse, summary="Serve Secret Vault tool")
+def read_vault_tool():
+    """Serve the Secret Vault tool (KeePass-style encrypted secrets manager)."""
+    html_path = os.path.join(static_dir, "vault.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="vault.html not found.") from None
+
+
+@app.get("/db-manager", response_class=HTMLResponse, summary="Serve DevDB Manager tool")
+def read_db_manager_tool():
+    """Serve the DevDB Manager tool (unified encrypted database viewer and manager)."""
+    html_path = os.path.join(static_dir, "db-manager.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="db-manager.html not found.") from None
+
+
+@app.get("/api/vault", summary="Get encrypted vault blob")
+def get_vault():
+    """Return the raw encrypted vault blob from the DevDB 'vault' store.
+    Backward-compatible shim — the server never decrypts vault contents.
+    """
+    store = _db.get_store("vault")
+    return store if store else {"encrypted_blob": ""}
+
+
+@app.post("/api/vault", summary="Save encrypted vault blob")
+def save_vault(data: dict):
+    """Persist the encrypted vault blob into the DevDB 'vault' store.
+    Backward-compatible shim — the server never decrypts vault contents.
+    """
+    try:
+        _db.set_store("vault", data)
+        _db.save()
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @app.post("/api/shorten", summary="Create a short URL")
 def shorten_url(req: ShortenRequest, request: Request):
     """
@@ -308,9 +376,9 @@ def shorten_url(req: ShortenRequest, request: Request):
     else:
         raise HTTPException(status_code=500, detail="Failed to generate unique short ID")
     
-    # Store in memory and persist
+    # Store in memory and persist to DevDB
     url_db[short_id] = url
-    save_db(url_db)
+    _save_url_db(url_db)
     
     # Return the full short URL
     base_url = str(request.base_url).rstrip("/")
@@ -393,25 +461,20 @@ async def upload_file(file: UploadFile = File(...)):
 
 @app.get("/api/collections", summary="Get API Tester Collections")
 def get_collections():
-    """Reads saved collections from ~/.devsuite/collections.json"""
-    col_path = os.path.join(os.path.expanduser("~"), ".devsuite", "collections.json")
-    if os.path.exists(col_path):
-        try:
-            with open(col_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            pass
-    return {"items": []}
+    """Read saved collections from the DevDB 'collections' store.
+    Backward-compatible shim for api-tester.js.
+    """
+    store = _db.get_store("collections")
+    return store if store else {"items": []}
 
 @app.post("/api/collections", summary="Save API Tester Collections")
 def save_collections(data: dict):
-    """Writes collections to ~/.devsuite/collections.json"""
-    devsuite_dir = os.path.join(os.path.expanduser("~"), ".devsuite")
-    os.makedirs(devsuite_dir, exist_ok=True)
-    col_path = os.path.join(devsuite_dir, "collections.json")
+    """Persist collections into the DevDB 'collections' store.
+    Backward-compatible shim for api-tester.js.
+    """
     try:
-        with open(col_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        _db.set_store("collections", data)
+        _db.save()
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -511,24 +574,89 @@ async def proxy_request(req: ProxyRequest):
 
 @app.get("/api/ssh/profiles", summary="Get SSH Profiles")
 def get_ssh_profiles():
-    col_path = os.path.join(os.path.expanduser("~"), ".devsuite", "ssh_profiles.json")
-    if os.path.exists(col_path):
-        try:
-            with open(col_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=500, detail="Corrupt ssh_profiles.json")
-    return {"encrypted_blob": ""}
+    """Return the encrypted SSH profiles blob from the DevDB 'ssh_profiles' store.
+    Backward-compatible shim — server never decrypts profile contents.
+    """
+    store = _db.get_store("ssh_profiles")
+    return store if store else {"encrypted_blob": ""}
 
 @app.post("/api/ssh/profiles", summary="Save SSH Profiles")
 def save_ssh_profiles(data: dict):
-    devsuite_dir = os.path.join(os.path.expanduser("~"), ".devsuite")
-    os.makedirs(devsuite_dir, exist_ok=True)
-    col_path = os.path.join(devsuite_dir, "ssh_profiles.json")
+    """Persist the encrypted SSH profiles blob into the DevDB 'ssh_profiles' store.
+    Backward-compatible shim — server never decrypts profile contents.
+    """
     try:
-        with open(col_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        _db.set_store("ssh_profiles", data)
+        _db.save()
         return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ─── DevDB Unified API ────────────────────────────────────────────────────────
+# These endpoints expose the DevDB engine directly for the DB Manager UI
+# and any future tools that want to read/write named stores.
+
+_ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "url_db", "app_prefs"}
+
+@app.get("/api/db/meta", summary="Get DevDB metadata")
+def db_meta():
+    """Return database metadata: path, file size, stores list, encryption status."""
+    m = _db.meta()
+    return {
+        "path":      str(_DB_PATH),
+        "size":      _db.file_size(),
+        "encrypted": _db.is_encrypted(),
+        "stores":    _db.store_sizes(),
+        "meta":      m,
+    }
+
+@app.get("/api/db/store/{name}", summary="Read a named DevDB store")
+def db_get_store(name: str):
+    """Return the raw contents of the named store.  Restricted to known store names."""
+    if name not in _ALLOWED_STORES:
+        raise HTTPException(status_code=400, detail=f"Unknown store: {name!r}")
+    return _db.get_store(name)
+
+@app.post("/api/db/store/{name}", summary="Write a named DevDB store")
+def db_set_store(name: str, data: dict):
+    """Replace the named store with the supplied data and flush to disk."""
+    if name not in _ALLOWED_STORES:
+        raise HTTPException(status_code=400, detail=f"Unknown store: {name!r}")
+    try:
+        _db.set_store(name, data)
+        _db.save()
+        return {"status": "ok", "store": name}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.get("/api/db/export", summary="Export full DevDB as a .dsb file")
+def db_export():
+    """Stream the raw .dsb binary as a file download."""
+    try:
+        raw = _db.export_bytes()
+        return Response(
+            content=raw,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": 'attachment; filename="devdb.dsb"'},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/api/db/import", summary="Import a .dsb file into DevDB")
+async def db_import(file: UploadFile = File(...)):
+    """Accept a .dsb upload and merge its stores into the running DevDB."""
+    try:
+        raw = await file.read()
+        imported = DevDB.from_bytes(raw)  # parses & validates the binary format
+        # Merge all stores from the imported file (skip unknown store names)
+        for store_name in imported.list_stores():
+            if store_name in _ALLOWED_STORES:
+                _db.set_store(store_name, imported.get_store(store_name))
+        _db.save()
+        return {"status": "ok", "imported_stores": imported.list_stores()}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
