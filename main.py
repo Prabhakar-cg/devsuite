@@ -240,6 +240,12 @@ def read_db_manager_tool():
     return _serve_html("db-manager.html")
 
 
+@app.get("/formatter", response_class=HTMLResponse, summary="Serve Code Formatter tool")
+def read_formatter_tool():
+    """Serve the Code Formatter tool (JS, TS, CSS, HTML, Markdown, GraphQL via Prettier)."""
+    return _serve_html("formatter.html")
+
+
 @app.get("/api/vault", summary="Get encrypted vault blob")
 def get_vault():
     """Return the raw encrypted vault blob from the DevDB 'vault' store.
