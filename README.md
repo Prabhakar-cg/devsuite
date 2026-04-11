@@ -5,7 +5,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 
 ---
 
-## 🛠️ Supported Tools
+## Supported Tools
 
 ### 1. Diff Checker
 - **Side-by-side & Inline** comparison modes via Monaco Editor.
@@ -38,25 +38,25 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - Navigate all panels via tab buttons; all operations are fully offline.
 
 ### 7. Link & QR Studio
-- **Local URL Shortener** — generates short `/r/<id>` links served from the local DevSuite instance. Short links persist across server restarts via `url_db.json`.
-- **QR Code & Code128 Barcode** — generated on every shortened link using the local short URL.
+- **Local URL Shortener** — generates short `/r/<id>` links served from the local DevSuite instance. Short links persist across server restarts via DevDB.
+- **QR Code & Code128 Barcode** — generated on every shortened link using the original URL.
 - PNG download for both codes.
 - Recent links panel backed by `localStorage`.
 
 ### 8. Local API Tester
-- **Local-first REST client** — A high-speed REST client for testing endpoints.
-- **Request Engine** — Supports GET, POST, PUT, DELETE, PATCH, Custom Headers, and Body.
-- **Local CORS Proxy** — Built-in FastAPI proxy to bypass browser CORS restrictions.
-- **Persistent Collections** — Saved in `~/.devsuite/collections.json`.
+- **Local-first REST client** — a high-speed REST client for testing endpoints.
+- **Request Engine** — supports GET, POST, PUT, DELETE, PATCH, custom headers, and body.
+- **Local CORS Proxy** — built-in FastAPI proxy to bypass browser CORS restrictions.
+- **Persistent Collections** — saved in DevDB (`collections` store).
 
 ### 9. Secure Terminal & SFTP
-- **Multi-tab SSH client** — Open parallel sessions to different hosts, each in its own xterm.js tab.
+- **Multi-tab SSH client** — open parallel sessions to different hosts, each in its own xterm.js tab.
 - **Password & Private Key auth** — PEM key import supported.
-- **Encrypted profiles** — Session credentials AES-encrypted locally with a Master Password; stored in `~/.devsuite/ssh_profiles.json`.
-- **SFTP Browser** (sub-tab) — Browse, navigate and inspect remote filesystems without leaving the page. Grid view with file type icons, sizes, up navigation, refresh and disconnect.
-- **WSL / Local Terminal** — Auto-discovers WSL distributions; spawns local PTY shells directly.
-- **Inline delete** — Remove sessions from the sidebar with a single click (no modal needed).
-- **Network Notice**: Session profiles are stored locally, but SSH/SFTP connections establish outbound network traffic to remote hosts. The privacy guarantee applies to offline tools only; data transmitted to SSH/SFTP servers is subject to the remote host's security and network policies.
+- **Encrypted profiles** — session credentials stored in DevDB (`ssh_profiles` store), encrypted client-side with a Master Password.
+- **SFTP Browser** (sub-tab) — browse, navigate, and inspect remote filesystems. Grid view with file type icons, sizes, up navigation, refresh, and disconnect.
+- **WSL / Local Terminal** — auto-discovers WSL distributions; spawns local PTY shells directly.
+- **Inline delete** — remove sessions from the sidebar with a single click (no modal needed).
+- **Network Notice**: Session profiles are stored locally (in DevDB / `ssh_profiles`, encrypted client-side). However, SSH/SFTP actions and the local CORS proxy initiate **outbound network connections** — backend endpoints such as `/api/proxy`, `/api/ssh/terminal`, and `/api/sftp/*` transmit data off-machine to the target host. The strictly-offline guarantee applies only to tools that perform no network I/O.
 
 ### 10. Cron Visualizer
 - **4 dialect support** — Unix/Linux, Quartz/Spring, AWS EventBridge, GitHub Actions.
@@ -67,9 +67,29 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Preset Library** — curated common expressions per dialect (Unix, Quartz, AWS, GitHub), click-to-load.
 - **Export** — copy raw expression, YAML (K8s / GitHub Actions), or AWS EventBridge JSON.
 
+### 11. Secret Vault
+- **KeePass-style encrypted secret manager** — store tokens, passwords, SSH keys, and API credentials.
+- **AES-256 client-side encryption** — all secrets are encrypted in-browser before being sent to the backend. The server never sees plaintext.
+- **Master Password gate** — lock screen on every visit; password is never stored anywhere.
+- **CRUD interface** — add, view, copy, edit, and delete entries with a single click.
+- **Categories** — organize secrets by type (Token, Password, SSH Key, API Key, Note, Other).
+- **Persistence** via DevDB (`vault` store) — survives server restarts.
+
+### 12. DevDB Manager
+- **Unified encrypted database inspector** — view all DevDB stores, sizes, and metadata.
+- **Export / Import** — download or upload the full `.dsb` database file.
+- **Auth-gated** — requires the same Master Password used by the Secret Vault.
+- **Store viewer** — browse raw JSON content of any named store.
+
+### 13. File Format Converter
+- **Multi-format conversion engine** — convert between JSON, CSV, YAML, XML, TSV, XLSX, Markdown, HTML, DOCX, and PDF.
+- **Client-side conversions** — JSON ↔ YAML, JSON ↔ CSV, Markdown → HTML done entirely in-browser.
+- **Server-side conversions** — XLSX ↔ CSV/JSON, PDF → TXT, DOCX → TXT, and document → PDF via WeasyPrint.
+- **Drag-and-drop upload** — supports drag-and-drop or file picker.
+
 ---
 
-## 🎨 Premium UI
+## Premium UI
 - Glassmorphic UI with dynamic gradients and ambient glow effects.
 - Neumorphic buttons and customized scrollbars.
 - **4 themes**: Midnight Dark, Clean Light, High Contrast, Frosted Glass.
@@ -77,25 +97,26 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 
 ---
 
-## 🔒 Privacy & Security
-- **Strictly offline** — no network requests for tool functionality. All processing runs in-browser or via the local FastAPI backend.
+## Privacy & Security
+- **Local-first** — most tools process data entirely in-browser or via the local FastAPI backend with no external network access. Tools that establish outbound connections (SSH/SFTP via `/api/ssh/terminal`, `/api/sftp/*`, and the proxy via `/api/proxy`) transmit data to the target host; session credentials are encrypted client-side before leaving the browser.
+- **Unified encrypted storage** — all persistent data lives in `~/.devsuite/devdb.dsb`, a KeePass-style binary container (AES-256-GCM, PBKDF2 key derivation, 200k iterations).
+- **Client-side encryption** — the vault and SSH profiles are encrypted in-browser before reaching the backend. The server never handles plaintext secrets.
 - **DOM XSS hardened** — all dynamic content is inserted using `textContent` / `createElement` APIs; no untrusted strings ever reach `innerHTML`.
 - **Self-hosted libraries** — `crypto-js` and `bwip-js` are served from `/static/` rather than an external CDN.
 - **HTTP Security headers** — `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, and `Referrer-Policy` on every response.
 - **URL validation** — the shortener backend validates scheme and host before storing any link.
+- **8-hour session tokens** — tools using DevDB (API Tester, SSH Manager) cache the master password in `sessionStorage` for 8 hours via `auth-guard.js`.
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Python 3.10+
-- Node.js & npm (Required to compile `.ts` files to `.js`)
-- TypeScript (`npm install -g typescript`)
 
-> [!NOTE] 
-> Custom CSS and JS files run directly in the browser without any prior compilation or additional software required!
-> However, modifying `.ts` files (like `api-client.ts`) requires compiling to `.js` via the TypeScript Compiler (`tsc`).
+> [!NOTE]
+> Custom CSS and JS files run directly in the browser without compilation or additional software.
+> If you modify `api-client.ts` (the TypeScript source), you will need Node.js and TypeScript (`npm install -g typescript`) to recompile it to `api-client.js`.
 
 ### Quick Start
 
@@ -104,7 +125,7 @@ chmod +x start.sh
 ./start.sh
 ```
 
-*(On a fresh Debian/Ubuntu system, `start.sh` will auto-detect and attempt to install `python3`, `python3-venv`, `nodejs`, `npm`, and `typescript` as necessary.)*
+*(On a fresh Debian/Ubuntu system, `start.sh` will auto-detect and attempt to install `python3`, `python3-venv`, and dependencies as necessary.)*
 
 Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 
@@ -124,47 +145,71 @@ uvicorn main:app --port 8000 --reload
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
-```
+```text
 devsuite/
-├── main.py                  # FastAPI app — routes, SSH/SFTP WebSocket, file upload
-├── requirements.txt         # fastapi, uvicorn, asyncssh, python-multipart
-├── url_db.json              # Persisted URL shortener database (auto-generated)
+├── main.py                  # FastAPI app — all routes, WebSocket SSH, SFTP, proxy, DevDB API
+├── devdb.py                 # Unified Storage Engine — KeePass-style .dsb binary format (AES-256-GCM)
+├── requirements.txt         # fastapi, uvicorn, asyncssh, cryptography, openpyxl, pypdf, etc.
 ├── start.sh                 # One-shot virtual environment setup & run script
-├── test_local_server.py     # Basic smoke test for the local server
+├── start.ps1                # PowerShell equivalent for Windows
 └── static/
     ├── home.html            # DevSuite dashboard / homepage
-    ├── style.css            # Global design system and component CSS
+    ├── home.css             # Homepage-specific styles (hero, tool cards, roadmap)
+    ├── style.css            # Global design system and component CSS (tokens, glassmorphism)
+    ├── linter.css           # Shared two-pane layout for linter/tester/crypto tools
     ├── theme.js             # Theme manager (Dark, Light, HC, Frosted Glass)
-    ├── index.html           # Text & Folder Diff tool (layout)
+    ├── components.js        # Shared UI utilities — toast notifications, Monaco init helper
+    ├── auth-guard.js        # 8-hour session auth guard for DevDB-backed tools
+    ├── devdb-client.js      # Thin fetch wrapper around /api/db/* endpoints
+    │
+    ├── index.html           # Text & Folder Diff tool
     ├── app.js               # Diff tool JavaScript (Monaco, merge, folder tree)
+    │
     ├── json.html            # JSON Linter & Formatter
     ├── yaml.html            # YAML Linter & Validator
     ├── regex.html           # Regex Tester
-    ├── base64.html          # Base64 Encoder / Decoder
+    ├── base64.html          # Base64 Encoder / Decoder + JWT Inspector
+    │
     ├── crypto.html          # Crypto Suite (Hash, AES, RSA, HMAC)
+    ├── crypto-js.min.js     # Self-hosted CryptoJS v4.2.0
+    │
     ├── url-shortener.html   # Link & QR Studio
+    ├── bwip-js-min.js       # Self-hosted bwip-js v3.4.1 (barcode rendering)
+    │
     ├── api-tester.html      # Local API Tester
-    ├── api-client.js        # Core Fetch-wrapper and compiled JS client used by API Tester
+    ├── api-tester.js        # API Tester UI logic (collection tree, request tabs, history)
+    ├── api-tester.css       # API Tester layout styles
+    ├── api-client.ts        # TypeScript source for the fetch wrapper
+    ├── api-client.js        # Compiled JS fetch wrapper used by API Tester
+    │
     ├── ssh-manager.html     # Secure Terminal & SFTP (multi-tab SSH + SFTP sub-tab)
     ├── ssh-manager.js       # Terminal & SFTP logic (xterm.js, WebSocket, SFTP grid)
     ├── ssh-manager.css      # Secure Terminal layout, tab strip, SFTP grid styles
     ├── sftp-browser.html    # Standalone SFTP Browser page (/sftp route)
     ├── sftp-browser.js      # Standalone SFTP Browser logic
     ├── sftp-browser.css     # Standalone SFTP Browser styles
-    ├── cron.html            # Cron Visualizer tool (/cron route)
-    ├── cron.js              # Cron parser, describer, scheduler, heatmap, field builder
-    ├── cron.css             # Cron Visualizer styles (dialect tabs, heatmap, presets)
     ├── xterm.js             # Self-hosted xterm.js terminal emulator
     ├── xterm.css            # xterm.js styles
     ├── xterm-addon-fit.js   # xterm.js FitAddon (auto-resize)
-    ├── linter.css           # Shared layout for linter/tester/crypto tools
-    ├── crypto-js.min.js     # Self-hosted CryptoJS v4.2.0
-    └── bwip-js-min.js       # Self-hosted bwip-js v3.4.1 (barcode rendering)
+    │
+    ├── cron.html            # Cron Visualizer tool (/cron route)
+    ├── cron.js              # Cron parser, describer, scheduler, heatmap, field builder
+    ├── cron.css             # Cron Visualizer styles (dialect tabs, heatmap, presets)
+    │
+    ├── vault.html           # Secret Vault (KeePass-style encrypted secret manager)
+    ├── vault.js             # Vault UI logic (lock screen, CRUD, categories, clipboard)
+    ├── vault.css            # Vault styles
+    │
+    ├── db-manager.html      # DevDB Manager (database inspector + export/import)
+    ├── db-manager.js        # DevDB Manager UI logic
+    ├── db-manager.css       # DevDB Manager styles
+    │
+    └── file-converter.html  # File Format Converter (JSON, CSV, YAML, XLSX, PDF, DOCX, etc.)
 ```
 
 ---
 
-## 📄 License
+## License
 MIT

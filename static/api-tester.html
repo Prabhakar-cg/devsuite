@@ -17,6 +17,8 @@
     <!-- Dependencies -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC" crossorigin="anonymous"></script>
     <script src="/static/theme.js?v=2"></script>
+    <script src="/static/crypto-js.min.js"></script>
+    <script src="/static/auth-guard.js?v=1"></script>
     <script src="/static/api-client.js?v=2"></script>
 </head>
 <body>
@@ -40,12 +42,6 @@
             </div>
         </div>
         <div class="header-controls">
-            <select class="global-theme-select">
-                <option value="vs-dark">Midnight Dark</option>
-                <option value="vs">Clean Light</option>
-                <option value="hc-black">High Contrast</option>
-                <option value="ios-glass">Frosted Glass</option>
-            </select>
             <button id="save-collection-btn" class="btn-small" style="background:var(--accent-1); color:#fff; border:none; margin-left:1rem;">Save Setup</button>
         </div>
     </header>

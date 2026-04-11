@@ -15,6 +15,7 @@
     <!-- Dependencies -->
     <script src="/static/theme.js?v=2"></script>
     <script src="/static/crypto-js.min.js"></script>
+    <script src="/static/auth-guard.js?v=1"></script>
     <script src="/static/xterm.js"></script>
     <script src="/static/xterm-addon-fit.js"></script>
 </head>
@@ -38,18 +39,12 @@
             </div>
         </div>
         <div class="header-controls">
-            <select class="global-theme-select">
-                <option value="vs-dark">Midnight Dark</option>
-                <option value="vs">Clean Light</option>
-                <option value="hc-black">High Contrast</option>
-                <option value="ios-glass">Frosted Glass</option>
-            </select>
             <button id="add-server-btn" class="btn-small" style="background:#0ea5e9; color:#fff; border:none; margin-left:1rem;">+ Add Session</button>
         </div>
     </header>
 
-    <!-- Master Password Modal -->
-    <div id="master-password-overlay" class="modal-overlay">
+    <!-- Master Password Modal (shown only for migration; auth is handled by AuthGuard) -->
+    <div id="master-password-overlay" class="modal-overlay" style="display:none;">
         <div class="modal">
             <h2>Unlock Session Storage</h2>
             <p style="color:var(--text-muted); margin-top:0.5rem; font-size:0.9rem;">Your SSH profiles are encrypted locally. Enter your Master Password to unlock Terminal and SFTP.</p>
@@ -155,6 +150,8 @@
                     </div>
                     <button id="sftp-up-btn" class="btn-small" style="padding:0.25rem 0.6rem;" disabled>↑ Up</button>
                     <button id="sftp-refresh-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↺</button>
+                    <button id="sftp-upload-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↑ Upload</button>
+                    <input type="file" id="sftp-upload-input" style="display:none;" multiple>
                     <button id="sftp-disconnect-btn" class="btn-small" style="background:rgba(239,68,68,0.12); color:#ef4444; border-color:rgba(239,68,68,0.3); display:none;">Disconnect</button>
                 </div>
 
@@ -193,6 +190,6 @@
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
-    <script src="/static/ssh-manager.js?v=3"></script>
+    <script src="/static/ssh-manager.js?v=5"></script>
 </body>
 </html>

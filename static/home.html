@@ -4,360 +4,689 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevSuite — Local Developer Tools</title>
-    <meta name="description" content="A private, locally-hosted developer support suite. Diff files, lint JSON/YAML, test regex — all in your browser, zero data leaks.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <meta name="description" content="13 powerful developer tools — locally hosted, zero cloud, zero tracking. Diff files, lint JSON/YAML, test APIs, manage secrets and more.">
     <link rel="stylesheet" href="/static/home.css">
-    <script src="/static/theme.js?v=2"></script>
 </head>
 <body>
 
-    <!-- ====================================================
+    <!-- =====================================================
          HEADER
-         ==================================================== -->
-    <header class="home-header">
-        <a class="logo-wrap" href="/">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-                </svg>
-            </div>
-            <div class="logo-text">
-                <span class="logo-name">Dev<span>Suite</span></span>
-                <span class="logo-tagline">Local Developer Toolkit</span>
-            </div>
-        </a>
-
-        <div class="header-actions" style="display:flex; align-items:center; gap:1rem;">
-            <select class="global-theme-select" aria-label="DevSuite Theme">
-                <option value="vs-dark">Midnight Dark</option>
-                <option value="vs">Clean Light</option>
-                <option value="hc-black">High Contrast</option>
-                <option value="ios-glass">Frosted Glass</option>
-            </select>
-            <span class="header-badge">✦ Runs Locally</span>
+         ===================================================== -->
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="logo" href="/">
+                <div class="logo-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                    </svg>
+                </div>
+                <span class="logo-name">DevSuite</span>
+            </a>
+            <nav class="site-nav">
+                <a href="#featured">Featured</a>
+                <a href="#tools">All Tools</a>
+                <a href="#roadmap">Roadmap</a>
+                <a href="#privacy">Privacy</a>
+            </nav>
+            <a href="#tools" class="header-cta">Explore Tools</a>
         </div>
     </header>
 
-    <!-- ====================================================
-         HERO
-         ==================================================== -->
-    <section class="hero">
-        <div class="hero-eyebrow">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Developer Support Suite
+    <!-- =====================================================
+         HERO — dark, full viewport
+         ===================================================== -->
+    <section class="hero-section">
+        <div class="hero-inner">
+            <div class="hero-eyebrow">Private · Local · Secure</div>
+            <h1 class="hero-title">
+                The developer toolkit<br>
+                that stays on<br>your machine.
+            </h1>
+            <p class="hero-subtitle">
+                13 powerful tools for the serious developer.<br>
+                Zero cloud. Zero tracking. Zero accounts. All offline.
+            </p>
+            <div class="hero-actions">
+                <a href="#tools" class="btn btn-white">
+                    Explore all tools
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+                <a href="#featured" class="btn btn-ghost">What's featured</a>
+            </div>
         </div>
-        <h1 class="hero-title">
-            Your private<br>
-            <span class="gradient-text">developer toolkit</span>
-        </h1>
-        <p class="hero-subtitle">
-            A growing suite of developer tools — all locally hosted, all private.
-            No data leaves your machine. No accounts. No tracking.
-        </p>
     </section>
 
-    <!-- ====================================================
-         TOOL GRID — ACTIVE TOOLS
-         ==================================================== -->
-    <section class="tools-section">
-
-        <p class="section-label">Available Tools</p>
-
-        <div class="tools-grid" id="active-tools">
-
-            <!-- Text Diff -->
-            <a class="tool-card active-tool" href="/diff" id="card-text-diff"
-               style="--card-glow: rgba(99,102,241,0.14); --card-border-hover: rgba(99,102,241,0.45);">
-                <div class="card-header">
-                    <div class="card-icon-wrap card-icon-indigo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
+    <!-- =====================================================
+         STATS STRIP
+         ===================================================== -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="stats-row">
+                <div class="stat">
+                    <span class="stat-num">13</span>
+                    <span class="stat-desc">Developer tools</span>
                 </div>
-                <div>
-                    <div class="card-title">DevSuite Text Diff</div>
-                    <div class="card-desc">
-                        Side-by-side and inline diff view for any two text files or snippets. Monaco Editor powered with syntax highlighting, merge arrows, and export.
-                    </div>
+                <div class="stat-sep"></div>
+                <div class="stat">
+                    <span class="stat-num">100%</span>
+                    <span class="stat-desc">Runs offline</span>
                 </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">Monaco</span>
-                    <span class="tag-chip">20+ langs</span>
-                    <span class="tag-chip">Export</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                <div class="stat-sep"></div>
+                <div class="stat">
+                    <span class="stat-num">AES&#x2011;256</span>
+                    <span class="stat-desc">Encryption standard</span>
                 </div>
-            </a>
-
-            <!-- Folder Diff -->
-            <a class="tool-card active-tool" href="/diff?tab=folder-diff" id="card-folder-diff"
-               style="--card-glow: rgba(124,58,237,0.14); --card-border-hover: rgba(124,58,237,0.45);">
-                <div class="card-header">
-                    <div class="card-icon-wrap card-icon-violet">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
+                <div class="stat-sep"></div>
+                <div class="stat">
+                    <span class="stat-num">0</span>
+                    <span class="stat-desc">Data sent externally</span>
                 </div>
-                <div>
-                    <div class="card-title">DevSuite Folder Diff</div>
-                    <div class="card-desc">
-                        Compare entire directory trees. Browse changed files in a sidebar, view per-file diffs, filter by Added / Modified / Removed.
-                    </div>
+                <div class="stat-sep"></div>
+                <div class="stat">
+                    <span class="stat-num">0</span>
+                    <span class="stat-desc">Accounts required</span>
                 </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">Tree View</span>
-                    <span class="tag-chip">File Filter</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
-            </a>
-
-            <!-- JSON Linter -->
-            <a class="tool-card active-tool" href="/json" id="card-json"
-               style="--card-glow: rgba(5,150,105,0.14); --card-border-hover: rgba(5,150,105,0.45);">
-                <div class="card-header">
-                    <div class="card-icon-wrap card-icon-emerald">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M8 3H7a2 2 0 00-2 2v5a2 2 0 01-2 2 2 2 0 012 2v5c0 1.1.9 2 2 2h1"/>
-                            <path d="M16 21h1a2 2 0 002-2v-5c0-1.1.9-2 2-2a2 2 0 01-2-2V5a2 2 0 00-2-2h-1"/>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
-                </div>
-                <div>
-                    <div class="card-title">JSON Linter &amp; Formatter</div>
-                    <div class="card-desc">
-                        Validate, pretty-print, minify and sort keys in JSON. Real-time syntax error detection with exact line and column pointers.
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">Validate</span>
-                    <span class="tag-chip">Format</span>
-                    <span class="tag-chip">Minify</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
-            </a>
-
-            <!-- YAML Linter -->
-            <a class="tool-card active-tool" href="/yaml" id="card-yaml"
-               style="--card-glow: rgba(217,119,6,0.14); --card-border-hover: rgba(245,158,11,0.45);">
-                <div class="card-header">
-                    <div class="card-icon-wrap card-icon-amber">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-                            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
-                </div>
-                <div>
-                    <div class="card-title">YAML Linter &amp; Validator</div>
-                    <div class="card-desc">
-                        Parse and validate YAML configs — K8s, Docker Compose, GitHub Actions. Format, and convert YAML→JSON with one click.
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">Validate</span>
-                    <span class="tag-chip">Format</span>
-                    <span class="tag-chip">→ JSON</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
-            </a>
-
-        <!-- (Removed rogue closing div here) -->
-
-            <!-- Regex Tester (LIVE) -->
-            <a class="tool-card active-tool" href="/regex" id="card-regex"
-               style="--card-glow: rgba(190,24,93,0.14); --card-border-hover: rgba(244,63,94,0.45);">
-                <div class="card-header">
-                    <div class="card-icon-wrap card-icon-rose">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                            <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
-                </div>
-                <div>
-                    <div class="card-title">Regex Tester</div>
-                    <div class="card-desc">
-                        Write and test regular expressions with real-time match highlighting in Monaco, group capture display, and g / i / m / s flag toggles.
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">Live Match</span>
-                    <span class="tag-chip">Groups</span>
-                    <span class="tag-chip">Flags</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
-            </a>
-
-
-            <!-- Crypto Suite (LIVE) -->
-            <a class="tool-card active-tool" href="/crypto" id="card-crypto"
-               style="--card-glow: rgba(124,58,237,0.18); --card-border-hover: rgba(168,85,247,0.5);">
-                <div class="card-header">
-                    <div class="card-icon-wrap" style="background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 0 14px rgba(168,85,247,0.35);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
-                </div>
-                <div>
-                    <div class="card-title">Crypto Suite</div>
-                    <div class="card-desc">
-                        Hash Generator (MD5, SHA-256, SHA-512), AES-256 Encrypt/Decrypt, RSA Keygen, and HMAC Signing. 100% in-browser.
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">Hash</span>
-                    <span class="tag-chip">AES</span>
-                    <span class="tag-chip">RSA</span>
-                    <span class="tag-chip">HMAC</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
-            </a>
-
-            <!-- URL Shortener (LIVE) -->
-            <a class="tool-card active-tool" href="/url-shortener" id="card-url"
-               style="--card-glow: rgba(56,189,248,0.18); --card-border-hover: rgba(56,189,248,0.5);">
-                <div class="card-header">
-                    <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0284c7,#38bdf8);box-shadow:0 0 14px rgba(56,189,248,0.35);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
-                </div>
-                <div>
-                    <div class="card-title">Link &amp; QR Studio</div>
-                    <div class="card-desc">
-                        Create entirely offline, fast local short links (e.g., /r/xyz123) and instantly generate scannable QR Codes and Barcodes to share them locally. Keeps traffic 100% inside DevSuite.
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">Short Links</span>
-                    <span class="tag-chip">QR Codes</span>
-                    <span class="tag-chip">Barcodes</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
-            </a>
-
-            <!-- API Tester (LIVE) -->
-            <a class="tool-card active-tool" href="/api-tester" id="card-api-tester"
-               style="--card-glow: rgba(139,92,246,0.18); --card-border-hover: rgba(168,85,247,0.5);">
-                <div class="card-header">
-                    <div class="card-icon-wrap" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);box-shadow:0 0 14px rgba(139,92,246,0.35);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
-                </div>
-                <div>
-                    <div class="card-title">Local API Tester</div>
-                    <div class="card-desc">
-                        A local-first REST client for testing APIs directly from your machine. Features offline history and collections saved securely.
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">REST Client</span>
-                    <span class="tag-chip">Collections</span>
-                    <span class="tag-chip">History</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
-            </a>
-
-            <!-- Secure Terminal & SFTP -->
-            <a class="tool-card active-tool" href="/ssh" id="card-ssh"
-               style="--card-glow: rgba(14,165,233,0.18); --card-border-hover: rgba(14,165,233,0.5);">
-                <div class="card-header">
-                    <div class="card-icon-wrap" style="background:linear-gradient(135deg,#06b6d4,#0ea5e9);box-shadow:0 0 14px rgba(14,165,233,0.35);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="4 17 10 11 4 5"></polyline>
-                            <line x1="12" y1="19" x2="20" y2="19"></line>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
-                </div>
-                <div>
-                    <div class="card-title">Secure Terminal &amp; SFTP</div>
-                    <div class="card-desc">
-                        Multi-tab SSH client with built-in SFTP file browser. Encrypted profiles, password &amp; key auth, WSL support.
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">SSH</span>
-                    <span class="tag-chip">SFTP</span>
-                    <span class="tag-chip">Encrypted</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
-            </a>
-
-
-            <!-- Cron Visualizer (LIVE) -->
-            <a class="tool-card active-tool" href="/cron" id="card-cron"
-               style="--card-glow: rgba(20,184,166,0.18); --card-border-hover: rgba(20,184,166,0.5);">
-                <div class="card-header">
-                    <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0d9488,#14b8a6);box-shadow:0 0 14px rgba(20,184,166,0.35);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
-                        </svg>
-                    </div>
-                    <span class="badge badge-live">Live</span>
-                </div>
-                <div>
-                    <div class="card-title">Cron Visualizer</div>
-                    <div class="card-desc">
-                        Build, validate &amp; visualize cron expressions for Unix, Quartz, AWS EventBridge, and GitHub Actions. Field builder, next-run preview, 28-day heatmap.
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="10" opacity="0.3"/></svg>
-                    <span class="tag-chip">4 Dialects</span>
-                    <span class="tag-chip">Heatmap</span>
-                    <span class="tag-chip">Export</span>
-                    <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </div>
-            </a>
-
+            </div>
         </div>
-
     </section>
 
-    <!-- ====================================================
+    <!-- =====================================================
+         FEATURED — AWS split layout, heading left cards right
+         ===================================================== -->
+    <section class="featured-section" id="featured">
+        <div class="container">
+            <div class="split-layout">
+
+                <!-- Left heading -->
+                <div class="split-head">
+                    <span class="eyebrow">Featured</span>
+                    <h2>Get started<br>by category.</h2>
+                    <p>Handpicked from the DevSuite toolkit — the tools developers reach for every day.</p>
+                    <a href="#tools" class="text-link">See all 13 tools →</a>
+                </div>
+
+                <!-- Right cards -->
+                <div class="featured-grid">
+
+                    <!-- Hero featured card — aurora border, dark bg -->
+                    <a class="feat-card feat-card--hero" href="/vault">
+                        <div class="feat-card-top">
+                            <span class="feat-badge feat-badge--live">Live</span>
+                        </div>
+                        <div class="feat-card-content">
+                            <div class="feat-icon-sm" style="background:linear-gradient(135deg,#d97706,#f59e0b);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </div>
+                            <div class="feat-title">Secret Vault</div>
+                            <div class="feat-desc">KeePass-style encrypted secret manager. Store passwords, tokens, SSH keys, and API credentials — AES-256-GCM encrypted, fully offline, zero cloud.</div>
+                        </div>
+                        <div class="feat-cta">Open Vault <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+                    </a>
+
+                    <!-- Secondary featured card -->
+                    <a class="feat-card" href="/ssh">
+                        <div class="feat-card-top">
+                            <span class="feat-badge feat-badge--live">Live</span>
+                        </div>
+                        <div class="feat-card-content">
+                            <div class="feat-title">Secure Terminal &amp; SFTP</div>
+                            <div class="feat-desc">Multi-tab SSH client with built-in SFTP browser. Encrypted profiles, key &amp; password auth, WSL support — no extra apps needed.</div>
+                        </div>
+                        <div class="feat-cta">Open Terminal <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+                    </a>
+
+                    <!-- Secondary featured card -->
+                    <a class="feat-card" href="/api-tester">
+                        <div class="feat-card-top">
+                            <span class="feat-badge feat-badge--live">Live</span>
+                        </div>
+                        <div class="feat-card-content">
+                            <div class="feat-title">Local API Tester</div>
+                            <div class="feat-desc">Local-first REST client. Test any endpoint from your machine with offline history, collections, and zero data sent to external servers.</div>
+                        </div>
+                        <div class="feat-cta">Open Tester <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+                    </a>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================
+         ALL TOOLS — white bg, filter tabs + grid
+         ===================================================== -->
+    <section class="tools-section" id="tools">
+        <div class="container">
+
+            <div class="tools-header">
+                <span class="eyebrow">Tools</span>
+                <h2>All Developer Tools</h2>
+                <p>Every tool in DevSuite. Filter by category and jump straight in.</p>
+            </div>
+
+            <div class="filter-tabs" role="radiogroup" aria-label="Filter tools by category">
+                <button class="filter-tab active" data-filter="all" role="radio" aria-checked="true" tabindex="0">All <span class="filter-count">13</span></button>
+                <button class="filter-tab" data-filter="dev" role="radio" aria-checked="false" tabindex="-1">Dev <span class="filter-count">5</span></button>
+                <button class="filter-tab" data-filter="data" role="radio" aria-checked="false" tabindex="-1">Data <span class="filter-count">4</span></button>
+                <button class="filter-tab" data-filter="security" role="radio" aria-checked="false" tabindex="-1">Security <span class="filter-count">3</span></button>
+                <button class="filter-tab" data-filter="network" role="radio" aria-checked="false" tabindex="-1">Network <span class="filter-count">2</span></button>
+                <button class="filter-tab" data-filter="time" role="radio" aria-checked="false" tabindex="-1">Schedule <span class="filter-count">1</span></button>
+            </div>
+
+            <div class="tools-grid" id="tool-grid">
+
+                <!-- Text Diff -->
+                <a class="tool-card active-tool" href="/diff" data-category="dev"
+                   style="--card-glow:rgba(99,102,241,0.14);--card-border-hover:rgba(99,102,241,0.45);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap card-icon-indigo">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Text Diff</div>
+                        <div class="card-desc">Side-by-side and inline diff with syntax highlighting, merge arrows, and export. Monaco Editor powered.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">Monaco</span>
+                        <span class="tag-chip">20+ langs</span>
+                        <span class="tag-chip">Export</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- Folder Diff -->
+                <a class="tool-card active-tool" href="/diff?tab=folder-diff" data-category="dev"
+                   style="--card-glow:rgba(124,58,237,0.14);--card-border-hover:rgba(124,58,237,0.45);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap card-icon-violet">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Folder Diff</div>
+                        <div class="card-desc">Compare entire directory trees. Browse changed files in a sidebar, filter by Added / Modified / Removed.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">Tree View</span>
+                        <span class="tag-chip">File Filter</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- JSON Linter -->
+                <a class="tool-card active-tool" href="/json" data-category="data"
+                   style="--card-glow:rgba(5,150,105,0.14);--card-border-hover:rgba(5,150,105,0.45);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap card-icon-emerald">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 00-2 2v5a2 2 0 01-2 2 2 2 0 012 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 002-2v-5c0-1.1.9-2 2-2a2 2 0 01-2-2V5a2 2 0 00-2-2h-1"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">JSON Linter &amp; Formatter</div>
+                        <div class="card-desc">Validate, pretty-print, minify, and sort keys. Real-time syntax error detection with line and column pointers.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">Validate</span>
+                        <span class="tag-chip">Format</span>
+                        <span class="tag-chip">Minify</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- YAML Linter -->
+                <a class="tool-card active-tool" href="/yaml" data-category="data"
+                   style="--card-glow:rgba(217,119,6,0.14);--card-border-hover:rgba(245,158,11,0.45);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap card-icon-amber">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">YAML Linter &amp; Validator</div>
+                        <div class="card-desc">Parse and validate YAML configs for K8s, Docker Compose, GitHub Actions. Format and convert YAML → JSON.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">Validate</span>
+                        <span class="tag-chip">Format</span>
+                        <span class="tag-chip">→ JSON</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- Regex Tester -->
+                <a class="tool-card active-tool" href="/regex" data-category="data"
+                   style="--card-glow:rgba(190,24,93,0.14);--card-border-hover:rgba(244,63,94,0.45);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap card-icon-rose">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Regex Tester</div>
+                        <div class="card-desc">Live match highlighting in Monaco, group capture display, and g / i / m / s flag toggles.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">Live Match</span>
+                        <span class="tag-chip">Groups</span>
+                        <span class="tag-chip">Flags</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- Crypto Suite -->
+                <a class="tool-card active-tool" href="/crypto" data-category="security"
+                   style="--card-glow:rgba(124,58,237,0.18);--card-border-hover:rgba(168,85,247,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#7c3aed,#a855f7);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Crypto Suite</div>
+                        <div class="card-desc">Hash Generator (MD5, SHA-256, SHA-512), AES-256 Encrypt/Decrypt, RSA Keygen, and HMAC Signing. 100% in-browser.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">Hash</span>
+                        <span class="tag-chip">AES</span>
+                        <span class="tag-chip">RSA</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- Link & QR Studio -->
+                <a class="tool-card active-tool" href="/url-shortener" data-category="network"
+                   style="--card-glow:rgba(56,189,248,0.18);--card-border-hover:rgba(56,189,248,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0284c7,#38bdf8);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Link &amp; QR Studio</div>
+                        <div class="card-desc">Offline short links (e.g., /r/xyz123) and scannable QR Codes and Barcodes. All traffic stays inside DevSuite.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">Short Links</span>
+                        <span class="tag-chip">QR Codes</span>
+                        <span class="tag-chip">Barcodes</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- API Tester -->
+                <a class="tool-card active-tool" href="/api-tester" data-category="dev"
+                   style="--card-glow:rgba(139,92,246,0.18);--card-border-hover:rgba(168,85,247,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Local API Tester</div>
+                        <div class="card-desc">Local-first REST client. Offline history, saved collections, and zero data sent to external servers.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">REST</span>
+                        <span class="tag-chip">Collections</span>
+                        <span class="tag-chip">History</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- SSH / SFTP -->
+                <a class="tool-card active-tool" href="/ssh" data-category="network"
+                   style="--card-glow:rgba(14,165,233,0.18);--card-border-hover:rgba(14,165,233,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#06b6d4,#0ea5e9);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Secure Terminal &amp; SFTP</div>
+                        <div class="card-desc">Multi-tab SSH client with built-in SFTP browser. Encrypted profiles, password &amp; key auth, WSL support.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">SSH</span>
+                        <span class="tag-chip">SFTP</span>
+                        <span class="tag-chip">Encrypted</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- Cron Visualizer -->
+                <a class="tool-card active-tool" href="/cron" data-category="time"
+                   style="--card-glow:rgba(20,184,166,0.18);--card-border-hover:rgba(20,184,166,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0d9488,#14b8a6);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Cron Visualizer</div>
+                        <div class="card-desc">Build, validate, and visualize cron expressions for Unix, Quartz, AWS EventBridge, and GitHub Actions. 28-day heatmap.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">4 Dialects</span>
+                        <span class="tag-chip">Heatmap</span>
+                        <span class="tag-chip">Export</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- Secret Vault -->
+                <a class="tool-card active-tool" href="/vault" data-category="security"
+                   style="--card-glow:rgba(245,158,11,0.18);--card-border-hover:rgba(251,191,36,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#d97706,#f59e0b);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Secret Vault</div>
+                        <div class="card-desc">KeePass-style encrypted secret manager. Passwords, tokens, SSH keys, API keys — AES-256-GCM, all offline.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">AES-256</span>
+                        <span class="tag-chip">6 Types</span>
+                        <span class="tag-chip">Offline</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- DevDB Manager -->
+                <a class="tool-card active-tool" href="/db-manager" data-category="security"
+                   style="--card-glow:rgba(100,119,255,0.18);--card-border-hover:rgba(100,119,255,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#4f46e5,#6477ff);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">DevDB Manager</div>
+                        <div class="card-desc">Unified binary database (.dsb) powering all DevSuite tools. AES-256-GCM, BLAKE2b integrity, export/import backup.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">AES-256-GCM</span>
+                        <span class="tag-chip">Backup</span>
+                        <span class="tag-chip">Unified</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- File Format Converter -->
+                <a class="tool-card active-tool" href="/file-converter" data-category="data"
+                   style="--card-glow:rgba(109,40,217,0.14);--card-border-hover:rgba(167,139,250,0.45);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#6d28d9,#a78bfa);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="9" y1="15" x2="15" y2="15"/>
+                                <line x1="9" y1="11" x2="15" y2="11"/>
+                            </svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">File Converter</div>
+                        <div class="card-desc">Convert between JSON, CSV, YAML, XML, XLSX, Markdown, HTML, PDF, DOCX, and images (PNG, JPG, WebP, SVG…). Runs locally.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">Data</span>
+                        <span class="tag-chip">Documents</span>
+                        <span class="tag-chip">Images</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+            </div>
+
+            <div class="filter-empty" id="filter-empty" style="display:none;">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#86868b"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <p>No tools in this category yet.</p>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- =====================================================
+         ROADMAP / COMING SOON
+         ===================================================== -->
+    <section class="roadmap-section" id="roadmap">
+        <div class="container">
+            <div class="split-layout">
+
+                <div class="split-head">
+                    <span class="eyebrow">Roadmap</span>
+                    <h2>Coming<br>soon.</h2>
+                    <p>DevSuite is actively growing. Here's what's being built next — all following the same offline-first, zero-cloud principle.</p>
+                </div>
+
+                <div class="tools-grid roadmap-grid">
+
+                    <div class="tool-card coming-soon">
+                        <div class="card-header">
+                            <div class="card-icon-wrap" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </div>
+                            <span class="badge badge-soon">Soon</span>
+                        </div>
+                        <div>
+                            <div class="card-title">JWT Inspector</div>
+                            <div class="card-desc">Decode, validate, and inspect JWT tokens locally. View header, payload, expiry, and verify against public keys.</div>
+                        </div>
+                        <div class="card-footer">
+                            <span class="tag-chip">Decode</span>
+                            <span class="tag-chip">Verify</span>
+                            <span class="tag-chip">Offline</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-card coming-soon">
+                        <div class="card-header">
+                            <div class="card-icon-wrap" style="background:linear-gradient(135deg,#10b981,#34d399);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                            </div>
+                            <span class="badge badge-soon">Soon</span>
+                        </div>
+                        <div>
+                            <div class="card-title">Base64 Studio</div>
+                            <div class="card-desc">Encode and decode Base64 for text, files, and images. URL-safe Base64 and data URI generation — in-browser.</div>
+                        </div>
+                        <div class="card-footer">
+                            <span class="tag-chip">Text</span>
+                            <span class="tag-chip">Files</span>
+                            <span class="tag-chip">Images</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-card coming-soon">
+                        <div class="card-header">
+                            <div class="card-icon-wrap" style="background:linear-gradient(135deg,#e11d48,#f43f5e);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            </div>
+                            <span class="badge badge-soon">Soon</span>
+                        </div>
+                        <div>
+                            <div class="card-title">HTTP Mock Server</div>
+                            <div class="card-desc">Define and serve local mock API endpoints with custom status codes, headers, and JSON responses. No config files.</div>
+                        </div>
+                        <div class="card-footer">
+                            <span class="tag-chip">Mock APIs</span>
+                            <span class="tag-chip">Local</span>
+                            <span class="tag-chip">JSON</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-card coming-soon">
+                        <div class="card-header">
+                            <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0d9488,#2dd4bf);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+                            </div>
+                            <span class="badge badge-soon">Soon</span>
+                        </div>
+                        <div>
+                            <div class="card-title">CSV &amp; Table Viewer</div>
+                            <div class="card-desc">Import, view, sort, filter, and query CSV / TSV files. Export to JSON or Excel. All data stays in your browser.</div>
+                        </div>
+                        <div class="card-footer">
+                            <span class="tag-chip">CSV</span>
+                            <span class="tag-chip">Filter</span>
+                            <span class="tag-chip">Export</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================
+         TRUST / PRIVACY — Apple dark stripe
+         ===================================================== -->
+    <section class="trust-section" id="privacy">
+        <div class="container">
+            <div class="trust-eyebrow">Privacy, by design.</div>
+            <h2 class="trust-title">Your data stays<br>exactly where it belongs.</h2>
+            <p class="trust-subtitle">DevSuite was built from day one with one rule — nothing leaves your machine. Not your code. Not your secrets. Not your usage patterns.</p>
+            <div class="trust-pillars">
+
+                <div class="pillar">
+                    <div class="pillar-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                    </div>
+                    <h3>No cloud, ever</h3>
+                    <p>Every tool runs entirely in your browser. No servers receive your data. No uploads. No API calls to external services. Everything stays local.</p>
+                </div>
+
+                <div class="pillar">
+                    <div class="pillar-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="1" y1="1" x2="23" y2="23" opacity="0.5"/></svg>
+                    </div>
+                    <h3>No accounts needed</h3>
+                    <p>DevSuite requires no sign-up, no login, no license key, and no email address. Open the page and start working immediately.</p>
+                </div>
+
+                <div class="pillar">
+                    <div class="pillar-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h3>AES-256 encrypted</h3>
+                    <p>Where data is stored locally — Secret Vault, DevDB Manager — it is protected with AES-256-GCM encryption and BLAKE2b integrity checks.</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================
          FOOTER
-         ==================================================== -->
-    <footer class="home-footer">
-        <div class="footer-privacy">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            100% local — no data leaves your machine
+         ===================================================== -->
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <span class="footer-brand">DevSuite</span>
+            <div class="footer-privacy">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                100% local — no data leaves your machine
+            </div>
+            <div class="footer-links">
+                <a href="#featured">Featured</a>
+                <a href="#tools">Tools</a>
+                <a href="#roadmap">Roadmap</a>
+                <a href="#privacy">Privacy</a>
+            </div>
         </div>
-        <p class="footer-copy">
-            <span>DevSuite</span> &nbsp;·&nbsp; Built for developers who value privacy
-        </p>
     </footer>
+
+    <!-- =====================================================
+         FILTER SCRIPT
+         ===================================================== -->
+    <script>
+        (function () {
+            const tabs  = document.querySelectorAll('.filter-tab');
+            const cards = document.querySelectorAll('#tool-grid .tool-card[data-category]');
+            const empty = document.getElementById('filter-empty');
+
+            // Compute and update filter counts from actual DOM cards
+            function updateFilterCounts() {
+                const totals = { all: 0 };
+                cards.forEach(c => {
+                    const cat = c.dataset.category;
+                    totals.all++;
+                    if (cat) totals[cat] = (totals[cat] || 0) + 1;
+                });
+                tabs.forEach(t => {
+                    const countEl = t.querySelector('.filter-count');
+                    if (countEl) {
+                        const key = t.dataset.filter;
+                        countEl.textContent = totals[key] ?? 0;
+                    }
+                });
+            }
+
+            function setActiveTab(activeTab) {
+                tabs.forEach(t => {
+                    const isActive = t === activeTab;
+                    t.classList.toggle('active', isActive);
+                    t.setAttribute('aria-checked', String(isActive));
+                    t.setAttribute('tabindex', isActive ? '0' : '-1');
+                });
+            }
+
+            function activateTab(tab) {
+                setActiveTab(tab);
+                tab.focus();
+                const f = tab.dataset.filter;
+                let n = 0;
+                cards.forEach(c => {
+                    const show = f === 'all' || c.dataset.category === f;
+                    c.style.display = show ? '' : 'none';
+                    if (show) n++;
+                });
+                empty.style.display = n === 0 ? 'flex' : 'none';
+            }
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => activateTab(tab));
+                tab.addEventListener('keydown', (e) => {
+                    const tabList = Array.from(tabs);
+                    const idx = tabList.indexOf(e.currentTarget);
+                    let next = -1;
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                        next = (idx + 1) % tabList.length;
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        next = (idx - 1 + tabList.length) % tabList.length;
+                    } else if (e.key === 'Home') {
+                        next = 0;
+                    } else if (e.key === 'End') {
+                        next = tabList.length - 1;
+                    } else if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        activateTab(e.currentTarget);
+                    }
+                    if (next !== -1) {
+                        e.preventDefault();
+                        activateTab(tabList[next]);
+                    }
+                });
+            });
+
+            updateFilterCounts();
+        })();
+    </script>
 
 </body>
 </html>

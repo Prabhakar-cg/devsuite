@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DevDB Manager — DevSuite</title>
+    <meta name="description" content="Unified KeePass-style encrypted database manager for DevSuite. View stores, export/import .dsb files, manage encryption, and monitor database health." />
+    <link rel="stylesheet" href="/static/db-manager.css?v=2" />
+</head>
+<body>
+
+<!-- ── Lock Overlay ───────────────────────────────────────────────────────── -->
+<div id="lock-overlay" class="db-lock-overlay">
+    <div class="db-lock-card">
+        <div class="db-lock-icon">🗄️</div>
+        <h2 class="db-lock-title">DevDB Manager</h2>
+        <p class="db-lock-desc" id="lock-desc">Enter your master password to access the database.</p>
+
+        <!-- Not-setup notice (shown when no master password has ever been created) -->
+        <div class="db-lock-notice" id="not-setup-notice" style="display:none;">
+            <span>⚠️</span>
+            <span>No master password has been set up yet. Please open the
+                <a href="/vault" class="db-lock-link">Secret Vault</a> first and create a master password.</span>
+        </div>
+
+        <!-- Password form (shown once setup is detected) -->
+        <div id="lock-form" style="display:none;">
+            <input type="password" id="lock-pw-input" class="db-lock-input"
+                   placeholder="Master Password" autocomplete="off" spellcheck="false" />
+            <div class="db-lock-error" id="lock-error" style="display:none;"></div>
+            <button class="db-lock-btn" id="lock-unlock-btn">Unlock</button>
+        </div>
+
+        <div class="db-lock-path" id="lock-db-path" style="display:none;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.6">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span id="lock-db-path-text" style="font-family:monospace;font-size:0.78rem;word-break:break-all;opacity:0.75;"></span>
+        </div>
+
+        <div class="db-lock-warning">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:#f59e0b">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>Same master password as Secret Vault. Never stored — cannot be recovered if forgotten.</span>
+        </div>
+    </div>
+</div>
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<header class="app-header">
+    <a href="/" class="back-link" id="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        DevSuite
+    </a>
+
+    <div class="header-tool-id">
+        <div class="tool-icon">🗄️</div>
+        <div>
+            <div class="tool-name">DevDB Manager</div>
+            <div class="tool-sub">Unified encrypted persistent storage</div>
+        </div>
+    </div>
+
+    <span class="header-badge badge-plain" id="enc-badge">Loading…</span>
+</header>
+
+<!-- ── Main ───────────────────────────────────────────────────────────────── -->
+<main class="main-wrap">
+
+    <!-- File Info Banner -->
+    <div class="file-banner">
+        <div class="file-banner-icon">🗄️</div>
+        <div class="file-banner-info">
+            <div class="file-banner-title">devdb.dsb</div>
+            <div class="file-banner-path" id="db-path">Loading…</div>
+            <div class="file-banner-stats">
+                <div class="stat-item">
+                    <span class="stat-label">File Size</span>
+                    <span class="stat-value" id="db-size">—</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Last Modified</span>
+                    <span class="stat-value" id="db-modified">—</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Created</span>
+                    <span class="stat-value" id="db-created">—</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Format Version</span>
+                    <span class="stat-value" id="db-version">—</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Encryption</span>
+                    <span class="stat-value green" id="db-enc-stat">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stores Section -->
+    <div>
+        <div class="section-title">📦 Data Stores</div>
+        <div id="stores-grid" class="stores-grid">
+            <!-- Populated by JS -->
+            <div class="store-card">
+                <div class="skeleton" style="width:32px; height:32px; border-radius:8px;"></div>
+                <div class="skeleton" style="width:70%; height:14px; margin-top:8px;"></div>
+                <div class="skeleton" style="width:50%; height:12px;"></div>
+            </div>
+            <div class="store-card">
+                <div class="skeleton" style="width:32px; height:32px; border-radius:8px;"></div>
+                <div class="skeleton" style="width:70%; height:14px; margin-top:8px;"></div>
+                <div class="skeleton" style="width:50%; height:12px;"></div>
+            </div>
+            <div class="store-card">
+                <div class="skeleton" style="width:32px; height:32px; border-radius:8px;"></div>
+                <div class="skeleton" style="width:70%; height:14px; margin-top:8px;"></div>
+                <div class="skeleton" style="width:50%; height:12px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions Section -->
+    <div>
+        <div class="section-title">⚡ Actions</div>
+        <div class="actions-panel">
+
+            <!-- Export -->
+            <div class="action-card">
+                <div class="action-card-header">
+                    <div class="action-card-icon action-icon-blue">💾</div>
+                    <div>
+                        <div class="action-card-title">Export Database</div>
+                    </div>
+                </div>
+                <div class="action-card-desc">
+                    Download the full <code>devdb.dsb</code> binary file as a backup.
+                    All stores and their data are included.
+                </div>
+                <button class="btn btn-primary" id="export-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Export .dsb
+                </button>
+            </div>
+
+            <!-- Import -->
+            <div class="action-card">
+                <div class="action-card-header">
+                    <div class="action-card-icon action-icon-green">📂</div>
+                    <div>
+                        <div class="action-card-title">Import / Restore</div>
+                    </div>
+                </div>
+                <div class="action-card-desc">
+                    Import a <code>.dsb</code> backup file. Stores from the file
+                    are merged into the running database.
+                </div>
+                <button class="btn btn-green" id="import-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Import .dsb
+                </button>
+                <input type="file" id="import-file-input" accept=".dsb" style="display:none;" />
+                <div id="import-progress" style="display:none;" class="progress-bar-wrap">
+                    <div class="progress-bar" id="import-bar"></div>
+                </div>
+            </div>
+
+            <!-- Encryption -->
+            <div class="action-card">
+                <div class="action-card-header">
+                    <div class="action-card-icon action-icon-amber">🔑</div>
+                    <div>
+                        <div class="action-card-title">Database Password</div>
+                    </div>
+                </div>
+                <div class="action-card-desc">
+                    Optionally wrap the entire database in AES-256-GCM server-side
+                    encryption. Leave blank to use integrity-only mode (BLAKE2b).
+                </div>
+                <button class="btn btn-amber" id="change-pw-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    Set Password
+                </button>
+            </div>
+
+            <!-- Refresh -->
+            <div class="action-card">
+                <div class="action-card-header">
+                    <div class="action-card-icon action-icon-cyan">🔄</div>
+                    <div>
+                        <div class="action-card-title">Refresh Stats</div>
+                    </div>
+                </div>
+                <div class="action-card-desc">
+                    Reload database metadata from the server.
+                    Stats auto-refresh every 30 seconds.
+                </div>
+                <button class="btn btn-ghost" id="refresh-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Security Info -->
+    <div class="alert-bar alert-info">
+        <span>🛡️</span>
+        <span>
+            <strong>Security note:</strong> The Vault and SSH Profiles stores contain
+            <em>client-side AES-256-GCM encrypted blobs</em> — the server never decrypts
+            or inspects their contents, even when DevDB itself is unencrypted.
+        </span>
+    </div>
+
+    <!-- About / Format panel -->
+    <div class="about-panel">
+        <button class="about-toggle" id="about-toggle">
+            <span>📋 DevDB Binary Format Reference  (.dsb)</span>
+            <span class="about-toggle-icon">›</span>
+        </button>
+        <div class="about-body" id="about-body">
+            <p style="color:var(--text-muted);font-size:12px;margin-bottom:14px;line-height:1.7;">
+                Every <code>.dsb</code> file starts with a fixed 64-byte header. In plaintext mode
+                the payload is prefixed with a 32-byte BLAKE2b-256 checksum. In encrypted mode
+                the AESGCM output (ciphertext ‖ 16-byte GCM auth tag) follows the header.
+            </p>
+            <table class="format-table">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Offset</th>
+                        <th>Size</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Magic</td><td>0</td><td>4 bytes</td><td><code>DSDB</code> — file type marker</td></tr>
+                    <tr><td>Version</td><td>4</td><td>2 bytes (uint16)</td><td>Currently <code>1</code></td></tr>
+                    <tr><td>Flags</td><td>6</td><td>2 bytes (uint16)</td><td>Bit 0 = server-encrypted</td></tr>
+                    <tr><td>KDF Name</td><td>8</td><td>8 bytes</td><td><code>pbkdf2\0\0</code> or zeros</td></tr>
+                    <tr><td>KDF Iterations</td><td>16</td><td>4 bytes (uint32)</td><td>200 000 default</td></tr>
+                    <tr><td>Salt</td><td>20</td><td>32 bytes</td><td>Random per write</td></tr>
+                    <tr><td>Nonce</td><td>52</td><td>12 bytes</td><td>AES-GCM 96-bit nonce</td></tr>
+                    <tr style="opacity:0.5"><td colspan="4">— End of 64-byte header —</td></tr>
+                    <tr><td>BLAKE2b digest</td><td>64</td><td>32 bytes</td><td>Plaintext mode only — integrity check</td></tr>
+                    <tr><td>GCM tag</td><td>64 (last 16 B)</td><td>16 bytes</td><td>Encrypted mode — appended by AESGCM</td></tr>
+                    <tr><td>Payload</td><td>96 / 64+16</td><td>variable</td><td>JSON: <code>{"meta":{…},"stores":{…}}</code></td></tr>
+                </tbody>
+            </table>
+            <p style="color:var(--text-muted);font-size:11px;margin-top:12px;">
+                Cipher: AES-256-GCM &nbsp;|&nbsp; KDF: PBKDF2-HMAC-SHA256, 200 000 iterations&nbsp;|&nbsp;
+                Writes are atomic (temp file + os.replace).
+            </p>
+        </div>
+    </div>
+
+</main>
+
+<!-- ── Password Modal ──────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-modal-title">
+    <div class="modal-box">
+        <h2 class="modal-title" id="pw-modal-title">🔑 Set Database Password</h2>
+        <div class="modal-body">
+            <p style="color:var(--text-muted);font-size:13px;line-height:1.6;">
+                Setting a password enables <strong>AES-256-GCM server-side encryption</strong>
+                for the entire database file.
+                Leave both fields blank  to switch to <em>integrity-only</em> mode (BLAKE2b, no encryption).
+            </p>
+            <div class="field-group">
+                <label class="field-label-text" for="new-pw-input">New Password</label>
+                <input type="password" id="new-pw-input" class="field-input"
+                       placeholder="Leave blank to remove encryption" autocomplete="new-password" />
+            </div>
+            <div class="field-group">
+                <label class="field-label-text" for="confirm-pw-input">Confirm Password</label>
+                <input type="password" id="confirm-pw-input" class="field-input"
+                       placeholder="Repeat the password above" autocomplete="new-password" />
+            </div>
+            <div class="alert-bar alert-warn" id="pw-modal-alert" style="display:none;"></div>
+            <div class="alert-bar alert-info">
+                <span>ℹ️</span>
+                <span>A server restart is required for the password change to take effect.
+                      The password must be provided to DevDB at startup (e.g., via environment variable).</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" id="pw-cancel-btn">Cancel</button>
+            <button class="btn btn-primary" id="pw-save-btn">Apply Password</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Toast container ─────────────────────────────────────────────────────── -->
+<div id="toast-container" aria-live="polite"></div>
+
+<script src="/static/crypto-js.min.js"></script>
+<script src="/static/db-manager.js?v=2"></script>
+</body>
+</html>

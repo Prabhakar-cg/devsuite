@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Vault — DevSuite</title>
+    <meta name="description" content="A locally-hosted, KeePass-style encrypted secret manager. Store tokens, passwords, SSH keys and API keys — all encrypted with AES-256, all offline.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/vault.css">
+    <script src="/static/theme.js?v=2"></script>
+    <script src="/static/crypto-js.min.js"></script>
+</head>
+<body>
+
+<!-- ================================================================
+     LOCK SCREEN OVERLAY
+     ================================================================ -->
+<div id="lock-overlay">
+    <div class="lock-card">
+        <div class="lock-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+        </div>
+        <h1>Secret <span>Vault</span></h1>
+        <p id="lock-setup-desc">Your secrets are encrypted with AES-256. Enter your master password to unlock.</p>
+        <div class="lock-error" id="lock-error"></div>
+        <input type="password" class="lock-input" id="master-pw-input"
+               placeholder="Master Password" autocomplete="off" spellcheck="false">
+        <div id="master-pw-confirm-wrap" style="display:none; width:100%; margin-top:10px;">
+            <input type="password" class="lock-input" id="master-pw-confirm"
+                   placeholder="Confirm Master Password" autocomplete="off" spellcheck="false"
+                   style="margin-top:0;">
+        </div>
+        <button class="lock-btn" id="unlock-btn">Unlock Vault</button>
+        <div class="lock-warning">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px;color:#f59e0b">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>This password is never stored. If you forget it, your vault cannot be recovered — this is by design.</span>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     APP HEADER
+     ================================================================ -->
+<header class="vault-header">
+    <div class="header-left">
+        <a href="/" class="back-link">← DevSuite</a>
+        <div class="tool-identity">
+            <div class="tool-icon" style="background:linear-gradient(135deg,#d97706,#f59e0b); box-shadow:0 0 16px rgba(245,158,11,0.35);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <span class="tool-name">Secret <span>Vault</span></span>
+            <span class="tool-version">V1.0</span>
+        </div>
+    </div>
+    <div class="header-right">
+        <button class="lock-now-btn" id="lock-now-btn" title="Lock vault immediately">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Lock Vault
+        </button>
+    </div>
+</header>
+
+<!-- ================================================================
+     MAIN LAYOUT
+     ================================================================ -->
+<div class="vault-layout">
+
+    <!-- ── Left Sidebar — Type Filter ── -->
+    <aside class="vault-sidebar">
+        <div class="sidebar-search">
+            <div class="search-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" class="search-input" id="search-input" placeholder="Search secrets…">
+            </div>
+        </div>
+
+        <div class="filter-list" id="filter-list">
+            <div class="filter-label">Categories</div>
+            <button class="filter-btn active" data-type="all" id="filter-all">
+                <span class="filter-type-dot" style="background:#8b96b2"></span>
+                All Secrets
+                <span class="filter-count" id="count-all">0</span>
+            </button>
+            <button class="filter-btn" data-type="password" id="filter-password">
+                <span class="filter-type-dot dot-password"></span>
+                Passwords
+                <span class="filter-count" id="count-password">0</span>
+            </button>
+            <button class="filter-btn" data-type="token" id="filter-token">
+                <span class="filter-type-dot dot-token"></span>
+                Tokens
+                <span class="filter-count" id="count-token">0</span>
+            </button>
+            <button class="filter-btn" data-type="ssh" id="filter-ssh">
+                <span class="filter-type-dot dot-ssh"></span>
+                SSH Keys
+                <span class="filter-count" id="count-ssh">0</span>
+            </button>
+            <button class="filter-btn" data-type="api" id="filter-api">
+                <span class="filter-type-dot dot-api"></span>
+                API Keys
+                <span class="filter-count" id="count-api">0</span>
+            </button>
+            <button class="filter-btn" data-type="env" id="filter-env">
+                <span class="filter-type-dot dot-env"></span>
+                Env Secrets
+                <span class="filter-count" id="count-env">0</span>
+            </button>
+            <button class="filter-btn" data-type="note" id="filter-note">
+                <span class="filter-type-dot dot-note"></span>
+                Secure Notes
+                <span class="filter-count" id="count-note">0</span>
+            </button>
+        </div>
+
+        <button class="sidebar-add-btn" id="sidebar-add-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Secret
+        </button>
+    </aside>
+
+    <!-- ── Entry List Panel ── -->
+    <div class="entry-list-panel" id="entry-list-panel">
+        <div class="entry-list-header">
+            <h3 id="list-heading">All Secrets</h3>
+            <span class="entry-count" id="entry-count">0</span>
+        </div>
+        <div class="entry-list" id="entry-list">
+            <div class="empty-list" id="empty-list">
+                <div class="icon">🔐</div>
+                <p>No secrets yet.<br>Click <strong>New Secret</strong> to add one.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Detail Panel ── -->
+    <div class="detail-panel" id="detail-panel">
+        <!-- Empty state -->
+        <div class="detail-empty" id="detail-empty">
+            <div class="big-icon">🏛️</div>
+            <h3>Select a secret</h3>
+            <p>Choose an entry from the list to view its details here.</p>
+        </div>
+
+        <!-- Populated detail -->
+        <div class="detail-content" id="detail-content" style="display:none;">
+            <div class="detail-bar">
+                <div class="detail-type-icon" id="detail-icon"></div>
+                <div class="detail-meta">
+                    <div class="detail-title" id="detail-title"></div>
+                    <div class="detail-type-label" id="detail-type-label"></div>
+                </div>
+                <div class="detail-actions">
+                    <button class="btn-sm" id="edit-btn" title="Edit secret">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit
+                    </button>
+                    <button class="btn-sm" id="duplicate-btn" title="Duplicate">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        Dupe
+                    </button>
+                </div>
+            </div>
+            <div class="detail-fields" id="detail-fields"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ================================================================
+     ADD / EDIT MODAL
+     ================================================================ -->
+<div class="modal-overlay" id="secret-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span class="modal-title" id="modal-title">New Secret</span>
+            <button class="modal-close" id="modal-close" title="Close">✕</button>
+        </div>
+
+        <div class="modal-body">
+            <!-- Type picker (only shown when adding) -->
+            <div class="form-group" id="type-picker-group">
+                <label class="form-label">Secret Type</label>
+                <div class="type-select-row">
+                    <button class="type-opt selected" data-type="password">
+                        <span class="type-emoji">🔑</span>
+                        <span class="type-name">Password</span>
+                    </button>
+                    <button class="type-opt" data-type="token">
+                        <span class="type-emoji">🪙</span>
+                        <span class="type-name">Token</span>
+                    </button>
+                    <button class="type-opt" data-type="ssh">
+                        <span class="type-emoji">🗝️</span>
+                        <span class="type-name">SSH Key</span>
+                    </button>
+                    <button class="type-opt" data-type="api">
+                        <span class="type-emoji">⚡</span>
+                        <span class="type-name">API Key</span>
+                    </button>
+                    <button class="type-opt" data-type="env">
+                        <span class="type-emoji">📦</span>
+                        <span class="type-name">Env Secret</span>
+                    </button>
+                    <button class="type-opt" data-type="note">
+                        <span class="type-emoji">📝</span>
+                        <span class="type-name">Secure Note</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Common fields -->
+            <div class="form-group">
+                <label class="form-label" for="f-title">Title *</label>
+                <input type="text" class="form-input" id="f-title" placeholder="e.g. GitHub Personal Access Token">
+            </div>
+
+            <!-- ── Password fields ── -->
+            <div id="fields-password">
+                <div style="display:flex;flex-direction:column;gap:0.85rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="f-pw-username">Username / Email</label>
+                        <input type="text" class="form-input" id="f-pw-username" placeholder="user@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-pw-password">Password *</label>
+                        <input type="password" class="form-input" id="f-pw-password" placeholder="••••••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-pw-url">Website URL</label>
+                        <input type="url" class="form-input" id="f-pw-url" placeholder="https://github.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-pw-notes">Notes</label>
+                        <textarea class="form-textarea" id="f-pw-notes" placeholder="Any extra information…"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Token fields ── -->
+            <div id="fields-token" style="display:none;">
+                <div style="display:flex;flex-direction:column;gap:0.85rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="f-tok-service">Service / App</label>
+                        <input type="text" class="form-input" id="f-tok-service" placeholder="e.g. GitHub, Stripe, Slack">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-tok-value">Token *</label>
+                        <textarea class="form-textarea" id="f-tok-value" placeholder="ghp_abc123…" style="min-height:70px;"></textarea>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label class="form-label" for="f-tok-expiry">Expiry Date</label>
+                            <input type="date" class="form-input" id="f-tok-expiry">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="f-tok-env">Environment</label>
+                            <select class="form-select" id="f-tok-env">
+                                <option value="">Any</option>
+                                <option value="production">Production</option>
+                                <option value="staging">Staging</option>
+                                <option value="development">Development</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-tok-notes">Notes</label>
+                        <textarea class="form-textarea" id="f-tok-notes" placeholder="Scopes, usage notes…"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SSH Key fields ── -->
+            <div id="fields-ssh" style="display:none;">
+                <div style="display:flex;flex-direction:column;gap:0.85rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="f-ssh-host">Host / Alias</label>
+                        <input type="text" class="form-input" id="f-ssh-host" placeholder="e.g. prod-server, 192.168.1.1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-ssh-username">Username</label>
+                        <input type="text" class="form-input" id="f-ssh-username" placeholder="ubuntu">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-ssh-key">Private Key *</label>
+                        <textarea class="form-textarea" id="f-ssh-key" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..." style="min-height:120px;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-ssh-passphrase">Key Passphrase (if any)</label>
+                        <input type="password" class="form-input" id="f-ssh-passphrase" placeholder="Leave blank if none">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-ssh-notes">Notes</label>
+                        <textarea class="form-textarea" id="f-ssh-notes" placeholder="Purpose, permissions…"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── API Key fields ── -->
+            <div id="fields-api" style="display:none;">
+                <div style="display:flex;flex-direction:column;gap:0.85rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="f-api-service">Service / Provider</label>
+                        <input type="text" class="form-input" id="f-api-service" placeholder="e.g. OpenAI, AWS, Twilio">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-api-key">API Key *</label>
+                        <textarea class="form-textarea" id="f-api-key" placeholder="sk-abc123…" style="min-height:70px;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-api-env">Environment</label>
+                        <select class="form-select" id="f-api-env">
+                            <option value="">Any</option>
+                            <option value="production">Production</option>
+                            <option value="staging">Staging</option>
+                            <option value="development">Development</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-api-notes">Notes</label>
+                        <textarea class="form-textarea" id="f-api-notes" placeholder="Rate limits, endpoint, usage…"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Env Secret fields ── -->
+            <div id="fields-env" style="display:none;">
+                <div style="display:flex;flex-direction:column;gap:0.85rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="f-env-varname">Variable Name *</label>
+                        <input type="text" class="form-input" id="f-env-varname" placeholder="DATABASE_URL" style="font-family:var(--font-mono);">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-env-value">Value *</label>
+                        <textarea class="form-textarea" id="f-env-value" placeholder="postgres://user:pass@host:5432/db" style="min-height:70px;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="f-env-notes">Notes</label>
+                        <textarea class="form-textarea" id="f-env-notes" placeholder="Which .env file, which project…"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Secure Note fields ── -->
+            <div id="fields-note" style="display:none;">
+                <div style="display:flex;flex-direction:column;gap:0.85rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="f-note-content">Secure Note *</label>
+                        <textarea class="form-textarea" id="f-note-content" placeholder="Write your secret note here…" style="min-height:160px;"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-danger" id="delete-btn" style="display:none;">Delete</button>
+            <button class="btn btn-ghost" id="modal-cancel-btn">Cancel</button>
+            <button class="btn btn-primary" id="modal-save-btn">Save Secret</button>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     TOAST CONTAINER
+     ================================================================ -->
+<div id="toast-container"></div>
+
+<script src="/static/vault.js?v=2"></script>
+</body>
+</html>

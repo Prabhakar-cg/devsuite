@@ -3,9 +3,10 @@
 // ──────────────────────────────────────────
 // Global State
 // ──────────────────────────────────────────
-let masterKey    = null;
-let profiles     = [];
-let wslProfiles  = [];
+let masterKey        = null;
+let profilesEncrypted = true;   // false when no master password is configured
+let profiles         = [];
+let wslProfiles      = [];
 // activeTabs: tabId → { id, profile, term, fitAddon, ws, paneDom }
 let activeTabs   = {};
 let currentTabId = null;
@@ -60,45 +61,135 @@ async function saveProfilesBlob(blob) {
 }
 
 // ──────────────────────────────────────────
-// Init & Unlock
+// Init & Unlock (via DevSuite master password)
 // ──────────────────────────────────────────
-document.getElementById('unlock-btn').addEventListener('click', async () => {
-    const pwd = document.getElementById('master-password').value;
-    if (!pwd) return showToast('Master Password required.', 'error');
 
+// After auth-guard verifies the master password, use it to decrypt SSH profiles.
+// If existing profiles were encrypted with a different (old) password, show a
+// one-time migration panel so the user can provide the old password and re-encrypt.
+
+async function _applyMasterKey(pwd) {
     let blob;
-    try {
-        blob = await loadProfilesBlob();
-    } catch (e) {
-        showToast('Failed to load profiles: ' + e.message, 'error');
-        return;
-    }
+    try { blob = await loadProfilesBlob(); }
+    catch (e) { showToast('Failed to load profiles: ' + e.message, 'error'); return; }
 
     if (!blob) {
-        try {
-            masterKey = pwd; profiles = [];
-            await saveProfilesBlob(encryptData('[]', pwd));
-            document.getElementById('master-password-overlay').style.display = 'none';
-            discoverWsl();
-            renderSidebar(); renderSftpSidebar();
-        } catch (e) {
-            showToast('Failed to initialize vault: ' + e.message, 'error');
-        }
+        // No profiles yet — initialize with master password
+        masterKey = pwd;
+        profiles  = [];
+        await saveProfilesBlob(encryptData('[]', pwd));
+        document.getElementById('master-password-overlay').style.display = 'none';
+        discoverWsl();
+        renderSidebar(); renderSftpSidebar();
         return;
     }
 
     const dec = decryptData(blob, pwd);
-    if (!dec) return showToast('Incorrect Master Password or corrupted vault.', 'error');
+    if (dec) {
+        // Master password matches — load profiles
+        try {
+            profiles  = JSON.parse(dec);
+            masterKey = pwd;
+            document.getElementById('master-password-overlay').style.display = 'none';
+            discoverWsl();
+            renderSidebar(); renderSftpSidebar();
+        } catch { showToast('Failed to parse profiles.', 'error'); }
+        return;
+    }
 
-    try {
-        profiles  = JSON.parse(dec);
-        masterKey = pwd;
-        document.getElementById('master-password-overlay').style.display = 'none';
+    // Decryption failed — profiles were encrypted with a different password.
+    // Show migration UI so the user can supply the old password.
+    _showMigrationPanel(blob, pwd);
+}
+
+function _showMigrationPanel(encryptedBlob, newPwd) {
+    const overlay = document.getElementById('master-password-overlay');
+    overlay.innerHTML = `
+        <div class="modal">
+            <h2>🔄 Migrate SSH Profiles</h2>
+            <p style="color:var(--text-muted);margin-top:0.5rem;font-size:0.9rem;line-height:1.6;">
+                Your SSH profiles were encrypted with a <strong>different password</strong>.
+                Enter the old password to migrate them to your DevSuite master password,
+                or start fresh (your existing profiles will be lost).
+            </p>
+            <input type="password" id="migrate-old-pwd" class="url-input"
+                   placeholder="Old SSH password" style="width:100%;margin:1rem 0 0.5rem;">
+            <div id="migrate-err" style="display:none;color:#ef4444;font-size:13px;margin-bottom:0.5rem;"></div>
+            <div style="display:flex;gap:8px;margin-top:0.5rem;">
+                <button id="migrate-btn" class="send-btn"
+                        style="flex:1;background:#0ea5e9;color:#fff;">Migrate</button>
+                <button id="migrate-fresh-btn" class="send-btn"
+                        style="flex:1;background:#374151;color:#e2e8f0;">Start Fresh</button>
+            </div>
+        </div>`;
+    overlay.style.display = 'flex';
+
+    document.getElementById('migrate-btn').addEventListener('click', async () => {
+        const oldPwd  = document.getElementById('migrate-old-pwd').value;
+        const errEl   = document.getElementById('migrate-err');
+        errEl.style.display = 'none';
+        if (!oldPwd) { errEl.textContent = 'Enter the old password.'; errEl.style.display = 'block'; return; }
+
+        const dec = decryptData(encryptedBlob, oldPwd);
+        if (!dec) {
+            errEl.textContent = '❌ Incorrect old password.';
+            errEl.style.display = 'block';
+            return;
+        }
+        try {
+            profiles = JSON.parse(dec);
+        } catch {
+            errEl.textContent = '❌ Could not parse profiles — data may be corrupted.';
+            errEl.style.display = 'block';
+            return;
+        }
+        // Re-encrypt with the master password and save
+        masterKey = newPwd;
+        await saveProfilesBlob(encryptData(JSON.stringify(profiles), newPwd));
+        overlay.style.display = 'none';
+        showToast('✅ SSH profiles migrated to master password', 'success');
         discoverWsl();
-        renderSidebar();
-        renderSftpSidebar();
-    } catch { showToast('Failed to parse profiles.', 'error'); }
-});
+        renderSidebar(); renderSftpSidebar();
+    });
+
+    document.getElementById('migrate-fresh-btn').addEventListener('click', async () => {
+        if (!confirm('This will delete all existing SSH profiles. Are you sure?')) return;
+        masterKey = newPwd;
+        profiles  = [];
+        await saveProfilesBlob(encryptData('[]', newPwd));
+        overlay.style.display = 'none';
+        showToast('SSH profiles reset.', 'info');
+        discoverWsl();
+        renderSidebar(); renderSftpSidebar();
+    });
+}
+
+// Boot: run auth-guard first, then unlock profiles with the master password
+(async () => {
+    const pwd = await AuthGuard.init('Secure Terminal', '🖥️');
+    if (pwd) {
+        await _applyMasterKey(pwd);
+    } else {
+        // No master password set — store and retrieve profiles as plain JSON
+        profilesEncrypted = false;
+        masterKey = '';
+        showToast('⚠️ No master password set — profiles are stored unencrypted.', 'warn');
+        document.getElementById('master-password-overlay').style.display = 'none';
+        // Load existing plain profiles if any
+        try {
+            const r = await fetch('/api/ssh/profiles');
+            if (r.ok) {
+                const d = await r.json();
+                const raw = d.plain_profiles || d.encrypted_blob || '';
+                if (raw) {
+                    try { profiles = JSON.parse(raw); } catch { profiles = []; }
+                }
+            }
+        } catch { profiles = []; }
+        discoverWsl();
+        renderSidebar(); renderSftpSidebar();
+    }
+})();
 
 // ──────────────────────────────────────────
 // WSL Discovery
@@ -229,7 +320,8 @@ function renderSidebar() {
                     e.stopPropagation();
                     if (!confirm(`Delete session "${p.name || p.host}"?`)) return;
                     profiles = profiles.filter(x => x.id !== p.id);
-                    const blob = encryptData(JSON.stringify(profiles), masterKey);
+                    const serialized = JSON.stringify(profiles);
+                    const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
                     await saveProfilesBlob(blob);
                     renderSidebar();
                     renderSftpSidebar();
@@ -353,7 +445,8 @@ document.getElementById('save-srv-btn').addEventListener('click', async () => {
     const idx = profiles.findIndex(x => x.id === id);
     if (idx > -1) profiles[idx] = srv; else profiles.push(srv);
 
-    const blob = encryptData(JSON.stringify(profiles), masterKey);
+    const serialized = JSON.stringify(profiles);
+    const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
     await saveProfilesBlob(blob);
     renderSidebar();
     renderSftpSidebar();
@@ -365,7 +458,8 @@ document.getElementById('add-server-btn').addEventListener('click', () => openSe
 document.getElementById('delete-srv-btn').addEventListener('click', async () => {
     const id = document.getElementById('srv-id').value;
     profiles  = profiles.filter(x => x.id !== id);
-    const blob = encryptData(JSON.stringify(profiles), masterKey);
+    const serialized = JSON.stringify(profiles);
+    const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
     await saveProfilesBlob(blob);
     renderSidebar();
     renderSftpSidebar();
@@ -410,7 +504,21 @@ function openTerminalTab(p) {
         }
         setTimeout(() => { if (ws.readyState === WebSocket.OPEN) ws.send(`\x1b[resize;${term.cols};${term.rows}m`); }, 500);
     };
-    ws.onmessage  = evt => term.write(evt.data);
+    ws.onmessage  = evt => {
+        // Intercept host-key approval requests (JSON control messages)
+        try {
+            const msg = JSON.parse(evt.data);
+            if (msg && msg.type === 'host_key_approval') {
+                const fp = msg.fingerprint || '(unknown)';
+                const approved = confirm(
+                    `New SSH host detected:\n\n${msg.host}:${msg.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+                );
+                ws.send(JSON.stringify({ type: 'host_key_response', approve: approved }));
+                return;
+            }
+        } catch { /* not a JSON control message — fall through */ }
+        term.write(evt.data);
+    };
     ws.onclose    = ()  => { try { term.write('\r\nConnection closed.'); } catch {} };
     ws.onerror    = ()  => { try { term.write('\r\nWebSocket error.'); }   catch {} };
     term.onData(d => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(d); });
@@ -489,6 +597,7 @@ async function sftpConnectTo(profile) {
     document.getElementById('sftp-conn-label').textContent = `${profile.user}@${profile.host}:${profile.port || 22}`;
     document.getElementById('sftp-disconnect-btn').style.display = 'inline-block';
     document.getElementById('sftp-refresh-btn').style.display    = 'inline-block';
+    document.getElementById('sftp-upload-btn').style.display     = 'inline-block';
 
     await sftpLoadDir('/');
 }
@@ -506,6 +615,7 @@ document.getElementById('sftp-disconnect-btn').addEventListener('click', () => {
     document.getElementById('sftp-conn-label').textContent  = 'Not connected — select a session';
     document.getElementById('sftp-disconnect-btn').style.display = 'none';
     document.getElementById('sftp-refresh-btn').style.display    = 'none';
+    document.getElementById('sftp-upload-btn').style.display     = 'none';
     document.getElementById('sftp-up-btn').disabled              = true;
     document.getElementById('sftp-path-input').value             = '/';
     document.getElementById('sftp-file-grid').innerHTML          = '';
@@ -548,11 +658,28 @@ async function sftpLoadDir(path) {
             private_key: sftpConn.profile.key   || null,
             path
         };
-        const r = await fetch('/api/sftp/list', {
+        let r = await fetch('/api/sftp/list', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify(payload)
         });
+
+        // Host-key approval required (TOFU gate)
+        if (r.status === 409) {
+            const errBody = await r.json().catch(() => ({}));
+            if (errBody.error === 'host_key_approval_required') {
+                const fp = errBody.fingerprint || '(unknown)';
+                const approved = confirm(
+                    `New SFTP host detected:\n\n${errBody.host}:${errBody.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+                );
+                if (!approved) { throw new Error('Host key rejected by user.'); }
+                r = await fetch('/api/sftp/list', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ ...payload, approved_fingerprint: fp })
+                });
+            }
+        }
 
         // Check if this request is still active
         if (!sftpConn || sftpConn.activeLoad !== loadToken) return;
@@ -620,8 +747,169 @@ function renderSftpGrid(files) {
                 const newPath = sftpConn.path === '/' ? '/' + f.name : sftpConn.path + '/' + f.name;
                 sftpLoadDir(newPath);
             });
+        } else {
+            card.title = 'Click to download';
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', () => sftpDownloadFile(f.name));
         }
         grid.appendChild(card);
+    });
+}
+
+// ──────────────────────────────────────────
+// SFTP Download
+// ──────────────────────────────────────────
+async function sftpDownloadFile(filename) {
+    if (!sftpConn) return;
+    const filePath = sftpConn.path === '/' ? '/' + filename : sftpConn.path + '/' + filename;
+    showToast(`Downloading ${filename}…`, 'info');
+    try {
+        const payload = {
+            host:        sftpConn.profile.host,
+            port:        parseInt(sftpConn.profile.port || 22),
+            username:    sftpConn.profile.user,
+            password:    sftpConn.profile.pass  || null,
+            private_key: sftpConn.profile.key   || null,
+            path:        filePath
+        };
+        let r = await fetch('/api/sftp/download', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(payload)
+        });
+        // Host-key approval required (TOFU gate)
+        if (r.status === 409) {
+            const errBody = await r.json().catch(() => ({}));
+            const errCode = errBody.error || (errBody.detail && errBody.detail.error);
+            if (errCode === 'host_key_approval_required') {
+                const host        = errBody.host        || (errBody.detail && errBody.detail.host)        || '';
+                const port        = errBody.port        || (errBody.detail && errBody.detail.port)        || '';
+                const fingerprint = errBody.fingerprint || (errBody.detail && errBody.detail.fingerprint) || '(unknown)';
+                const approved = confirm(
+                    `New SFTP host detected:\n\n${host}:${port}\nFingerprint: ${fingerprint}\n\nTrust this host key?`
+                );
+                if (!approved) { throw new Error('Host key rejected by user.'); }
+                r = await fetch('/api/sftp/download', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ ...payload, approved_fingerprint: fingerprint })
+                });
+            }
+        }
+        if (!r.ok) {
+            const e = await r.json().catch(() => ({}));
+            throw new Error((e.detail && e.detail.error) || e.detail || `Server error ${r.status}`);
+        }
+        const blob = await r.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast(`Downloaded ${filename}`, 'success');
+    } catch (e) {
+        showToast(`Download failed: ${e.message}`, 'error');
+    }
+}
+
+// ──────────────────────────────────────────
+// SFTP Upload
+// ──────────────────────────────────────────
+document.getElementById('sftp-upload-btn').addEventListener('click', () => {
+    if (!sftpConn) return;
+    document.getElementById('sftp-upload-input').click();
+});
+
+document.getElementById('sftp-upload-input').addEventListener('change', async (evt) => {
+    const files = Array.from(evt.target.files);
+    evt.target.value = '';  // reset so same file can be re-selected
+    if (!files.length || !sftpConn) return;
+    for (const file of files) {
+        await sftpUploadFile(file);
+    }
+});
+
+async function sftpUploadFile(file) {
+    if (!sftpConn) return;
+    const toastMsg = `Uploading ${file.name}… 0%`;
+    showToast(toastMsg, 'info');
+
+    const fd = new FormData();
+    fd.append('host',        sftpConn.profile.host);
+    fd.append('port',        sftpConn.profile.port || '22');
+    fd.append('username',    sftpConn.profile.user);
+    if (sftpConn.profile.pass) fd.append('password',    sftpConn.profile.pass);
+    if (sftpConn.profile.key)  fd.append('private_key', sftpConn.profile.key);
+    fd.append('remote_path', sftpConn.path);
+    fd.append('file',        file, file.name);
+
+    return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/sftp/upload');
+        xhr.upload.onprogress = (evt) => {
+            if (evt.lengthComputable) {
+                const pct = Math.round((evt.loaded / evt.total) * 100);
+                showToast(`Uploading ${file.name}… ${pct}%`, 'info');
+            }
+        };
+        xhr.onload = async () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                showToast(`Uploaded ${file.name}`, 'success');
+                await sftpLoadDir(sftpConn.path);
+            } else if (xhr.status === 409) {
+                let errBody = {};
+                try { errBody = JSON.parse(xhr.response); } catch {}
+                const det = errBody.detail || {};
+                if (det.error === 'host_key_approval_required') {
+                    const fp = det.fingerprint || '(unknown)';
+                    const approved = confirm(
+                        `New SFTP host detected:\n\n${det.host}:${det.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+                    );
+                    if (approved) {
+                        // Retry with approved fingerprint
+                        fd.append('approved_fingerprint', fp);
+                        const retryXhr = new XMLHttpRequest();
+                        retryXhr.open('POST', '/api/sftp/upload');
+                        retryXhr.upload.onprogress = (evt) => {
+                            if (evt.lengthComputable) {
+                                const pct = Math.round((evt.loaded / evt.total) * 100);
+                                showToast(`Uploading ${file.name}… ${pct}%`, 'info');
+                            }
+                        };
+                        retryXhr.onload = async () => {
+                            if (retryXhr.status >= 200 && retryXhr.status < 300) {
+                                showToast(`Uploaded ${file.name}`, 'success');
+                                await sftpLoadDir(sftpConn.path);
+                            } else {
+                                let d = `Server error ${retryXhr.status}`;
+                                try { d = JSON.parse(retryXhr.response).detail || d; } catch {}
+                                showToast(`Upload failed: ${d}`, 'error');
+                            }
+                            resolve();
+                        };
+                        retryXhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
+                        retryXhr.send(fd);
+                        return; // resolve() will be called by retryXhr
+                    } else {
+                        showToast(`Upload cancelled: host key rejected.`, 'warn');
+                    }
+                } else {
+                    const msg = det.error || (typeof det === 'string' ? det : `Server error ${xhr.status}`);
+                    showToast(`Upload failed: ${msg}`, 'error');
+                }
+                resolve();
+            } else {
+                let detail = `Server error ${xhr.status}`;
+                try { detail = JSON.parse(xhr.response).detail || detail; } catch {}
+                showToast(`Upload failed: ${detail}`, 'error');
+                resolve();
+            }
+        };
+        xhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
+        xhr.send(fd);
     });
 }
 
