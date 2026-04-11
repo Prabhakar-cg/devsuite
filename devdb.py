@@ -36,6 +36,8 @@ Dependencies: cryptography (already in requirements.txt)
 
 from __future__ import annotations
 
+import collections.abc
+import copy
 import hashlib
 import json
 import logging
@@ -157,7 +159,7 @@ class DevDB:
     def set_store(self, name: str, data: dict) -> None:
         """Replace (or create) the named store with *data*."""
         with self._lock:
-            self._stores[name] = data
+            self._stores[name] = copy.deepcopy(data)
             self._meta["modified"] = _ts()
 
     def delete_store(self, name: str) -> bool:
@@ -344,8 +346,19 @@ class DevDB:
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise ValueError(f"DevDB: payload is not valid JSON: {exc}") from exc
 
-        self._meta   = db_obj.get("meta",   {})
-        self._stores = db_obj.get("stores", {})
+        _meta = db_obj.get("meta", {})
+        if not isinstance(_meta, collections.abc.Mapping):
+            raise ValueError(
+                f"DevDB: 'meta' must be a mapping, got {type(_meta).__name__!r}"
+            )
+        self._meta = dict(_meta)
+
+        _stores = db_obj.get("stores", {})
+        if not isinstance(_stores, collections.abc.Mapping):
+            raise ValueError(
+                f"DevDB: 'stores' must be a mapping, got {type(_stores).__name__!r}"
+            )
+        self._stores = dict(_stores)
 
     def _build_file_bytes(self) -> bytes:
         """Serialise current state to raw .dsb bytes (called inside lock)."""
@@ -388,7 +401,13 @@ class DevDB:
         # Write to a sibling temp file then atomically replace
         fd, tmp_path = tempfile.mkstemp(dir=self._path.parent, suffix=".tmp")
         try:
-            os.write(fd, file_bytes)
+            offset = 0
+            total = len(file_bytes)
+            while offset < total:
+                written = os.write(fd, file_bytes[offset:])
+                if written == 0:
+                    raise OSError("DevDB: os.write returned 0 — disk may be full")
+                offset += written
             os.fsync(fd)
             os.close(fd)
             fd = -1

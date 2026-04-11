@@ -269,8 +269,15 @@ async def convert_file(request: Request, file: UploadFile = File(...), target_fo
     src_ext = original_name.rsplit(".", 1)[-1] if "." in original_name else ""
 
     cl = request.headers.get("content-length")
-    if cl and int(cl) > MAX_UPLOAD_SIZE:
-        raise HTTPException(status_code=413, detail=f"Upload too large (limit {MAX_UPLOAD_SIZE // 1024 // 1024} MB)")
+    if cl:
+        try:
+            cl_int = int(cl)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid Content-Length header")
+        if cl_int < 0:
+            raise HTTPException(status_code=400, detail="Invalid Content-Length header")
+        if cl_int > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail=f"Upload too large (limit {MAX_UPLOAD_SIZE // 1024 // 1024} MB)")
     content = await file.read(MAX_UPLOAD_SIZE + 1)
     if len(content) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=413, detail=f"Upload too large (limit {MAX_UPLOAD_SIZE // 1024 // 1024} MB)")
@@ -427,7 +434,7 @@ async def convert_file(request: Request, file: UploadFile = File(...), target_fo
 
         def _safe_url_fetcher(url: str):
             parsed = urllib.parse.urlparse(url)
-            if parsed.scheme in ('http', 'https', 'file'):
+            if parsed.scheme not in ('', 'data'):
                 raise ValueError(
                     f"Blocked disallowed URL scheme '{parsed.scheme}' in PDF conversion: {url!r}"
                 )
@@ -1277,14 +1284,22 @@ async def sftp_download(req: SFTPDownloadRequest):
         if req.private_key:
             connect_kwargs["client_keys"] = [asyncssh.import_private_key(req.private_key)]
 
-        async with asyncssh.connect(**connect_kwargs) as conn:
-            async with conn.start_sftp_client() as sftp:
-                async with sftp.open(req.path, 'rb') as remote_file:
-                    data = await remote_file.read()
+        CHUNK_SIZE = 65536  # 64 KB
+
+        async def _stream_file():
+            async with asyncssh.connect(**connect_kwargs) as conn:
+                async with conn.start_sftp_client() as sftp:
+                    async with sftp.open(req.path, 'rb') as remote_file:
+                        while True:
+                            chunk = await remote_file.read(CHUNK_SIZE)
+                            if not chunk:
+                                break
+                            yield chunk
 
         filename = req.path.rstrip('/').split('/')[-1]
-        return Response(
-            content=data,
+        from starlette.responses import StreamingResponse
+        return StreamingResponse(
+            _stream_file(),
             media_type="application/octet-stream",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )
