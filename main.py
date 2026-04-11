@@ -854,7 +854,11 @@ async def db_import(request: Request, file: UploadFile = File(...)):
 def auth_status():
     """Return whether the master encryption password has been set up."""
     prefs = _db.get_store("app_prefs") or {}
-    return {"is_setup": bool(prefs.get("master_setup_done"))}
+    vault = _db.get_store("vault") or {}
+    return {
+        "is_setup":       bool(prefs.get("master_setup_done")),
+        "vault_has_data": bool(vault.get("salt")),
+    }
 
 
 @app.get("/api/auth/challenge", summary="Get password verification challenge")
