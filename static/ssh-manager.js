@@ -780,16 +780,19 @@ async function sftpDownloadFile(filename) {
         // Host-key approval required (TOFU gate)
         if (r.status === 409) {
             const errBody = await r.json().catch(() => ({}));
-            if (errBody.detail && errBody.detail.error === 'host_key_approval_required') {
-                const fp = errBody.detail.fingerprint || '(unknown)';
+            const errCode = errBody.error || (errBody.detail && errBody.detail.error);
+            if (errCode === 'host_key_approval_required') {
+                const host        = errBody.host        || (errBody.detail && errBody.detail.host)        || '';
+                const port        = errBody.port        || (errBody.detail && errBody.detail.port)        || '';
+                const fingerprint = errBody.fingerprint || (errBody.detail && errBody.detail.fingerprint) || '(unknown)';
                 const approved = confirm(
-                    `New SFTP host detected:\n\n${errBody.detail.host}:${errBody.detail.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+                    `New SFTP host detected:\n\n${host}:${port}\nFingerprint: ${fingerprint}\n\nTrust this host key?`
                 );
                 if (!approved) { throw new Error('Host key rejected by user.'); }
                 r = await fetch('/api/sftp/download', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ ...payload, approved_fingerprint: fp })
+                    body:    JSON.stringify({ ...payload, approved_fingerprint: fingerprint })
                 });
             }
         }

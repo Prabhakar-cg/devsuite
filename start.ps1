@@ -213,7 +213,7 @@ if ($LASTEXITCODE -ne 0) {
 # ---------------------------------------------------------------------------
 Write-Host "`nStarting FastAPI server on http://localhost:8000..."
 if (Test-CommandAvailable uvicorn) {
-    uvicorn main:app --port 8000
+    uvicorn main:app --port 8000 --reload
 } else {
-    & $PYTHON_CMD -m uvicorn main:app --port 8000
+    & $PYTHON_CMD -m uvicorn main:app --port 8000 --reload
 }

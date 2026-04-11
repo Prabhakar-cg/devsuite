@@ -239,4 +239,5 @@ def test_store_sizes(tmp_db_path):
     db = make_db(tmp_db_path, stores={"collections": {"items": list(range(100))}})
     sizes = db.store_sizes()
     assert "collections" in sizes
-    assert sizes["collections"] > 0
+    assert sizes["collections"]["bytes"] > 0
+    assert sizes["collections"]["count"] == 100

@@ -66,13 +66,11 @@ function relTime(ms) {
     return `${Math.floor(h/24)}d ago`;
 }
 
-function storeEntryCount(name, storeData) {
+function storeEntryCount(name, count) {
     // Check name first so locked stores always show the lock marker
     if (name === 'vault' || name === 'ssh_profiles') return '🔒'; // opaque
-    if (!storeData || Object.keys(storeData).length === 0) return null;
-    if (name === 'url_db')        return Object.keys(storeData).length;
-    if (name === 'collections')   return Array.isArray(storeData.items) ? storeData.items.length : null;
-    return null;
+    if (count === null || count === undefined) return null;
+    return count;
 }
 
 // ── Lock screen ───────────────────────────────────────────────────────────────
@@ -221,13 +219,14 @@ function renderStores(data) {
 
     grid.innerHTML = '';
     storesToShow.forEach(name => {
-        const m   = STORE_META[name];
-        const kb  = sizes[name] ? fmtBytes(sizes[name]) : null;
-        const hasData = !!sizes[name];
+        const m        = STORE_META[name];
+        const storeInfo = sizes[name];
+        const kb       = storeInfo ? fmtBytes(storeInfo.bytes) : null;
+        const hasData  = !!storeInfo;
 
         const card = document.createElement('div');
         card.className = 'store-card' + (hasData ? '' : ' empty');
-        const entryCount = storeEntryCount(name, null);
+        const entryCount = storeEntryCount(name, storeInfo?.count ?? null);
         card.innerHTML = `
             <div class="store-card-icon">${m.icon}</div>
             <div class="store-card-name">${m.label}</div>
@@ -346,11 +345,31 @@ async function savePassword() {
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
 
     try {
-        // Post to a dedicated endpoint (we add this via the app_prefs store trick)
-        // For now: the UI-only note — server-side encryption requires restart.
-        // We store the intent in app_prefs; actual encryption change needs
-        // the server to restart with the new DevDB password.
-        toast('⚠️ Server restart required to apply password changes. See docs.', 'warn');
+        let payload;
+        if (pw1) {
+            const salt      = CryptoJS.lib.WordArray.random(16);
+            const key       = CryptoJS.PBKDF2(pw1, salt, { keySize: PBKDF2_KEYSIZE, iterations: PBKDF2_ITERATIONS });
+            const verifyIv   = CryptoJS.lib.WordArray.random(16);
+            const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
+            payload = {
+                salt:        salt.toString(),
+                verify_blob: verifyBlob.toString(),
+                verify_iv:   verifyIv.toString(),
+            };
+        } else {
+            payload = { salt: '', verify_blob: '', verify_iv: '' };
+        }
+
+        const res = await _authFetch('/api/auth/update-challenge', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `Server error ${res.status}`);
+        }
+        toast('✅ Password updated successfully.', 'success');
         closePasswordModal();
     } catch (err) {
         alert.textContent   = err.message;

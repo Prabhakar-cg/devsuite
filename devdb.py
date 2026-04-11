@@ -174,13 +174,22 @@ class DevDB:
         with self._lock:
             return list(self._stores.keys())
 
-    def store_sizes(self) -> dict[str, int]:
-        """Return approximate JSON byte-length of each store (for the manager UI)."""
+    def store_sizes(self) -> dict[str, dict]:
+        """Return per-store byte size and entry count (for the manager UI)."""
         with self._lock:
-            return {
-                name: len(json.dumps(data, separators=(",", ":")))
-                for name, data in self._stores.items()
-            }
+            result = {}
+            for name, data in self._stores.items():
+                byte_size = len(json.dumps(data, separators=(",", ":")))
+                if isinstance(data, dict) and "items" in data and isinstance(data["items"], list):
+                    count = len(data["items"])
+                elif isinstance(data, dict):
+                    count = len(data)
+                elif isinstance(data, list):
+                    count = len(data)
+                else:
+                    count = None
+                result[name] = {"bytes": byte_size, "count": count}
+            return result
 
     def meta(self) -> dict:
         """Return database metadata (created, modified, version, app)."""

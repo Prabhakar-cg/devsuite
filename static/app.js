@@ -942,9 +942,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Populate panel headers
         if (folderPanelNameLeft) folderPanelNameLeft.textContent = origFolderRootName;
-        if (folderPanelSizeLeft) folderPanelSizeLeft.textContent = formatFolderSize(origFolderTotalSize);
+        if (folderPanelSizeLeft) folderPanelSizeLeft.textContent = formatSize(origFolderTotalSize);
         if (folderPanelNameRight) folderPanelNameRight.textContent = modFolderRootName;
-        if (folderPanelSizeRight) folderPanelSizeRight.textContent = formatFolderSize(modFolderTotalSize);
+        if (folderPanelSizeRight) folderPanelSizeRight.textContent = formatSize(modFolderTotalSize);
 
         // Also populate legacy title bar (used in Monaco editor view)
         if (folderTitleLeft) folderTitleLeft.textContent = origFolderRootName + ' (Original)';
@@ -962,8 +962,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Recompute totals in case files were added/removed by move operations
         origFolderTotalSize = [...originalFiles.values()].reduce((s, f) => s + f.size, 0);
         modFolderTotalSize  = [...modifiedFiles.values()].reduce((s, f) => s + f.size, 0);
-        if (folderPanelSizeLeft)  folderPanelSizeLeft.textContent  = formatFolderSize(origFolderTotalSize);
-        if (folderPanelSizeRight) folderPanelSizeRight.textContent = formatFolderSize(modFolderTotalSize);
+        if (folderPanelSizeLeft)  folderPanelSizeLeft.textContent  = formatSize(origFolderTotalSize);
+        if (folderPanelSizeRight) folderPanelSizeRight.textContent = formatSize(modFolderTotalSize);
 
         fileDiffStatusMap.clear();
         const allPaths = new Set([...originalFiles.keys(), ...modifiedFiles.keys()]);
@@ -1225,7 +1225,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const size = document.createElement('span');
         size.className = 'ftcol-size';
-        size.textContent = node.file ? formatFileSize(node.file.size) : '—';
+        size.textContent = node.file ? formatSize(node.file.size) : '—';
 
         const actions = buildMoveActions(node, side, false);
 
@@ -1261,7 +1261,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = makeMoveBtn('→', 'move-right', isFolder ? `Copy folder to right` : `Copy to right`);
             btn.addEventListener('click', e => {
                 e.stopPropagation();
-                isFolder ? moveFolderToSide(node, 'right') : moveFileToSide(node.path, 'right');
+                isFolder ? copyFolderToSide(node, 'right') : copyFileToSide(node.path, 'right');
             });
             wrap.appendChild(btn);
         }
@@ -1269,7 +1269,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = makeMoveBtn('←', 'move-left', isFolder ? `Copy folder to left` : `Copy to left`);
             btn.addEventListener('click', e => {
                 e.stopPropagation();
-                isFolder ? moveFolderToSide(node, 'left') : moveFileToSide(node.path, 'left');
+                isFolder ? copyFolderToSide(node, 'left') : copyFileToSide(node.path, 'left');
             });
             wrap.appendChild(btn);
         }
@@ -1284,9 +1284,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return btn;
     }
 
-    // ─── Move operations ──────────────────────────────────────────────────────
+    // ─── Copy operations ──────────────────────────────────────────────────────
 
-    async function moveFileToSide(path, targetSide) {
+    async function copyFileToSide(path, targetSide) {
         if (targetSide === 'right') {
             const file = originalFiles.get(path);
             if (file) modifiedFiles.set(path, file);
@@ -1303,7 +1303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return node.children.flatMap(c => collectFilePaths(c));
     }
 
-    async function moveFolderToSide(node, targetSide) {
+    async function copyFolderToSide(node, targetSide) {
         const paths = collectFilePaths(node);
         paths.forEach(path => {
             if (targetSide === 'right') {
@@ -1325,15 +1325,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${hh}:${mm}`;
     }
 
-    /** Format a file size in bytes as a human-readable string */
-    function formatFileSize(bytes) {
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    }
-
-    /** Format total folder size for panel header */
-    function formatFolderSize(bytes) {
+    /** Format a byte count as a human-readable string */
+    function formatSize(bytes) {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
         return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;

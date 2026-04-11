@@ -279,8 +279,8 @@ async def convert_file(request: Request, file: UploadFile = File(...), target_fo
     if src_ext == "xlsx" and target_format in ("csv", "json"):
         try:
             import openpyxl
-        except ImportError:
-            raise HTTPException(status_code=503, detail="openpyxl is not installed. Run: pip install openpyxl")
+        except ImportError as e:
+            raise HTTPException(status_code=503, detail="openpyxl is not installed. Run: pip install openpyxl") from e
         wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
         ws = wb.active
         rows = list(ws.iter_rows(values_only=True))
@@ -296,17 +296,17 @@ async def convert_file(request: Request, file: UploadFile = File(...), target_fo
             writer.writeheader()
             writer.writerows(data)
             return Response(content=buf.getvalue(), media_type="text/csv",
-                            headers={"Content-Disposition": f'attachment; filename="converted.csv"'})
+                            headers={"Content-Disposition": 'attachment; filename="converted.csv"'})
         else:
             return Response(content=json.dumps(data, indent=2), media_type="application/json",
-                            headers={"Content-Disposition": f'attachment; filename="converted.json"'})
+                            headers={"Content-Disposition": 'attachment; filename="converted.json"'})
 
     # ── CSV → XLSX ─────────────────────────────────────────────────────────
     if src_ext == "csv" and target_format == "xlsx":
         try:
             import openpyxl
-        except ImportError:
-            raise HTTPException(status_code=503, detail="openpyxl is not installed. Run: pip install openpyxl")
+        except ImportError as e:
+            raise HTTPException(status_code=503, detail="openpyxl is not installed. Run: pip install openpyxl") from e
         import csv as csv_mod
         text = content.decode("utf-8-sig", errors="replace")
         reader = csv_mod.reader(io.StringIO(text))
@@ -326,8 +326,8 @@ async def convert_file(request: Request, file: UploadFile = File(...), target_fo
     if src_ext == "json" and target_format == "xlsx":
         try:
             import openpyxl
-        except ImportError:
-            raise HTTPException(status_code=503, detail="openpyxl is not installed. Run: pip install openpyxl")
+        except ImportError as e:
+            raise HTTPException(status_code=503, detail="openpyxl is not installed. Run: pip install openpyxl") from e
         data = json.loads(content)
         if not isinstance(data, list):
             data = [data]
@@ -349,8 +349,8 @@ async def convert_file(request: Request, file: UploadFile = File(...), target_fo
     if src_ext == "pdf" and target_format == "txt":
         try:
             import pypdf
-        except ImportError:
-            raise HTTPException(status_code=503, detail="pypdf is not installed. Run: pip install pypdf")
+        except ImportError as e:
+            raise HTTPException(status_code=503, detail="pypdf is not installed. Run: pip install pypdf") from e
         reader = pypdf.PdfReader(io.BytesIO(content))
         pages_text = [page.extract_text() or "" for page in reader.pages]
         full_text = "\n\n".join(pages_text)
@@ -361,8 +361,8 @@ async def convert_file(request: Request, file: UploadFile = File(...), target_fo
     if src_ext == "docx" and target_format == "txt":
         try:
             import docx
-        except ImportError:
-            raise HTTPException(status_code=503, detail="python-docx is not installed. Run: pip install python-docx")
+        except ImportError as e:
+            raise HTTPException(status_code=503, detail="python-docx is not installed. Run: pip install python-docx") from e
         doc = docx.Document(io.BytesIO(content))
         text = "\n".join(para.text for para in doc.paragraphs)
         return Response(content=text, media_type="text/plain",
@@ -372,15 +372,15 @@ async def convert_file(request: Request, file: UploadFile = File(...), target_fo
     if target_format == "pdf" and src_ext in ("docx", "doc", "html", "htm", "md", "markdown"):
         try:
             import weasyprint
-        except ImportError:
-            raise HTTPException(status_code=503, detail="weasyprint is not installed. Run: pip install weasyprint")
+        except ImportError as e:
+            raise HTTPException(status_code=503, detail="weasyprint is not installed. Run: pip install weasyprint") from e
 
         # Step 1: Get HTML content
         if src_ext in ("docx", "doc"):
             try:
                 import mammoth
-            except ImportError:
-                raise HTTPException(status_code=503, detail="mammoth is not installed. Run: pip install mammoth")
+            except ImportError as e:
+                raise HTTPException(status_code=503, detail="mammoth is not installed. Run: pip install mammoth") from e
             result = mammoth.convert_to_html(io.BytesIO(content))
             raw_html = result.value
         elif src_ext in ("md", "markdown"):
@@ -1128,8 +1128,8 @@ async def ssh_terminal(websocket: WebSocket):
                     msg = json.loads(raw)
                     if msg.get("type") == "host_key_response":
                         return bool(msg.get("approve", False))
-                except Exception:
-                    pass  # ignore non-JSON messages while waiting
+                except Exception as exc:
+                    logger.debug("Ignored non-JSON message while waiting for host_key_response: %r — %s", raw, exc)
 
         try:
             known_hosts_path = await _ensure_host_key(host, port, approve_host=_ws_approve_host)
