@@ -110,6 +110,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const changedFilesCount = document.getElementById('changed-files-count');
 
+    // New folder table layout elements
+    const folderTableLeft = document.getElementById('folder-table-left');
+    const folderTableRight = document.getElementById('folder-table-right');
+    const folderPanelNameLeft = document.getElementById('folder-panel-name-left');
+    const folderPanelNameRight = document.getElementById('folder-panel-name-right');
+    const folderPanelSizeLeft = document.getElementById('folder-panel-size-left');
+    const folderPanelSizeRight = document.getElementById('folder-panel-size-right');
+    const reselectLeftBtn = document.getElementById('reselect-left-btn');
+    const reselectRightBtn = document.getElementById('reselect-right-btn');
+    const countRemovedEl = document.getElementById('count-removed');
+    const countAddedEl = document.getElementById('count-added');
+    const countChangedEl = document.getElementById('count-changed');
+    const countUnchangedEl = document.getElementById('count-unchanged');
+    const expandAllBtn = document.getElementById('expand-all-btn');
+    const collapseAllBtn = document.getElementById('collapse-all-btn');
+
     // Folder Stats Bar
     const folderStatsBar = document.getElementById('folder-stats-bar');
     const folderStatAdditionsCount = document.getElementById('folder-stat-additions-count');
@@ -182,6 +198,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let modifiedFiles = new Map();
     let fileDiffStatusMap = new Map();
     let currentFolderFilter = 'all';
+    let origFolderRootName = 'Folder 1';
+    let modFolderRootName = 'Folder 2';
+    let origFolderTotalSize = 0;
+    let modFolderTotalSize = 0;
+    let collapsedFolderPaths = new Set(); // tracks which folder paths are collapsed
 
 
     // ==========================================
@@ -517,9 +538,30 @@ document.addEventListener('DOMContentLoaded', () => {
         backToFoldersBtn.addEventListener('click', () => {
             folderEditorWrapper.classList.add('hidden');
             if (dualTreeLayer) dualTreeLayer.classList.remove('hidden');
-            document.querySelectorAll('.dual-tree-row').forEach(el => el.classList.remove('active'));
         });
     }
+
+    // Reselect buttons — re-open OS folder picker for each side
+    if (reselectLeftBtn) reselectLeftBtn.addEventListener('click', () => origFolderInput.click());
+    if (reselectRightBtn) reselectRightBtn.addEventListener('click', () => modFolderInput.click());
+
+    // Expand All / Collapse All
+    if (expandAllBtn) expandAllBtn.addEventListener('click', () => {
+        collapsedFolderPaths.clear();
+        renderFileTree();
+    });
+    if (collapseAllBtn) collapseAllBtn.addEventListener('click', () => {
+        const allPaths = new Set([...originalFiles.keys(), ...modifiedFiles.keys()]);
+        allPaths.forEach(filePath => {
+            const parts = filePath.split('/');
+            for (let depth = 1; depth < parts.length; depth++) {
+                const folderPath = parts.slice(0, depth).join('/');
+                collapsedFolderPaths.add(folderPath + '|left');
+                collapsedFolderPaths.add(folderPath + '|right');
+            }
+        });
+        renderFileTree();
+    });
 
     if (folderToggleInlineBtn) {
         folderToggleInlineBtn.addEventListener('click', () => {
@@ -848,30 +890,38 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     origFolderInput.addEventListener('change', (e) => {
         originalFiles.clear();
+        origFolderTotalSize = 0;
         if (e.target.files.length > 0) {
             const root = e.target.files[0].webkitRelativePath.split('/')[0];
-            origFolderName.textContent = `${root}/ (${e.target.files.length} files)`;
-            origFolderName.classList.add('selected');
+            origFolderRootName = root;
             Array.from(e.target.files).forEach(f => {
                 const rel = f.webkitRelativePath.substring(f.webkitRelativePath.indexOf('/') + 1);
                 originalFiles.set(rel, f);
+                origFolderTotalSize += f.size;
             });
+            origFolderName.textContent = `${root}/ (${e.target.files.length} files)`;
+            origFolderName.classList.add('selected');
         }
         checkFoldersReady();
+        if (!folderResultsContainer.classList.contains('hidden')) compareFoldersBtn.click();
     });
 
     modFolderInput.addEventListener('change', (e) => {
         modifiedFiles.clear();
+        modFolderTotalSize = 0;
         if (e.target.files.length > 0) {
             const root = e.target.files[0].webkitRelativePath.split('/')[0];
-            modFolderName.textContent = `${root}/ (${e.target.files.length} files)`;
-            modFolderName.classList.add('selected');
+            modFolderRootName = root;
             Array.from(e.target.files).forEach(f => {
                 const rel = f.webkitRelativePath.substring(f.webkitRelativePath.indexOf('/') + 1);
                 modifiedFiles.set(rel, f);
+                modFolderTotalSize += f.size;
             });
+            modFolderName.textContent = `${root}/ (${e.target.files.length} files)`;
+            modFolderName.classList.add('selected');
         }
         checkFoldersReady();
+        if (!folderResultsContainer.classList.contains('hidden')) compareFoldersBtn.click();
     });
 
     function checkFoldersReady() {
@@ -889,39 +939,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         fileDiffStatusMap.clear();
 
-        // Populate titles
-        if (folderTitleLeft && folderTitleRight) {
-            const leftName = origFolderName.textContent.split(' ')[0] || 'Folder 1';
-            const rightName = modFolderName.textContent.split(' ')[0] || 'Folder 2';
+        // Populate panel headers
+        if (folderPanelNameLeft) folderPanelNameLeft.textContent = origFolderRootName;
+        if (folderPanelSizeLeft) folderPanelSizeLeft.textContent = formatFolderSize(origFolderTotalSize);
+        if (folderPanelNameRight) folderPanelNameRight.textContent = modFolderRootName;
+        if (folderPanelSizeRight) folderPanelSizeRight.textContent = formatFolderSize(modFolderTotalSize);
 
-            const buildFolderTitleNode = (container, labelText, folderName) => {
-                container.textContent = '';
-                
-                const labelDiv = document.createElement('div');
-                labelDiv.style.cssText = "font-size:0.6rem; opacity:0.6; font-weight:400; letter-spacing:0.05em; margin-bottom:2px;";
-                labelDiv.textContent = labelText;
-                
-                const pathDiv = document.createElement('div');
-                pathDiv.style.cssText = "color:var(--text-primary); text-align: left;";
-                
-                const slashSpan = document.createElement('span');
-                slashSpan.style.opacity = "0.5";
-                slashSpan.textContent = '/';
-                
-                pathDiv.appendChild(slashSpan);
-                pathDiv.appendChild(document.createTextNode(' ' + folderName));
-                
-                container.appendChild(labelDiv);
-                container.appendChild(pathDiv);
-            };
+        // Also populate legacy title bar (used in Monaco editor view)
+        if (folderTitleLeft) folderTitleLeft.textContent = origFolderRootName + ' (Original)';
+        if (folderTitleRight) folderTitleRight.textContent = modFolderRootName + ' (Modified)';
 
-            buildFolderTitleNode(folderTitleLeft, 'FOLDER 1', leftName);
-            buildFolderTitleNode(folderTitleRight, 'FOLDER 2', rightName);
-            if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
-        }
+        showToast('Comparing folders…', 'info', 2500);
+        await rerunComparison();
+    });
 
-        showToast('Comparing folders (analyzing metadata and small file hashes)...', 'info', 3000);
-
+    /**
+     * (Re-)compute fileDiffStatusMap from the current originalFiles / modifiedFiles
+     * and refresh the tree UI. Called by the compare button and by move operations.
+     */
+    async function rerunComparison() {
+        fileDiffStatusMap.clear();
         const allPaths = new Set([...originalFiles.keys(), ...modifiedFiles.keys()]);
         for (const path of allPaths) {
             const inOrig = originalFiles.has(path);
@@ -933,8 +970,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const o = originalFiles.get(path), m = modifiedFiles.get(path);
                 let changed = o.size !== m.size || o.lastModified !== m.lastModified;
-
-                // If metadata matches, fallback to hashing for files < 5MB
                 if (!changed && o.size < 5 * 1024 * 1024) {
                     try {
                         const [bufO, bufM] = await Promise.all([o.arrayBuffer(), m.arrayBuffer()]);
@@ -949,19 +984,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.warn("Failed to hash " + path, e);
                     }
                 }
-
-                fileDiffStatusMap.set(path, {
-                    status: changed ? 'modified' : 'unchanged'
-                });
+                fileDiffStatusMap.set(path, { status: changed ? 'modified' : 'unchanged' });
             }
         }
         renderFileTree();
-    });
+    }
 
     // Filter chips
-    document.querySelectorAll('.filter-chip').forEach(chip => {
+    document.querySelectorAll('.folder-filter-chip').forEach(chip => {
         chip.addEventListener('click', () => {
-            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active-filter'));
+            document.querySelectorAll('.folder-filter-chip').forEach(c => c.classList.remove('active-filter'));
             chip.classList.add('active-filter');
             currentFolderFilter = chip.dataset.filter;
             renderFileTree();
@@ -969,154 +1001,322 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /**
-     * Render the folder-diff file tree into the file tree container using the current comparison state and filter.
-     *
-     * Builds a hierarchical, dual-column tree from `fileDiffStatusMap`, omitting unchanged files and applying
-     * `currentFolderFilter`. Folder nodes display aggregate statuses (added/removed/mixed) and are expandable;
-     * file rows show status indicators in left/right columns and are clickable to open the file diff
-     * (calls `openFileDiff(fullPath, status, name)`). Updates the visible changed files count and shows a
-     * friendly message when no differences match the current filter.
+     * Rebuild both hierarchical tree panels from the current file maps and diff status.
+     * Updates summary chips and renders each panel as an expand/collapse folder tree.
      */
     function renderFileTree() {
-        fileTreeEl.innerHTML = '';
-        const paths = Array.from(fileDiffStatusMap.keys()).sort();
-        let visibleCount = 0;
+        if (!folderTableLeft || !folderTableRight) return;
 
-        const treeNodes = {
-            '': { name: '/', fullPath: '', isFile: false, status: 'folder', children: [] }
-        };
-        const rootNodes = [treeNodes['']];
+        // --- Summary counts (always full, ignoring filter) ---
+        let countRemoved = 0, countAdded = 0, countChanged = 0, countUnchanged = 0;
+        fileDiffStatusMap.forEach(m => {
+            if (m.status === 'removed') countRemoved++;
+            else if (m.status === 'added') countAdded++;
+            else if (m.status === 'modified') countChanged++;
+            else countUnchanged++;
+        });
+        if (countRemovedEl)   countRemovedEl.textContent   = countRemoved;
+        if (countAddedEl)     countAddedEl.textContent     = countAdded;
+        if (countChangedEl)   countChangedEl.textContent   = countChanged;
+        if (countUnchangedEl) countUnchangedEl.textContent = countUnchanged;
 
-        paths.forEach(path => {
-            const meta = fileDiffStatusMap.get(path);
-            if (meta.status === 'unchanged') return;
-            if (currentFolderFilter !== 'all' && meta.status !== currentFolderFilter) return;
-            visibleCount++;
+        // --- Build & render trees ---
+        const leftTree  = buildFileTree(originalFiles, fileDiffStatusMap);
+        const rightTree = buildFileTree(modifiedFiles, fileDiffStatusMap);
 
-            const parts = path.split('/');
-            let currentLevel = treeNodes[''].children;
-            let currentPath = '';
+        folderTableLeft.innerHTML  = '';
+        folderTableRight.innerHTML = '';
 
-            for (let i = 0; i < parts.length; i++) {
-                const part = parts[i];
-                const isFile = (i === parts.length - 1);
-                currentPath += (i === 0 ? '' : '/') + part;
+        renderTreeNodes(leftTree,  folderTableLeft,  'left');
+        renderTreeNodes(rightTree, folderTableRight, 'right');
 
-                if (!treeNodes[currentPath]) {
-                    const node = {
-                        name: part,
-                        fullPath: currentPath,
-                        isFile: isFile,
-                        status: isFile ? meta.status : 'folder',
-                        children: isFile ? null : []
-                    };
-                    treeNodes[currentPath] = node;
-                    currentLevel.push(node);
-                }
-                
-                if (!isFile) {
-                    currentLevel = treeNodes[currentPath].children;
+        if (!folderTableLeft.children.length)
+            folderTableLeft.innerHTML  = '<div class="folder-table-empty">No files to show</div>';
+        if (!folderTableRight.children.length)
+            folderTableRight.innerHTML = '<div class="folder-table-empty">No files to show</div>';
+    }
+
+    // ─── Tree building ────────────────────────────────────────────────────────
+
+    /**
+     * Convert a flat Map<relPath, File> into a sorted hierarchical node array.
+     * Each node: { isFolder, name, path, children?, status, file? }
+     */
+    function buildFileTree(fileMap, statusMap) {
+        const root = [];
+        const nodeByPath = new Map();
+
+        Array.from(fileMap.keys()).sort().forEach(filePath => {
+            const parts = filePath.split('/');
+            const status = statusMap.get(filePath)?.status || 'unchanged';
+
+            // Ensure all ancestor folder nodes exist
+            for (let depth = 0; depth < parts.length - 1; depth++) {
+                const folderPath = parts.slice(0, depth + 1).join('/');
+                if (!nodeByPath.has(folderPath)) {
+                    const node = { isFolder: true, name: parts[depth], path: folderPath, children: [], status: 'unchanged' };
+                    nodeByPath.set(folderPath, node);
+                    const parentPath = parts.slice(0, depth).join('/');
+                    (depth === 0 ? root : nodeByPath.get(parentPath).children).push(node);
                 }
             }
+
+            // Leaf file node
+            const fileNode = { isFolder: false, name: parts.at(-1), path: filePath, status, file: fileMap.get(filePath) };
+            const parentPath = parts.slice(0, -1).join('/');
+            (parts.length === 1 ? root : nodeByPath.get(parentPath).children).push(fileNode);
         });
 
-        function computeFolderStatuses(nodes) {
-            nodes.forEach(node => {
-                if (!node.isFile) {
-                    computeFolderStatuses(node.children);
-                    if (node.children.length > 0) {
-                        const firstStatus = node.children[0].status;
-                        const allSame = node.children.every(c => c.status === firstStatus);
-                        if (allSame && (firstStatus === 'added' || firstStatus === 'removed')) {
-                            node.status = firstStatus;
-                        } else {
-                            node.status = 'mixed';
-                        }
-                    }
-                }
-            });
-        }
-        computeFolderStatuses(rootNodes);
+        // Propagate status up to folders
+        const propagate = nodes => nodes.forEach(n => {
+            if (!n.isFolder) return;
+            propagate(n.children);
+            const statuses = allFileStatuses(n);
+            if (statuses.every(s => s === 'unchanged')) n.status = 'unchanged';
+            else if (statuses.every(s => s === 'removed')) n.status = 'removed';
+            else if (statuses.every(s => s === 'added'))   n.status = 'added';
+            else if (statuses.every(s => s === 'modified')) n.status = 'modified';
+            else n.status = 'mixed';
+        });
+        propagate(root);
+        return root;
+    }
 
-        if (changedFilesCount) changedFilesCount.textContent = visibleCount;
+    function allFileStatuses(node) {
+        if (!node.isFolder) return [node.status];
+        return node.children.flatMap(c => allFileStatuses(c));
+    }
 
-        if (visibleCount === 0) {
-            const li = document.createElement('li');
-            li.style.cssText = 'padding:1rem 0.85rem; font-size:0.8rem; color:var(--text-muted);';
-            li.textContent = currentFolderFilter === 'all'
-                ? 'No differences detected between the two folders.'
-                : `No ${currentFolderFilter} files.`;
-            fileTreeEl.appendChild(li);
-        } else {
-            function buildTreeUI(nodes, container, depth = 0) {
-                const paddingAuth = `${(depth * 1.2) + 0.9}rem`;
-                nodes.forEach(node => {
-                    const row = document.createElement('li');
-                    row.className = 'dual-tree-row';
-                    
-                    const leftCell = document.createElement('div');
-                    leftCell.className = `dual-tree-cell left-cell ${node.status === 'added' ? 'empty-cell' : ''}`;
-                    leftCell.style.paddingLeft = paddingAuth;
+    // ─── Tree rendering ───────────────────────────────────────────────────────
 
-                    const rightCell = document.createElement('div');
-                    rightCell.className = `dual-tree-cell right-cell ${node.status === 'removed' ? 'empty-cell' : ''}`;
-                    rightCell.style.paddingLeft = paddingAuth;
+    function renderTreeNodes(nodes, container, side) {
+        nodes.forEach(node => {
+            if (!treeNodePassesFilter(node, side)) return;
+            if (node.isFolder) {
+                const wrap = document.createElement('div');
+                wrap.className = 'tree-node-wrap';
 
-                    if (node.isFile) {
-                        row.classList.add('file-row');
-                        const dot = `<div class="status-indicator status-${node.status}"></div>`;
-                        const txt = `<span class="file-path-text" title="${node.fullPath}">${node.name}</span>`;
+                const row = buildFolderRow(node, side);
+                wrap.appendChild(row);
 
-                        if (node.status !== 'added') leftCell.innerHTML = dot + txt;
-                        if (node.status !== 'removed') rightCell.innerHTML = dot + txt;
+                const childrenEl = document.createElement('div');
+                childrenEl.className = 'tree-children';
+                if (collapsedFolderPaths.has(node.path + '|' + side)) childrenEl.classList.add('collapsed');
 
-                        row.appendChild(leftCell);
-                        row.appendChild(rightCell);
+                renderTreeNodes(node.children, childrenEl, side);
+                wrap.appendChild(childrenEl);
 
-                        row.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            document.querySelectorAll('.dual-tree-row').forEach(el => el.classList.remove('active'));
-                            row.classList.add('active');
-                            openFileDiff(node.fullPath, node.status, node.name);
-                        });
-                        container.appendChild(row);
-                    } else {
-                        row.classList.add('folder-row');
-                        const caret = `<div class="tree-folder-icon" style="margin-right:0.25rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>`;
-                        const icon = `<div style="opacity:0.7; display:flex; align-items:center; margin-right:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"></path></svg></div>`;
-                        const txt = `<span class="file-path-text">${node.name}</span>`;
-                        
-                        if (node.status !== 'added') leftCell.innerHTML = caret + icon + txt;
-                        if (node.status !== 'removed') rightCell.innerHTML = caret + icon + txt;
-
-                        row.appendChild(leftCell);
-                        row.appendChild(rightCell);
-
-                        const liContainer = document.createElement('li');
-                        liContainer.className = 'tree-node-container expanded';
-                        liContainer.style.width = '100%';
-
-                        const childrenUl = document.createElement('ul');
-                        childrenUl.className = 'dual-folder-children';
-
-                        row.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            liContainer.classList.toggle('expanded');
-                        });
-
-                        buildTreeUI(node.children, childrenUl, depth + 1);
-
-                        liContainer.appendChild(row);
-                        liContainer.appendChild(childrenUl);
-                        container.appendChild(liContainer);
-                    }
+                // Toggle wires the caret and children visibility
+                const toggle = row.querySelector('.tree-toggle');
+                toggle.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const key = node.path + '|' + side;
+                    const nowCollapsed = collapsedFolderPaths.has(key);
+                    if (nowCollapsed) collapsedFolderPaths.delete(key);
+                    else collapsedFolderPaths.add(key);
+                    childrenEl.classList.toggle('collapsed', !nowCollapsed);
+                    toggle.classList.toggle('rotated', !nowCollapsed);
                 });
-            }
-            
-            buildTreeUI(rootNodes, fileTreeEl);
 
-            // Removing auto-open so the user can actually see the dual folder tree first.
+                container.appendChild(wrap);
+            } else {
+                container.appendChild(buildTreeFileRow(node, side));
+            }
+        });
+    }
+
+    /** Returns true if the node (or any descendant) should be visible for the current filter + side. */
+    function treeNodePassesFilter(node, side) {
+        const f = currentFolderFilter;
+        if (f === 'all') return true;
+        // 'added' files only appear on right; 'removed' files only on left
+        if (f === 'added'   && side === 'left')  return false;
+        if (f === 'removed' && side === 'right') return false;
+        if (!node.isFolder) return node.status === f;
+        return node.children.some(c => treeNodePassesFilter(c, side));
+    }
+
+    // ─── Row builders ─────────────────────────────────────────────────────────
+
+    function buildFolderRow(node, side) {
+        const row = document.createElement('div');
+        const collapsed = collapsedFolderPaths.has(node.path + '|' + side);
+        const statusClass = (node.status !== 'unchanged' && node.status !== 'mixed')
+            ? `folder-status-${node.status}` : '';
+        row.className = `tree-row tree-folder-row ${statusClass}`;
+        row.dataset.depth = (node.path.split('/').length - 1);
+        row.style.paddingLeft = `${(node.path.split('/').length - 1) * 16 + 8}px`;
+
+        // Caret toggle
+        const toggle = document.createElement('span');
+        toggle.className = `tree-toggle${collapsed ? ' rotated' : ''}`;
+        toggle.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+        // Folder icon
+        const icon = document.createElement('span');
+        icon.className = 'tree-icon';
+        icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>`;
+
+        const name = document.createElement('span');
+        name.className = 'tree-name';
+        name.textContent = node.name;
+
+        // Status badge for non-unchanged folders
+        const badge = document.createElement('span');
+        badge.className = 'tree-folder-badge';
+        if (node.status === 'removed') badge.textContent = 'removed';
+        else if (node.status === 'added') badge.textContent = 'added';
+        else if (node.status === 'modified') badge.textContent = 'modified';
+        else if (node.status === 'mixed') badge.textContent = 'mixed';
+
+        const spacer = document.createElement('span');
+        spacer.style.flex = '1';
+
+        // Move actions
+        const actions = buildMoveActions(node, side, true);
+
+        row.appendChild(toggle);
+        row.appendChild(icon);
+        row.appendChild(name);
+        row.appendChild(badge);
+        row.appendChild(spacer);
+        row.appendChild(actions);
+
+        // Clicking the row (not the toggle) also expands/collapses
+        row.addEventListener('click', () => toggle.dispatchEvent(new Event('click', { bubbles: false })));
+
+        return row;
+    }
+
+    function buildTreeFileRow(node, side) {
+        const rowStatus = node.status === 'modified' ? 'changed' : node.status;
+        const row = document.createElement('div');
+        row.className = `tree-row tree-file-row folder-row-${rowStatus}`;
+        // indent = parent depth × 16 + 8 (panel padding) + 20 (caret placeholder)
+        const depth = node.path.split('/').length - 1;
+        row.style.paddingLeft = `${depth * 16 + 28}px`;
+
+        // File icon
+        const icon = document.createElement('span');
+        icon.className = 'tree-icon';
+        icon.innerHTML = `<svg width="11" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+
+        const name = document.createElement('span');
+        name.className = 'tree-name';
+        name.title = node.path;
+        name.textContent = node.name;
+
+        const date = document.createElement('span');
+        date.className = 'ftcol-date';
+        date.textContent = node.file ? formatFileDate(node.file.lastModified) : '—';
+
+        const size = document.createElement('span');
+        size.className = 'ftcol-size';
+        size.textContent = node.file ? formatFileSize(node.file.size) : '—';
+
+        const actions = buildMoveActions(node, side, false);
+
+        row.appendChild(icon);
+        row.appendChild(name);
+        row.appendChild(date);
+        row.appendChild(size);
+        row.appendChild(actions);
+
+        if (node.status === 'modified') {
+            row.classList.add('clickable');
+            row.addEventListener('click', () => openFileDiff(node.path, node.status, node.name));
         }
+        return row;
+    }
+
+    /** Build the move-arrow action buttons for a file or folder row. */
+    function buildMoveActions(node, side, isFolder) {
+        const wrap = document.createElement('div');
+        wrap.className = 'tree-actions';
+
+        const canMoveRight = side === 'left' && node.status !== 'unchanged' && node.status !== 'added';
+        const canMoveLeft  = side === 'right' && node.status !== 'unchanged' && node.status !== 'removed';
+
+        if (canMoveRight) {
+            const btn = makeMoveBtn('→', 'move-right', isFolder ? `Copy folder to right` : `Copy to right`);
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                isFolder ? moveFolderToSide(node, 'right') : moveFileToSide(node.path, 'right');
+            });
+            wrap.appendChild(btn);
+        }
+        if (canMoveLeft) {
+            const btn = makeMoveBtn('←', 'move-left', isFolder ? `Copy folder to left` : `Copy to left`);
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                isFolder ? moveFolderToSide(node, 'left') : moveFileToSide(node.path, 'left');
+            });
+            wrap.appendChild(btn);
+        }
+        return wrap;
+    }
+
+    function makeMoveBtn(label, cls, title) {
+        const btn = document.createElement('button');
+        btn.className = `tree-move-btn ${cls}`;
+        btn.title = title;
+        btn.textContent = label;
+        return btn;
+    }
+
+    // ─── Move operations ──────────────────────────────────────────────────────
+
+    async function moveFileToSide(path, targetSide) {
+        if (targetSide === 'right') {
+            const file = originalFiles.get(path);
+            if (file) modifiedFiles.set(path, file);
+        } else {
+            const file = modifiedFiles.get(path);
+            if (file) originalFiles.set(path, file);
+        }
+        await rerunComparison();
+        showToast(`Copied "${path.split('/').pop()}" to ${targetSide}.`, 'success');
+    }
+
+    function collectFilePaths(node) {
+        if (!node.isFolder) return [node.path];
+        return node.children.flatMap(c => collectFilePaths(c));
+    }
+
+    async function moveFolderToSide(node, targetSide) {
+        const paths = collectFilePaths(node);
+        paths.forEach(path => {
+            if (targetSide === 'right') {
+                const f = originalFiles.get(path); if (f) modifiedFiles.set(path, f);
+            } else {
+                const f = modifiedFiles.get(path); if (f) originalFiles.set(path, f);
+            }
+        });
+        await rerunComparison();
+        showToast(`Copied folder "${node.name}" to ${targetSide}.`, 'success');
+    }
+
+    /** Format a file's lastModified timestamp as "28 Feb 2024 14:30" */
+    function formatFileDate(timestamp) {
+        const d = new Date(timestamp);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${hh}:${mm}`;
+    }
+
+    /** Format a file size in bytes as a human-readable string */
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    /** Format total folder size for panel header */
+    function formatFolderSize(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }
 
     /**

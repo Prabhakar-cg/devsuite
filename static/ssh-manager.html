@@ -43,8 +43,8 @@
         </div>
     </header>
 
-    <!-- Master Password Modal -->
-    <div id="master-password-overlay" class="modal-overlay">
+    <!-- Master Password Modal (shown only for migration; auth is handled by AuthGuard) -->
+    <div id="master-password-overlay" class="modal-overlay" style="display:none;">
         <div class="modal">
             <h2>Unlock Session Storage</h2>
             <p style="color:var(--text-muted); margin-top:0.5rem; font-size:0.9rem;">Your SSH profiles are encrypted locally. Enter your Master Password to unlock Terminal and SFTP.</p>
@@ -150,6 +150,8 @@
                     </div>
                     <button id="sftp-up-btn" class="btn-small" style="padding:0.25rem 0.6rem;" disabled>↑ Up</button>
                     <button id="sftp-refresh-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↺</button>
+                    <button id="sftp-upload-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↑ Upload</button>
+                    <input type="file" id="sftp-upload-input" style="display:none;" multiple>
                     <button id="sftp-disconnect-btn" class="btn-small" style="background:rgba(239,68,68,0.12); color:#ef4444; border-color:rgba(239,68,68,0.3); display:none;">Disconnect</button>
                 </div>
 
@@ -188,6 +190,6 @@
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
-    <script src="/static/ssh-manager.js?v=4"></script>
+    <script src="/static/ssh-manager.js?v=5"></script>
 </body>
 </html>

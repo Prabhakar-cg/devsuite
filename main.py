@@ -20,7 +20,7 @@ import socket
 import ipaddress
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 import asyncio
@@ -240,10 +240,186 @@ def read_db_manager_tool():
     return _serve_html("db-manager.html")
 
 
-@app.get("/formatter", response_class=HTMLResponse, summary="Serve Code Formatter tool")
-def read_formatter_tool():
-    """Serve the Code Formatter tool (JS, TS, CSS, HTML, Markdown, GraphQL via Prettier)."""
-    return _serve_html("formatter.html")
+@app.get("/file-converter", response_class=HTMLResponse, summary="Serve File Format Converter tool")
+def read_file_converter_tool():
+    """Serve the File Format Converter tool (JSON, CSV, YAML, XML, XLSX, Markdown, Images, PDF, DOCX)."""
+    return _serve_html("file-converter.html")
+
+
+@app.post("/api/convert", summary="Convert a file from one format to another (server-side)")
+async def convert_file(file: UploadFile = File(...), target_format: str = Form(...)):
+    """
+    Server-side file format conversion endpoint.
+
+    Handles conversions that require Python libraries:
+    - XLSX ↔ CSV / JSON
+    - PDF → TXT
+    - DOCX / DOC → PDF (requires LibreOffice)
+    - Markdown → PDF (requires LibreOffice or weasyprint)
+    - HTML → PDF (requires LibreOffice)
+    """
+    import tempfile, io
+
+    target_format = target_format.lower().strip()
+    original_name = (file.filename or "file").lower()
+    src_ext = original_name.rsplit(".", 1)[-1] if "." in original_name else ""
+
+    content = await file.read()
+
+    # ── XLSX → CSV / JSON ──────────────────────────────────────────────────
+    if src_ext == "xlsx" and target_format in ("csv", "json"):
+        try:
+            import openpyxl
+        except ImportError:
+            raise HTTPException(status_code=503, detail="openpyxl is not installed. Run: pip install openpyxl")
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            raise HTTPException(status_code=400, detail="Spreadsheet is empty")
+        headers = [str(h) if h is not None else "" for h in rows[0]]
+        data = [dict(zip(headers, [str(v) if v is not None else "" for v in row])) for row in rows[1:]]
+
+        if target_format == "csv":
+            import csv as csv_mod
+            buf = io.StringIO()
+            writer = csv_mod.DictWriter(buf, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows(data)
+            return Response(content=buf.getvalue(), media_type="text/csv",
+                            headers={"Content-Disposition": f'attachment; filename="converted.csv"'})
+        else:
+            return Response(content=json.dumps(data, indent=2), media_type="application/json",
+                            headers={"Content-Disposition": f'attachment; filename="converted.json"'})
+
+    # ── CSV → XLSX ─────────────────────────────────────────────────────────
+    if src_ext == "csv" and target_format == "xlsx":
+        try:
+            import openpyxl
+        except ImportError:
+            raise HTTPException(status_code=503, detail="openpyxl is not installed. Run: pip install openpyxl")
+        import csv as csv_mod
+        text = content.decode("utf-8-sig", errors="replace")
+        reader = csv_mod.reader(io.StringIO(text))
+        rows = list(reader)
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        for row in rows:
+            ws.append(row)
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return Response(content=buf.read(),
+                        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": 'attachment; filename="converted.xlsx"'})
+
+    # ── JSON → XLSX ────────────────────────────────────────────────────────
+    if src_ext == "json" and target_format == "xlsx":
+        try:
+            import openpyxl
+        except ImportError:
+            raise HTTPException(status_code=503, detail="openpyxl is not installed. Run: pip install openpyxl")
+        data = json.loads(content)
+        if not isinstance(data, list):
+            data = [data]
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        if data:
+            headers = list(data[0].keys())
+            ws.append(headers)
+            for row in data:
+                ws.append([str(row.get(h, "")) for h in headers])
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return Response(content=buf.read(),
+                        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": 'attachment; filename="converted.xlsx"'})
+
+    # ── PDF → TXT ──────────────────────────────────────────────────────────
+    if src_ext == "pdf" and target_format == "txt":
+        try:
+            import pypdf
+        except ImportError:
+            raise HTTPException(status_code=503, detail="pypdf is not installed. Run: pip install pypdf")
+        reader = pypdf.PdfReader(io.BytesIO(content))
+        pages_text = [page.extract_text() or "" for page in reader.pages]
+        full_text = "\n\n".join(pages_text)
+        return Response(content=full_text, media_type="text/plain",
+                        headers={"Content-Disposition": 'attachment; filename="converted.txt"'})
+
+    # ── DOCX → TXT ────────────────────────────────────────────────────────
+    if src_ext == "docx" and target_format == "txt":
+        try:
+            import docx
+        except ImportError:
+            raise HTTPException(status_code=503, detail="python-docx is not installed. Run: pip install python-docx")
+        doc = docx.Document(io.BytesIO(content))
+        text = "\n".join(para.text for para in doc.paragraphs)
+        return Response(content=text, media_type="text/plain",
+                        headers={"Content-Disposition": 'attachment; filename="converted.txt"'})
+
+    # ── Pure-Python PDF conversions: DOCX/DOC/HTML/MD → PDF ──────────────
+    if target_format == "pdf" and src_ext in ("docx", "doc", "html", "htm", "md", "markdown"):
+        try:
+            import weasyprint
+        except ImportError:
+            raise HTTPException(status_code=503, detail="weasyprint is not installed. Run: pip install weasyprint")
+
+        # Step 1: Get HTML content
+        if src_ext in ("docx", "doc"):
+            try:
+                import mammoth
+            except ImportError:
+                raise HTTPException(status_code=503, detail="mammoth is not installed. Run: pip install mammoth")
+            result = mammoth.convert_to_html(io.BytesIO(content))
+            raw_html = result.value
+        elif src_ext in ("md", "markdown"):
+            import html as _html_mod
+            try:
+                import markdown as md_lib
+                raw_html = md_lib.markdown(content.decode("utf-8", errors="replace"), extensions=["tables", "fenced_code"])
+            except ImportError:
+                # Fallback: wrap text in <pre>
+                raw_html = "<pre>" + _html_mod.escape(content.decode("utf-8", errors="replace")) + "</pre>"
+        else:  # html / htm
+            raw_html = content.decode("utf-8", errors="replace")
+
+        # Step 2: Wrap in a full HTML document with print-friendly CSS
+        full_html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body {{ font-family: Georgia, 'Times New Roman', serif; font-size: 12pt; line-height: 1.6;
+          margin: 2cm; color: #111; }}
+  h1,h2,h3,h4,h5,h6 {{ font-family: Arial, Helvetica, sans-serif; margin-top: 1.2em; }}
+  h1 {{ font-size: 22pt; }} h2 {{ font-size: 17pt; }} h3 {{ font-size: 14pt; }}
+  p {{ margin: 0.5em 0 0.8em; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
+  th, td {{ border: 1px solid #ccc; padding: 6px 10px; text-align: left; }}
+  th {{ background: #f0f0f0; font-weight: bold; }}
+  pre, code {{ font-family: 'Courier New', monospace; font-size: 10pt;
+               background: #f5f5f5; padding: 0.2em 0.4em; border-radius: 3px; }}
+  pre {{ padding: 0.8em; white-space: pre-wrap; word-break: break-word; }}
+  img {{ max-width: 100%; height: auto; }}
+  a {{ color: #1a56db; }}
+  @page {{ margin: 2cm; }}
+</style>
+</head>
+<body>{raw_html}</body>
+</html>"""
+
+        # Step 3: Render to PDF
+        pdf_bytes = weasyprint.HTML(string=full_html).write_pdf()
+
+        return Response(content=pdf_bytes, media_type="application/pdf",
+                        headers={"Content-Disposition": 'attachment; filename="converted.pdf"'})
+
+    raise HTTPException(
+        status_code=400,
+        detail=f"Unsupported server-side conversion: {src_ext} → {target_format}"
+    )
 
 
 @app.get("/api/vault", summary="Get encrypted vault blob")
@@ -676,6 +852,56 @@ def auth_update_challenge(data: dict):
     return {"status": "ok"}
 
 
+async def _ensure_host_key(host: str, port: int) -> str:
+    """
+    Ensures ~/.ssh/known_hosts exists and contains an entry for host:port.
+    Implements Trust On First Use (TOFU) via ssh-keyscan: new hosts are
+    accepted automatically; changed keys still cause asyncssh to refuse.
+    Returns the path to the known_hosts file.
+    """
+    known_hosts_path = os.path.expanduser("~/.ssh/known_hosts")
+    ssh_dir = os.path.dirname(known_hosts_path)
+
+    # Create ~/.ssh (mode 700) and known_hosts (mode 600) if absent
+    os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+    if not os.path.exists(known_hosts_path):
+        with open(known_hosts_path, "w"):
+            pass
+        os.chmod(known_hosts_path, 0o600)
+
+    # ssh-keygen -F checks whether host:port already has an entry
+    lookup = f"[{host}]:{port}" if port != 22 else host
+    check = await asyncio.create_subprocess_exec(
+        "ssh-keygen", "-F", lookup, "-f", known_hosts_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    await check.wait()
+
+    if check.returncode != 0:
+        # Host not yet known — scan its public key and append it (TOFU)
+        proc = await asyncio.create_subprocess_exec(
+            "ssh-keyscan", "-p", str(port), "-H", host,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+        except asyncio.TimeoutError:
+            raise RuntimeError(f"ssh-keyscan timed out for {host}:{port}")
+
+        if proc.returncode != 0 or not stdout.strip():
+            raise RuntimeError(
+                f"Could not retrieve host key for {host}:{port}. "
+                "Is the host reachable?"
+            )
+
+        with open(known_hosts_path, "ab") as fh:
+            fh.write(stdout)
+
+    return known_hosts_path
+
+
 @app.websocket("/api/ssh/terminal")
 async def ssh_terminal(websocket: WebSocket):
     # Validate Origin header — reject missing AND disallowed origins
@@ -698,23 +924,9 @@ async def ssh_terminal(websocket: WebSocket):
         password = config.get("password")
         private_key = config.get("private_key")
         
-        # Load system known_hosts for host key verification
-        known_hosts_paths = [
-            os.path.expanduser("~/.ssh/known_hosts"),
-            "/etc/ssh/ssh_known_hosts"
-        ]
-        known_hosts_path = None
-        for path in known_hosts_paths:
-            if os.path.exists(path):
-                known_hosts_path = path
-                break
-
-        # Fail-closed: never silently disable host-key verification
-        if known_hosts_path is None:
-            raise ValueError(
-                "No known_hosts file found. Add the server's host key to "
-                "~/.ssh/known_hosts before connecting."
-            )
+        # Ensure known_hosts exists and has an entry for this host (TOFU)
+        await websocket.send_text(f"Verifying host key for {host}:{port}...\r\n")
+        known_hosts_path = await _ensure_host_key(host, port)
 
         connect_kwargs = {
             "host": host,
@@ -780,24 +992,8 @@ class SFTPRequest(BaseModel):
 @app.post("/api/sftp/list", summary="List files via SFTP")
 async def sftp_list(req: SFTPRequest):
     try:
-        # Load system known_hosts for host key verification
-        known_hosts_paths = [
-            os.path.expanduser("~/.ssh/known_hosts"),
-            "/etc/ssh/ssh_known_hosts"
-        ]
-        known_hosts_path = None
-        for path in known_hosts_paths:
-            if os.path.exists(path):
-                known_hosts_path = path
-                break
-
-        # Fail-closed: never silently disable host-key verification
-        if known_hosts_path is None:
-            raise HTTPException(
-                status_code=412,
-                detail="No known_hosts file found. Add the server's host key to "
-                       "~/.ssh/known_hosts before connecting."
-            )
+        # Ensure known_hosts exists and has an entry for this host (TOFU)
+        known_hosts_path = await _ensure_host_key(req.host, req.port)
 
         connect_kwargs = {
             "host": req.host,
@@ -826,6 +1022,78 @@ async def sftp_list(req: SFTPRequest):
                     })
                 result.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
                 return {"files": result, "cwd": req.path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+class SFTPDownloadRequest(BaseModel):
+    host: str
+    port: int = 22
+    username: str
+    password: str | None = None
+    private_key: str | None = None
+    path: str  # full remote file path
+
+@app.post("/api/sftp/download", summary="Download a file via SFTP")
+async def sftp_download(req: SFTPDownloadRequest):
+    try:
+        known_hosts_path = await _ensure_host_key(req.host, req.port)
+        connect_kwargs = {
+            "host": req.host,
+            "port": req.port,
+            "username": req.username,
+            "known_hosts": known_hosts_path
+        }
+        if req.password:
+            connect_kwargs["password"] = req.password
+        if req.private_key:
+            connect_kwargs["client_keys"] = [asyncssh.import_private_key(req.private_key)]
+
+        async with asyncssh.connect(**connect_kwargs) as conn:
+            async with conn.start_sftp_client() as sftp:
+                async with sftp.open(req.path, 'rb') as remote_file:
+                    data = await remote_file.read()
+
+        filename = req.path.rstrip('/').split('/')[-1]
+        return Response(
+            content=data,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/api/sftp/upload", summary="Upload a file via SFTP")
+async def sftp_upload(
+    host: str = Form(...),
+    port: int = Form(22),
+    username: str = Form(...),
+    password: str | None = Form(None),
+    private_key: str | None = Form(None),
+    remote_path: str = Form(...),
+    file: UploadFile = File(...)
+):
+    try:
+        known_hosts_path = await _ensure_host_key(host, port)
+        connect_kwargs = {
+            "host": host,
+            "port": port,
+            "username": username,
+            "known_hosts": known_hosts_path
+        }
+        if password:
+            connect_kwargs["password"] = password
+        if private_key:
+            connect_kwargs["client_keys"] = [asyncssh.import_private_key(private_key)]
+
+        file_content = await file.read()
+        remote_file_path = remote_path.rstrip('/') + '/' + file.filename
+
+        async with asyncssh.connect(**connect_kwargs) as conn:
+            async with conn.start_sftp_client() as sftp:
+                async with sftp.open(remote_file_path, 'wb') as remote_file:
+                    await remote_file.write(file_content)
+
+        return {"success": True, "path": remote_file_path}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 

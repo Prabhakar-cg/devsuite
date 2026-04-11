@@ -15,7 +15,7 @@
         rel="stylesheet">
 
     <!-- App Styles -->
-    <link rel="stylesheet" href="/static/style.css?v=58">
+    <link rel="stylesheet" href="/static/style.css?v=60">
     <script src="/static/theme.js?v=2"></script>
     <style>
         .back-link {
@@ -368,31 +368,101 @@
             </div>
 
             <!-- Folder Results -->
-            <!-- Folder Results -->
             <div class="folder-results-container hidden" id="folder-results-container">
 
-                <!-- Global Folders Title Header -->
-                <div id="folder-diff-titles" class="diff-editor-titles folder-diff-titles hidden">
-                    <div class="diff-title-pane" id="folder-title-left">Folder 1 (Original)</div>
-                    <div class="diff-title-pane" id="folder-title-right">Folder 2 (Modified)</div>
-                </div>
-
-                <!-- Dual Tree View Layer -->
-                <div class="dual-tree-layer" id="dual-tree-layer">
-                    <!-- Filter Chips -->
-                    <div class="filter-chips">
-                        <span class="filter-chip active-filter" data-filter="all">All</span>
-                        <span class="filter-chip modified" data-filter="modified">● Differs</span>
-                        <span class="filter-chip added" data-filter="added">● Only F2</span>
-                        <span class="filter-chip removed" data-filter="removed">● Only F1</span>
-                        <span class="line-count-badge" id="changed-files-count" style="margin-left: auto;">0</span>
+                <!-- Summary Bar -->
+                <div class="folder-summary-bar" id="folder-summary-bar-counts">
+                    <div class="folder-summary-stats">
+                        <span class="folder-summary-chip chip-removed">
+                            <span id="count-removed">0</span> removed files
+                        </span>
+                        <span class="folder-summary-sep"></span>
+                        <span class="folder-summary-chip chip-added">
+                            <span id="count-added">0</span> added file
+                        </span>
+                        <span class="folder-summary-sep"></span>
+                        <span class="folder-summary-chip chip-changed">
+                            <span id="count-changed">0</span> changed file
+                        </span>
+                        <span class="folder-summary-sep"></span>
+                        <span class="folder-summary-chip chip-unchanged">
+                            <span id="count-unchanged">0</span> files unchanged
+                        </span>
                     </div>
-                    <ul id="file-tree" class="dual-file-tree"></ul>
+                    <div class="folder-summary-right">
+                        <div class="folder-filter-chips-bar">
+                            <span class="folder-filter-chip active-filter" data-filter="all">All</span>
+                            <span class="folder-filter-chip modified" data-filter="modified">● Differs</span>
+                            <span class="folder-filter-chip added" data-filter="added">● Added only</span>
+                            <span class="folder-filter-chip removed" data-filter="removed">● Removed only</span>
+                        </div>
+                        <div class="tree-expand-controls">
+                            <button class="tree-expand-btn" id="expand-all-btn" title="Expand all folders">Expand All</button>
+                            <button class="tree-expand-btn" id="collapse-all-btn" title="Collapse all folders">Collapse All</button>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Folder Monaco Editor -->
+                <!-- Dual Table Layout -->
+                <div class="folder-table-layout" id="dual-tree-layer">
+                    <!-- Left Panel (Original) -->
+                    <div class="folder-panel" id="folder-panel-left">
+                        <div class="folder-panel-header">
+                            <div class="folder-panel-header-info">
+                                <div class="folder-panel-name" id="folder-panel-name-left">Folder 1</div>
+                                <div class="folder-panel-size" id="folder-panel-size-left">—</div>
+                            </div>
+                            <button class="folder-panel-select-btn" id="reselect-left-btn" title="Change folder">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="folder-table-columns">
+                            <div class="ftcol-name">File</div>
+                            <div class="ftcol-date">Last edited</div>
+                            <div class="ftcol-size">Size</div>
+                            <div class="ftcol-actions"></div>
+                        </div>
+                        <div class="folder-table-body" id="folder-table-left"></div>
+                    </div>
+
+                    <!-- Right Panel (Modified) -->
+                    <div class="folder-panel" id="folder-panel-right">
+                        <div class="folder-panel-header">
+                            <div class="folder-panel-header-info">
+                                <div class="folder-panel-name" id="folder-panel-name-right">Folder 2</div>
+                                <div class="folder-panel-size" id="folder-panel-size-right">—</div>
+                            </div>
+                            <button class="folder-panel-select-btn" id="reselect-right-btn" title="Change folder">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="folder-table-columns">
+                            <div class="ftcol-name">File</div>
+                            <div class="ftcol-date">Last edited</div>
+                            <div class="ftcol-size">Size</div>
+                            <div class="ftcol-actions"></div>
+                        </div>
+                        <div class="folder-table-body" id="folder-table-right"></div>
+                    </div>
+                </div>
+
+                <!-- Legacy hidden elements for JS compatibility -->
+                <ul id="file-tree" class="hidden"></ul>
+                <span id="changed-files-count" class="hidden">0</span>
+
+                <!-- Folder Monaco Editor (file diff view) -->
                 <div class="folder-editor-wrapper hidden" id="folder-editor-wrapper">
-                    
+
+                    <!-- Folder title bar (shown when viewing a file diff) -->
+                    <div id="folder-diff-titles" class="diff-editor-titles folder-diff-titles hidden">
+                        <div class="diff-title-pane" id="folder-title-left">Folder 1 (Original)</div>
+                        <div class="diff-title-pane" id="folder-title-right">Folder 2 (Modified)</div>
+                    </div>
+
                     <!-- Folder Diff Stats Bar (hidden initially) -->
                     <div class="stats-bar hidden" id="folder-stats-bar">
                         <button class="btn btn-primary" id="back-to-folders-btn" style="margin-right: 1rem; padding: 0.35rem 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
@@ -449,7 +519,7 @@
     <!-- Highlight.js for Language Auto-Detection -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <!-- App Logic -->
-    <script src="/static/app.js?v=58"></script>
+    <script src="/static/app.js?v=60"></script>
 </body>
 
 </html>

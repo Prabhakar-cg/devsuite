@@ -568,6 +568,7 @@ async function sftpConnectTo(profile) {
     document.getElementById('sftp-conn-label').textContent = `${profile.user}@${profile.host}:${profile.port || 22}`;
     document.getElementById('sftp-disconnect-btn').style.display = 'inline-block';
     document.getElementById('sftp-refresh-btn').style.display    = 'inline-block';
+    document.getElementById('sftp-upload-btn').style.display     = 'inline-block';
 
     await sftpLoadDir('/');
 }
@@ -585,6 +586,7 @@ document.getElementById('sftp-disconnect-btn').addEventListener('click', () => {
     document.getElementById('sftp-conn-label').textContent  = 'Not connected — select a session';
     document.getElementById('sftp-disconnect-btn').style.display = 'none';
     document.getElementById('sftp-refresh-btn').style.display    = 'none';
+    document.getElementById('sftp-upload-btn').style.display     = 'none';
     document.getElementById('sftp-up-btn').disabled              = true;
     document.getElementById('sftp-path-input').value             = '/';
     document.getElementById('sftp-file-grid').innerHTML          = '';
@@ -699,9 +701,95 @@ function renderSftpGrid(files) {
                 const newPath = sftpConn.path === '/' ? '/' + f.name : sftpConn.path + '/' + f.name;
                 sftpLoadDir(newPath);
             });
+        } else {
+            card.title = 'Click to download';
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', () => sftpDownloadFile(f.name));
         }
         grid.appendChild(card);
     });
+}
+
+// ──────────────────────────────────────────
+// SFTP Download
+// ──────────────────────────────────────────
+async function sftpDownloadFile(filename) {
+    if (!sftpConn) return;
+    const filePath = sftpConn.path === '/' ? '/' + filename : sftpConn.path + '/' + filename;
+    showToast(`Downloading ${filename}…`, 'info');
+    try {
+        const payload = {
+            host:        sftpConn.profile.host,
+            port:        parseInt(sftpConn.profile.port || 22),
+            username:    sftpConn.profile.user,
+            password:    sftpConn.profile.pass  || null,
+            private_key: sftpConn.profile.key   || null,
+            path:        filePath
+        };
+        const r = await fetch('/api/sftp/download', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(payload)
+        });
+        if (!r.ok) {
+            const e = await r.json();
+            throw new Error(e.detail || `Server error ${r.status}`);
+        }
+        const blob = await r.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast(`Downloaded ${filename}`, 'success');
+    } catch (e) {
+        showToast(`Download failed: ${e.message}`, 'error');
+    }
+}
+
+// ──────────────────────────────────────────
+// SFTP Upload
+// ──────────────────────────────────────────
+document.getElementById('sftp-upload-btn').addEventListener('click', () => {
+    if (!sftpConn) return;
+    document.getElementById('sftp-upload-input').click();
+});
+
+document.getElementById('sftp-upload-input').addEventListener('change', async (evt) => {
+    const files = Array.from(evt.target.files);
+    evt.target.value = '';  // reset so same file can be re-selected
+    if (!files.length || !sftpConn) return;
+    for (const file of files) {
+        await sftpUploadFile(file);
+    }
+});
+
+async function sftpUploadFile(file) {
+    if (!sftpConn) return;
+    showToast(`Uploading ${file.name}…`, 'info');
+    try {
+        const fd = new FormData();
+        fd.append('host',        sftpConn.profile.host);
+        fd.append('port',        sftpConn.profile.port || '22');
+        fd.append('username',    sftpConn.profile.user);
+        if (sftpConn.profile.pass) fd.append('password',    sftpConn.profile.pass);
+        if (sftpConn.profile.key)  fd.append('private_key', sftpConn.profile.key);
+        fd.append('remote_path', sftpConn.path);
+        fd.append('file',        file, file.name);
+
+        const r = await fetch('/api/sftp/upload', { method: 'POST', body: fd });
+        if (!r.ok) {
+            const e = await r.json();
+            throw new Error(e.detail || `Server error ${r.status}`);
+        }
+        showToast(`Uploaded ${file.name}`, 'success');
+        await sftpLoadDir(sftpConn.path);  // refresh directory listing
+    } catch (e) {
+        showToast(`Upload failed: ${e.message}`, 'error');
+    }
 }
 
 // ──────────────────────────────────────────

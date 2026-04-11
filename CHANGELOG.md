@@ -1,147 +1,167 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+Versions follow [Semantic Versioning](https://semver.org/). This log was reset at **v0.5.0** to establish a clean baseline reflecting the current full feature set.
 
-## [2.1.0] - 2026-04-01
+---
 
-### Added
-- **Cron Visualizer** (`/cron`) — A rich, 100% client-side cron expression tool.
-  - **4 dialect support**: Unix/Linux (5-field), Quartz/Spring (6–7-field with `?`, `L`, `W`, `#`), AWS EventBridge (6-field with year), GitHub Actions (with inline YAML context display).
-  - **Live expression parser** — real-time field-by-field tokenization and validation with colour-coded field chips and a ✓/✗ status pill.
-  - **Human-readable description** — auto-generates a plain-English sentence (e.g. *"Every 15 minutes, between 9:00 AM and 5:00 PM, Monday through Friday"*).
-  - **Visual Field Builder** — click-to-toggle grids for Minute (0–59), Hour (0–23), Month, and Day-of-Week; bidirectionally synced with the text input.
-  - **Next 10 Run Times** panel — brute-force minute-iteration scheduler (no external lib); shows locale date, time, and relative countdown.
-  - **28-Day Activity Heatmap** — CSS grid calendar with teal intensity shading based on fire frequency; hover tooltip per day.
-  - **Preset Library** — curated common expressions per dialect (Unix, Quartz, AWS, GitHub), click-to-load.
-  - **Export** — copy raw expression, GitHub Actions / Kubernetes CronJob YAML, or AWS EventBridge JSON with one click.
-- **`GET /cron`** route added to `main.py`.
-- **Cron Visualizer card** added to the home dashboard (`home.html`) with teal accent colour.
+## [0.5.0] — 2026-04-11
 
-## [6.0.0] - 2026-03-30
+This is the **baseline release** — a comprehensive snapshot of all features, tools, and infrastructure present in DevSuite at this version. Future releases will document incremental changes against this baseline.
 
-### Added
-- **Secure Terminal** (`/ssh`) — Full-featured multi-tab SSH client powered by `asyncssh` and `xterm.js`.
-  - Multi-tab terminal UI — open parallel sessions to different hosts, each in its own tab.
-  - Password and Private Key (PEM) authentication.
-  - Session profiles stored locally in `~/.devsuite/ssh_profiles.json` are encrypted at rest via AES (CryptoJS) and unlocked with a Master Password.
-  - Tree-style sidebar with collapsible group folders and a quick-search/filter.
-  - **SFTP Browser** sub-feature (via the "SFTP" vertical strip tab) — browse, navigate and inspect remote filesystems without leaving the terminal page.
-    - Grid file view with type icons, file sizes, up/back navigation, refresh, disconnect.
-    - Shares the same unlocked session profiles — no second password required.
-  - **WSL / Local Terminal** — auto-discovers installed WSL distributions on Windows; spawns local PTY shells for `Local Terminal` and each WSL distro.
-  - Inline **Delete Session** (🗑️) icon on sidebar items — no need to open the edit modal.
-  - Terminal resize events propagated to the remote PTY on window resize and pane drag.
-- **`/sftp` route** — standalone SFTP Browser page (`sftp-browser.html`) for direct deep-linking.
+### Tools
 
-### Changed
-- Secure Terminal vertical strip cleaned up: removed non-functional **Tools** and **Macros** placeholder buttons; only **Sessions** and **SFTP** remain (both functional).
-- Modal button renamed from "Delete Server" → **"Delete Session"**.
-- SFTP panel moved from a split-pane inside the terminal view to a **dedicated sub-tab** in the vertical strip, giving the terminal full width.
-- Home dashboard card description updated to reflect the SFTP sub-feature.
+#### Diff Checker (`/diff`)
+- Side-by-side and Inline comparison modes via Monaco Editor.
+- Merge arrows to copy individual hunks left→right or right→left.
+- Keyboard shortcut `Ctrl/Cmd+Enter` to compare; `Escape` to reset.
+- Paste from Clipboard button per panel; Copy Panel Content button.
+- Live Diff Stats Bar with additions, removals, and hunk count.
+- Export diff as `.patch` file or copy unified diff to clipboard.
+- Line count badges per panel, updated on every keystroke.
+- **Folder Diff** tab — compare entire directory trees; filter chips (All / Modified / Added / Removed); file upload support; deep-link via `/diff?tab=folder-diff`.
 
-### Fixed
-- **SFTP `start_sftp_client` coroutine bug** — `asyncssh.SSHClientConnection.start_sftp_client` is an awaitable coroutine, not an async context manager. Changed from `async with conn.start_sftp_client()` to `sftp = await conn.start_sftp_client(); async with sftp:`, resolving silent SFTP connection failures.
+#### JSON Linter & Formatter (`/json`)
+- Real-time JSON validation with exact line/column error pointers.
+- Pretty-print, minify, and sort keys alphabetically.
+- Monaco Editor integration with syntax highlighting.
 
-## [5.1.0] - 2026-03-28
-### Added
-- **Local API Tester** (`/api-tester`) — Full-featured REST client for local development.
-  - Request Collections: Organizable folders for API requests.
-  - Local History: Persistent log of all local API interactions stored in `~/.devsuite/collections.json`.
-  - Privacy Guard: Hardened local-only storage logic for API keys/tokens.
+#### YAML Linter & Validator (`/yaml`)
+- YAML parsing and validation powered by `js-yaml` (CDN).
+- Format clean YAML or convert directly to JSON with one click.
+- Useful for Kubernetes, Docker Compose, and GitHub Actions configs.
 
-## [5.0.1] - 2026-03-21
-### Fixed
-- **Diff tool icon** — Restored `.tool-icon`, `.tool-identity`, `.tool-name`, `.tool-version`, and `.kbd-badge` CSS rules that were accidentally removed from `style.css` during the audit cleanup. `index.html` loads `style.css` exclusively (not `linter.css`), so the removal caused the header icon to render unstyled and oversized.
-- **QR Code & Barcode** — Reverted both codes to encode `data.original_url` (the real destination URL) instead of `data.short_url`. The short URL is always a `127.0.0.1` local address, which is unusable when scanned by a phone or external device. Added a 80-char truncation guard for the Code128 barcode on very long URLs.
+#### Regex Tester (`/regex`)
+- Real-time match highlighting inside Monaco Editor.
+- Group capture and named group display panel.
+- `g`, `i`, `m`, `s` flag toggles.
 
-## [5.0.0] - 2026-03-21
+#### Base64 Encoder / Decoder (`/base64`)
+- Encode/decode strings with full UTF-8 support.
+- URL-safe mode.
+- JWT decoding panel — splits header, payload, and signature; pretty-prints JSON.
 
-### Added
-- **Crypto Suite** (`/crypto`) — Four-tab cryptographic toolkit:
-  - Hash Generator (MD5, SHA-1, SHA-256, SHA-512) with copy buttons per hash.
-  - AES Encrypt/Decrypt with CBC, ECB, and CTR mode selection.
-  - RSA Key Pair generation (2048/4096-bit) with in-browser encrypt/decrypt.
-  - HMAC Sign & Verify (SHA-256, SHA-512) with a visual OK/INVALID banner.
-  - Base64 / JWT decode tab (splits header, payload, signature).
-- **Link & QR Studio** (`/url-shortener`) — Renamed and extended URL Shortener:
-  - Local URL shortener that generates short `/r/<id>` links served by the local DevSuite instance.
-  - QR Code and Code128 Barcode generated for every shortened link using the short URL.
-  - PNG download button for both the QR Code and the Barcode.
-  - Recent links panel backed by `localStorage`.
-- **`url_db.json`** — Persistent URL shortener database; survives server restarts.
-- **`test_local_server.py`** — Basic HTTP smoke test with proper error handling, replacing the old `test_puppeteer.py`.
+#### Crypto Suite (`/crypto`)
+- **Hash Generator** — MD5, SHA-1, SHA-256, SHA-512 with per-hash copy buttons.
+- **AES Encrypt/Decrypt** — CBC, ECB, CTR mode selection via CryptoJS (self-hosted).
+- **RSA Key Pair** — generate 2048/4096-bit keypairs; in-browser encrypt/decrypt.
+- **HMAC Sign & Verify** — SHA-256 and SHA-512 with a visual OK/INVALID banner.
+- All operations fully offline via self-hosted `crypto-js.min.js` (v4.2.0).
 
-### Changed
-- **Link & QR Studio** barcode payload changed from truncated `original_url` to `short_url` for reliable Code128 encoding.
-- **`requirements.txt`** — Updated `fastapi` and `uvicorn` to valid, available PyPI versions (`>=0.100.0`, `>=0.25.0`).
-- **`style.css`** — Removed ~80 lines of duplicated `.tool-identity`/`.tool-icon`/`.tool-name`/`.tool-version` rules (already provided by `linter.css`). Added semantic CSS classes for folder diff layout elements extracted from `index.html`.
-- **`index.html`** — Folder diff elements now use semantic CSS classes instead of inline `style=` attributes.
-- **`theme.js`** — `applyThemeDOM` now also writes to `document.body.style.background` and `document.body.style.color` so external CSS selectors and scripts can read the current theme.
-- Home dashboard card renamed from "URL Shortener" to "Link & QR Studio".
+#### Link & QR Studio (`/url-shortener`)
+- Local URL shortener generating short `/r/<id>` redirect links.
+- QR Code and Code128 Barcode generated for every shortened link (using the original URL).
+- PNG download for both QR Code and Barcode.
+- Recent links panel backed by `localStorage`.
+- Short link IDs are collision-safe (up to 10 retries for uniqueness).
+- Persistence via DevDB (`url_db` store); survives server restarts.
 
-### Security
-- **DOM XSS hardening** — Replaced all `innerHTML` assignments that used untrusted data (folder names, file names, regex match values, toast messages, error text) with safe DOM construction via `createElement` + `textContent` / `createTextNode` across `app.js`, `crypto.html`, `regex.html`, and `url-shortener.html`.
-- **Self-hosted libraries** — `crypto-js.min.js` (v4.2.0) and `bwip-js-min.js` (v3.4.1) are now served from `/static/` instead of external CDNs, eliminating supply-chain risk.
-- **HTTP Security Headers** — Added `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, and `Referrer-Policy` middleware in `main.py`.
-- **URL validation** — `POST /api/shorten` now rejects empty or whitespace-only input and validates scheme + host via `urllib.parse` before storing.
-- **Collision-safe `short_id`** — Generator now retries up to 10 times to guarantee a unique ID, preventing silent overwrites.
-- **`crypto.html` HTML structure** — Corrected misplaced `</head>` / `<body>` element order; `toast-container` now lives strictly inside a properly opened `<body>`.
-- **`app.js` null safety** — Added guard for `folderToggleInlineBtn` before attaching event listener. Removed dead empty `if` block.
-- **Duplicate event listener removed** — Eliminated duplicate `themeSelect` change listener in `app.js` (handled by `theme.js`).
-- **`.gitignore`** — Added entries for `url_db.json`, test cache, build artifacts, and coverage reports.
+#### Local API Tester (`/api-tester`)
+- Full REST client — GET, POST, PUT, DELETE, PATCH, custom headers and body.
+- Request Collections with folder organization.
+- Local CORS proxy (`/api/proxy`) to bypass browser CORS restrictions.
+- Persistent collections saved in DevDB (`collections` store).
+- 8-hour session auth via `auth-guard.js`.
 
-### Removed
-- `test_puppeteer.py` — Replaced by `test_local_server.py` (correct name, proper error handling, no unused imports).
-- External CDN dependencies for `crypto-js` and `bwip-js` (now self-hosted).
+#### Secure Terminal & SFTP (`/ssh`)
+- Multi-tab SSH client — parallel sessions to different hosts, each in its own xterm.js tab.
+- Password and Private Key (PEM) authentication.
+- Session profiles stored in DevDB (`ssh_profiles` store); encrypted client-side with a Master Password.
+- Tree-style sidebar with collapsible group folders and quick-search/filter.
+- Inline Delete icon on sidebar items — no modal required.
+- Terminal resize events propagated to the remote PTY.
+- **SFTP Browser** sub-tab — browse, navigate, and inspect remote filesystems; grid view with type icons, sizes, up/back navigation, refresh, and disconnect.
+- **WSL / Local Terminal** — auto-discovers installed WSL distributions; spawns local PTY shells.
+- **Standalone SFTP Browser** (`/sftp`) — direct deep-link to the SFTP Browser without opening the terminal.
 
-## [4.0.0] - 2026-03-11
+#### Cron Visualizer (`/cron`)
+- 4 dialect support: Unix/Linux (5-field), Quartz/Spring (6–7-field, with `?`, `L`, `W`, `#`), AWS EventBridge (6-field with year), GitHub Actions (with inline YAML context).
+- Live expression parser with per-field tokenization, colour-coded field chips, and a ✓/✗ status pill.
+- Human-readable description (e.g., *"Every 15 minutes, between 9:00 AM and 5:00 PM, Monday through Friday"*).
+- Visual Field Builder — click-to-toggle grids for Minute (0–59), Hour (0–23), Month, Day-of-Week; bidirectionally synced with the text input.
+- Next 10 Run Times panel — brute-force minute-iteration scheduler; shows locale date, time, and relative countdown.
+- 28-Day Activity Heatmap — CSS grid calendar with teal intensity shading; hover tooltip per day.
+- Preset Library — curated common expressions per dialect (Unix, Quartz, AWS, GitHub), click-to-load.
+- Export — copy raw expression, GitHub Actions / Kubernetes CronJob YAML, or AWS EventBridge JSON.
 
-### Added
-- **DevSuite Homepage** — New central portal (`home.html`) featuring a glassmorphic dashboard of all available developer tools.
-- **JSON Linter & Formatter** (`/json`) — Monaco-powered JSON validation, formatting, minification, and key sorting.
-- **YAML Linter & Validator** (`/yaml`) — YAML parsing and formatting powered by `js-yaml`, with one-click conversion to JSON.
-- **Regex Tester** (`/regex`) — Real-time regex match highlighting inside Monaco, group capture display, and interactive flag toggles.
-- **Base64 Coder** (`/base64`) — Encode/decode strings and files, URL-safe mode, and a visual JWT decoding panel.
-- **Shared Linter Layout** (`linter.css`) — A unified split-pane layout and styling system for all non-diff tools.
+#### Secret Vault (`/vault`)
+- KeePass-style encrypted secret manager for tokens, passwords, SSH keys, and API credentials.
+- AES-256 client-side encryption via CryptoJS — the server never sees plaintext.
+- Lock screen on every visit; Master Password is never stored anywhere.
+- CRUD interface — add, view (reveal/hide), copy to clipboard, edit, and delete entries.
+- Categories: Token, Password, SSH Key, API Key, Note, Other.
+- Persistence via DevDB (`vault` store).
 
-### Changed
-- App routing updated in `main.py`: Root `/` now serves the DevSuite homepage. The Diff Checker moved to `/diff`.
-- Diff Checker UI updated to include a "← DevSuite" navigation back-link.
-- `app.js` updated to parse URL parameters, enabling deep-linking to the Folder Diff tab (`/diff?tab=folder`).
+#### DevDB Manager (`/db-manager`)
+- Unified encrypted database inspector for all DevDB stores.
+- Shows store names, approximate sizes, and database metadata (created, modified timestamps).
+- Export / Import — download or upload the full `.dsb` database file.
+- Store viewer — browse raw JSON content of any named store.
+- Auth-gated with always-ask Master Password lock screen.
 
+#### File Format Converter (`/file-converter`)
+- Multi-format conversion engine supporting: JSON, CSV, YAML, XML, TSV, XLSX, Markdown, HTML, DOCX, and PDF.
+- **Client-side** (in-browser): JSON ↔ YAML, JSON ↔ CSV, JSON → XML, YAML → JSON, Markdown → HTML.
+- **Server-side** (Python): XLSX ↔ CSV/JSON, PDF → TXT, DOCX → TXT, DOCX/HTML/Markdown → PDF (via WeasyPrint).
+- Drag-and-drop upload zone or file picker.
+- Output displayed inline with a download button.
 
-## [3.0.0] - 2026-03-10
-### Added
-- **Premium UI redesign** — glassmorphic header with gradient top rim, electric indigo/blue accent system, and JetBrains Mono for code panels.
-- **Live Diff Stats Bar** — color-coded chips showing additions (+), removals (−), and hunk count after every comparison.
-- **Multi-type Toast Notifications** — slide-in toasts for success ✅, error ❌, warning ⚠️, and info ℹ️ with auto-dismiss.
-- **Keyboard shortcuts** — `Ctrl/Cmd + Enter` to compare; `Escape` to return to edit mode.
-- **Paste from Clipboard** — 📋 Paste button per panel using `navigator.clipboard.readText()`.
-- **Copy Panel Content** — icon button copies the textarea content to the clipboard.
-- **Line Count Badges** — live line count in each panel header, updated on every keystroke.
-- **Export Patch** — download the diff as a `.patch` file or copy unified diff text to clipboard.
-- **Folder Diff filter chips** — filter the changed-file sidebar by All / Modified / Added / Removed.
-- **Segmented Merge Buttons** — "→ Copy to File 2" and "Copy to File 1 ←" grouped as a styled button pair.
-- `static/test_merge.html` — unit-test harness for merge logic and live Monaco merge verification.
+---
 
-### Changed
-- Input panels relabeled from **Original / Modified** to **File 1 / File 2** for clarity.
-- `style.css` — full design-system rewrite; removed Tailwind CDN dependency, replaced with semantic CSS variables and component classes.
-- `index.html` — full HTML restructure using new CSS component classes.
-- `app.js` — bumped to v3.0; all new features integrated on top of existing Monaco/diff architecture.
+### Backend & Infrastructure
 
-### Fixed
-- **Merge hunk overlap bug** — `handleMergeClick` now correctly handles all three Monaco diff change types:
-  - *Pure insertion* (`mEnd=0`): insert AFTER `mStart` (end-of-line position) with `'\n' + srcText`, not before it.
-  - *Pure deletion* (`oEnd=0`): range extended to include trailing newline, preventing ghost blank lines.
-  - *Modification*: unchanged — replace the target range with the source text.
+#### FastAPI Application (`main.py`)
+- Single-file backend serving all routes, WebSocket terminals, SFTP API, DevDB REST API, and CORS proxy.
+- HTTP Security Middleware on every response: `X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`, `Content-Security-Policy`, `Referrer-Policy`.
+- Lifespan event (`@asynccontextmanager`) opens DevDB, runs legacy migration, and seeds the URL cache on startup.
+- Routes: `/`, `/diff`, `/json`, `/yaml`, `/regex`, `/base64`, `/crypto`, `/url-shortener`, `/api-tester`, `/ssh`, `/sftp`, `/cron`, `/vault`, `/db-manager`, `/file-converter`.
+- Static assets served from `/static/` via `StaticFiles`.
+- File upload endpoint (`POST /upload`) — validates binary content, enforces 50MB limit.
+- CORS proxy (`POST /api/proxy`) — forwards requests to an explicit allowlist of remote hosts.
+- URL shortener API (`POST /api/shorten`, `GET /r/{short_id}`) — backed by DevDB.
+- Collections API (`GET/POST /api/collections`) — backward-compatible shim for API Tester.
+- Vault API (`GET/POST /api/vault`) — opaque blob pass-through; server never decrypts.
+- SSH Profiles API (`GET/POST /api/ssh/profiles`) — opaque blob pass-through.
+- DevDB REST API (`GET/POST /api/db/store/{name}`, `GET /api/db/meta`, `GET /api/db/export`, `POST /api/db/import`).
+- Auth endpoints (`GET /api/auth/status`, `GET /api/auth/challenge`, `POST /api/auth/setup`, `POST /api/auth/update-challenge`).
+- WebSocket SSH terminal (`/api/ssh/terminal`) — asyncssh-based with PTY resize support.
+- WebSocket local terminal (`/api/local/terminal`) — spawns PTY shells for WSL distros and local bash.
+- SFTP REST API (`POST /api/sftp/list`, `POST /api/sftp/download`, `POST /api/sftp/upload`).
+- WSL discovery (`GET /api/wsl/discover`).
+- File conversion endpoint (`POST /api/convert`) — delegates to openpyxl, pypdf, python-docx, mammoth, weasyprint.
 
-## [Unreleased] → now [3.0.0]
-### Added (original release)
-- Initial release of Diff checker from Hell.
-- Web-based UI with dark mode and glassmorphism styling.
-- Monaco Editor integration for high-quality syntax highlighting and diff comparisons.
-- Support for multiple languages, including Auto-Detect using `highlight.js`.
-- Specialized support for DevOps formats (Ansible, Jenkinsfile, Terraform).
-- Easy-to-use FastAPI backend for serving the application.
-- `start.sh` script to automate installation and running the server locally.
+#### DevDB Storage Engine (`devdb.py`)
+- KeePass-style binary container (`.dsb`) for all DevSuite persistent data.
+- **Header**: 64-byte fixed layout — magic (`DSDB`), version, flags, KDF, iterations, salt (256-bit), nonce (96-bit).
+- **Plain mode**: BLAKE2b-256 checksum prepended to JSON payload.
+- **Encrypted mode**: AES-256-GCM with PBKDF2-HMAC-SHA256 (200k iterations, 256-bit salt).
+- Thread-safe via `threading.Lock`; atomic writes via temp-file + `os.replace`.
+- Public API: `open()`, `save()`, `get_store()`, `set_store()`, `delete_store()`, `list_stores()`, `store_sizes()`, `meta()`, `export_bytes()`, `from_bytes()`, `change_password()`.
+- **Legacy migration**: `migrate_legacy()` automatically imports old `vault.json`, `collections.json`, `ssh_profiles.json`, and `url_db.json` into DevDB on first startup.
+
+#### Shared Frontend Modules
+- `theme.js` — global theme manager (Dark, Light, High Contrast, Frosted Glass); fires `devsuite-theme-changed` custom event.
+- `components.js` — `DevSuite.toast(msg, type, ms)` notification utility; `DevSuite.initMonaco(callback)` loader helper.
+- `auth-guard.js` — 8-hour session authentication for DevDB-backed tools; caches verified Master Password in `sessionStorage`; shows a re-authentication modal on expiry.
+- `devdb-client.js` — thin fetch wrapper around `/api/db/*`; provides `DevDB.getStore()`, `DevDB.setStore()`, `DevDB.getMeta()`.
+
+---
+
+### UI / Design System
+- Glassmorphic UI with `backdrop-filter: blur`, dynamic gradients, and ambient glow effects.
+- Neumorphic buttons and form elements (`--neu-raise`, `--neu-press` CSS variables).
+- 4 themes: Midnight Dark (`vs-dark`), Clean Light (`vs`), High Contrast (`hc-black`), Frosted Glass (`ios-glass`).
+- JetBrains Mono for code panels; Inter for UI text.
+- Consistent tool header pattern across all 13 tools (back-link, icon, name, theme switcher).
+- Shared toast notification system.
+
+---
+
+### Security Posture
+- DOM XSS hardened — all dynamic content via `document.createElement()` + `textContent`; no untrusted `innerHTML`.
+- Self-hosted libraries — `crypto-js.min.js` (v4.2.0), `bwip-js-min.js` (v3.4.1) served from `/static/`.
+- HTTP Security Headers on all responses.
+- URL validation — shortener backend validates scheme + host before storage.
+- Client-side encryption — vault and SSH profiles encrypted in-browser; backend is an opaque store.
+- Collision-safe short IDs — generator retries up to 10 times.
+- 8-hour session tokens — Master Password cached in `sessionStorage`, not `localStorage`.

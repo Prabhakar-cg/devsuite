@@ -318,7 +318,8 @@ html, body {
 }
 .field-val.secret-hidden { font-size: 1rem; letter-spacing: 0.18em; color: var(--text-muted); }
 .field-val.is-textarea { align-items: flex-start; min-height: 90px; }
-.field-val.url-val { color: var(--blue); text-decoration: underline; cursor: pointer; }
+.field-val.url-val { cursor: pointer; }
+.field-val.url-val .url-inner { color: var(--blue); text-decoration: underline; }
 .field-action-btn {
     padding: 0.42rem 0.65rem; border-radius: var(--radius-xs);
     background: var(--bg-secondary); border: 1px solid var(--border);

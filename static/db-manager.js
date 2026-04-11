@@ -71,6 +71,20 @@ async function initLockScreen() {
     // DB Manager always re-asks for the password on every page load.
     // (Vault does the same — no session caching for either.)
 
+    // Show the DB file path on the lock screen (path is not sensitive)
+    try {
+        const meta = await fetch('/api/db/meta').then(r => r.json());
+        if (meta.path) {
+            document.getElementById('lock-db-path-text').textContent = meta.path;
+            document.getElementById('lock-db-path').style.display = 'flex';
+            // Also populate the main banner immediately
+            renderFileBanner(meta);
+            renderStores(meta);
+            updateEncryptionBadge(meta.encrypted);
+            _meta = meta;
+        }
+    } catch (_) { /* non-fatal */ }
+
     // Check whether master password has been configured
     let isSetup = false;
     try {

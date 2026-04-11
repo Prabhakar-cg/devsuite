@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/linter.css">
+    <!-- js-yaml must load BEFORE require.js to avoid AMD registration conflicts -->
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
     <script src="/static/theme.js?v=2"></script>
 </head>
 <body>
@@ -126,9 +128,7 @@
     </div>
 </main>
 
-<!-- Monaco & js-yaml -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <script src="/static/components.js"></script>
 <script>
 (function () {
@@ -138,7 +138,6 @@
 
     DevSuite.initMonaco(() => {
 
-        const darkTheme = 'vs-dark';
         let inputEditor, outputEditor;
         let outputModel;
         let lastOutput = '';
@@ -147,20 +146,19 @@
         inputEditor = monaco.editor.create(document.getElementById('input-editor'), {
             value: '',
             language: 'json',
-            theme: darkTheme,
+            theme: 'vs-dark',
             automaticLayout: true,
             fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
             lineHeight: 22, minimap: { enabled: false },
             scrollBeyondLastLine: false, padding: { top: 12, bottom: 12 },
             wordWrap: 'on',
-            placeholder: '{\n  "paste": "your JSON here"\n}'
         });
 
         /* ── Create output editor (read-only) ── */
         outputModel = monaco.editor.createModel('', 'json');
         outputEditor = monaco.editor.create(document.getElementById('output-editor'), {
             model: outputModel,
-            theme: darkTheme,
+            theme: 'vs-dark',
             readOnly: true,
             automaticLayout: true,
             fontSize: 14, fontFamily: "'JetBrains Mono', monospace",

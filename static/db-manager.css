@@ -554,6 +554,21 @@ body::before {
 .db-lock-btn:active { transform: scale(0.98); }
 .db-lock-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.db-lock-path {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    margin-top: 4px;
+    width: 100%;
+    text-align: left;
+}
+
 .db-lock-warning {
     display: flex;
     align-items: flex-start;

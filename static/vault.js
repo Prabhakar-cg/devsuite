@@ -8,6 +8,7 @@
 
 // ── State ──────────────────────────────────────────────────────────
 let masterKey = null;       // Derived CryptoJS key (in-memory only)
+let vaultSaltHex = null;    // Hex-encoded PBKDF2 salt (kept in memory, persisted with every save)
 let vaultEntries = [];      // Decrypted entries array
 let activeFilter = 'all';
 let searchQuery  = '';
@@ -68,11 +69,12 @@ function genId() {
 async function persistVault() {
     if (!masterKey) return;
     const payload = encryptVault(vaultEntries, masterKey);
-    await fetch('/api/vault', {
+    const res = await fetch('/api/vault', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ encrypted_blob: payload.ciphertext, iv: payload.iv }),
+        body: JSON.stringify({ encrypted_blob: payload.ciphertext, iv: payload.iv, salt: vaultSaltHex }),
     });
+    if (!res.ok) throw new Error(`Vault save failed: HTTP ${res.status}`);
 }
 
 // ── Load vault from server ────────────────────────────────────────
@@ -93,6 +95,7 @@ async function loadVault(key) {
 // ── Lock / Unlock ─────────────────────────────────────────────────
 function lockVault() {
     masterKey = null;
+    vaultSaltHex = null;
     vaultEntries = [];
     selectedId = null;
     editingId = null;
@@ -129,15 +132,16 @@ async function unlockVault(password) {
 
     let salt;
     if (data.salt) {
+        vaultSaltHex = data.salt;
         salt = CryptoJS.enc.Hex.parse(data.salt);
     } else {
         // New vault — generate a salt and save it
         salt = CryptoJS.lib.WordArray.random(16);
-        const saltHex = salt.toString();
+        vaultSaltHex = salt.toString();
         await fetch('/api/vault', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ encrypted_blob: '', iv: '', salt: saltHex }),
+            body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
         });
     }
 
@@ -388,7 +392,7 @@ function addFieldRow(container, label, value, secret, fieldId, clipLabel, isUrl=
     const row = document.createElement('div');
     row.className = 'field-row';
 
-    let displayVal = secret ? '••••••••••••' : escHtml(value);
+    let displayVal = secret ? '••••••••••••' : (isUrl ? `<span class="url-inner">${escHtml(value)}</span>` : escHtml(value));
     let hiddenClass = secret ? 'secret-hidden' : '';
     let textareaClass = isTextarea ? 'is-textarea' : '';
     let urlClass = isUrl ? 'url-val' : '';
@@ -643,7 +647,7 @@ function buildEntryFromModal() {
     }
 }
 
-function saveModal() {
+async function saveModal() {
     const entry = buildEntryFromModal();
     if (!entry) return;
 
@@ -656,7 +660,20 @@ function saveModal() {
 
     entry.subtitle = subtitleFor(entry); // cached subtitle hint
 
-    persistVault();
+    const saveBtn = document.getElementById('modal-save-btn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+    try {
+        await persistVault();
+    } catch (e) {
+        toast('Failed to save secret — check console', 'error');
+        console.error('persistVault error:', e);
+        return;
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Secret';
+    }
+
     selectedId = entry.id;
     closeModal();
     renderCounts();
