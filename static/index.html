@@ -8,11 +8,7 @@
     <meta name="description" content="A fast, private, locally-hosted diff checker with Monaco Editor.">
 
     <!-- Google Fonts: Inter + JetBrains Mono -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
+        <link rel="stylesheet" href="/static/libs/fonts.css">
 
     <!-- App Styles -->
     <link rel="stylesheet" href="/static/style.css?v=60">
@@ -59,7 +55,7 @@
     <header class="app-header">
         <!-- Logo + Back Link -->
         <div style="display:flex; align-items:center; gap:0.75rem;">
-            <a href="/" class="back-link" title="Back to DevSuite">
+            <a href="/tools" class="back-link" title="Back to DevSuite">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="15 18 9 12 15 6" />
@@ -515,9 +511,9 @@
     </main>
 
     <!-- RequireJS for Monaco Editor loader -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+    <script src="/static/libs/require.min.js"></script>
     <!-- Highlight.js for Language Auto-Detection -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="/static/libs/highlight.min.js"></script>
     <!-- App Logic -->
     <script src="/static/app.js?v=60"></script>
 </body>

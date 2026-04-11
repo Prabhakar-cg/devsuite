@@ -36,7 +36,7 @@ DevSuite.toast = function toast(msg, type = 'info', ms = 3000) {
 };
 
 /* ─── Monaco Editor initializer ──────────────────────────────────────────── */
-const _MONACO_CDN_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min';
+const _MONACO_CDN_BASE = '/static/libs';
 const _MONACO_VS       = _MONACO_CDN_BASE + '/vs';
 
 DevSuite.initMonaco = function initMonaco(callback) {

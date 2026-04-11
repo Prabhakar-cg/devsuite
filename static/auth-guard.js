@@ -154,7 +154,10 @@ const AuthGuard = (() => {
             });
             if (!r.ok) return;
             const { session_token } = await r.json();
-            if (session_token) sessionStorage.setItem('devsuite_server_token', session_token);
+            if (session_token) {
+                sessionStorage.setItem('devsuite_server_token', session_token);
+                sessionStorage.setItem('devsuite_key_hex', keyHex);
+            }
         } catch { /* non-fatal — DB API falls back gracefully */ }
     }
 
@@ -215,6 +218,10 @@ const AuthGuard = (() => {
 
         // Fast path: both session valid AND password in sessionStorage
         if (_sessionValid() && _cachedPwd()) {
+            // Always re-acquire server token to handle server restarts (in-memory
+            // session store is cleared on restart, but client still has the old token).
+            const keyHex = sessionStorage.getItem('devsuite_key_hex');
+            if (keyHex) await _acquireServerSession(keyHex);
             return _cachedPwd();
         }
 

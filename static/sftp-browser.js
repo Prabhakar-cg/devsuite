@@ -36,8 +36,13 @@ function decryptData(cipher, pwd)  {
 // ──────────────────────────────────────────
 // Shared profile blob (same endpoint as SSH manager)
 // ──────────────────────────────────────────
+function _sessionHeaders(extra = {}) {
+    const token = sessionStorage.getItem('devsuite_server_token') || '';
+    return token ? { 'X-Session-Token': token, ...extra } : { ...extra };
+}
+
 async function loadBlob() {
-    const r = await fetch('/api/ssh/profiles');
+    const r = await fetch('/api/ssh/profiles', { headers: _sessionHeaders() });
     if (!r.ok) throw new Error(`Failed to load profiles: ${r.status}`);
     const d = await r.json();
     return d.encrypted_blob || '';
@@ -46,7 +51,7 @@ async function loadBlob() {
 async function saveBlob(blob) {
     const r = await fetch('/api/ssh/profiles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ encrypted_blob: blob })
     });
     if (!r.ok) {

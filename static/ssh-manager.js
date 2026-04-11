@@ -39,8 +39,13 @@ function decryptData(ct, pwd)   {
     catch { return null; }
 }
 
+function _sessionHeaders(extra = {}) {
+    const token = sessionStorage.getItem('devsuite_server_token') || '';
+    return token ? { 'X-Session-Token': token, ...extra } : { ...extra };
+}
+
 async function loadProfilesBlob() {
-    const r = await fetch('/api/ssh/profiles');
+    const r = await fetch('/api/ssh/profiles', { headers: _sessionHeaders() });
     if (!r.ok) throw new Error(`Failed to load profiles: ${r.status}`);
     const d = await r.json();
     return d.encrypted_blob || '';
@@ -49,7 +54,7 @@ async function loadProfilesBlob() {
 async function saveProfilesBlob(blob) {
     const r = await fetch('/api/ssh/profiles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
         body:    JSON.stringify({ encrypted_blob: blob })
     });
     if (!r.ok) {
@@ -177,7 +182,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
         document.getElementById('master-password-overlay').style.display = 'none';
         // Load existing plain profiles if any
         try {
-            const r = await fetch('/api/ssh/profiles');
+            const r = await fetch('/api/ssh/profiles', { headers: _sessionHeaders() });
             if (r.ok) {
                 const d = await r.json();
                 const raw = d.plain_profiles || d.encrypted_blob || '';

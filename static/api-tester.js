@@ -53,7 +53,7 @@ function showToast(msg, type = 'info') {
 }
 
 // Initialize Monaco Editors
-require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+require.config({ paths: { 'vs': '/static/libs/vs' } });
 require(['vs/editor/editor.main'], function() {
     let savedTheme = localStorage.getItem('devsuite-theme') || 'vs-dark';
     let monacoTheme = 'vs-dark';

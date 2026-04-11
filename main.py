@@ -166,6 +166,12 @@ def read_home():
     return _serve_html("home.html")
 
 
+@app.get("/tools", response_class=HTMLResponse, summary="Serve DevSuite tools page")
+def read_tools():
+    """Serve the DevSuite tools dashboard (all tools grid)."""
+    return _serve_html("tools.html")
+
+
 @app.get("/diff", response_class=HTMLResponse, summary="Serve diff tool")
 def read_diff():
     """Serve the Text/Folder Diff tool."""

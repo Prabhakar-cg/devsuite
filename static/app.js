@@ -307,11 +307,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // MONACO INITIALIZATION
     // ==========================================
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+    require.config({ paths: { 'vs': '/static/libs/vs' } });
     window.MonacoEnvironment = { getWorkerUrl: () => proxy };
     let proxy = URL.createObjectURL(new Blob([`
-        self.MonacoEnvironment = { baseUrl: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/' };
-        importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/base/worker/workerMain.js');
+        self.MonacoEnvironment = { baseUrl: '/static/libs/' };
+        importScripts('/static/libs/vs/base/worker/workerMain.js');
     `], { type: 'text/javascript' }));
 
     require(['vs/editor/editor.main'], () => {
