@@ -959,6 +959,12 @@ document.addEventListener('DOMContentLoaded', () => {
      * and refresh the tree UI. Called by the compare button and by move operations.
      */
     async function rerunComparison() {
+        // Recompute totals in case files were added/removed by move operations
+        origFolderTotalSize = [...originalFiles.values()].reduce((s, f) => s + f.size, 0);
+        modFolderTotalSize  = [...modifiedFiles.values()].reduce((s, f) => s + f.size, 0);
+        if (folderPanelSizeLeft)  folderPanelSizeLeft.textContent  = formatFolderSize(origFolderTotalSize);
+        if (folderPanelSizeRight) folderPanelSizeRight.textContent = formatFolderSize(modFolderTotalSize);
+
         fileDiffStatusMap.clear();
         const allPaths = new Set([...originalFiles.keys(), ...modifiedFiles.keys()]);
         for (const path of allPaths) {
@@ -971,18 +977,24 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const o = originalFiles.get(path), m = modifiedFiles.get(path);
                 let changed = o.size !== m.size;
-                if (!changed && o.size < 5 * 1024 * 1024) {
-                    try {
-                        const [bufO, bufM] = await Promise.all([o.arrayBuffer(), m.arrayBuffer()]);
-                        const [hashO, hashM] = await Promise.all([
-                            crypto.subtle.digest('SHA-256', bufO),
-                            crypto.subtle.digest('SHA-256', bufM)
-                        ]);
-                        const strO = Array.from(new Uint8Array(hashO)).join(',');
-                        const strM = Array.from(new Uint8Array(hashM)).join(',');
-                        changed = strO !== strM;
-                    } catch (e) {
-                        console.warn("Failed to hash " + path, e);
+                if (!changed) {
+                    if (o.size >= 5 * 1024 * 1024) {
+                        // Too large to hash in-browser — conservatively treat as modified
+                        changed = true;
+                    } else {
+                        try {
+                            const [bufO, bufM] = await Promise.all([o.arrayBuffer(), m.arrayBuffer()]);
+                            const [hashO, hashM] = await Promise.all([
+                                crypto.subtle.digest('SHA-256', bufO),
+                                crypto.subtle.digest('SHA-256', bufM)
+                            ]);
+                            const strO = Array.from(new Uint8Array(hashO)).join(',');
+                            const strM = Array.from(new Uint8Array(hashM)).join(',');
+                            changed = strO !== strM;
+                        } catch (e) {
+                            console.warn("Failed to hash " + path, e);
+                            changed = true; // conservatively treat hash failures as modified
+                        }
                     }
                 }
                 fileDiffStatusMap.set(path, { status: changed ? 'modified' : 'unchanged' });

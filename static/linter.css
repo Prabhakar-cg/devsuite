@@ -37,7 +37,7 @@
     --radius-sm:       10px;
     --radius-xs:       7px;
     --transition:      all 0.2s cubic-bezier(0.4,0,0.2,1);
-    --font:            'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font:            'Inter', -apple-system, blinkmacsystemfont, sans-serif;
     --font-mono:       'JetBrains Mono', monospace;
 }
 

@@ -190,7 +190,7 @@ body {
     padding: 0.6rem 0.875rem; border-radius: var(--radius-sm);
     background: var(--bg-secondary); border: 1px solid var(--border);
     transition: all var(--transition);
-    animation: fadeSlideIn 0.25s ease;
+    animation: fade-slide-in 0.25s ease;
 }
 .run-item:hover { border-color: rgba(20,184,166,0.3); background: var(--teal-subtle); }
 .run-num  { font-family: var(--mono); font-size: 0.68rem; color: var(--text-muted); font-weight: 600; }

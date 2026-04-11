@@ -320,7 +320,8 @@ function renderSidebar() {
                     e.stopPropagation();
                     if (!confirm(`Delete session "${p.name || p.host}"?`)) return;
                     profiles = profiles.filter(x => x.id !== p.id);
-                    const blob = encryptData(JSON.stringify(profiles), masterKey);
+                    const serialized = JSON.stringify(profiles);
+                    const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
                     await saveProfilesBlob(blob);
                     renderSidebar();
                     renderSftpSidebar();
@@ -771,14 +772,30 @@ async function sftpDownloadFile(filename) {
             private_key: sftpConn.profile.key   || null,
             path:        filePath
         };
-        const r = await fetch('/api/sftp/download', {
+        let r = await fetch('/api/sftp/download', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify(payload)
         });
+        // Host-key approval required (TOFU gate)
+        if (r.status === 409) {
+            const errBody = await r.json().catch(() => ({}));
+            if (errBody.detail && errBody.detail.error === 'host_key_approval_required') {
+                const fp = errBody.detail.fingerprint || '(unknown)';
+                const approved = confirm(
+                    `New SFTP host detected:\n\n${errBody.detail.host}:${errBody.detail.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+                );
+                if (!approved) { throw new Error('Host key rejected by user.'); }
+                r = await fetch('/api/sftp/download', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ ...payload, approved_fingerprint: fp })
+                });
+            }
+        }
         if (!r.ok) {
-            const e = await r.json();
-            throw new Error(e.detail || `Server error ${r.status}`);
+            const e = await r.json().catch(() => ({}));
+            throw new Error((e.detail && e.detail.error) || e.detail || `Server error ${r.status}`);
         }
         const blob = await r.blob();
         const url  = URL.createObjectURL(blob);
@@ -839,12 +856,54 @@ async function sftpUploadFile(file) {
             if (xhr.status >= 200 && xhr.status < 300) {
                 showToast(`Uploaded ${file.name}`, 'success');
                 await sftpLoadDir(sftpConn.path);
+            } else if (xhr.status === 409) {
+                let errBody = {};
+                try { errBody = JSON.parse(xhr.response); } catch {}
+                const det = errBody.detail || {};
+                if (det.error === 'host_key_approval_required') {
+                    const fp = det.fingerprint || '(unknown)';
+                    const approved = confirm(
+                        `New SFTP host detected:\n\n${det.host}:${det.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+                    );
+                    if (approved) {
+                        // Retry with approved fingerprint
+                        fd.append('approved_fingerprint', fp);
+                        const retryXhr = new XMLHttpRequest();
+                        retryXhr.open('POST', '/api/sftp/upload');
+                        retryXhr.upload.onprogress = (evt) => {
+                            if (evt.lengthComputable) {
+                                const pct = Math.round((evt.loaded / evt.total) * 100);
+                                showToast(`Uploading ${file.name}… ${pct}%`, 'info');
+                            }
+                        };
+                        retryXhr.onload = async () => {
+                            if (retryXhr.status >= 200 && retryXhr.status < 300) {
+                                showToast(`Uploaded ${file.name}`, 'success');
+                                await sftpLoadDir(sftpConn.path);
+                            } else {
+                                let d = `Server error ${retryXhr.status}`;
+                                try { d = JSON.parse(retryXhr.response).detail || d; } catch {}
+                                showToast(`Upload failed: ${d}`, 'error');
+                            }
+                            resolve();
+                        };
+                        retryXhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
+                        retryXhr.send(fd);
+                        return; // resolve() will be called by retryXhr
+                    } else {
+                        showToast(`Upload cancelled: host key rejected.`, 'warn');
+                    }
+                } else {
+                    const msg = det.error || (typeof det === 'string' ? det : `Server error ${xhr.status}`);
+                    showToast(`Upload failed: ${msg}`, 'error');
+                }
+                resolve();
             } else {
                 let detail = `Server error ${xhr.status}`;
                 try { detail = JSON.parse(xhr.response).detail || detail; } catch {}
                 showToast(`Upload failed: ${detail}`, 'error');
+                resolve();
             }
-            resolve();
         };
         xhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
         xhr.send(fd);

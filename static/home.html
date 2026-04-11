@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevSuite — Local Developer Tools</title>
     <meta name="description" content="13 powerful developer tools — locally hosted, zero cloud, zero tracking. Diff files, lint JSON/YAML, test APIs, manage secrets and more.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/home.css">
 </head>
 <body>
@@ -649,17 +646,41 @@
                 });
             }
 
+            function activateTab(tab) {
+                setActiveTab(tab);
+                tab.focus();
+                const f = tab.dataset.filter;
+                let n = 0;
+                cards.forEach(c => {
+                    const show = f === 'all' || c.dataset.category === f;
+                    c.style.display = show ? '' : 'none';
+                    if (show) n++;
+                });
+                empty.style.display = n === 0 ? 'flex' : 'none';
+            }
+
             tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    setActiveTab(tab);
-                    const f = tab.dataset.filter;
-                    let n = 0;
-                    cards.forEach(c => {
-                        const show = f === 'all' || c.dataset.category === f;
-                        c.style.display = show ? '' : 'none';
-                        if (show) n++;
-                    });
-                    empty.style.display = n === 0 ? 'flex' : 'none';
+                tab.addEventListener('click', () => activateTab(tab));
+                tab.addEventListener('keydown', (e) => {
+                    const tabList = Array.from(tabs);
+                    const idx = tabList.indexOf(e.currentTarget);
+                    let next = -1;
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                        next = (idx + 1) % tabList.length;
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        next = (idx - 1 + tabList.length) % tabList.length;
+                    } else if (e.key === 'Home') {
+                        next = 0;
+                    } else if (e.key === 'End') {
+                        next = tabList.length - 1;
+                    } else if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        activateTab(e.currentTarget);
+                    }
+                    if (next !== -1) {
+                        e.preventDefault();
+                        activateTab(tabList[next]);
+                    }
                 });
             });
 

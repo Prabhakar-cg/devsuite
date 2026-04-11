@@ -67,10 +67,11 @@ function relTime(ms) {
 }
 
 function storeEntryCount(name, storeData) {
+    // Check name first so locked stores always show the lock marker
+    if (name === 'vault' || name === 'ssh_profiles') return '🔒'; // opaque
     if (!storeData || Object.keys(storeData).length === 0) return null;
     if (name === 'url_db')        return Object.keys(storeData).length;
     if (name === 'collections')   return Array.isArray(storeData.items) ? storeData.items.length : null;
-    if (name === 'vault' || name === 'ssh_profiles') return '🔒'; // opaque
     return null;
 }
 
@@ -146,18 +147,24 @@ async function attemptUnlock() {
             return;
         }
 
-        // Acquire server-side session token (best-effort)
-        try {
-            const sr = await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key_hex: key.toString() }),
-            });
-            if (sr.ok) {
-                const { session_token } = await sr.json();
-                if (session_token) _serverToken = session_token;
-            }
-        } catch { /* non-fatal */ }
+        // Acquire server-side session token — required to access DB endpoints
+        const sr = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key_hex: key.toString() }),
+        });
+        if (!sr.ok) {
+            errEl.textContent = '❌ Session exchange failed. Please try again.';
+            errEl.style.display = 'block';
+            return;
+        }
+        const { session_token } = await sr.json();
+        if (!session_token) {
+            errEl.textContent = '❌ No session token returned. Please try again.';
+            errEl.style.display = 'block';
+            return;
+        }
+        _serverToken = session_token;
 
         // Success — show the manager
         document.getElementById('lock-overlay').style.display = 'none';
@@ -178,7 +185,16 @@ async function attemptUnlock() {
 async function loadMeta() {
     if (!_authenticated) return;
     try {
-        const data = await _authFetch('/api/db/meta').then(r => r.json());
+        const r = await _authFetch('/api/db/meta');
+        if (r.status === 401) {
+            // Session expired — re-lock the UI
+            _serverToken = '';
+            _authenticated = false;
+            document.getElementById('lock-overlay').style.display = 'flex';
+            toast('Session expired. Please unlock again.', 'warn');
+            return;
+        }
+        const data = await r.json();
         _meta = data;
         renderFileBanner(data);
         renderStores(data);
@@ -211,11 +227,12 @@ function renderStores(data) {
 
         const card = document.createElement('div');
         card.className = 'store-card' + (hasData ? '' : ' empty');
+        const entryCount = storeEntryCount(name, null);
         card.innerHTML = `
             <div class="store-card-icon">${m.icon}</div>
             <div class="store-card-name">${m.label}</div>
             <div class="store-card-size">${kb ? kb + ' used' : 'No data'}</div>
-            ${hasData ? `<div class="store-card-entries">${kb}</div>` : '<div class="store-card-entries" style="font-size:16px;color:var(--text-muted)">Empty</div>'}
+            ${hasData ? `<div class="store-card-entries">${entryCount !== null ? entryCount : '—'}</div>` : '<div class="store-card-entries" style="font-size:16px;color:var(--text-muted)">Empty</div>'}
             ${m.locked ? '<div class="store-card-lock" title="Client-side encrypted">🔒</div>' : ''}
         `;
         grid.appendChild(card);

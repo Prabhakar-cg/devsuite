@@ -79,12 +79,12 @@ if (Test-CommandAvailable $PYTHON_CMD) {
     if ($LASTEXITCODE -eq 0) { $pythonOk = $true }
 }
 if (-not $pythonOk) {
-    Add-InstallationToQueue "Python 3" "Python.Python.3" "python" "python"
+    Add-InstallationToQueue -softName "Python 3" -wingetId "Python.Python.3" -chocoPkg "python" -scoopPkg "python"
 }
 
 # Check Node.js / npm
 if (-not (Test-CommandAvailable node) -or -not (Test-CommandAvailable npm)) {
-    Add-InstallationToQueue "Node.js & npm" "OpenJS.NodeJS" "nodejs" "nodejs"
+    Add-InstallationToQueue -softName "Node.js & npm" -wingetId "OpenJS.NodeJS" -chocoPkg "nodejs" -scoopPkg "nodejs"
 }
 
 if ($missingPkgs.Count -gt 0) {

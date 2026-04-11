@@ -147,7 +147,7 @@ uvicorn main:app --port 8000 --reload
 
 ## Project Structure
 
-```
+```text
 devsuite/
 ├── main.py                  # FastAPI app — all routes, WebSocket SSH, SFTP, proxy, DevDB API
 ├── devdb.py                 # Unified Storage Engine — KeePass-style .dsb binary format (AES-256-GCM)

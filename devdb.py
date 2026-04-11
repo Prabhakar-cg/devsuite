@@ -381,7 +381,20 @@ class DevDB:
         try:
             os.write(fd, file_bytes)
             os.fsync(fd)
-        finally:
             os.close(fd)
-        os.replace(tmp_path, self._path)
+            fd = -1
+            os.replace(tmp_path, self._path)
+            tmp_path = None  # ownership transferred; do not remove
+        except BaseException:
+            if fd != -1:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            if tmp_path is not None:
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
+            raise
         logger.debug("DevDB: saved %d bytes to %s", len(file_bytes), self._path)

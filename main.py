@@ -53,7 +53,7 @@ _DEVSUITE_DIR  = Path.home() / ".devsuite"
 _DB_PATH       = _DEVSUITE_DIR / "devdb.dsb"
 _LEGACY_URL_DB = Path(__file__).parent / "url_db.json"   # in-repo legacy file
 
-_db = DevDB(_DB_PATH)
+_db = DevDB(_DB_PATH, password=os.environ.get("DEVDB_PASSWORD") or None)
 
 
 @asynccontextmanager
@@ -107,6 +107,9 @@ def _save_url_db(data: dict) -> None:
 # In-memory cache for the URL shortener (populated at startup via _startup_devdb)
 # This proxy ensures the rest of the shortener code has the dict in scope.
 url_db: dict = {}
+
+# Maximum size for file uploads to /api/convert (20 MB)
+MAX_UPLOAD_SIZE = 20 * 1024 * 1024
 
 class ShortenRequest(BaseModel):
     url: str
@@ -248,7 +251,7 @@ def read_file_converter_tool():
 
 
 @app.post("/api/convert", summary="Convert a file from one format to another (server-side)")
-async def convert_file(file: UploadFile = File(...), target_format: str = Form(...)):
+async def convert_file(request: Request, file: UploadFile = File(...), target_format: str = Form(...)):
     """
     Server-side file format conversion endpoint.
 
@@ -265,7 +268,12 @@ async def convert_file(file: UploadFile = File(...), target_format: str = Form(.
     original_name = (file.filename or "file").lower()
     src_ext = original_name.rsplit(".", 1)[-1] if "." in original_name else ""
 
-    content = await file.read()
+    cl = request.headers.get("content-length")
+    if cl and int(cl) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail=f"Upload too large (limit {MAX_UPLOAD_SIZE // 1024 // 1024} MB)")
+    content = await file.read(MAX_UPLOAD_SIZE + 1)
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail=f"Upload too large (limit {MAX_UPLOAD_SIZE // 1024 // 1024} MB)")
 
     # ── XLSX → CSV / JSON ──────────────────────────────────────────────────
     if src_ext == "xlsx" and target_format in ("csv", "json"):
@@ -775,12 +783,16 @@ def db_get_store(name: str, request: Request):
 @app.post("/api/db/store/{name}", summary="Write a named DevDB store")
 def db_set_store(name: str, data: dict, request: Request):
     """Replace the named store with the supplied data and flush to disk."""
+    global url_db
     require_unlocked(request)
     if name not in _ALLOWED_STORES:
         raise HTTPException(status_code=400, detail=f"Unknown store: {name!r}")
     try:
         _db.set_store(name, data)
         _db.save()
+        if name == "url_db":
+            url_db.clear()
+            url_db.update(_db.get_store("url_db") or {})
         return {"status": "ok", "store": name}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -810,10 +822,17 @@ async def db_import(request: Request, file: UploadFile = File(...)):
             raise HTTPException(status_code=413, detail="Import file too large (50 MB limit)")
         imported = DevDB.from_bytes(raw)  # parses & validates the binary format
         # Merge all stores from the imported file (skip unknown store names)
+        url_db_updated = False
         for store_name in imported.list_stores():
             if store_name in _ALLOWED_STORES:
                 _db.set_store(store_name, imported.get_store(store_name))
+                if store_name == "url_db":
+                    url_db_updated = True
         _db.save()
+        if url_db_updated:
+            global url_db
+            url_db.clear()
+            url_db.update(_db.get_store("url_db") or {})
         return {"status": "ok", "imported_stores": imported.list_stores()}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -896,6 +915,9 @@ def auth_update_challenge(data: dict, request: Request):
     })
     _db.set_store("app_prefs", prefs)
     _db.save()
+    # Revoke all existing session tokens so old sessions cannot continue
+    # after a master password rotation.
+    _sessions.clear()
     return {"status": "ok"}
 
 

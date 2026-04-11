@@ -71,9 +71,9 @@ html, body {
     backdrop-filter: saturate(180%) blur(24px);
     -webkit-backdrop-filter: saturate(180%) blur(24px);
     display: flex; align-items: center; justify-content: center;
-    animation: fadeIn 0.3s ease;
+    animation: fade-in 0.3s ease;
 }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .lock-card {
     background: rgba(255,255,255,0.96);
@@ -83,9 +83,9 @@ html, body {
     width: 420px; max-width: 92vw;
     box-shadow: 0 24px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.08);
     text-align: center;
-    animation: slideUp 0.38s cubic-bezier(0.34,1.56,0.64,1) both;
+    animation: slide-up 0.38s cubic-bezier(0.34,1.56,0.64,1) both;
 }
-@keyframes slideUp {
+@keyframes slide-up {
     from { opacity: 0; transform: translateY(24px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
 }
@@ -290,7 +290,7 @@ html, body {
 .detail-empty .big-icon { font-size: 4rem; opacity: 0.2; }
 .detail-empty h3 { font-size: 1.05rem; font-weight: 700; color: var(--text-mid); }
 .detail-empty p { font-size: 0.875rem; line-height: 1.6; max-width: 320px; }
-.detail-content { flex: 1; display: flex; flex-direction: column; animation: fadeIn 0.25s ease; }
+.detail-content { flex: 1; display: flex; flex-direction: column; animation: fade-in 0.25s ease; }
 
 .detail-bar {
     padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
@@ -338,7 +338,7 @@ html, body {
     background: rgba(0,0,0,0.3);
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     display: none; align-items: center; justify-content: center;
-    animation: fadeIn 0.18s ease;
+    animation: fade-in 0.18s ease;
 }
 .modal-overlay.open { display: flex; }
 .modal-box {
@@ -347,7 +347,7 @@ html, body {
     border-radius: 18px;
     width: 520px; max-width: 94vw; max-height: 90vh; overflow-y: auto;
     box-shadow: 0 24px 80px rgba(0,0,0,0.18);
-    animation: slideUp 0.28s cubic-bezier(0.34,1.56,0.64,1) both;
+    animation: slide-up 0.28s cubic-bezier(0.34,1.56,0.64,1) both;
 }
 .modal-header {
     padding: 1.25rem 1.5rem 0;

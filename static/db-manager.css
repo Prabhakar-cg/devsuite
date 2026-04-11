@@ -303,10 +303,10 @@ body::before {
     width: 100%; max-width: 440px;
     padding: 28px 32px;
     display: flex; flex-direction: column; gap: 20px;
-    animation: slideUp 0.25s cubic-bezier(0.4,0,0.2,1);
+    animation: slide-up 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 
-@keyframes slideUp {
+@keyframes slide-up {
     from { opacity: 0; transform: translateY(16px); }
     to   { opacity: 1; transform: translateY(0); }
 }
@@ -363,14 +363,14 @@ body::before {
     color: #fff;
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     border: 1px solid rgba(255,255,255,0.12);
-    animation: fadeSlideIn 0.25s ease forwards;
+    animation: fade-slide-in 0.25s ease forwards;
     max-width: 320px;
 }
 .toast.success { background: rgba(34,197,94,0.95); }
 .toast.error   { background: rgba(239,68,68,0.95); }
 .toast.warn    { background: rgba(245,158,11,0.95); }
 
-@keyframes fadeSlideIn {
+@keyframes fade-slide-in {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
 }
@@ -458,7 +458,7 @@ body::before {
     align-items: center;
     gap: 14px;
     box-shadow: var(--shadow-lg);
-    animation: slideUp 0.25s ease;
+    animation: slide-up 0.25s ease;
 }
 
 .db-lock-icon {
