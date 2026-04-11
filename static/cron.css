@@ -2,7 +2,7 @@
    DevSuite — Cron Visualizer (Apple.com Design System)
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -35,6 +35,8 @@
     --transition:      0.2s ease;
     --font:            'Inter', system-ui, sans-serif;
     --mono:            'JetBrains Mono', monospace;
+    /* Backward-compatible alias used by cron.html inline styles */
+    --cron-muted:      var(--text-muted);
 }
 
 html { font-size: 16px; scroll-behavior: smooth; }
@@ -174,10 +176,10 @@ body {
     background: var(--teal-subtle);
     border-left: 3px solid var(--teal);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    animation: fadeSlideIn var(--transition);
+    animation: fade-slide-in var(--transition);
 }
 .desc-output.desc-error { color: var(--red-mid); background: var(--red-subtle); border-left-color: var(--red); }
-@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fade-slide-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ── Next Runs ── */
 .next-runs-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }

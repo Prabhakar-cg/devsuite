@@ -1,11 +1,11 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-Versions follow [Semantic Versioning](https://semver.org/). This log was reset at **v0.5.0** to establish a clean baseline reflecting the current full feature set.
+Versions follow [Semantic Versioning](https://semver.org/). This log was reset at **v0.1.0** to establish a clean baseline reflecting the current full feature set.
 
 ---
 
-## [0.5.0] — 2026-04-11
+## [0.1.0] — 2026-04-11
 
 This is the **baseline release** — a comprehensive snapshot of all features, tools, and infrastructure present in DevSuite at this version. Future releases will document incremental changes against this baseline.
 

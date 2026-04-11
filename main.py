@@ -13,6 +13,7 @@ import os
 import string
 import secrets
 import json
+import time
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -410,8 +411,23 @@ async def convert_file(file: UploadFile = File(...), target_format: str = Form(.
 <body>{raw_html}</body>
 </html>"""
 
-        # Step 3: Render to PDF
-        pdf_bytes = weasyprint.HTML(string=full_html).write_pdf()
+        # Step 3: Render to PDF with a safe URL fetcher to prevent SSRF/LFI
+        try:
+            from weasyprint import default_url_fetcher as _default_url_fetcher
+        except ImportError:
+            _default_url_fetcher = None
+
+        def _safe_url_fetcher(url: str):
+            parsed = urllib.parse.urlparse(url)
+            if parsed.scheme in ('http', 'https', 'file'):
+                raise ValueError(
+                    f"Blocked disallowed URL scheme '{parsed.scheme}' in PDF conversion: {url!r}"
+                )
+            if _default_url_fetcher is not None:
+                return _default_url_fetcher(url)
+            raise ValueError(f"No URL fetcher available for: {url!r}")
+
+        pdf_bytes = weasyprint.HTML(string=full_html, url_fetcher=_safe_url_fetcher).write_pdf()
 
         return Response(content=pdf_bytes, media_type="application/pdf",
                         headers={"Content-Disposition": 'attachment; filename="converted.pdf"'})
@@ -423,19 +439,21 @@ async def convert_file(file: UploadFile = File(...), target_format: str = Form(.
 
 
 @app.get("/api/vault", summary="Get encrypted vault blob")
-def get_vault():
+def get_vault(request: Request):
     """Return the raw encrypted vault blob from the DevDB 'vault' store.
     Backward-compatible shim — the server never decrypts vault contents.
     """
+    require_unlocked(request)
     store = _db.get_store("vault")
     return store if store else {"encrypted_blob": ""}
 
 
 @app.post("/api/vault", summary="Save encrypted vault blob")
-def save_vault(data: dict):
+def save_vault(data: dict, request: Request):
     """Persist the encrypted vault blob into the DevDB 'vault' store.
     Backward-compatible shim — the server never decrypts vault contents.
     """
+    require_unlocked(request)
     try:
         _db.set_store("vault", data)
         _db.save()
@@ -681,24 +699,47 @@ async def proxy_request(req: ProxyRequest):
 
 
 @app.get("/api/ssh/profiles", summary="Get SSH Profiles")
-def get_ssh_profiles():
+def get_ssh_profiles(request: Request):
     """Return the encrypted SSH profiles blob from the DevDB 'ssh_profiles' store.
     Backward-compatible shim — server never decrypts profile contents.
     """
+    require_unlocked(request)
     store = _db.get_store("ssh_profiles")
     return store if store else {"encrypted_blob": ""}
 
 @app.post("/api/ssh/profiles", summary="Save SSH Profiles")
-def save_ssh_profiles(data: dict):
+def save_ssh_profiles(data: dict, request: Request):
     """Persist the encrypted SSH profiles blob into the DevDB 'ssh_profiles' store.
     Backward-compatible shim — server never decrypts profile contents.
     """
+    require_unlocked(request)
     try:
         _db.set_store("ssh_profiles", data)
         _db.save()
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ─── Server-side session store ───────────────────────────────────────────────
+# Tokens are issued by /api/auth/session after the client verifies the
+# master key, and are required by all DevDB endpoints.
+_sessions: dict[str, float] = {}   # token → unix expiry
+_SESSION_TTL = 8 * 3600            # 8 hours (matches auth-guard.js SESSION_MS)
+
+
+def require_unlocked(request: Request) -> None:
+    """Raise 401 if the request does not carry a valid server-side session token."""
+    token = request.headers.get("X-Session-Token", "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Session token required. Call POST /api/auth/session first.",
+        )
+    expiry = _sessions.get(token)
+    if expiry is None or time.time() > expiry:
+        _sessions.pop(token, None)
+        raise HTTPException(status_code=401, detail="Session expired or invalid.")
 
 
 # ─── DevDB Unified API ────────────────────────────────────────────────────────
@@ -711,8 +752,9 @@ _ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "url_db", "app_prefs"
 _DISTRO_NAME_RE = re.compile(r'^[A-Za-z0-9_.\-]+$')
 
 @app.get("/api/db/meta", summary="Get DevDB metadata")
-def db_meta():
+def db_meta(request: Request):
     """Return database metadata: path, file size, stores list, encryption status."""
+    require_unlocked(request)
     m = _db.meta()
     return {
         "path":      str(_DB_PATH),
@@ -723,15 +765,17 @@ def db_meta():
     }
 
 @app.get("/api/db/store/{name}", summary="Read a named DevDB store")
-def db_get_store(name: str):
+def db_get_store(name: str, request: Request):
     """Return the raw contents of the named store.  Restricted to known store names."""
+    require_unlocked(request)
     if name not in _ALLOWED_STORES:
         raise HTTPException(status_code=400, detail=f"Unknown store: {name!r}")
     return _db.get_store(name)
 
 @app.post("/api/db/store/{name}", summary="Write a named DevDB store")
-def db_set_store(name: str, data: dict):
+def db_set_store(name: str, data: dict, request: Request):
     """Replace the named store with the supplied data and flush to disk."""
+    require_unlocked(request)
     if name not in _ALLOWED_STORES:
         raise HTTPException(status_code=400, detail=f"Unknown store: {name!r}")
     try:
@@ -742,8 +786,9 @@ def db_set_store(name: str, data: dict):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.get("/api/db/export", summary="Export full DevDB as a .dsb file")
-def db_export():
+def db_export(request: Request):
     """Stream the raw .dsb binary as a file download."""
+    require_unlocked(request)
     try:
         raw = _db.export_bytes()
         return Response(
@@ -755,8 +800,9 @@ def db_export():
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/api/db/import", summary="Import a .dsb file into DevDB")
-async def db_import(file: UploadFile = File(...)):
+async def db_import(request: Request, file: UploadFile = File(...)):
     """Accept a .dsb upload and merge its stores into the running DevDB."""
+    require_unlocked(request)
     MAX_IMPORT_SIZE = 50 * 1024 * 1024  # 50 MB
     try:
         raw = await file.read(MAX_IMPORT_SIZE + 1)
@@ -827,10 +873,11 @@ def auth_setup(data: dict):
 
 
 @app.post("/api/auth/update-challenge", summary="Update master password challenge after password change")
-def auth_update_challenge(data: dict):
+def auth_update_challenge(data: dict, request: Request):
     """Replace the verification challenge when the master password is changed.
     Expects: {salt, verify_blob, verify_iv}
     """
+    require_unlocked(request)
     prefs = _db.get_store("app_prefs") or {}
     if not prefs.get("master_setup_done"):
         raise HTTPException(status_code=404, detail="Master password not yet configured")
@@ -852,11 +899,75 @@ def auth_update_challenge(data: dict):
     return {"status": "ok"}
 
 
-async def _ensure_host_key(host: str, port: int) -> str:
+@app.post("/api/auth/session", summary="Exchange verified master key for a server-side session token")
+def auth_session(data: dict):
+    """Verify the PBKDF2-derived key (hex) against the stored challenge and issue a session token.
+
+    The client sends {key_hex: <hex>} where key_hex is the AES key derived from
+    the master password using PBKDF2-SHA1(50 000 iter, 32-byte output).  The server
+    decrypts the stored verify_blob to confirm key correctness without ever seeing
+    the plaintext password.  On success a session token valid for 8 hours is returned.
+    """
+    prefs = _db.get_store("app_prefs") or {}
+    if not prefs.get("master_setup_done"):
+        raise HTTPException(status_code=404, detail="Master password not configured")
+
+    key_hex = str(data.get("key_hex", "")).strip()
+    if not key_hex:
+        raise HTTPException(status_code=400, detail="Missing key_hex")
+
+    try:
+        import base64 as _b64
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.backends import default_backend
+
+        key        = bytes.fromhex(key_hex)
+        verify_iv  = bytes.fromhex(prefs["master_verify_iv"])
+        ciphertext = _b64.b64decode(prefs["master_verify_blob"])
+
+        cipher = Cipher(algorithms.AES(key), modes.CBC(verify_iv), backend=default_backend())
+        decryptor = cipher.decryptor()
+        padded = decryptor.update(ciphertext) + decryptor.finalize()
+        # Remove PKCS7 padding
+        pad_len = padded[-1]
+        if pad_len < 1 or pad_len > 16:
+            raise ValueError("Invalid PKCS7 padding")
+        plaintext = padded[:-pad_len].decode("utf-8", errors="strict")
+
+        if plaintext != "DEVSUITE_MASTER_OK":
+            raise HTTPException(status_code=401, detail="Invalid master key")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Key verification failed")
+
+    token = secrets.token_urlsafe(32)
+    _sessions[token] = time.time() + _SESSION_TTL
+    return {"session_token": token, "expires_in": _SESSION_TTL}
+
+
+async def _ensure_host_key(
+    host: str,
+    port: int,
+    approve_host=None,
+) -> str:
     """
     Ensures ~/.ssh/known_hosts exists and contains an entry for host:port.
-    Implements Trust On First Use (TOFU) via ssh-keyscan: new hosts are
-    accepted automatically; changed keys still cause asyncssh to refuse.
+
+    For a previously unseen host the function:
+      1. Runs ssh-keyscan to fetch the server's public key.
+      2. Computes its SHA-256 fingerprint via ``ssh-keygen -l -f -``.
+      3. Calls ``await approve_host(host, port, fingerprint, key_line)`` if
+         provided.  The callback must return True to accept the key.
+      4. Appends the key to known_hosts only when approved.
+
+    If *approve_host* is None the function raises HostKeyApprovalRequired so
+    callers that do not supply a callback can convert it to an appropriate
+    HTTP/WS response.
+
+    Changed host keys are still rejected by asyncssh after this function
+    returns the known_hosts path — that protection layer is unchanged.
+
     Returns the path to the known_hosts file.
     """
     known_hosts_path = os.path.expanduser("~/.ssh/known_hosts")
@@ -878,28 +989,70 @@ async def _ensure_host_key(host: str, port: int) -> str:
     )
     await check.wait()
 
-    if check.returncode != 0:
-        # Host not yet known — scan its public key and append it (TOFU)
-        proc = await asyncio.create_subprocess_exec(
-            "ssh-keyscan", "-p", str(port), "-H", host,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+    if check.returncode == 0:
+        # Host already pinned — nothing to do
+        return known_hosts_path
+
+    # Host not yet known — fetch its public key
+    proc = await asyncio.create_subprocess_exec(
+        "ssh-keyscan", "-p", str(port), "-H", host,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+    except asyncio.TimeoutError:
+        raise RuntimeError(f"ssh-keyscan timed out for {host}:{port}")
+
+    if proc.returncode != 0 or not stdout.strip():
+        raise RuntimeError(
+            f"Could not retrieve host key for {host}:{port}. "
+            "Is the host reachable?"
         )
-        try:
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
-        except asyncio.TimeoutError:
-            raise RuntimeError(f"ssh-keyscan timed out for {host}:{port}")
 
-        if proc.returncode != 0 or not stdout.strip():
-            raise RuntimeError(
-                f"Could not retrieve host key for {host}:{port}. "
-                "Is the host reachable?"
-            )
+    # Compute the SHA-256 fingerprint using ssh-keygen -l
+    keygen = await asyncio.create_subprocess_exec(
+        "ssh-keygen", "-l", "-f", "-",
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    try:
+        kg_out, _ = await asyncio.wait_for(keygen.communicate(input=stdout), timeout=10)
+    except asyncio.TimeoutError:
+        raise RuntimeError(f"ssh-keygen fingerprint timed out for {host}:{port}")
 
-        with open(known_hosts_path, "ab") as fh:
-            fh.write(stdout)
+    # ssh-keygen -l output: "2048 SHA256:xxxx user@host (RSA)"
+    # extract the "SHA256:xxxx" token
+    fingerprint = ""
+    for token in kg_out.decode(errors="replace").split():
+        if token.startswith("SHA256:") or token.startswith("MD5:"):
+            fingerprint = token
+            break
+
+    if approve_host is None:
+        # No callback supplied — callers must handle HostKeyApprovalRequired
+        raise HostKeyApprovalRequired(host, port, fingerprint)
+
+    approved = await approve_host(host, port, fingerprint, stdout)
+    if not approved:
+        raise RuntimeError(
+            f"Host key for {host}:{port} (fingerprint {fingerprint}) was rejected by the user."
+        )
+
+    with open(known_hosts_path, "ab") as fh:
+        fh.write(stdout)
 
     return known_hosts_path
+
+
+class HostKeyApprovalRequired(Exception):
+    """Raised by _ensure_host_key when no approve_host callback is provided."""
+    def __init__(self, host: str, port: int, fingerprint: str):
+        super().__init__(f"Host key approval required for {host}:{port}")
+        self.host = host
+        self.port = port
+        self.fingerprint = fingerprint
 
 
 @app.websocket("/api/ssh/terminal")
@@ -924,9 +1077,44 @@ async def ssh_terminal(websocket: WebSocket):
         password = config.get("password")
         private_key = config.get("private_key")
         
-        # Ensure known_hosts exists and has an entry for this host (TOFU)
+        # Ensure known_hosts exists and has an entry for this host.
+        # For new hosts the fingerprint is sent to the browser for user approval.
         await websocket.send_text(f"Verifying host key for {host}:{port}...\r\n")
-        known_hosts_path = await _ensure_host_key(host, port)
+
+        async def _ws_approve_host(h: str, p: int, fingerprint: str, _key_line: bytes) -> bool:
+            """Send a JSON approval request over the WebSocket and wait for the browser reply.
+
+            This is called before asyncssh.connect(), so write_to_ssh is not yet
+            running.  We receive the reply directly here with a 60-second timeout.
+            """
+            await websocket.send_json({
+                "type": "host_key_approval",
+                "host": h,
+                "port": p,
+                "fingerprint": fingerprint,
+            })
+            deadline = asyncio.get_event_loop().time() + 60
+            while True:
+                remaining = deadline - asyncio.get_event_loop().time()
+                if remaining <= 0:
+                    return False
+                try:
+                    raw = await asyncio.wait_for(websocket.receive_text(), timeout=remaining)
+                except asyncio.TimeoutError:
+                    return False
+                try:
+                    msg = json.loads(raw)
+                    if msg.get("type") == "host_key_response":
+                        return bool(msg.get("approve", False))
+                except Exception:
+                    pass  # ignore non-JSON messages while waiting
+
+        try:
+            known_hosts_path = await _ensure_host_key(host, port, approve_host=_ws_approve_host)
+        except RuntimeError as exc:
+            await websocket.send_text(f"\r\nHost key error: {exc}\r\n")
+            await websocket.close()
+            return
 
         connect_kwargs = {
             "host": host,
@@ -988,12 +1176,20 @@ class SFTPRequest(BaseModel):
     password: str | None = None
     private_key: str | None = None
     path: str = "."
+    approved_fingerprint: str | None = None
 
 @app.post("/api/sftp/list", summary="List files via SFTP")
 async def sftp_list(req: SFTPRequest):
     try:
-        # Ensure known_hosts exists and has an entry for this host (TOFU)
-        known_hosts_path = await _ensure_host_key(req.host, req.port)
+        async def _sftp_approve(h: str, p: int, fingerprint: str, _key: bytes) -> bool:
+            if req.approved_fingerprint and req.approved_fingerprint == fingerprint:
+                return True
+            raise HTTPException(
+                status_code=409,
+                detail={"error": "host_key_approval_required", "host": h, "port": p, "fingerprint": fingerprint},
+            )
+
+        known_hosts_path = await _ensure_host_key(req.host, req.port, approve_host=_sftp_approve)
 
         connect_kwargs = {
             "host": req.host,
@@ -1022,6 +1218,8 @@ async def sftp_list(req: SFTPRequest):
                     })
                 result.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
                 return {"files": result, "cwd": req.path}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -1032,11 +1230,20 @@ class SFTPDownloadRequest(BaseModel):
     password: str | None = None
     private_key: str | None = None
     path: str  # full remote file path
+    approved_fingerprint: str | None = None
 
 @app.post("/api/sftp/download", summary="Download a file via SFTP")
 async def sftp_download(req: SFTPDownloadRequest):
     try:
-        known_hosts_path = await _ensure_host_key(req.host, req.port)
+        async def _sftp_approve(h: str, p: int, fingerprint: str, _key: bytes) -> bool:
+            if req.approved_fingerprint and req.approved_fingerprint == fingerprint:
+                return True
+            raise HTTPException(
+                status_code=409,
+                detail={"error": "host_key_approval_required", "host": h, "port": p, "fingerprint": fingerprint},
+            )
+
+        known_hosts_path = await _ensure_host_key(req.host, req.port, approve_host=_sftp_approve)
         connect_kwargs = {
             "host": req.host,
             "port": req.port,
@@ -1059,6 +1266,8 @@ async def sftp_download(req: SFTPDownloadRequest):
             media_type="application/octet-stream",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -1070,10 +1279,19 @@ async def sftp_upload(
     password: str | None = Form(None),
     private_key: str | None = Form(None),
     remote_path: str = Form(...),
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    approved_fingerprint: str | None = Form(None),
 ):
     try:
-        known_hosts_path = await _ensure_host_key(host, port)
+        async def _sftp_approve(h: str, p: int, fingerprint: str, _key: bytes) -> bool:
+            if approved_fingerprint and approved_fingerprint == fingerprint:
+                return True
+            raise HTTPException(
+                status_code=409,
+                detail={"error": "host_key_approval_required", "host": h, "port": p, "fingerprint": fingerprint},
+            )
+
+        known_hosts_path = await _ensure_host_key(host, port, approve_host=_sftp_approve)
         connect_kwargs = {
             "host": host,
             "port": port,
@@ -1094,6 +1312,8 @@ async def sftp_upload(
                     await remote_file.write(file_content)
 
         return {"success": True, "path": remote_file_path}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 

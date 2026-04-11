@@ -56,7 +56,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **SFTP Browser** (sub-tab) — browse, navigate, and inspect remote filesystems. Grid view with file type icons, sizes, up navigation, refresh, and disconnect.
 - **WSL / Local Terminal** — auto-discovers WSL distributions; spawns local PTY shells directly.
 - **Inline delete** — remove sessions from the sidebar with a single click (no modal needed).
-- **Network Notice**: Session profiles are stored locally, but SSH/SFTP connections establish outbound network traffic to remote hosts. The privacy guarantee applies to offline tools only.
+- **Network Notice**: Session profiles are stored locally (in DevDB / `ssh_profiles`, encrypted client-side). However, SSH/SFTP actions and the local CORS proxy initiate **outbound network connections** — backend endpoints such as `/api/proxy`, `/api/ssh/terminal`, and `/api/sftp/*` transmit data off-machine to the target host. The strictly-offline guarantee applies only to tools that perform no network I/O.
 
 ### 10. Cron Visualizer
 - **4 dialect support** — Unix/Linux, Quartz/Spring, AWS EventBridge, GitHub Actions.
@@ -98,7 +98,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 ---
 
 ## Privacy & Security
-- **Strictly offline** — no network requests for tool functionality. All processing runs in-browser or via the local FastAPI backend.
+- **Local-first** — most tools process data entirely in-browser or via the local FastAPI backend with no external network access. Tools that establish outbound connections (SSH/SFTP via `/api/ssh/terminal`, `/api/sftp/*`, and the proxy via `/api/proxy`) transmit data to the target host; session credentials are encrypted client-side before leaving the browser.
 - **Unified encrypted storage** — all persistent data lives in `~/.devsuite/devdb.dsb`, a KeePass-style binary container (AES-256-GCM, PBKDF2 key derivation, 200k iterations).
 - **Client-side encryption** — the vault and SSH profiles are encrypted in-browser before reaching the backend. The server never handles plaintext secrets.
 - **DOM XSS hardened** — all dynamic content is inserted using `textContent` / `createElement` APIs; no untrusted strings ever reach `innerHTML`.

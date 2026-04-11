@@ -14,10 +14,20 @@
 
 const DevDB = (() => {
 
+    // ── Session token (set by auth-guard.js after successful unlock) ──────────
+    function _sessionToken() {
+        return sessionStorage.getItem('devsuite_server_token') || '';
+    }
+
     // ── Internal fetch helper ────────────────────────────────────────────────
     async function _apiFetch(url, opts = {}) {
+        const token = _sessionToken();
         const res = await fetch(url, {
-            headers: { 'Content-Type': 'application/json', ...opts.headers },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'X-Session-Token': token } : {}),
+                ...opts.headers,
+            },
             ...opts,
         });
         if (!res.ok) {
@@ -63,11 +73,23 @@ const DevDB = (() => {
     /**
      * Trigger a .dsb file download (browser saves the export).
      */
-    function exportDatabase() {
+    async function exportDatabase() {
+        const token = _sessionToken();
+        const res = await fetch('/api/db/export', {
+            headers: token ? { 'X-Session-Token': token } : {},
+        });
+        if (!res.ok) {
+            let detail = `HTTP ${res.status}`;
+            try { const j = await res.json(); detail = j.detail || detail; } catch (_) {}
+            throw new Error(`DevDB export: ${detail}`);
+        }
+        const blob = await res.blob();
+        const objUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = '/api/db/export';
+        a.href = objUrl;
         a.download = `devdb-${new Date().toISOString().slice(0,10)}.dsb`;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
     }
 
     /**
@@ -78,7 +100,12 @@ const DevDB = (() => {
     async function importDatabase(file) {
         const form = new FormData();
         form.append('file', file);
-        const res = await fetch('/api/db/import', { method: 'POST', body: form });
+        const token = _sessionToken();
+        const res = await fetch('/api/db/import', {
+            method: 'POST',
+            body: form,
+            headers: token ? { 'X-Session-Token': token } : {},
+        });
         if (!res.ok) {
             let detail = `HTTP ${res.status}`;
             try { const j = await res.json(); detail = j.detail || detail; } catch (_) {}

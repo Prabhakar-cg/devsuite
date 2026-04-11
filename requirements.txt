@@ -8,6 +8,6 @@ wsproto>=1.2.0
 openpyxl>=3.1.0
 pypdf>=4.0.0
 python-docx>=1.1.0
-mammoth>=1.8.0
+mammoth>=1.11.0
 weasyprint>=60.0
 markdown>=3.5.0

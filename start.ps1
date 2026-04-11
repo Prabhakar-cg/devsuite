@@ -6,7 +6,7 @@ Write-Host "Starting setup for Local dev suite..."
 # ---------------------------------------------------------------------------
 # Helper: check if a command exists
 # ---------------------------------------------------------------------------
-function Command-Exists {
+function Test-CommandAvailable {
     param([string]$cmd)
     return $null -ne (Get-Command $cmd -ErrorAction SilentlyContinue)
 }
@@ -14,7 +14,7 @@ function Command-Exists {
 # ---------------------------------------------------------------------------
 # Helper: ask for user permission
 # ---------------------------------------------------------------------------
-function Ask-Permission {
+function Get-UserConfirmation {
     param([string]$prompt)
     $reply = Read-Host "$prompt (y/N)"
     return $reply -match '^[Yy]$'
@@ -24,9 +24,9 @@ function Ask-Permission {
 # Detect package manager (winget > choco > scoop)
 # ---------------------------------------------------------------------------
 $PKG_MGR = "unknown"
-if (Command-Exists winget)  { $PKG_MGR = "winget" }
-elseif (Command-Exists choco) { $PKG_MGR = "choco"  }
-elseif (Command-Exists scoop) { $PKG_MGR = "scoop"  }
+if (Test-CommandAvailable winget)  { $PKG_MGR = "winget" }
+elseif (Test-CommandAvailable choco) { $PKG_MGR = "choco"  }
+elseif (Test-CommandAvailable scoop) { $PKG_MGR = "scoop"  }
 
 Write-Host "Detected OS: Windows"
 if ($PKG_MGR -ne "unknown") {
@@ -38,7 +38,7 @@ if ($PKG_MGR -ne "unknown") {
 # ---------------------------------------------------------------------------
 $PYTHON_CMD = $null
 foreach ($candidate in @("python", "python3", "py")) {
-    if (Command-Exists $candidate) {
+    if (Test-CommandAvailable $candidate) {
         $ver = & $candidate -c "import sys; print(sys.version_info.major)" 2>$null
         if ($ver -eq "3") { $PYTHON_CMD = $candidate; break }
     }
@@ -55,7 +55,7 @@ $missingSoftware = @()
 # Packages indexed per manager: [winget, choco, scoop]
 $missingPkgs = @()
 
-function Queue-Installation {
+function Add-InstallationToQueue {
     param(
         [string]$softName,
         [string]$wingetId,
@@ -74,17 +74,17 @@ Write-Host -NoNewline "Checking core system prerequisites... "
 
 # Check Python
 $pythonOk = $false
-if (Command-Exists $PYTHON_CMD) {
-    $venvOk = & $PYTHON_CMD -m venv --help 2>$null
+if (Test-CommandAvailable $PYTHON_CMD) {
+    & $PYTHON_CMD -m venv --help 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) { $pythonOk = $true }
 }
 if (-not $pythonOk) {
-    Queue-Installation "Python 3" "Python.Python.3" "python" "python"
+    Add-InstallationToQueue "Python 3" "Python.Python.3" "python" "python"
 }
 
 # Check Node.js / npm
-if (-not (Command-Exists node) -or -not (Command-Exists npm)) {
-    Queue-Installation "Node.js & npm" "OpenJS.NodeJS" "nodejs" "nodejs"
+if (-not (Test-CommandAvailable node) -or -not (Test-CommandAvailable npm)) {
+    Add-InstallationToQueue "Node.js & npm" "OpenJS.NodeJS" "nodejs" "nodejs"
 }
 
 if ($missingPkgs.Count -gt 0) {
@@ -97,7 +97,7 @@ if ($missingPkgs.Count -gt 0) {
         exit 1
     }
 
-    if (Ask-Permission "Do you want to automatically install them using $PKG_MGR?") {
+    if (Get-UserConfirmation "Do you want to automatically install them using $PKG_MGR?") {
         foreach ($pkg in $missingPkgs) {
             $id = $pkg.id
             Write-Host "Installing: $id"
@@ -141,7 +141,7 @@ if ($missingPkgs.Count -gt 0) {
 
         # Re-resolve python command after potential installation
         foreach ($candidate in @("python", "python3", "py")) {
-            if (Command-Exists $candidate) {
+            if (Test-CommandAvailable $candidate) {
                 $ver = & $candidate -c "import sys; print(sys.version_info.major)" 2>$null
                 if ($ver -eq "3") { $PYTHON_CMD = $candidate; break }
             }
@@ -157,10 +157,10 @@ if ($missingPkgs.Count -gt 0) {
 # ---------------------------------------------------------------------------
 # TypeScript global check
 # ---------------------------------------------------------------------------
-if (Command-Exists npm) {
-    if (-not (Command-Exists tsc)) {
+if (Test-CommandAvailable npm) {
+    if (-not (Test-CommandAvailable tsc)) {
         Write-Host "`nTypeScript compiler (tsc) is missing."
-        if (Ask-Permission "Do you want to run 'npm install -g typescript'?") {
+        if (Get-UserConfirmation "Do you want to run 'npm install -g typescript'?") {
             Write-Host "Installing typescript globally..."
             npm install -g typescript
             if ($LASTEXITCODE -ne 0) {
@@ -198,7 +198,7 @@ if (Test-Path $VENV_ACTIVATE) {
 # Install Python dependencies
 # ---------------------------------------------------------------------------
 Write-Host "Installing Python dependencies..."
-if (Command-Exists pip) {
+if (Test-CommandAvailable pip) {
     pip install -r requirements.txt
 } else {
     & $PYTHON_CMD -m pip install -r requirements.txt
@@ -212,7 +212,7 @@ if ($LASTEXITCODE -ne 0) {
 # Start the FastAPI server
 # ---------------------------------------------------------------------------
 Write-Host "`nStarting FastAPI server on http://localhost:8000..."
-if (Command-Exists uvicorn) {
+if (Test-CommandAvailable uvicorn) {
     uvicorn main:app --port 8000
 } else {
     & $PYTHON_CMD -m uvicorn main:app --port 8000

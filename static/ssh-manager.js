@@ -3,9 +3,10 @@
 // ──────────────────────────────────────────
 // Global State
 // ──────────────────────────────────────────
-let masterKey    = null;
-let profiles     = [];
-let wslProfiles  = [];
+let masterKey        = null;
+let profilesEncrypted = true;   // false when no master password is configured
+let profiles         = [];
+let wslProfiles      = [];
 // activeTabs: tabId → { id, profile, term, fitAddon, ws, paneDom }
 let activeTabs   = {};
 let currentTabId = null;
@@ -169,11 +170,22 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
     if (pwd) {
         await _applyMasterKey(pwd);
     } else {
-        // No master password set — allow access without profile encryption
-        showToast('⚠️ No master password set — profiles are unencrypted.', 'warn');
-        document.getElementById('master-password-overlay').style.display = 'none';
+        // No master password set — store and retrieve profiles as plain JSON
+        profilesEncrypted = false;
         masterKey = '';
-        profiles  = [];
+        showToast('⚠️ No master password set — profiles are stored unencrypted.', 'warn');
+        document.getElementById('master-password-overlay').style.display = 'none';
+        // Load existing plain profiles if any
+        try {
+            const r = await fetch('/api/ssh/profiles');
+            if (r.ok) {
+                const d = await r.json();
+                const raw = d.plain_profiles || d.encrypted_blob || '';
+                if (raw) {
+                    try { profiles = JSON.parse(raw); } catch { profiles = []; }
+                }
+            }
+        } catch { profiles = []; }
         discoverWsl();
         renderSidebar(); renderSftpSidebar();
     }
@@ -432,7 +444,8 @@ document.getElementById('save-srv-btn').addEventListener('click', async () => {
     const idx = profiles.findIndex(x => x.id === id);
     if (idx > -1) profiles[idx] = srv; else profiles.push(srv);
 
-    const blob = encryptData(JSON.stringify(profiles), masterKey);
+    const serialized = JSON.stringify(profiles);
+    const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
     await saveProfilesBlob(blob);
     renderSidebar();
     renderSftpSidebar();
@@ -444,7 +457,8 @@ document.getElementById('add-server-btn').addEventListener('click', () => openSe
 document.getElementById('delete-srv-btn').addEventListener('click', async () => {
     const id = document.getElementById('srv-id').value;
     profiles  = profiles.filter(x => x.id !== id);
-    const blob = encryptData(JSON.stringify(profiles), masterKey);
+    const serialized = JSON.stringify(profiles);
+    const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
     await saveProfilesBlob(blob);
     renderSidebar();
     renderSftpSidebar();
@@ -489,7 +503,21 @@ function openTerminalTab(p) {
         }
         setTimeout(() => { if (ws.readyState === WebSocket.OPEN) ws.send(`\x1b[resize;${term.cols};${term.rows}m`); }, 500);
     };
-    ws.onmessage  = evt => term.write(evt.data);
+    ws.onmessage  = evt => {
+        // Intercept host-key approval requests (JSON control messages)
+        try {
+            const msg = JSON.parse(evt.data);
+            if (msg && msg.type === 'host_key_approval') {
+                const fp = msg.fingerprint || '(unknown)';
+                const approved = confirm(
+                    `New SSH host detected:\n\n${msg.host}:${msg.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+                );
+                ws.send(JSON.stringify({ type: 'host_key_response', approve: approved }));
+                return;
+            }
+        } catch { /* not a JSON control message — fall through */ }
+        term.write(evt.data);
+    };
     ws.onclose    = ()  => { try { term.write('\r\nConnection closed.'); } catch {} };
     ws.onerror    = ()  => { try { term.write('\r\nWebSocket error.'); }   catch {} };
     term.onData(d => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(d); });
@@ -629,11 +657,28 @@ async function sftpLoadDir(path) {
             private_key: sftpConn.profile.key   || null,
             path
         };
-        const r = await fetch('/api/sftp/list', {
+        let r = await fetch('/api/sftp/list', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify(payload)
         });
+
+        // Host-key approval required (TOFU gate)
+        if (r.status === 409) {
+            const errBody = await r.json().catch(() => ({}));
+            if (errBody.error === 'host_key_approval_required') {
+                const fp = errBody.fingerprint || '(unknown)';
+                const approved = confirm(
+                    `New SFTP host detected:\n\n${errBody.host}:${errBody.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+                );
+                if (!approved) { throw new Error('Host key rejected by user.'); }
+                r = await fetch('/api/sftp/list', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ ...payload, approved_fingerprint: fp })
+                });
+            }
+        }
 
         // Check if this request is still active
         if (!sftpConn || sftpConn.activeLoad !== loadToken) return;
@@ -769,27 +814,41 @@ document.getElementById('sftp-upload-input').addEventListener('change', async (e
 
 async function sftpUploadFile(file) {
     if (!sftpConn) return;
-    showToast(`Uploading ${file.name}…`, 'info');
-    try {
-        const fd = new FormData();
-        fd.append('host',        sftpConn.profile.host);
-        fd.append('port',        sftpConn.profile.port || '22');
-        fd.append('username',    sftpConn.profile.user);
-        if (sftpConn.profile.pass) fd.append('password',    sftpConn.profile.pass);
-        if (sftpConn.profile.key)  fd.append('private_key', sftpConn.profile.key);
-        fd.append('remote_path', sftpConn.path);
-        fd.append('file',        file, file.name);
+    const toastMsg = `Uploading ${file.name}… 0%`;
+    showToast(toastMsg, 'info');
 
-        const r = await fetch('/api/sftp/upload', { method: 'POST', body: fd });
-        if (!r.ok) {
-            const e = await r.json();
-            throw new Error(e.detail || `Server error ${r.status}`);
-        }
-        showToast(`Uploaded ${file.name}`, 'success');
-        await sftpLoadDir(sftpConn.path);  // refresh directory listing
-    } catch (e) {
-        showToast(`Upload failed: ${e.message}`, 'error');
-    }
+    const fd = new FormData();
+    fd.append('host',        sftpConn.profile.host);
+    fd.append('port',        sftpConn.profile.port || '22');
+    fd.append('username',    sftpConn.profile.user);
+    if (sftpConn.profile.pass) fd.append('password',    sftpConn.profile.pass);
+    if (sftpConn.profile.key)  fd.append('private_key', sftpConn.profile.key);
+    fd.append('remote_path', sftpConn.path);
+    fd.append('file',        file, file.name);
+
+    return new Promise((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/sftp/upload');
+        xhr.upload.onprogress = (evt) => {
+            if (evt.lengthComputable) {
+                const pct = Math.round((evt.loaded / evt.total) * 100);
+                showToast(`Uploading ${file.name}… ${pct}%`, 'info');
+            }
+        };
+        xhr.onload = async () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                showToast(`Uploaded ${file.name}`, 'success');
+                await sftpLoadDir(sftpConn.path);
+            } else {
+                let detail = `Server error ${xhr.status}`;
+                try { detail = JSON.parse(xhr.response).detail || detail; } catch {}
+                showToast(`Upload failed: ${detail}`, 'error');
+            }
+            resolve();
+        };
+        xhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
+        xhr.send(fd);
+    });
 }
 
 // ──────────────────────────────────────────

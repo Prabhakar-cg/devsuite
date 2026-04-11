@@ -287,7 +287,7 @@ class DevDB:
         if len(raw) < HEADER_SIZE:
             raise ValueError("DevDB: file is too small to be valid")
 
-        magic, version, flags, kdf, iterations, salt, nonce = struct.unpack_from(
+        magic, version, flags, _kdf, iterations, salt, nonce = struct.unpack_from(
             HEADER_FMT, raw, 0
         )
 

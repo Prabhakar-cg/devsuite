@@ -167,13 +167,13 @@
                 <p>Every tool in DevSuite. Filter by category and jump straight in.</p>
             </div>
 
-            <div class="filter-tabs" role="tablist">
-                <button class="filter-tab active" data-filter="all" role="tab">All <span class="filter-count">13</span></button>
-                <button class="filter-tab" data-filter="dev" role="tab">Dev <span class="filter-count">5</span></button>
-                <button class="filter-tab" data-filter="data" role="tab">Data <span class="filter-count">4</span></button>
-                <button class="filter-tab" data-filter="security" role="tab">Security <span class="filter-count">3</span></button>
-                <button class="filter-tab" data-filter="network" role="tab">Network <span class="filter-count">2</span></button>
-                <button class="filter-tab" data-filter="time" role="tab">Schedule <span class="filter-count">1</span></button>
+            <div class="filter-tabs" role="radiogroup" aria-label="Filter tools by category">
+                <button class="filter-tab active" data-filter="all" role="radio" aria-checked="true" tabindex="0">All <span class="filter-count">13</span></button>
+                <button class="filter-tab" data-filter="dev" role="radio" aria-checked="false" tabindex="-1">Dev <span class="filter-count">5</span></button>
+                <button class="filter-tab" data-filter="data" role="radio" aria-checked="false" tabindex="-1">Data <span class="filter-count">4</span></button>
+                <button class="filter-tab" data-filter="security" role="radio" aria-checked="false" tabindex="-1">Security <span class="filter-count">3</span></button>
+                <button class="filter-tab" data-filter="network" role="radio" aria-checked="false" tabindex="-1">Network <span class="filter-count">2</span></button>
+                <button class="filter-tab" data-filter="time" role="radio" aria-checked="false" tabindex="-1">Schedule <span class="filter-count">1</span></button>
             </div>
 
             <div class="tools-grid" id="tool-grid">
@@ -623,10 +623,35 @@
             const cards = document.querySelectorAll('#tool-grid .tool-card[data-category]');
             const empty = document.getElementById('filter-empty');
 
+            // Compute and update filter counts from actual DOM cards
+            function updateFilterCounts() {
+                const totals = { all: 0 };
+                cards.forEach(c => {
+                    const cat = c.dataset.category;
+                    totals.all++;
+                    if (cat) totals[cat] = (totals[cat] || 0) + 1;
+                });
+                tabs.forEach(t => {
+                    const countEl = t.querySelector('.filter-count');
+                    if (countEl) {
+                        const key = t.dataset.filter;
+                        countEl.textContent = totals[key] ?? 0;
+                    }
+                });
+            }
+
+            function setActiveTab(activeTab) {
+                tabs.forEach(t => {
+                    const isActive = t === activeTab;
+                    t.classList.toggle('active', isActive);
+                    t.setAttribute('aria-checked', String(isActive));
+                    t.setAttribute('tabindex', isActive ? '0' : '-1');
+                });
+            }
+
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
+                    setActiveTab(tab);
                     const f = tab.dataset.filter;
                     let n = 0;
                     cards.forEach(c => {
@@ -637,6 +662,8 @@
                     empty.style.display = n === 0 ? 'flex' : 'none';
                 });
             });
+
+            updateFilterCounts();
         })();
     </script>
 

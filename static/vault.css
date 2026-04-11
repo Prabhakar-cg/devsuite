@@ -328,7 +328,7 @@ html, body {
 }
 .field-action-btn:hover { background: var(--amber-subtle); border-color: rgba(255,159,10,0.3); color: var(--amber-mid); }
 .field-action-btn svg { width: 14px; height: 14px; }
-.field-notes { flex: 1; padding: 0.55rem 0.85rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text-mid); font-size: 0.85rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.field-notes { flex: 1; padding: 0.55rem 0.85rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-xs); color: var(--text-mid); font-size: 0.85rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: break-word; }
 
 /* ================================================================
    MODAL

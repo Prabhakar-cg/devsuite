@@ -50,5 +50,19 @@ DevSuite.initMonaco = function initMonaco(callback) {
         `importScripts('${_MONACO_VS}/base/worker/workerMain.js');`
     ], { type: 'text/javascript' }));
     window.MonacoEnvironment = { getWorkerUrl: () => proxy };
-    require(['vs/editor/editor.main'], callback);
+    require(
+        ['vs/editor/editor.main'],
+        function () {
+            URL.revokeObjectURL(proxy);
+            callback.apply(this, arguments);
+        },
+        function (err) {
+            URL.revokeObjectURL(proxy);
+            console.error('DevSuite.initMonaco: failed to load Monaco from CDN', err);
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:8px 16px;background:#ff3b30;color:#fff;font-family:sans-serif;font-size:13px;z-index:9999;text-align:center;';
+            banner.textContent = 'Editor unavailable — Monaco CDN could not be reached. Check your network connection.';
+            document.body.prepend(banner);
+        }
+    );
 };

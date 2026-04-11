@@ -130,14 +130,32 @@ const AuthGuard = (() => {
 
     // ── Password verification ─────────────────────────────────────
     async function _verify(pwd) {
-        const ch  = await fetch('/api/auth/challenge').then(r => r.json());
+        const resp = await fetch('/api/auth/challenge');
+        if (!resp.ok) return { ok: false, keyHex: null };
+        const ch = await resp.json();
+        if (!ch.salt || !ch.verify_blob || !ch.verify_iv) return { ok: false, keyHex: null };
         const key = CryptoJS.PBKDF2(pwd, CryptoJS.enc.Hex.parse(ch.salt), {
             keySize: PBKDF2_KS, iterations: PBKDF2_ITER,
         });
         const dec = CryptoJS.AES.decrypt(ch.verify_blob, key, {
             iv: CryptoJS.enc.Hex.parse(ch.verify_iv),
         });
-        return dec.toString(CryptoJS.enc.Utf8) === 'DEVSUITE_MASTER_OK';
+        const ok = dec.toString(CryptoJS.enc.Utf8) === 'DEVSUITE_MASTER_OK';
+        return { ok, keyHex: ok ? key.toString() : null };
+    }
+
+    // ── Acquire server-side session token ─────────────────────────
+    async function _acquireServerSession(keyHex) {
+        try {
+            const r = await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key_hex: keyHex }),
+            });
+            if (!r.ok) return;
+            const { session_token } = await r.json();
+            if (session_token) sessionStorage.setItem('devsuite_server_token', session_token);
+        } catch { /* non-fatal — DB API falls back gracefully */ }
     }
 
     // ── Overlay HTML ──────────────────────────────────────────────
@@ -242,12 +260,13 @@ const AuthGuard = (() => {
                 btn.textContent = 'Verifying…';
 
                 try {
-                    const ok = await _verify(pw);
+                    const { ok, keyHex } = await _verify(pw);
                     if (!ok) {
                         err.textContent = '❌ Incorrect master password.';
                         err.style.display = 'block';
                         return;
                     }
+                    if (keyHex) await _acquireServerSession(keyHex);
                     _cacheSession(pw);
                     overlay.style.display = 'none';
                     resolve(pw);

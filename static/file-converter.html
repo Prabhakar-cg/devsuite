@@ -398,7 +398,7 @@
 
     <!-- Drop Zone -->
     <div>
-        <div id="drop-zone" class="drop-zone" id="drop-zone">
+        <div id="drop-zone" class="drop-zone">
             <input type="file" id="file-input" accept="*/*">
             <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -854,15 +854,16 @@ async function convertInBrowser(from, to) {
     let output = '';
     let outputMime = MIME[to] || 'text/plain';
     let outputExt  = to;
+    let conversionPerformed = false;
 
     /* ── JSON → * ── */
     if (from === 'json') {
         const data = JSON.parse(text);
 
-        if (to === 'csv') output = jsonToCsv(data);
-        else if (to === 'tsv') output = jsonToCsv(data, '\t');
-        else if (to === 'yaml') output = jsyaml.dump(data, { indent: 2, lineWidth: 120 });
-        else if (to === 'xml') output = jsonToXml(data, 'root');
+        if (to === 'csv') { output = jsonToCsv(data); conversionPerformed = true; }
+        else if (to === 'tsv') { output = jsonToCsv(data, '\t'); conversionPerformed = true; }
+        else if (to === 'yaml') { output = jsyaml.dump(data, { indent: 2, lineWidth: 120 }); conversionPerformed = true; }
+        else if (to === 'xml') { output = jsonToXml(data, 'root'); conversionPerformed = true; }
     }
     /* ── CSV → * ── */
     else if (from === 'csv') {
@@ -870,9 +871,9 @@ async function convertInBrowser(from, to) {
         if (parsed.errors.length) throw new Error(parsed.errors[0].message);
         const rows = parsed.data;
 
-        if (to === 'json') output = JSON.stringify(rows, null, 2);
-        else if (to === 'tsv') output = jsonToCsv(rows, '\t');
-        else if (to === 'yaml') output = jsyaml.dump(rows, { indent: 2 });
+        if (to === 'json') { output = JSON.stringify(rows, null, 2); conversionPerformed = true; }
+        else if (to === 'tsv') { output = jsonToCsv(rows, '\t'); conversionPerformed = true; }
+        else if (to === 'yaml') { output = jsyaml.dump(rows, { indent: 2 }); conversionPerformed = true; }
     }
     /* ── TSV → * ── */
     else if (from === 'tsv') {
@@ -880,16 +881,16 @@ async function convertInBrowser(from, to) {
         if (parsed.errors.length) throw new Error(parsed.errors[0].message);
         const rows = parsed.data;
 
-        if (to === 'csv') output = jsonToCsv(rows, ',');
-        else if (to === 'json') output = JSON.stringify(rows, null, 2);
-        else if (to === 'yaml') output = jsyaml.dump(rows, { indent: 2 });
+        if (to === 'csv') { output = jsonToCsv(rows, ','); conversionPerformed = true; }
+        else if (to === 'json') { output = JSON.stringify(rows, null, 2); conversionPerformed = true; }
+        else if (to === 'yaml') { output = jsyaml.dump(rows, { indent: 2 }); conversionPerformed = true; }
     }
     /* ── YAML → * ── */
     else if (from === 'yaml') {
         const data = jsyaml.load(text);
 
-        if (to === 'json') output = JSON.stringify(data, null, 2);
-        else if (to === 'csv') output = jsonToCsv(Array.isArray(data) ? data : [data]);
+        if (to === 'json') { output = JSON.stringify(data, null, 2); conversionPerformed = true; }
+        else if (to === 'csv') { output = jsonToCsv(Array.isArray(data) ? data : [data]); conversionPerformed = true; }
     }
     /* ── XML → JSON ── */
     else if (from === 'xml') {
@@ -897,30 +898,35 @@ async function convertInBrowser(from, to) {
         const parserErr = doc.querySelector('parsererror');
         if (parserErr) throw new Error('Invalid XML: ' + parserErr.textContent);
         output = JSON.stringify(xmlToJson(doc.documentElement), null, 2);
+        conversionPerformed = true;
     }
     /* ── Markdown → HTML ── */
     else if (from === 'md' || from === 'markdown') {
         if (to === 'html') {
             output = `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"><title>Converted</title></head>\n<body>\n${marked.parse(text)}\n</body>\n</html>`;
+            conversionPerformed = true;
         }
     }
     /* ── HTML → * ── */
     else if (from === 'html') {
         if (to === 'md') {
             output = htmlToMarkdown(text);
+            conversionPerformed = true;
         } else if (to === 'txt') {
             const tmp = document.createElement('div');
             tmp.innerHTML = text;
             output = tmp.innerText;
+            conversionPerformed = true;
         }
     }
     /* ── TXT → MD (trivially, just rename) ── */
     else if (from === 'txt') {
         output = text;
         outputExt = 'md';
+        conversionPerformed = true;
     }
 
-    if (output === '' && output !== null && typeof output !== 'string') {
+    if (!conversionPerformed) {
         throw new Error(`Conversion from ${from} → ${to} is not supported in-browser.`);
     }
 
@@ -1019,13 +1025,16 @@ function showTextResult(text, toFmt, ext) {
     resultTitle.textContent = `Output — ${ext.toUpperCase()} (${fmtSize(blob.size)})`;
 
     if (toFmt === 'html') {
-        resultBody.innerHTML = `<div class="html-preview">${marked.parse(text.replace(/<[^>]+>/g, m => m))}</div>`;
-        // Show raw HTML in pre below
+        // Render the HTML in a sandboxed iframe (no scripts, no navigation)
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('sandbox', '');
+        iframe.style.cssText = 'width:100%;height:200px;border:1px solid var(--border,#e0e0e0);border-radius:6px;background:#fff;';
+        iframe.srcdoc = text;
+        resultBody.appendChild(iframe);
+        // Also show raw HTML source in a <pre> below
         const pre = document.createElement('pre');
         pre.textContent = text;
         resultBody.appendChild(pre);
-        resultBody.firstChild.style.maxHeight = '180px';
-        resultBody.firstChild.style.overflow = 'auto';
     } else {
         resultBody.innerHTML = `<pre>${escHtml(text.slice(0, 8000))}${text.length > 8000 ? '\n\n… (truncated for preview)' : ''}</pre>`;
     }

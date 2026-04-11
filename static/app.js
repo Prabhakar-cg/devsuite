@@ -198,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let modifiedFiles = new Map();
     let fileDiffStatusMap = new Map();
     let currentFolderFilter = 'all';
+    let activeFilePath = null;
     let origFolderRootName = 'Folder 1';
     let modFolderRootName = 'Folder 2';
     let origFolderTotalSize = 0;
@@ -969,7 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileDiffStatusMap.set(path, { status: 'added' });
             } else {
                 const o = originalFiles.get(path), m = modifiedFiles.get(path);
-                let changed = o.size !== m.size || o.lastModified !== m.lastModified;
+                let changed = o.size !== m.size;
                 if (!changed && o.size < 5 * 1024 * 1024) {
                     try {
                         const [bufO, bufM] = await Promise.all([o.arrayBuffer(), m.arrayBuffer()]);
@@ -1222,9 +1223,16 @@ document.addEventListener('DOMContentLoaded', () => {
         row.appendChild(size);
         row.appendChild(actions);
 
-        if (node.status === 'modified') {
+        const diffableStatuses = new Set(['modified', 'added', 'removed']);
+        if (diffableStatuses.has(node.status)) {
             row.classList.add('clickable');
-            row.addEventListener('click', () => openFileDiff(node.path, node.status, node.name));
+            row.addEventListener('click', () => {
+                // Remove active class from previous active row
+                document.querySelectorAll('.tree-file-row.active-file').forEach(r => r.classList.remove('active-file'));
+                row.classList.add('active-file');
+                activeFilePath = node.path;
+                openFileDiff(node.path, node.status, node.name);
+            });
         }
         return row;
     }

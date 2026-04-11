@@ -176,7 +176,7 @@ html, body {
         rgba(124,106,247,0.12) 30%,
         transparent 70%);
     pointer-events: none;
-    animation: glowPulse 8s ease-in-out infinite alternate;
+    animation: glow-pulse 8s ease-in-out infinite alternate;
 }
 .hero-section::after {
     content: '';
@@ -187,7 +187,7 @@ html, body {
         rgba(40,184,245,0.1) 0%, transparent 60%);
     pointer-events: none;
 }
-@keyframes glowPulse {
+@keyframes glow-pulse {
     from { opacity: 0.7; transform: translateX(-50%) scale(1); }
     to   { opacity: 1;   transform: translateX(-50%) scale(1.08); }
 }
@@ -206,7 +206,7 @@ html, body {
     text-transform: uppercase;
     color: var(--text-white-dim);
     margin-bottom: 1.75rem;
-    animation: fadeUp 0.7s ease-out both;
+    animation: fade-up 0.7s ease-out both;
 }
 
 .hero-title {
@@ -216,7 +216,7 @@ html, body {
     line-height: 1.06;
     color: var(--text-white);
     margin-bottom: 1.5rem;
-    animation: fadeUp 0.7s 0.1s ease-out both;
+    animation: fade-up 0.7s 0.1s ease-out both;
 }
 
 .hero-subtitle {
@@ -225,7 +225,7 @@ html, body {
     line-height: 1.65;
     color: var(--text-white-dim);
     margin-bottom: 2.5rem;
-    animation: fadeUp 0.7s 0.2s ease-out both;
+    animation: fade-up 0.7s 0.2s ease-out both;
 }
 
 .hero-actions {
@@ -234,7 +234,7 @@ html, body {
     justify-content: center;
     gap: 0.875rem;
     flex-wrap: wrap;
-    animation: fadeUp 0.7s 0.3s ease-out both;
+    animation: fade-up 0.7s 0.3s ease-out both;
 }
 
 /* ── Shared button styles ── */
@@ -285,7 +285,7 @@ html, body {
     transform: scale(1.02);
 }
 
-@keyframes fadeUp {
+@keyframes fade-up {
     from { opacity: 0; transform: translateY(20px); }
     to   { opacity: 1; transform: translateY(0); }
 }
@@ -622,7 +622,7 @@ html, body {
     transition: var(--transition);
     cursor: pointer;
     border: 1.5px solid transparent;
-    animation: fadeUp 0.4s ease-out both;
+    animation: fade-up 0.4s ease-out both;
     position: relative;
 }
 .tool-card:hover {
@@ -948,4 +948,21 @@ html, body {
     .footer-inner { flex-direction: column; text-align: center; }
     .site-nav { display: none; }
     .trust-section { padding: 5rem 0; }
+}
+
+/* ── Reduced-motion accessibility ── */
+@media (prefers-reduced-motion: reduce) {
+    .hero-section::before,
+    .hero-eyebrow,
+    .hero-title,
+    .hero-subtitle,
+    .hero-actions,
+    .tool-card,
+    .tool-card:nth-child(n) {
+        animation: none !important;
+        transition-duration: 0s !important;
+    }
+    .tool-card:hover {
+        transform: none;
+    }
 }

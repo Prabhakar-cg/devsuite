@@ -17,6 +17,16 @@ const STORE_META = {
 // ── State ─────────────────────────────────────────────────────────────────────
 let _meta = null;
 let _authenticated = false;
+let _serverToken = '';
+
+function _authHeaders() {
+    return _serverToken ? { 'X-Session-Token': _serverToken } : {};
+}
+
+async function _authFetch(url, opts = {}) {
+    const res = await fetch(url, { ...opts, headers: { ..._authHeaders(), ...opts.headers } });
+    return res;
+}
 
 const PBKDF2_ITERATIONS = 50000;
 const PBKDF2_KEYSIZE    = 256 / 32;
@@ -73,7 +83,7 @@ async function initLockScreen() {
 
     // Show the DB file path on the lock screen (path is not sensitive)
     try {
-        const meta = await fetch('/api/db/meta').then(r => r.json());
+        const meta = await _authFetch('/api/db/meta').then(r => r.json());
         if (meta.path) {
             document.getElementById('lock-db-path-text').textContent = meta.path;
             document.getElementById('lock-db-path').style.display = 'flex';
@@ -136,6 +146,19 @@ async function attemptUnlock() {
             return;
         }
 
+        // Acquire server-side session token (best-effort)
+        try {
+            const sr = await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key_hex: key.toString() }),
+            });
+            if (sr.ok) {
+                const { session_token } = await sr.json();
+                if (session_token) _serverToken = session_token;
+            }
+        } catch { /* non-fatal */ }
+
         // Success — show the manager
         document.getElementById('lock-overlay').style.display = 'none';
         _authenticated = true;
@@ -155,7 +178,7 @@ async function attemptUnlock() {
 async function loadMeta() {
     if (!_authenticated) return;
     try {
-        const data = await fetch('/api/db/meta').then(r => r.json());
+        const data = await _authFetch('/api/db/meta').then(r => r.json());
         _meta = data;
         renderFileBanner(data);
         renderStores(data);
@@ -211,13 +234,22 @@ function updateEncryptionBadge(encrypted) {
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────────
-function doExport() {
-    const ts  = new Date().toISOString().slice(0, 10);
-    const a   = document.createElement('a');
-    a.href    = '/api/db/export';
-    a.download = `devdb-backup-${ts}.dsb`;
-    a.click();
-    toast('💾 Database exported as .dsb file', 'success');
+async function doExport() {
+    try {
+        const res = await _authFetch('/api/db/export');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const objUrl = URL.createObjectURL(blob);
+        const ts = new Date().toISOString().slice(0, 10);
+        const a  = document.createElement('a');
+        a.href = objUrl;
+        a.download = `devdb-backup-${ts}.dsb`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+        toast('💾 Database exported as .dsb file', 'success');
+    } catch (err) {
+        toast('Export failed: ' + err.message, 'error');
+    }
 }
 
 // ── Import ─────────────────────────────────────────────────────────────────────
@@ -248,7 +280,7 @@ function setupImport() {
             form.append('file', file);
             prog.style.width = '60%';
 
-            const res = await fetch('/api/db/import', { method: 'POST', body: form });
+            const res = await _authFetch('/api/db/import', { method: 'POST', body: form });
             prog.style.width = '100%';
 
             if (!res.ok) {

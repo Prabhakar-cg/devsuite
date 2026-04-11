@@ -401,8 +401,7 @@ function addFieldRow(container, label, value, secret, fieldId, clipLabel, isUrl=
         <div class="field-label">${escHtml(label)}</div>
         <div class="field-val-wrap">
             <div class="field-val ${hiddenClass} ${textareaClass} ${urlClass}" id="fv-${fieldId}"
-                 data-secret="${secret}" data-raw="${encodeURIComponent(value)}"
-                 ${isUrl ? `onclick="window.open(decodeURIComponent(this.dataset.raw),'_blank')"` : ''}>
+                 data-secret="${secret}" data-raw="${encodeURIComponent(value)}">
                 ${displayVal}
             </div>
             ${secret ? `
@@ -418,6 +417,22 @@ function addFieldRow(container, label, value, secret, fieldId, clipLabel, isUrl=
             </button>
         </div>`;
     container.appendChild(row);
+
+    // Attach safe URL opener — validates scheme before opening
+    if (isUrl) {
+        const fvEl = document.getElementById(`fv-${fieldId}`);
+        if (fvEl) {
+            fvEl.style.cursor = 'pointer';
+            fvEl.addEventListener('click', function () {
+                try {
+                    const raw = decodeURIComponent(this.dataset.raw);
+                    const parsed = new URL(raw);
+                    if (!/^https?:$/.test(parsed.protocol)) return;
+                    window.open(raw, '_blank', 'noopener,noreferrer');
+                } catch { /* invalid URL — do nothing */ }
+            });
+        }
+    }
 }
 
 function addNotesRow(container, text) {
@@ -451,12 +466,12 @@ function selectEntry(id) {
     renderDetail();
 }
 
-function duplicateEntry(id) {
+async function duplicateEntry(id) {
     const src = vaultEntries.find(x => x.id === id);
     if (!src) return;
     const dupe = { ...src, id: genId(), title: src.title + ' (copy)', modified: Date.now() };
     vaultEntries.unshift(dupe);
-    persistVault();
+    try { await persistVault(); } catch (e) { toast('Save failed: ' + e.message, 'error'); return; }
     renderCounts();
     selectedId = dupe.id;
     renderEntryList();
@@ -464,10 +479,10 @@ function duplicateEntry(id) {
     toast('Entry duplicated');
 }
 
-function deleteEntry(id) {
+async function deleteEntry(id) {
     if (!confirm('Delete this secret? This cannot be undone.')) return;
     vaultEntries = vaultEntries.filter(x => x.id !== id);
-    persistVault();
+    try { await persistVault(); } catch (e) { toast('Save failed: ' + e.message, 'error'); return; }
     if (selectedId === id) { selectedId = null; }
     closeModal();
     renderCounts();

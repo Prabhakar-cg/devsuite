@@ -461,11 +461,6 @@ body::before {
     animation: slideUp 0.25s ease;
 }
 
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(18px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
 .db-lock-icon {
     font-size: 2.4rem;
     line-height: 1;
