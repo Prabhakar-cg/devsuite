@@ -480,7 +480,8 @@ def save_vault(data: dict, request: Request):
         _db.save()
         return {"status": "ok"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to save vault: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save vault") from e
 
 
 @app.post("/api/shorten", summary="Create a short URL")
@@ -621,7 +622,8 @@ def save_collections(data: dict):
         _db.save()
         return {"status": "ok"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to save collections: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save collections") from e
 
 
 class ProxyRequest(BaseModel):
@@ -716,7 +718,8 @@ async def proxy_request(req: ProxyRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Proxy request failed: %s", e)
+        raise HTTPException(status_code=500, detail="Proxy request failed") from e
 
 
 @app.get("/api/ssh/profiles", summary="Get SSH Profiles")
@@ -739,7 +742,8 @@ def save_ssh_profiles(data: dict, request: Request):
         _db.save()
         return {"status": "ok"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to save SSH profiles: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save SSH profiles") from e
 
 
 # ─── Server-side session store ───────────────────────────────────────────────
@@ -808,7 +812,8 @@ def db_set_store(name: str, data: dict, request: Request):
             url_db.update(_db.get_store("url_db") or {})
         return {"status": "ok", "store": name}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to write store %r: %s", name, e)
+        raise HTTPException(status_code=500, detail="Failed to write store") from e
 
 @app.get("/api/db/export", summary="Export full DevDB as a .dsb file")
 def db_export(request: Request):
@@ -822,7 +827,8 @@ def db_export(request: Request):
             headers={"Content-Disposition": 'attachment; filename="devdb.dsb"'},
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to export DevDB: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to export database") from e
 
 @app.post("/api/db/import", summary="Import a .dsb file into DevDB")
 async def db_import(request: Request, file: UploadFile = File(...)):
@@ -850,7 +856,8 @@ async def db_import(request: Request, file: UploadFile = File(...)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to import DevDB: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to import database") from e
 
 # ─── Auth — Master Password Management ──────────────────────────────────────
 # Client-side password verification: server stores a challenge blob (AES-encrypted
@@ -1261,7 +1268,8 @@ async def sftp_list(req: SFTPRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("SFTP list error for %s: %s", req.host, e)
+        raise HTTPException(status_code=500, detail="SFTP operation failed") from e
 
 class SFTPDownloadRequest(BaseModel):
     host: str
@@ -1317,7 +1325,8 @@ async def sftp_download(req: SFTPDownloadRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("SFTP download error for %s: %s", req.host, e)
+        raise HTTPException(status_code=500, detail="SFTP operation failed") from e
 
 @app.post("/api/sftp/upload", summary="Upload a file via SFTP")
 async def sftp_upload(
@@ -1363,7 +1372,8 @@ async def sftp_upload(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("SFTP upload error for %s: %s", host, e)
+        raise HTTPException(status_code=500, detail="SFTP operation failed") from e
 
 @app.get("/api/wsl/discover", summary="Discover local WSL instances")
 async def wsl_discover():

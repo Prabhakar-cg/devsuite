@@ -640,18 +640,38 @@ document.getElementById('hash-run-btn').addEventListener('click', async () => {
         // Stats row
         const stats = document.createElement('div');
         stats.style.cssText = 'padding:0.5rem 1rem; font-size:0.72rem; color:var(--text-muted); border-bottom:1px solid rgba(255,255,255,0.05); display:flex; gap:1rem;';
-        stats.innerHTML = `<span>Input: <strong style="color:var(--text-secondary)">${text.length.toLocaleString()} chars</strong></span><span>Encoding: UTF-8</span>`;
+        const inputSpan = document.createElement('span');
+        const strong = document.createElement('strong');
+        strong.style.color = 'var(--text-secondary)';
+        strong.textContent = text.length.toLocaleString() + ' chars';
+        inputSpan.append('Input: ', strong);
+        const encSpan = document.createElement('span');
+        encSpan.textContent = 'Encoding: UTF-8';
+        stats.append(inputSpan, encSpan);
         container.appendChild(stats);
 
         results.forEach(r => {
             const row = document.createElement('div');
             row.className = 'hash-row';
-            row.innerHTML = `
-                <div class="hash-algo">${r.algo}</div>
-                <div class="hash-val" id="hv-${r.algo}">${r.hash}</div>
-                <button class="hash-copy" title="Copy ${r.algo} hash" data-hash="${r.hash}">
-                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                </button>`;
+
+            const algoDiv = document.createElement('div');
+            algoDiv.className = 'hash-algo';
+            algoDiv.textContent = r.algo;
+
+            const hashValDiv = document.createElement('div');
+            hashValDiv.className = 'hash-val';
+            hashValDiv.id = 'hv-' + r.algo;
+            hashValDiv.textContent = r.hash;
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'hash-copy';
+            copyBtn.title = 'Copy ' + r.algo + ' hash';
+            copyBtn.dataset.hash = r.hash;
+            copyBtn.innerHTML = '<svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+
+            row.appendChild(algoDiv);
+            row.appendChild(hashValDiv);
+            row.appendChild(copyBtn);
             container.appendChild(row);
 
             // Note row
@@ -806,7 +826,11 @@ document.getElementById('rsa-gen-btn').addEventListener('click', async () => {
         ]);
         rsaPublicKey.value  = arrayBufferToPem(pubDer,  'PUBLIC KEY');
         rsaPrivateKey.value = arrayBufferToPem(privDer, 'PRIVATE KEY');
-        rsaGenStatus.innerHTML = `<span class="badge-ok">${bits}-bit keypair ready ✓</span>`;
+        rsaGenStatus.textContent = '';
+        const okSpan = document.createElement('span');
+        okSpan.className = 'badge-ok';
+        okSpan.textContent = bits + '-bit keypair ready ✓';
+        rsaGenStatus.appendChild(okSpan);
         document.getElementById('rsa-encrypt-btn').disabled = false;
         document.getElementById('rsa-decrypt-btn').disabled = false;
         toast('RSA keypair generated!', 'success');
@@ -913,7 +937,7 @@ document.getElementById('hmac-verify-btn').addEventListener('click', async () =>
         const key = await hmacKey(secret, algo);
         const ok  = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(msg));
         hmacBanner.className = `verify-banner ${ok ? 'ok' : 'err'}`;
-        hmacBanner.innerHTML = ok
+        hmacBanner.textContent = ok
             ? '✓ Signature is VALID — the message has not been tampered with.'
             : '✗ Signature is INVALID — key mismatch or message was modified.';
         toast(ok ? 'Signature valid ✓' : 'Signature invalid ✗', ok ? 'success' : 'error');

@@ -321,7 +321,7 @@ function renderSidebar() {
         header.innerHTML = `
             <span class="folder-toggle">${isExpanded ? '[-]' : '[+]'}</span>
             <span class="folder-icon">📂</span>
-            <span>${gName}</span>
+            <span>${escHtml(gName)}</span>
         `;
 
         const childrenDiv = document.createElement('div');
@@ -340,7 +340,7 @@ function renderSidebar() {
             d.className = 'server-item';
             if (Object.values(activeTabs).some(t => t.profile.id === p.id)) d.classList.add('active');
             d.innerHTML = `
-                <div class="server-name-lbl">🖥️ <span>${p.name || p.host}</span></div>
+                <div class="server-name-lbl">🖥️ <span>${escHtml(p.name || p.host)}</span></div>
                 ${p.isWsl ? '' : '<div style="display:flex;gap:0.25rem;"><div class="edit-srv-icon" title="Edit Session">⚙</div><div class="del-srv-icon" title="Delete Session">🗑️</div></div>'}
             `;
             d.querySelector('.server-name-lbl').addEventListener('click', () => openTerminalTab(p));
@@ -418,10 +418,10 @@ function renderSftpSidebar() {
 
             const initials = (p.name || p.host || '?').slice(0, 2).toUpperCase();
             item.innerHTML = `
-                <div class="sftp-sess-avatar">${initials}</div>
+                <div class="sftp-sess-avatar">${escHtml(initials)}</div>
                 <div style="overflow:hidden;">
-                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;">${p.name || p.host}</div>
-                    <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.user || ''}@${p.host}:${p.port || 22}</div>
+                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;">${escHtml(p.name || p.host)}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.user || '')}@${escHtml(p.host)}:${p.port || 22}</div>
                 </div>
             `;
             item.addEventListener('click', () => sftpConnectTo(p));
@@ -477,10 +477,10 @@ function renderDashboardSidebar() {
 
             const initials = (p.name || p.host || '?').slice(0, 2).toUpperCase();
             item.innerHTML = `
-                <div class="sftp-sess-avatar" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);">${initials}</div>
+                <div class="sftp-sess-avatar" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);">${escHtml(initials)}</div>
                 <div style="overflow:hidden;">
-                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;">${p.name || p.host}</div>
-                    <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.user || ''}@${p.host}:${p.port || 22}</div>
+                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;">${escHtml(p.name || p.host)}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.user || '')}@${escHtml(p.host)}:${p.port || 22}</div>
                 </div>
             `;
             item.addEventListener('click', () => dashConnectTo(p));
@@ -625,7 +625,7 @@ function renderTabsHeader() {
         d.className = 'term-tab';
         if (tab.id === currentTabId) d.classList.add('active');
         d.innerHTML = `
-            <div class="term-tab-title"><span style="color:#0ea5e9;">➜</span> ${tab.profile.name || tab.profile.host}</div>
+            <div class="term-tab-title"><span style="color:#0ea5e9;">➜</span> ${escHtml(tab.profile.name || tab.profile.host)}</div>
             <div class="tab-close">✖</div>
         `;
         d.addEventListener('click', () => switchTab(tab.id));
@@ -1239,7 +1239,7 @@ function updateDashboardGauges(metrics) {
                  wrap.style.flexDirection = 'column';
                  
                  wrap.innerHTML = `
-                     <div style="font-weight: 500; font-size: 0.85rem; margin-bottom: 0.5rem; text-align: center; color: var(--text-color);">${disk.mount}</div>
+                     <div style="font-weight: 500; font-size: 0.85rem; margin-bottom: 0.5rem; text-align: center; color: var(--text-color);">${escHtml(disk.mount)}</div>
                      <div style="height: 100px; position: relative;">
                          <canvas id="${diskId}-canvas"></canvas>
                      </div>

@@ -4,7 +4,7 @@
  * Uses the Node.js built-in test runner (node:test) and assert module.
  * Loads cron.js via vm.runInContext so no source modifications are needed.
  *
- * Run: node --test test_cron_logic.js
+ * Run: node --test tests/javascript/test_cron_logic.js   (from devsuite/ root)
  */
 
 'use strict';
@@ -20,7 +20,7 @@ const path = require('path');
 // ─────────────────────────────────────────────
 
 const cronSource = fs.readFileSync(
-  path.join(__dirname, 'static', 'cron.js'),
+  path.join(__dirname, '..', '..', 'static', 'cron.js'),
   'utf8'
 );
 

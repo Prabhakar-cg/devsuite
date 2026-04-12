@@ -7,6 +7,17 @@
     <meta name="description" content="A locally-hosted, offline-first developer toolkit. Diff files, lint JSON/YAML, test APIs, manage secrets, SSH into servers — all from your machine. Zero cloud. Zero tracking.">
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/home.css">
+    <script src="/static/theme.js"></script>
+    <script>
+        /* Apply home.css CSS variables synchronously to prevent FOUC */
+        (function() {
+            var t = localStorage.getItem('devsuite-theme') || 'vs-dark';
+            if (window.applyHomeCSSVars) window.applyHomeCSSVars(t);
+        })();
+        window.addEventListener('devsuite-theme-changed', function(e) {
+            if (window.applyHomeCSSVars) window.applyHomeCSSVars(e.detail.theme);
+        });
+    </script>
 </head>
 <body>
 
@@ -30,7 +41,46 @@
                 <a href="#privacy">Privacy</a>
                 <a href="#roadmap">Roadmap</a>
                 <a href="https://github.com/Prabhakar-cg/devsuite" target="_blank" rel="noopener noreferrer">GitHub</a>
+
+                <!-- Theme Picker -->
+                <div class="theme-picker" id="themePicker">
+                    <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Choose theme" title="Switch theme">
+                        Theme
+                        <svg class="theme-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </button>
+                    <div class="theme-panel" id="themePanel" role="dialog" aria-label="Theme selector">
+                        <div class="theme-options" id="themeOptions">
+                            <button class="theme-option" data-theme="vs-dark">
+                                <span class="theme-swatch" style="background:linear-gradient(135deg,#05050a 40%,#3b82f6)"></span>
+                                Noir
+                            </button>
+                            <button class="theme-option" data-theme="midnight">
+                                <span class="theme-swatch" style="background:linear-gradient(135deg,#07071a 40%,#8b5cf6)"></span>
+                                Midnight
+                            </button>
+                            <button class="theme-option" data-theme="ocean">
+                                <span class="theme-swatch" style="background:linear-gradient(135deg,#040d1a 40%,#38bdf8)"></span>
+                                Ocean
+                            </button>
+                            <button class="theme-option" data-theme="solarized">
+                                <span class="theme-swatch" style="background:linear-gradient(135deg,#002b36 40%,#268bd2)"></span>
+                                Solarized
+                            </button>
+                            <button class="theme-option" data-theme="vs">
+                                <span class="theme-swatch" style="background:linear-gradient(135deg,#f3f4f8 40%,#2563eb)"></span>
+                                Light
+                            </button>
+                            <button class="theme-option" data-theme="hc-black">
+                                <span class="theme-swatch" style="background:linear-gradient(135deg,#000 40%,#60a5fa)"></span>
+                                Hi-Contrast
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </nav>
+
             <a href="/tools" class="header-cta">
                 Open Tools
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -443,6 +493,49 @@
             el.style.transition = `opacity 0.5s ${i * 0.06}s ease-out, transform 0.5s ${i * 0.06}s ease-out`;
             observer.observe(el);
         });
+    </script>
+
+    <!-- Theme Picker Script -->
+    <script>
+        (function () {
+            const picker    = document.getElementById('themePicker');
+            const toggleBtn = document.getElementById('themeToggleBtn');
+            const panel     = document.getElementById('themePanel');
+            const options   = document.querySelectorAll('#themeOptions .theme-option');
+
+            if (!picker || !toggleBtn || !panel) return;
+
+            function setActive(theme) {
+                options.forEach(o => o.classList.toggle('active', o.dataset.theme === theme));
+            }
+
+            toggleBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                panel.classList.toggle('open');
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!picker.contains(e.target)) panel.classList.remove('open');
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') panel.classList.remove('open');
+            });
+
+            options.forEach(function (opt) {
+                opt.addEventListener('click', function () {
+                    const theme = opt.dataset.theme;
+                    if (window.setDevSuiteTheme) window.setDevSuiteTheme(theme);
+                    setActive(theme);
+                    panel.classList.remove('open');
+                });
+            });
+
+            setActive(localStorage.getItem('devsuite-theme') || 'vs-dark');
+            window.addEventListener('devsuite-theme-changed', function (e) {
+                setActive(e.detail.theme);
+            });
+        })();
     </script>
 
 </body>

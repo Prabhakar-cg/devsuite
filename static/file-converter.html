@@ -911,9 +911,8 @@ async function convertInBrowser(from, to) {
             output = htmlToMarkdown(text);
             conversionPerformed = true;
         } else if (to === 'txt') {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = text;
-            output = tmp.innerText;
+            const doc = new DOMParser().parseFromString(text, 'text/html');
+            output = doc.body.innerText;
             conversionPerformed = true;
         }
     }
@@ -1050,7 +1049,12 @@ function showBinaryResult(blob, ext) {
 
     const isImage = ['png','jpg','jpeg','webp','gif','bmp','svg'].includes(ext);
     if (isImage) {
-        resultBody.innerHTML = `<img class="img-preview" src="${objUrl}" alt="Preview">`;
+        const img = document.createElement('img');
+        img.className = 'img-preview';
+        img.src = objUrl;
+        img.alt = 'Preview';
+        resultBody.textContent = '';
+        resultBody.appendChild(img);
     } else {
         resultBody.innerHTML = `<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:1.5rem;">
             Binary file ready — click Download to save.
@@ -1145,8 +1149,8 @@ function xmlToJson(node) {
 }
 
 function htmlToMarkdown(html) {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const tmp = doc.body;
     function walk(node) {
         if (node.nodeType === Node.TEXT_NODE) return node.textContent;
         if (node.nodeType !== Node.ELEMENT_NODE) return '';
