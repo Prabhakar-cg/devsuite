@@ -5,7 +5,13 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
-## [0.1.0] — 2026-04-11
+## [Unreleased]
+
+_No changes yet — all features are captured in v0.1.0._
+
+---
+
+## [0.1.0] — 2026-04-12
 
 This is the **baseline release** — a comprehensive snapshot of all features, tools, and infrastructure present in DevSuite at this version. Future releases will document incremental changes against this baseline.
 

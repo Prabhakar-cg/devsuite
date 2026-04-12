@@ -16,6 +16,11 @@ __pycache__/
 .DS_Store
 .cursorignore
 .cursorindexingignore
+.claude/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
 
 # Editor backup files
 *~
@@ -38,3 +43,7 @@ build/
 
 # DevSuite runtime data (auto-generated, not source code)
 url_db.json
+*.json.bak
+
+# Node.js (if frontend tooling is added)
+node_modules/

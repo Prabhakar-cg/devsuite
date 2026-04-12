@@ -206,7 +206,7 @@ async function unlockVault(password) {
         try {
             const verifyIv   = CryptoJS.lib.WordArray.random(16);
             const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
-            await fetch('/api/auth/setup', {
+            const setupRes = await fetch('/api/auth/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -215,6 +215,20 @@ async function unlockVault(password) {
                     verify_iv:   verifyIv.toString(),
                 }),
             });
+            if (setupRes.ok) {
+                // Challenge is now registered — acquire a server session immediately.
+                // key and sessionKey are identical (same salt + iterations), so key.toString()
+                // is the correct hex to pass to /api/auth/session.
+                await _acquireServerSession(key.toString());
+                // Retry the initial vault-salt save that failed earlier (no session at that point).
+                if (isNewVault) {
+                    await fetch('/api/vault', {
+                        method: 'POST',
+                        headers: _authHeaders({ 'Content-Type': 'application/json' }),
+                        body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
+                    });
+                }
+            }
             isSetupMode = false;
             // Reset lock screen to normal-unlock appearance for future locks
             document.getElementById('lock-setup-desc').textContent =
