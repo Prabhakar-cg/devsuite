@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Tester — DevSuite</title>
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/libs/fonts.css">
     
     <!-- CSS -->
     <link rel="stylesheet" href="/static/style.css?v=2">
@@ -15,7 +13,7 @@
     <link rel="stylesheet" href="/static/api-tester.css?v=2">
     
     <!-- Dependencies -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC" crossorigin="anonymous"></script>
+    <script src="/static/libs/require.min.js"></script>
     <script src="/static/theme.js?v=2"></script>
     <script src="/static/crypto-js.min.js"></script>
     <script src="/static/auth-guard.js?v=1"></script>
@@ -26,7 +24,7 @@
     <!-- Header -->
     <header class="app-header">
         <div style="display:flex; align-items:center; gap:0.75rem;">
-            <a href="/" class="back-link">← DevSuite</a>
+            <a href="/tools" class="back-link">← DevSuite</a>
             <div class="tool-identity" id="tool-identity">
                 <!-- We use Violet accent for API Tester per design -->
                 <div class="tool-icon tool-icon-violet" id="tool-header-icon" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);color:#fff;">

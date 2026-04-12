@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Terminal — DevSuite</title>
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/libs/fonts.css">
     <!-- CSS -->
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link rel="stylesheet" href="/static/xterm.css">
@@ -18,13 +16,14 @@
     <script src="/static/auth-guard.js?v=1"></script>
     <script src="/static/xterm.js"></script>
     <script src="/static/xterm-addon-fit.js"></script>
+    <script src="/static/libs/chart.js"></script>
 </head>
 <body>
 
     <!-- Header -->
     <header class="app-header">
         <div style="display:flex; align-items:center; gap:0.75rem;">
-            <a href="/" class="back-link">← DevSuite</a>
+            <a href="/tools" class="back-link">← DevSuite</a>
             <div class="tool-identity">
                 <div class="tool-icon tool-icon-cyan" style="background:linear-gradient(135deg,#06b6d4,#0ea5e9);color:#fff;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -86,6 +85,9 @@
             <button class="strip-btn" id="strip-sftp" title="SFTP Browser">
                 <span class="strip-text">SFTP</span>
             </button>
+            <button class="strip-btn" id="strip-dashboard" title="Server Dashboard">
+                <span class="strip-text">Dashboard</span>
+            </button>
         </div>
 
         <!-- Sidebar (shared for both views) -->
@@ -112,6 +114,19 @@
                     <input type="text" id="sftp-session-search" class="url-input" placeholder="Search sessions..." style="font-size:0.85rem; padding:0.4rem 0.6rem; border-radius:12px; width:100%;">
                 </div>
                 <div class="sidebar-content" id="sftp-session-list">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+
+            <!-- ── Dashboard sidebar ── -->
+            <div id="dashboard-sidebar-content" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+                <div class="sidebar-header" style="flex-direction:column; align-items:stretch; gap:0.75rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>Server Dashboard</span>
+                    </div>
+                    <input type="text" id="dashboard-session-search" class="url-input" placeholder="Search sessions..." style="font-size:0.85rem; padding:0.4rem 0.6rem; border-radius:12px; width:100%;">
+                </div>
+                <div class="sidebar-content" id="dashboard-session-list">
                     <!-- Injected via JS -->
                 </div>
             </div>
@@ -181,6 +196,86 @@
                     <div id="sftp-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:0.5rem;"></div>
                     <!-- File grid -->
                     <div id="sftp-file-grid" class="sftp-grid"></div>
+                </div>
+            </div>
+
+            <!-- ══ DASHBOARD PANEL ══ -->
+            <div id="dashboard-panel" style="flex:1; display:none; flex-direction:column; overflow:hidden;">
+                <!-- Toolbar -->
+                <div class="view-header" style="gap:0.75rem; padding:0 1rem; border-bottom: 1px solid var(--border);">
+                    <div id="dashboard-conn-indicator" style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:var(--text-muted); flex:1; font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#6b7280;flex-shrink:0;" id="dashboard-status-dot"></span>
+                        <span id="dashboard-conn-label">Not connected — select a session</span>
+                    </div>
+                    <button id="dashboard-disconnect-btn" class="btn-small" style="background:rgba(239,68,68,0.12); color:#ef4444; border-color:rgba(239,68,68,0.3); display:none;">Disconnect</button>
+                </div>
+                
+                <div style="flex:1; overflow-y:auto; padding:1.5rem; position:relative; background:var(--bg-2);" id="dashboard-content-area">
+                    <!-- Empty state -->
+                    <div id="dashboard-empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:1rem; color:var(--text-muted); text-align:center;">
+                        <div style="width:64px;height:64px;border-radius:16px;background:var(--bg-3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem;">📊</div>
+                        <div>
+                            <p style="font-size:1rem; font-weight:600; color:var(--text-color); margin:0 0 0.3rem;">System Dashboard</p>
+                            <p style="font-size:0.85rem; margin:0;">Click a session in the sidebar to view live metrics.</p>
+                        </div>
+                    </div>
+                    
+                    <div id="dashboard-loading" style="display:none; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:1rem; color:var(--text-muted);">
+                        <div class="sftp-spinner-inline"></div>
+                        <span style="font-size:0.9rem;">Connecting and fetching telemetry…</span>
+                    </div>
+                    
+                    <div id="dashboard-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:1rem;"></div>
+
+                    <!-- Metrics Grid -->
+                    <div id="dashboard-metrics" style="display:none; gap:1.5rem; flex-direction:column;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h2 style="font-size:1.25rem; font-weight:600; margin:0; display:flex; align-items:center; gap:0.5rem;">
+                                <span style="color:#0ea5e9;">🖥️</span> <span id="dash-host-title">Host</span>
+                            </h2>
+                            <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-muted); background:var(--bg-3); padding:0.3rem 0.6rem; border-radius:6px; border:1px solid var(--border);">
+                                Uptime: <span id="dash-uptime-val" style="color:#fff;">0s</span>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-grid" style="grid-template-columns: repeat(2, 1fr);">
+                            <!-- CPU Graph -->
+                            <div class="dashboard-card">
+                                <div class="dash-card-header">CPU Usage History</div>
+                                <div style="height: 200px; width: 100%; position: relative;">
+                                    <canvas id="dash-cpu-canvas"></canvas>
+                                </div>
+                                <div style="text-align: right; font-size: 0.85rem; font-weight: 600; color: #0ea5e9; margin-top: 0.5rem;"><span id="dash-cpu-val">0</span>% Current</div>
+                            </div>
+                            <!-- RAM Graph -->
+                            <div class="dashboard-card">
+                                <div class="dash-card-header">Memory Usage History</div>
+                                <div style="height: 200px; width: 100%; position: relative;">
+                                    <canvas id="dash-ram-canvas"></canvas>
+                                </div>
+                                <div style="text-align: right; font-size: 0.85rem; font-weight: 600; color: #8b5cf6; margin-top: 0.5rem;"><span id="dash-ram-val">0</span>% (<span id="dash-ram-sub">0 / 0 MB</span>)</div>
+                            </div>
+                        </div>
+
+                        <!-- System Storage Row -->
+                        <div class="dashboard-grid" style="grid-template-columns: 1fr 3fr; margin-top: 0;">
+                            <!-- Swap -->
+                            <div class="dashboard-card" style="display: flex; flex-direction: column;">
+                                <div class="dash-card-header">Swap Usage</div>
+                                <div style="flex: 1; width: 100%; position: relative; margin: 0 auto; display: flex; align-items: center; justify-content: center; min-height: 150px;">
+                                    <canvas id="dash-swap-canvas"></canvas>
+                                </div>
+                                <div style="text-align: center; margin-top: 0.5rem; font-size: 0.85rem;"><span id="dash-swap-sub" style="color:var(--text-muted);">0 / 0 MB</span></div>
+                            </div>
+                            <!-- Disks (Dynamically populated) -->
+                            <div class="dashboard-card" style="display: flex; flex-direction: column;">
+                                <div class="dash-card-header">Physical Disks & Partitions</div>
+                                <div id="dash-disks-container" style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; padding-top: 0.5rem;">
+                                    <div style="color:var(--text-muted); font-size: 0.85rem; grid-column: 1/-1; text-align: center; margin-top: 2rem;">Waiting for metric data...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

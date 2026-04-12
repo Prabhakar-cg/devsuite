@@ -359,3 +359,182 @@ function attachThemeListeners() {
 
 attachThemeListeners();
 document.addEventListener('DOMContentLoaded', attachThemeListeners);
+
+/* ============================================================
+   HOME/TOOLS PAGE — CSS variable maps for home.css tokens
+   Injected by pages that use home.css (home.html, tools.html)
+   Call: window.applyHomeCSSVars(theme)
+   ============================================================ */
+(function registerHomeThemes() {
+    const HOME_THEMES = {
+        // ── Default: Terminal Noir ──────────────────────────────
+        'vs-dark': null, // null → clear all overrides, use :root defaults in home.css
+
+        // ── Midnight Purple ─────────────────────────────────────
+        'midnight': {
+            '--void':         '#07071a',
+            '--deep':         '#0c0c22',
+            '--surface':      '#101038',
+            '--surface-2':    '#14144a',
+            '--surface-3':    '#1a1a58',
+            '--text-primary': '#e8e6ff',
+            '--text-secondary':'#9b95cc',
+            '--text-muted':   '#4a4580',
+            '--border':       'rgba(139,92,246,0.15)',
+            '--border-bright':'rgba(139,92,246,0.28)',
+            '--border-accent':'rgba(139,92,246,0.5)',
+            '--electric':     '#8b5cf6',
+            '--electric-glow':'rgba(139,92,246,0.22)',
+            '--electric-dim': 'rgba(139,92,246,0.1)',
+            '--lime':         '#4ade80',
+            '--lime-glow':    'rgba(74,222,128,0.15)',
+            '--amber':        '#f59e0b',
+            '--violet':       '#a855f7',
+            '--glow-blue':    '0 0 40px rgba(139,92,246,0.18), 0 0 80px rgba(139,92,246,0.08)',
+        },
+
+        // ── Ocean Blue ──────────────────────────────────────────
+        'ocean': {
+            '--void':         '#040d1a',
+            '--deep':         '#071221',
+            '--surface':      '#0d1b2e',
+            '--surface-2':    '#102036',
+            '--surface-3':    '#162840',
+            '--text-primary': '#d8eeff',
+            '--text-secondary':'#7fb0d8',
+            '--text-muted':   '#3d6485',
+            '--border':       'rgba(56,189,248,0.12)',
+            '--border-bright':'rgba(56,189,248,0.22)',
+            '--border-accent':'rgba(56,189,248,0.42)',
+            '--electric':     '#38bdf8',
+            '--electric-glow':'rgba(56,189,248,0.2)',
+            '--electric-dim': 'rgba(56,189,248,0.08)',
+            '--lime':         '#34d399',
+            '--lime-glow':    'rgba(52,211,153,0.15)',
+            '--amber':        '#fbbf24',
+            '--violet':       '#a78bfa',
+            '--glow-blue':    '0 0 40px rgba(56,189,248,0.18), 0 0 80px rgba(56,189,248,0.08)',
+        },
+
+        // ── Solarized Dark ──────────────────────────────────────
+        'solarized': {
+            '--void':         '#001e26',
+            '--deep':         '#002b36',
+            '--surface':      '#073642',
+            '--surface-2':    '#0a3d4a',
+            '--surface-3':    '#0d4a58',
+            '--text-primary': '#fdf6e3',
+            '--text-secondary':'#93a1a1',
+            '--text-muted':   '#586e75',
+            '--border':       'rgba(42,161,152,0.2)',
+            '--border-bright':'rgba(42,161,152,0.35)',
+            '--border-accent':'rgba(42,161,152,0.5)',
+            '--electric':     '#268bd2',
+            '--electric-glow':'rgba(38,139,210,0.2)',
+            '--electric-dim': 'rgba(38,139,210,0.08)',
+            '--lime':         '#859900',
+            '--lime-glow':    'rgba(133,153,0,0.15)',
+            '--amber':        '#b58900',
+            '--violet':       '#6c71c4',
+            '--glow-blue':    '0 0 40px rgba(38,139,210,0.18), 0 0 80px rgba(38,139,210,0.08)',
+        },
+
+        // ── iOS Glass (light) ───────────────────────────────────
+        'ios-glass': {
+            '--void':         '#c5d8ff',
+            '--deep':         '#d4e4ff',
+            '--surface':      'rgba(255,255,255,0.7)',
+            '--surface-2':    'rgba(255,255,255,0.55)',
+            '--surface-3':    'rgba(255,255,255,0.4)',
+            '--text-primary': '#1c1c1e',
+            '--text-secondary':'rgba(44,44,54,0.8)',
+            '--text-muted':   'rgba(60,60,67,0.5)',
+            '--border':       'rgba(99,130,255,0.2)',
+            '--border-bright':'rgba(99,130,255,0.35)',
+            '--border-accent':'rgba(99,130,255,0.5)',
+            '--electric':     '#4f46e5',
+            '--electric-glow':'rgba(79,70,229,0.2)',
+            '--electric-dim': 'rgba(79,70,229,0.1)',
+            '--lime':         '#16a34a',
+            '--lime-glow':    'rgba(22,163,74,0.15)',
+            '--amber':        '#d97706',
+            '--violet':       '#7c3aed',
+            '--glow-blue':    '0 0 40px rgba(79,70,229,0.14), 0 0 80px rgba(79,70,229,0.06)',
+            '--glow-card':    '0 1px 0 rgba(255,255,255,0.3) inset, 0 -1px 0 rgba(0,0,0,0.1) inset',
+        },
+
+        // ── High Contrast ───────────────────────────────────────
+        'hc-black': {
+            '--void':         '#000000',
+            '--deep':         '#000000',
+            '--surface':      '#0a0a0a',
+            '--surface-2':    '#111111',
+            '--surface-3':    '#1a1a1a',
+            '--text-primary': '#ffffff',
+            '--text-secondary':'#e0e0e0',
+            '--text-muted':   '#a0a0a0',
+            '--border':       'rgba(255,255,255,0.35)',
+            '--border-bright':'rgba(255,255,255,0.6)',
+            '--border-accent':'rgba(255,255,255,0.85)',
+            '--electric':     '#60a5fa',
+            '--electric-glow':'rgba(96,165,250,0.3)',
+            '--electric-dim': 'rgba(96,165,250,0.15)',
+            '--lime':         '#86efac',
+            '--lime-glow':    'rgba(134,239,172,0.2)',
+            '--amber':        '#fde68a',
+            '--violet':       '#c4b5fd',
+            '--glow-blue':    'none',
+            '--glow-card':    'none',
+        },
+
+        // ── VS Code Light ───────────────────────────────────────
+        'vs': {
+            '--void':          '#f3f4f8',
+            '--deep':          '#eaecf2',
+            '--surface':       '#ffffff',
+            '--surface-2':     '#f8f9fb',
+            '--surface-3':     '#eef0f5',
+            '--text-primary':  '#0f1018',
+            '--text-secondary':'#4b5280',
+            '--text-muted':    '#8e94b0',
+            '--border':        'rgba(0,0,0,0.09)',
+            '--border-bright': 'rgba(0,0,0,0.16)',
+            '--border-accent': 'rgba(37,99,235,0.4)',
+            '--electric':      '#2563eb',
+            '--electric-glow': 'rgba(37,99,235,0.2)',
+            '--electric-dim':  'rgba(37,99,235,0.08)',
+            '--lime':          '#16a34a',
+            '--lime-glow':     'rgba(22,163,74,0.15)',
+            '--amber':         '#d97706',
+            '--violet':        '#7c3aed',
+            '--glow-blue':     '0 0 0 transparent',
+            '--glow-card':     '0 1px 4px rgba(0,0,0,0.07)',
+        },
+    };
+
+    // All home.css tokens that themes can override
+    const ALL_HOME_VARS = [
+        '--void','--deep','--surface','--surface-2','--surface-3',
+        '--text-primary','--text-secondary','--text-muted',
+        '--border','--border-bright','--border-accent',
+        '--electric','--electric-glow','--electric-dim',
+        '--lime','--lime-glow','--amber','--violet',
+        '--glow-blue','--glow-card',
+    ];
+
+    window.applyHomeCSSVars = function(theme) {
+        const root = document.documentElement;
+        // 1. Clear all previously set home vars
+        ALL_HOME_VARS.forEach(v => root.style.removeProperty(v));
+        // 2. Apply new theme vars
+        const vars = HOME_THEMES[theme];
+        if (vars) {
+            Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v));
+        }
+        // 3. Clear any inline body styles theme.js may have set (CSS handles bg via --void)
+        if (document.body) {
+            document.body.style.background = '';
+            document.body.style.color = '';
+        }
+    };
+}());

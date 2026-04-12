@@ -65,13 +65,38 @@ function genId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+// ── Session token helpers ─────────────────────────────────────────
+function _serverToken() {
+    return sessionStorage.getItem('devsuite_server_token') || '';
+}
+
+function _authHeaders(extra) {
+    const token = _serverToken();
+    const h = Object.assign({}, extra);
+    if (token) h['X-Session-Token'] = token;
+    return h;
+}
+
+async function _acquireServerSession(keyHex) {
+    try {
+        const r = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key_hex: keyHex }),
+        });
+        if (!r.ok) return;
+        const { session_token } = await r.json();
+        if (session_token) sessionStorage.setItem('devsuite_server_token', session_token);
+    } catch { /* non-fatal */ }
+}
+
 // ── Persist vault to server ───────────────────────────────────────
 async function persistVault() {
     if (!masterKey) return;
     const payload = encryptVault(vaultEntries, masterKey);
     const res = await fetch('/api/vault', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ encrypted_blob: payload.ciphertext, iv: payload.iv, salt: vaultSaltHex }),
     });
     if (!res.ok) throw new Error(`Vault save failed: HTTP ${res.status}`);
@@ -79,7 +104,7 @@ async function persistVault() {
 
 // ── Load vault from server ────────────────────────────────────────
 async function loadVault(key) {
-    const res  = await fetch('/api/vault');
+    const res  = await fetch('/api/vault', { headers: _authHeaders() });
     const data = await res.json();
     if (!data.encrypted_blob) {
         // New vault — initialize empty
@@ -127,7 +152,24 @@ async function unlockVault(password) {
         }
     }
 
-    const res  = await fetch('/api/vault');
+    // Acquire a server session before hitting the protected API.
+    // Use the auth-challenge salt for the server session key derivation.
+    const PBKDF2_AG_ITER = 50000;
+    const PBKDF2_AG_KS   = 256 / 32;
+    try {
+        const chRes = await fetch('/api/auth/challenge');
+        if (chRes.ok) {
+            const ch = await chRes.json();
+            if (ch.salt) {
+                const sessionKey = CryptoJS.PBKDF2(password, CryptoJS.enc.Hex.parse(ch.salt), {
+                    keySize: PBKDF2_AG_KS, iterations: PBKDF2_AG_ITER,
+                });
+                await _acquireServerSession(sessionKey.toString());
+            }
+        }
+    } catch { /* non-fatal */ }
+
+    const res  = await fetch('/api/vault', { headers: _authHeaders() });
     const data = await res.json();
 
     let salt;
@@ -140,7 +182,7 @@ async function unlockVault(password) {
         vaultSaltHex = salt.toString();
         await fetch('/api/vault', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
         });
     }
@@ -727,15 +769,11 @@ function relativeTime(ts) {
 // ── Detect first-run / setup mode ────────────────────────────────
 async function initVaultMode() {
     try {
-        const [authRes, vaultRes] = await Promise.all([
-            fetch('/api/auth/status'),
-            fetch('/api/vault'),
-        ]);
-        const authData  = await authRes.json();
-        const vaultData = await vaultRes.json();
+        const authRes  = await fetch('/api/auth/status');
+        const authData = await authRes.json();
 
         isSetupMode = !authData.is_setup;
-        isNewVault  = !vaultData.salt;
+        isNewVault  = !authData.vault_has_data;
 
         if (isSetupMode && isNewVault) {
             // Brand-new install: ask to create the master password

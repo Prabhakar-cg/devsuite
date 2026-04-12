@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Format Converter — DevSuite</title>
     <meta name="description" content="Convert between JSON, CSV, YAML, XML, TSV, XLSX, Markdown, HTML, images and more. All conversions run locally — zero data leaves your machine.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/linter.css">
-    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+    <script src="/static/libs/js-yaml.min.js"></script>
+    <script src="/static/libs/papaparse.min.js"></script>
+    <script src="/static/libs/marked.min.js"></script>
     <script src="/static/theme.js?v=2"></script>
     <style>
         /* ── Converter-specific layout ── */
@@ -366,7 +364,7 @@
      ==================================================== -->
 <header class="tool-header">
     <div class="header-left">
-        <a href="/" class="back-link">
+        <a href="/tools" class="back-link">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             DevSuite
@@ -913,9 +911,8 @@ async function convertInBrowser(from, to) {
             output = htmlToMarkdown(text);
             conversionPerformed = true;
         } else if (to === 'txt') {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = text;
-            output = tmp.innerText;
+            const doc = new DOMParser().parseFromString(text, 'text/html');
+            output = doc.body.innerText;
             conversionPerformed = true;
         }
     }
@@ -1052,7 +1049,12 @@ function showBinaryResult(blob, ext) {
 
     const isImage = ['png','jpg','jpeg','webp','gif','bmp','svg'].includes(ext);
     if (isImage) {
-        resultBody.innerHTML = `<img class="img-preview" src="${objUrl}" alt="Preview">`;
+        const img = document.createElement('img');
+        img.className = 'img-preview';
+        img.src = objUrl;
+        img.alt = 'Preview';
+        resultBody.textContent = '';
+        resultBody.appendChild(img);
     } else {
         resultBody.innerHTML = `<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:1.5rem;">
             Binary file ready — click Download to save.
@@ -1147,8 +1149,8 @@ function xmlToJson(node) {
 }
 
 function htmlToMarkdown(html) {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const tmp = doc.body;
     function walk(node) {
         if (node.nodeType === Node.TEXT_NODE) return node.textContent;
         if (node.nodeType !== Node.ELEMENT_NODE) return '';

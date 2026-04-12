@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YAML Linter & Validator — DevSuite</title>
     <meta name="description" content="Validate, format and convert YAML locally. Supports Kubernetes, Docker Compose, GitHub Actions. Zero data leaves your machine.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/linter.css">
     <!-- js-yaml for YAML parsing -->
-    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+    <script src="/static/libs/js-yaml.min.js"></script>
     <script src="/static/theme.js?v=2"></script>
 </head>
 <body>
@@ -23,7 +21,7 @@
      ==================================================== -->
 <header class="tool-header">
     <div class="header-left">
-        <a href="/" class="back-link">
+        <a href="/tools" class="back-link">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             DevSuite
         </a>
@@ -126,7 +124,7 @@
     </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script src="/static/libs/require.min.js"></script>
 <script src="/static/components.js"></script>
 <script>
 (function () {

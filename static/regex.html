@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Regex Tester — DevSuite</title>
     <meta name="description" content="Test regular expressions with real-time match highlighting, group captures, and flag toggles. 100% local.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/linter.css">
     <script src="/static/theme.js?v=2"></script>
     <style>
@@ -103,7 +101,7 @@
 <!-- HEADER -->
 <header class="tool-header">
     <div class="header-left">
-        <a href="/" class="back-link">
+        <a href="/tools" class="back-link">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             DevSuite
         </a>
@@ -173,7 +171,7 @@
     </div>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script src="/static/libs/require.min.js"></script>
 <script>
 (function () {
     'use strict';
@@ -200,10 +198,10 @@
         setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, ms);
     }
 
-    require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+    require.config({ paths: { vs: '/static/libs/vs' }});
     window.MonacoEnvironment = { getWorkerUrl: () => URL.createObjectURL(new Blob([`
-        self.MonacoEnvironment={baseUrl:'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/'};
-        importScripts('https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/base/worker/workerMain.js');
+        self.MonacoEnvironment={baseUrl:'/static/libs/'};
+        importScripts('/static/libs/vs/base/worker/workerMain.js');
     `], { type: 'text/javascript' })) };
 
     require(['vs/editor/editor.main'], () => {

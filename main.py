@@ -166,6 +166,12 @@ def read_home():
     return _serve_html("home.html")
 
 
+@app.get("/tools", response_class=HTMLResponse, summary="Serve DevSuite tools page")
+def read_tools():
+    """Serve the DevSuite tools dashboard (all tools grid)."""
+    return _serve_html("tools.html")
+
+
 @app.get("/diff", response_class=HTMLResponse, summary="Serve diff tool")
 def read_diff():
     """Serve the Text/Folder Diff tool."""
@@ -474,7 +480,8 @@ def save_vault(data: dict, request: Request):
         _db.save()
         return {"status": "ok"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to save vault: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save vault") from e
 
 
 @app.post("/api/shorten", summary="Create a short URL")
@@ -615,7 +622,8 @@ def save_collections(data: dict):
         _db.save()
         return {"status": "ok"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to save collections: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save collections") from e
 
 
 class ProxyRequest(BaseModel):
@@ -710,7 +718,8 @@ async def proxy_request(req: ProxyRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Proxy request failed: %s", e)
+        raise HTTPException(status_code=500, detail="Proxy request failed") from e
 
 
 @app.get("/api/ssh/profiles", summary="Get SSH Profiles")
@@ -733,7 +742,8 @@ def save_ssh_profiles(data: dict, request: Request):
         _db.save()
         return {"status": "ok"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to save SSH profiles: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save SSH profiles") from e
 
 
 # ─── Server-side session store ───────────────────────────────────────────────
@@ -802,7 +812,8 @@ def db_set_store(name: str, data: dict, request: Request):
             url_db.update(_db.get_store("url_db") or {})
         return {"status": "ok", "store": name}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to write store %r: %s", name, e)
+        raise HTTPException(status_code=500, detail="Failed to write store") from e
 
 @app.get("/api/db/export", summary="Export full DevDB as a .dsb file")
 def db_export(request: Request):
@@ -816,7 +827,8 @@ def db_export(request: Request):
             headers={"Content-Disposition": 'attachment; filename="devdb.dsb"'},
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to export DevDB: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to export database") from e
 
 @app.post("/api/db/import", summary="Import a .dsb file into DevDB")
 async def db_import(request: Request, file: UploadFile = File(...)):
@@ -844,7 +856,8 @@ async def db_import(request: Request, file: UploadFile = File(...)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("Failed to import DevDB: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to import database") from e
 
 # ─── Auth — Master Password Management ──────────────────────────────────────
 # Client-side password verification: server stores a challenge blob (AES-encrypted
@@ -854,7 +867,11 @@ async def db_import(request: Request, file: UploadFile = File(...)):
 def auth_status():
     """Return whether the master encryption password has been set up."""
     prefs = _db.get_store("app_prefs") or {}
-    return {"is_setup": bool(prefs.get("master_setup_done"))}
+    vault = _db.get_store("vault") or {}
+    return {
+        "is_setup":       bool(prefs.get("master_setup_done")),
+        "vault_has_data": bool(vault.get("salt")),
+    }
 
 
 @app.get("/api/auth/challenge", summary="Get password verification challenge")
@@ -1088,11 +1105,12 @@ class HostKeyApprovalRequired(Exception):
 async def ssh_terminal(websocket: WebSocket):
     # Validate Origin header — reject missing AND disallowed origins
     origin = websocket.headers.get("origin", "")
+    host = websocket.headers.get("host", "")
     allowed_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
     if not origin:
         await websocket.close(code=1008, reason="Origin header required")
         return
-    if origin not in allowed_origins:
+    if origin not in allowed_origins and host and not origin.endswith(f"//{host}"):
         await websocket.close(code=1008, reason="Origin not allowed")
         return
 
@@ -1250,7 +1268,8 @@ async def sftp_list(req: SFTPRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("SFTP list error for %s: %s", req.host, e)
+        raise HTTPException(status_code=500, detail="SFTP operation failed") from e
 
 class SFTPDownloadRequest(BaseModel):
     host: str
@@ -1306,7 +1325,8 @@ async def sftp_download(req: SFTPDownloadRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("SFTP download error for %s: %s", req.host, e)
+        raise HTTPException(status_code=500, detail="SFTP operation failed") from e
 
 @app.post("/api/sftp/upload", summary="Upload a file via SFTP")
 async def sftp_upload(
@@ -1352,7 +1372,8 @@ async def sftp_upload(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.error("SFTP upload error for %s: %s", host, e)
+        raise HTTPException(status_code=500, detail="SFTP operation failed") from e
 
 @app.get("/api/wsl/discover", summary="Discover local WSL instances")
 async def wsl_discover():
@@ -1376,15 +1397,184 @@ def _tracked_task(coro):
     task.add_done_callback(_pending_tasks.discard)
     return task
 
-@app.websocket("/api/local/terminal")
-async def local_terminal(websocket: WebSocket):
-    # Validate Origin header — reject missing AND disallowed origins
+@app.websocket("/api/ssh/dashboard")
+async def ssh_dashboard(websocket: WebSocket):
     origin = websocket.headers.get("origin", "")
+    host = websocket.headers.get("host", "")
     allowed_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
     if not origin:
         await websocket.close(code=1008, reason="Origin header required")
         return
-    if origin not in allowed_origins:
+    if origin not in allowed_origins and host and not origin.endswith(f"//{host}"):
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
+
+    await websocket.accept()
+    try:
+        data = await websocket.receive_text()
+        config = json.loads(data)
+        host = config.get("host")
+        port = int(config.get("port", 22))
+        username = config.get("username")
+        password = config.get("password")
+        private_key = config.get("private_key")
+        approved_fingerprint = config.get("approved_fingerprint")
+        
+        async def _ws_approve_host(h: str, p: int, fingerprint: str, _key: bytes) -> bool:
+            if approved_fingerprint and approved_fingerprint == fingerprint:
+                return True
+            await websocket.send_json({
+                "type": "host_key_approval",
+                "host": h,
+                "port": p,
+                "fingerprint": fingerprint,
+            })
+            deadline = asyncio.get_event_loop().time() + 60
+            while True:
+                remaining = deadline - asyncio.get_event_loop().time()
+                if remaining <= 0:
+                    return False
+                try:
+                    raw = await asyncio.wait_for(websocket.receive_text(), timeout=remaining)
+                except asyncio.TimeoutError:
+                    return False
+                try:
+                    msg = json.loads(raw)
+                    if msg.get("type") == "host_key_response":
+                        return bool(msg.get("approve", False))
+                except Exception:
+                    pass
+
+        try:
+            known_hosts_path = await _ensure_host_key(host, port, approve_host=_ws_approve_host)
+        except RuntimeError as exc:
+            await websocket.send_json({"error": str(exc)})
+            await websocket.close()
+            return
+        except Exception as e:
+            await websocket.send_json({"error": f"Host verification failed: {e}"})
+            await websocket.close()
+            return
+
+        connect_kwargs = {
+            "host": host,
+            "port": port,
+            "username": username,
+            "known_hosts": known_hosts_path
+        }
+        if password:
+            connect_kwargs["password"] = password
+        if private_key:
+            connect_kwargs["client_keys"] = [asyncssh.import_private_key(private_key)]
+
+        async with asyncssh.connect(**connect_kwargs) as conn:
+            script = "cat /proc/stat | head -n 1; echo '---'; cat /proc/meminfo | grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):'; echo '---'; df -m | awk 'NR>1 {print $1, $2, $3, $4, $5, $6}'; echo '---'; cat /proc/uptime | awk '{print $1}'"
+            await websocket.send_json({"status": "connected"})
+            
+            prev_idle = 0
+            prev_total = 0
+            
+            while True:
+                try:
+                    res = await asyncio.wait_for(conn.run(script), timeout=5.0)
+                    if res.exit_status == 0:
+                        parts = res.stdout.strip().split('---')
+                        if len(parts) == 4:
+                            # 1: CPU
+                            cpu_line = parts[0].strip()
+                            cpu_usage = 0
+                            if cpu_line.startswith('cpu '):
+                                vals = [int(v) for v in cpu_line.split()[1:]]
+                                idle = vals[3] + vals[4]
+                                total = sum(vals)
+                                if prev_total > 0:
+                                    diff_idle = idle - prev_idle
+                                    diff_total = total - prev_total
+                                    cpu_usage = (1000 * (diff_total - diff_idle) / diff_total + 5) / 10 if diff_total > 0 else 0
+                                prev_idle = idle
+                                prev_total = total
+                                
+                            # 2: RAM & Swap
+                            ram_lines = parts[1].strip().split('\n')
+                            mem_total = 1
+                            mem_avail = 0
+                            swap_total = 0
+                            swap_free = 0
+                            for l in ram_lines:
+                                if 'MemTotal' in l:
+                                    mem_total = int(re.sub(r'[^0-9]', '', l))
+                                elif 'MemAvailable' in l:
+                                    mem_avail = int(re.sub(r'[^0-9]', '', l))
+                                elif 'SwapTotal' in l:
+                                    swap_total = int(re.sub(r'[^0-9]', '', l))
+                                elif 'SwapFree' in l:
+                                    swap_free = int(re.sub(r'[^0-9]', '', l))
+                            ram_usage = (mem_total - mem_avail) / mem_total * 100 if mem_total > 0 else 0
+                            swap_usage = (swap_total - swap_free) / swap_total * 100 if swap_total > 0 else 0
+                            
+                            # 3: Disk
+                            disk_lines = parts[2].strip().split('\n')
+                            disks = []
+                            for d_line in disk_lines:
+                                tokens = d_line.strip().split()
+                                if len(tokens) >= 6:
+                                    fs = tokens[0]
+                                    if fs in ('tmpfs', 'devtmpfs', 'overlay', 'shm') or fs.startswith('/dev/loop') or fs.startswith('squashfs'):
+                                        continue
+                                    try:
+                                        disk_total = int(tokens[1])
+                                        disk_used = int(tokens[2])
+                                        disk_usage = (disk_used / disk_total) * 100 if disk_total > 0 else 0
+                                        disks.append({
+                                            "mount": tokens[5],
+                                            "total_mb": disk_total,
+                                            "used_mb": disk_used,
+                                            "pct": disk_usage
+                                        })
+                                    except ValueError:
+                                        pass
+                                
+                            # 4: Uptime
+                            uptime_sec = float(parts[3].strip() or "0")
+                            
+                            await websocket.send_json({
+                                "type": "metrics",
+                                "cpu": min(max(cpu_usage, 0), 100),
+                                "ram_pct": ram_usage,
+                                "ram_total_mb": mem_total / 1024,
+                                "ram_used_mb": (mem_total - mem_avail) / 1024,
+                                "swap_pct": swap_usage,
+                                "swap_total_mb": swap_total / 1024,
+                                "swap_used_mb": (swap_total - swap_free) / 1024,
+                                "disks": disks,
+                                "uptime": uptime_sec
+                            })
+                            
+                    await asyncio.sleep(2)
+                except asyncio.TimeoutError:
+                    continue
+                except Exception as e:
+                    logger.debug("ssh_dashboard iteration error: %s", e)
+                    break
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        try:
+            await websocket.send_json({"error": f"Connection lost: {e}"})
+            await websocket.close()
+        except:
+            pass
+
+@app.websocket("/api/local/terminal")
+async def local_terminal(websocket: WebSocket):
+    # Validate Origin header — reject missing AND disallowed origins
+    origin = websocket.headers.get("origin", "")
+    host = websocket.headers.get("host", "")
+    allowed_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
+    if not origin:
+        await websocket.close(code=1008, reason="Origin header required")
+        return
+    if origin not in allowed_origins and host and not origin.endswith(f"//{host}"):
         await websocket.close(code=1008, reason="Origin not allowed")
         return
 

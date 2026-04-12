@@ -13,8 +13,23 @@ let currentTabId = null;
 
 // SFTP state
 let sftpConn = null;  // { profile, path }
+let dashConn = null;  // { profile, ws }
+let dashCharts = { cpu_history: [], ram_history: [], instances: {}, disksRendered: false };
 
-// Current view: 'terminal' | 'sftp'
+function destroyAllDashCharts() {
+    if (dashCharts && dashCharts.instances) {
+        Object.values(dashCharts.instances).forEach(c => {
+            try { c.destroy(); } catch {}
+        });
+    }
+    const disksContainer = document.getElementById('dash-disks-container');
+    if (disksContainer) {
+        disksContainer.innerHTML = '<div style="color:var(--text-muted); font-size: 0.85rem; grid-column: 1/-1; text-align: center; margin-top: 2rem;">Waiting for metric data...</div>';
+    }
+    dashCharts = { cpu_history: [], ram_history: [], instances: {}, disksRendered: false };
+}
+
+// Current view: 'terminal' | 'sftp' | 'dashboard'
 let currentView  = 'terminal';
 
 // ──────────────────────────────────────────
@@ -39,8 +54,13 @@ function decryptData(ct, pwd)   {
     catch { return null; }
 }
 
+function _sessionHeaders(extra = {}) {
+    const token = sessionStorage.getItem('devsuite_server_token') || '';
+    return token ? { 'X-Session-Token': token, ...extra } : { ...extra };
+}
+
 async function loadProfilesBlob() {
-    const r = await fetch('/api/ssh/profiles');
+    const r = await fetch('/api/ssh/profiles', { headers: _sessionHeaders() });
     if (!r.ok) throw new Error(`Failed to load profiles: ${r.status}`);
     const d = await r.json();
     return d.encrypted_blob || '';
@@ -49,7 +69,7 @@ async function loadProfilesBlob() {
 async function saveProfilesBlob(blob) {
     const r = await fetch('/api/ssh/profiles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
         body:    JSON.stringify({ encrypted_blob: blob })
     });
     if (!r.ok) {
@@ -80,7 +100,7 @@ async function _applyMasterKey(pwd) {
         await saveProfilesBlob(encryptData('[]', pwd));
         document.getElementById('master-password-overlay').style.display = 'none';
         discoverWsl();
-        renderSidebar(); renderSftpSidebar();
+        renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
         return;
     }
 
@@ -92,7 +112,7 @@ async function _applyMasterKey(pwd) {
             masterKey = pwd;
             document.getElementById('master-password-overlay').style.display = 'none';
             discoverWsl();
-            renderSidebar(); renderSftpSidebar();
+            renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
         } catch { showToast('Failed to parse profiles.', 'error'); }
         return;
     }
@@ -149,7 +169,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
         overlay.style.display = 'none';
         showToast('✅ SSH profiles migrated to master password', 'success');
         discoverWsl();
-        renderSidebar(); renderSftpSidebar();
+        renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
     });
 
     document.getElementById('migrate-fresh-btn').addEventListener('click', async () => {
@@ -160,7 +180,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
         overlay.style.display = 'none';
         showToast('SSH profiles reset.', 'info');
         discoverWsl();
-        renderSidebar(); renderSftpSidebar();
+        renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
     });
 }
 
@@ -177,7 +197,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
         document.getElementById('master-password-overlay').style.display = 'none';
         // Load existing plain profiles if any
         try {
-            const r = await fetch('/api/ssh/profiles');
+            const r = await fetch('/api/ssh/profiles', { headers: _sessionHeaders() });
             if (r.ok) {
                 const d = await r.json();
                 const raw = d.plain_profiles || d.encrypted_blob || '';
@@ -187,7 +207,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
             }
         } catch { profiles = []; }
         discoverWsl();
-        renderSidebar(); renderSftpSidebar();
+        renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
     }
 })();
 
@@ -216,6 +236,7 @@ async function discoverWsl() {
 // ──────────────────────────────────────────
 document.getElementById('strip-sessions').addEventListener('click', () => switchView('terminal'));
 document.getElementById('strip-sftp').addEventListener('click',    () => switchView('sftp'));
+document.getElementById('strip-dashboard')?.addEventListener('click', () => switchView('dashboard'));
 
 function switchView(view) {
     currentView = view;
@@ -223,14 +244,23 @@ function switchView(view) {
     // Strip button states
     document.getElementById('strip-sessions').classList.toggle('active', view === 'terminal');
     document.getElementById('strip-sftp').classList.toggle('active',    view === 'sftp');
+    if (document.getElementById('strip-dashboard')) {
+        document.getElementById('strip-dashboard').classList.toggle('active', view === 'dashboard');
+    }
 
     // Panel visibility
     document.getElementById('terminal-panel').style.display = view === 'terminal' ? 'flex' : 'none';
     document.getElementById('sftp-panel').style.display     = view === 'sftp'     ? 'flex' : 'none';
+    if (document.getElementById('dashboard-panel')) {
+        document.getElementById('dashboard-panel').style.display = view === 'dashboard' ? 'flex' : 'none';
+    }
 
     // Sidebar content
     document.getElementById('sessions-sidebar-content').style.display = view === 'terminal' ? 'flex' : 'none';
     document.getElementById('sftp-sidebar-content').style.display     = view === 'sftp'     ? 'flex' : 'none';
+    if (document.getElementById('dashboard-sidebar-content')) {
+        document.getElementById('dashboard-sidebar-content').style.display = view === 'dashboard' ? 'flex' : 'none';
+    }
 
     // Refit terminal if switching back
     if (view === 'terminal' && currentTabId && activeTabs[currentTabId]?.fitAddon) {
@@ -291,7 +321,7 @@ function renderSidebar() {
         header.innerHTML = `
             <span class="folder-toggle">${isExpanded ? '[-]' : '[+]'}</span>
             <span class="folder-icon">📂</span>
-            <span>${gName}</span>
+            <span>${escHtml(gName)}</span>
         `;
 
         const childrenDiv = document.createElement('div');
@@ -310,7 +340,7 @@ function renderSidebar() {
             d.className = 'server-item';
             if (Object.values(activeTabs).some(t => t.profile.id === p.id)) d.classList.add('active');
             d.innerHTML = `
-                <div class="server-name-lbl">🖥️ <span>${p.name || p.host}</span></div>
+                <div class="server-name-lbl">🖥️ <span>${escHtml(p.name || p.host)}</span></div>
                 ${p.isWsl ? '' : '<div style="display:flex;gap:0.25rem;"><div class="edit-srv-icon" title="Edit Session">⚙</div><div class="del-srv-icon" title="Delete Session">🗑️</div></div>'}
             `;
             d.querySelector('.server-name-lbl').addEventListener('click', () => openTerminalTab(p));
@@ -388,10 +418,10 @@ function renderSftpSidebar() {
 
             const initials = (p.name || p.host || '?').slice(0, 2).toUpperCase();
             item.innerHTML = `
-                <div class="sftp-sess-avatar">${initials}</div>
+                <div class="sftp-sess-avatar">${escHtml(initials)}</div>
                 <div style="overflow:hidden;">
-                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;">${p.name || p.host}</div>
-                    <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.user || ''}@${p.host}:${p.port || 22}</div>
+                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;">${escHtml(p.name || p.host)}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.user || '')}@${escHtml(p.host)}:${p.port || 22}</div>
                 </div>
             `;
             item.addEventListener('click', () => sftpConnectTo(p));
@@ -401,6 +431,64 @@ function renderSftpSidebar() {
 }
 
 document.getElementById('sftp-session-search').addEventListener('input', renderSftpSidebar);
+
+// ──────────────────────────────────────────
+// Dashboard Sidebar
+// ──────────────────────────────────────────
+function renderDashboardSidebar() {
+    const q    = (document.getElementById('dashboard-session-search')?.value || '').toLowerCase();
+    const list = document.getElementById('dashboard-session-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    const filtered = profiles.filter(p =>
+        (!q) ||
+        (p.name  || '').toLowerCase().includes(q) ||
+        (p.host  || '').toLowerCase().includes(q) ||
+        (p.group || '').toLowerCase().includes(q)
+    );
+
+    if (filtered.length === 0) {
+        list.innerHTML = `<div style="padding:1.5rem 1rem;text-align:center;color:var(--text-muted);font-size:0.875rem;line-height:1.6;">
+            ${profiles.length === 0
+                ? 'Add SSH sessions using the <strong>+ Add Session</strong> button to use Dashboard.'
+                : 'No sessions match your search.'}
+        </div>`;
+        return;
+    }
+
+    const groups = {};
+    filtered.forEach(p => {
+        const g = p.group ? p.group.trim() : 'Ungrouped';
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(p);
+    });
+
+    Object.keys(groups).sort().forEach(gName => {
+        const label = document.createElement('div');
+        label.className = 'sftp-group-lbl';
+        label.textContent = gName;
+        list.appendChild(label);
+
+        groups[gName].forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'sftp-sess-item'; // reuse sftp style
+            if (dashConn && dashConn.profile.id === p.id) item.classList.add('active');
+
+            const initials = (p.name || p.host || '?').slice(0, 2).toUpperCase();
+            item.innerHTML = `
+                <div class="sftp-sess-avatar" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);">${escHtml(initials)}</div>
+                <div style="overflow:hidden;">
+                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;">${escHtml(p.name || p.host)}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.user || '')}@${escHtml(p.host)}:${p.port || 22}</div>
+                </div>
+            `;
+            item.addEventListener('click', () => dashConnectTo(p));
+            list.appendChild(item);
+        });
+    });
+}
+if(document.getElementById('dashboard-session-search')) document.getElementById('dashboard-session-search').addEventListener('input', renderDashboardSidebar);
 
 // ──────────────────────────────────────────
 // Session Modal
@@ -537,7 +625,7 @@ function renderTabsHeader() {
         d.className = 'term-tab';
         if (tab.id === currentTabId) d.classList.add('active');
         d.innerHTML = `
-            <div class="term-tab-title"><span style="color:#0ea5e9;">➜</span> ${tab.profile.name || tab.profile.host}</div>
+            <div class="term-tab-title"><span style="color:#0ea5e9;">➜</span> ${escHtml(tab.profile.name || tab.profile.host)}</div>
             <div class="tab-close">✖</div>
         `;
         d.addEventListener('click', () => switchTab(tab.id));
@@ -943,4 +1031,268 @@ function getSftpFileIcon(name) {
         mp3: '🎵', mp4: '🎬', mkv: '🎬', lock: '🔒',
     };
     return map[ext] || '📄';
+}
+
+// ──────────────────────────────────────────
+// Dashboard Logic
+// ──────────────────────────────────────────
+async function dashConnectTo(profile) {
+    if (dashConn && dashConn.ws) {
+        dashConn.ws.close();
+        dashConn = null;
+    }
+    
+    destroyAllDashCharts();
+    
+    dashConn = { profile, ws: null };
+    renderDashboardSidebar();
+
+    document.getElementById('dashboard-status-dot').style.background = '#eab308'; // yellow ping
+    document.getElementById('dashboard-status-dot').style.boxShadow  = '0 0 6px rgba(234,179,8,0.6)';
+    document.getElementById('dashboard-conn-label').textContent = `Connecting to ${profile.user}@${profile.host}...`;
+    document.getElementById('dashboard-disconnect-btn').style.display = 'inline-block';
+    
+    document.getElementById('dashboard-empty-state').style.display = 'none';
+    document.getElementById('dashboard-metrics').style.display = 'none';
+    document.getElementById('dashboard-error-msg').style.display = 'none';
+    document.getElementById('dashboard-loading').style.display = 'flex';
+
+    try {
+        const host     = window.location.host;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl    = `${protocol}//${host}/api/ssh/dashboard`;
+        
+        const ws = new WebSocket(wsUrl);
+        dashConn.ws = ws;
+
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ 
+                host: profile.host, 
+                port: parseInt(profile.port || 22), 
+                username: profile.user, 
+                password: profile.pass, 
+                private_key: profile.key 
+            }));
+        };
+        
+        ws.onmessage = evt => {
+            try {
+                const msg = JSON.parse(evt.data);
+                
+                if (msg.type === 'host_key_approval') {
+                    const fp = msg.fingerprint || '(unknown)';
+                    const approved = confirm(
+                        `New SSH host detected:\n\n${msg.host}:${msg.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+                    );
+                    ws.send(JSON.stringify({ type: 'host_key_response', approve: approved }));
+                    return;
+                }
+                
+                if (msg.error) {
+                    throw new Error(msg.error);
+                }
+                
+                if (msg.status === 'connected') {
+                    document.getElementById('dashboard-status-dot').style.background = '#22c55e';
+                    document.getElementById('dashboard-status-dot').style.boxShadow  = '0 0 6px rgba(34,197,94,0.6)';
+                    document.getElementById('dashboard-conn-label').textContent = `${profile.user}@${profile.host}:${profile.port || 22}`;
+                    
+                    document.getElementById('dashboard-loading').style.display = 'none';
+                    document.getElementById('dashboard-metrics').style.display = 'flex';
+                    document.getElementById('dash-host-title').textContent = profile.name || profile.host;
+                    return;
+                }
+                
+                if (msg.type === 'metrics') {
+                    updateDashboardGauges(msg);
+                }
+                
+            } catch (e) {
+                document.getElementById('dashboard-loading').style.display = 'none';
+                document.getElementById('dashboard-metrics').style.display = 'none';
+                const errEl = document.getElementById('dashboard-error-msg');
+                errEl.textContent = `Error: ${e.message}`;
+                errEl.style.display = 'block';
+                ws.close();
+            }
+        };
+        
+        ws.onclose = () => {
+            if (!dashConn) return; 
+            document.getElementById('dashboard-status-dot').style.background = '#ef4444';
+            document.getElementById('dashboard-status-dot').style.boxShadow  = 'none';
+            document.getElementById('dashboard-conn-label').textContent = 'Disconnected';
+        };
+    } catch (e) {
+        document.getElementById('dashboard-loading').style.display = 'none';
+        const errEl = document.getElementById('dashboard-error-msg');
+        errEl.textContent = `Error: ${e.message}`;
+        errEl.style.display = 'block';
+    }
+}
+
+// Configure Chart.js global defaults if Chart is loaded
+if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+}
+
+function updateDashboardGauges(metrics) {
+    if (typeof Chart === 'undefined') return; // wait for chart.js to load
+    
+    const sec = parseInt(metrics.uptime);
+    const d = Math.floor(sec / (3600*24));
+    const h = Math.floor(sec % (3600*24) / 3600);
+    const m = Math.floor(sec % 3600 / 60);
+    let upStr = '';
+    if (d > 0) upStr += `${d}d `;
+    if (h > 0 || d > 0) upStr += `${h}h `;
+    upStr += `${m}m`;
+    document.getElementById('dash-uptime-val').textContent = upStr || '< 1m';
+    
+    const now = new Date().toLocaleTimeString('en-GB', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
+    
+    // CPU
+    const cpuPct = Math.round(metrics.cpu || 0);
+    document.getElementById('dash-cpu-val').textContent = cpuPct;
+    dashCharts.cpu_history.push({ t: now, y: cpuPct });
+    if (dashCharts.cpu_history.length > 30) dashCharts.cpu_history.shift();
+    
+    if (!dashCharts.instances.cpu) {
+        const ctx = document.getElementById('dash-cpu-canvas')?.getContext('2d');
+        if (ctx) {
+            dashCharts.instances.cpu = new Chart(ctx, {
+                type: 'line',
+                data: { labels: dashCharts.cpu_history.map(d=>d.t), datasets: [{ label: 'CPU Usage %', data: dashCharts.cpu_history.map(d=>d.y), borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4, pointRadius: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, animation: {duration: 0}, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, border: {display: false}, grid: {color: 'rgba(255,255,255,0.05)'} }, x: { border: {display: false}, grid: {color: 'transparent'}, ticks: {maxTicksLimit: 5} } } }
+            });
+        }
+    } else {
+        dashCharts.instances.cpu.data.labels = dashCharts.cpu_history.map(d=>d.t);
+        dashCharts.instances.cpu.data.datasets[0].data = dashCharts.cpu_history.map(d=>d.y);
+        dashCharts.instances.cpu.update('none');
+    }
+    
+    // RAM
+    const ramPct = Math.round(metrics.ram_pct || 0);
+    document.getElementById('dash-ram-val').textContent = ramPct;
+    document.getElementById('dash-ram-sub').textContent = `${(metrics.ram_used_mb || 0).toFixed(0)} / ${(metrics.ram_total_mb || 0).toFixed(0)} MB`;
+    dashCharts.ram_history.push({ t: now, y: ramPct });
+    if (dashCharts.ram_history.length > 30) dashCharts.ram_history.shift();
+    
+    if (!dashCharts.instances.ram) {
+        const ctx = document.getElementById('dash-ram-canvas')?.getContext('2d');
+        if (ctx) {
+            dashCharts.instances.ram = new Chart(ctx, {
+                type: 'line',
+                data: { labels: dashCharts.ram_history.map(d=>d.t), datasets: [{ label: 'RAM Usage %', data: dashCharts.ram_history.map(d=>d.y), borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, tension: 0.4, pointRadius: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, animation: {duration: 0}, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, border: {display: false}, grid: {color: 'rgba(255,255,255,0.05)'} }, x: { border: {display: false}, grid: {color: 'transparent'}, ticks: {maxTicksLimit: 5} } } }
+            });
+        }
+    } else {
+        dashCharts.instances.ram.data.labels = dashCharts.ram_history.map(d=>d.t);
+        dashCharts.instances.ram.data.datasets[0].data = dashCharts.ram_history.map(d=>d.y);
+        dashCharts.instances.ram.update('none');
+    }
+    
+    // Swap
+    const swapPct = Math.round(metrics.swap_pct || 0);
+    document.getElementById('dash-swap-sub').textContent = `${(metrics.swap_used_mb || 0).toFixed(0)} / ${(metrics.swap_total_mb || 0).toFixed(0)} MB`;
+    
+    if (!dashCharts.instances.swap) {
+        const ctx = document.getElementById('dash-swap-canvas')?.getContext('2d');
+        if (ctx) {
+            dashCharts.instances.swap = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: ['Used', 'Free'], datasets: [{ data: [swapPct, 100 - swapPct], backgroundColor: ['#ef4444', 'rgba(255, 255, 255, 0.05)'], borderWidth: 0, cutout: '75%' }] },
+                options: { responsive: true, maintainAspectRatio: false, animation: {animateRotate: false}, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+            });
+        }
+    } else {
+        dashCharts.instances.swap.data.datasets[0].data = [swapPct, 100 - swapPct];
+        dashCharts.instances.swap.update('none');
+    }
+    
+    // Disks
+    const disksContainer = document.getElementById('dash-disks-container');
+    if ((metrics.disks || []).length === 0) {
+        if (!dashCharts.disksRendered) {
+            disksContainer.innerHTML = '<div style="color:var(--text-muted); font-size: 0.85rem; grid-column: 1/-1; text-align: center; margin-top: 2rem;">No standard physical disks detected.</div>';
+            dashCharts.disksRendered = true;
+        }
+    } else {
+        if (!dashCharts.disksRendered) {
+             disksContainer.innerHTML = '';
+             dashCharts.disksRendered = true;
+        }
+        
+        metrics.disks.forEach((disk, idx) => {
+            const diskId = `dash-disk-${idx}`;
+            let wrap = document.getElementById(`${diskId}-wrap`);
+            if (!wrap) {
+                 wrap = document.createElement('div');
+                 wrap.id = `${diskId}-wrap`;
+                 wrap.className = 'dashboard-card';
+                 wrap.style.padding = '1rem';
+                 wrap.style.background = 'var(--bg-3)';
+                 wrap.style.display = 'flex';
+                 wrap.style.flexDirection = 'column';
+                 
+                 wrap.innerHTML = `
+                     <div style="font-weight: 500; font-size: 0.85rem; margin-bottom: 0.5rem; text-align: center; color: var(--text-color);">${escHtml(disk.mount)}</div>
+                     <div style="height: 100px; position: relative;">
+                         <canvas id="${diskId}-canvas"></canvas>
+                     </div>
+                     <div style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">
+                         <span id="${diskId}-sub"></span>
+                     </div>
+                 `;
+                 disksContainer.appendChild(wrap);
+            }
+            
+            const dpct = Math.round(disk.pct || 0);
+            let color = '#22c55e';
+            if (dpct > 80) color = '#eab308';
+            if (dpct > 90) color = '#ef4444';
+            
+            const usedGb = (disk.used_mb || 0) / 1024;
+            const totalGb = (disk.total_mb || 0) / 1024;
+            document.getElementById(`${diskId}-sub`).textContent = `${usedGb.toFixed(1)} / ${totalGb.toFixed(1)} GB`;
+            
+            if (!dashCharts.instances[diskId]) {
+                 const ctx = document.getElementById(`${diskId}-canvas`)?.getContext('2d');
+                 if (ctx) {
+                     dashCharts.instances[diskId] = new Chart(ctx, {
+                         type: 'doughnut',
+                         data: { labels: ['Used', 'Free'], datasets: [{ data: [dpct, 100 - dpct], backgroundColor: [color, 'rgba(255, 255, 255, 0.05)'], borderWidth: 0, cutout: '70%' }] },
+                         options: { responsive: true, maintainAspectRatio: false, animation: {animateRotate: false}, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+                     });
+                 }
+            } else {
+                 dashCharts.instances[diskId].data.datasets[0].data = [dpct, 100 - dpct];
+                 dashCharts.instances[diskId].data.datasets[0].backgroundColor[0] = color;
+                 dashCharts.instances[diskId].update('none');
+            }
+        });
+    }
+}
+
+if(document.getElementById('dashboard-disconnect-btn')) {
+    document.getElementById('dashboard-disconnect-btn').addEventListener('click', () => {
+        if (dashConn && dashConn.ws) {
+            dashConn.ws.close();
+        }
+        dashConn = null;
+        destroyAllDashCharts();
+        renderDashboardSidebar();
+        
+        document.getElementById('dashboard-status-dot').style.background = '#6b7280';
+        document.getElementById('dashboard-status-dot').style.boxShadow  = 'none';
+        document.getElementById('dashboard-conn-label').textContent  = 'Not connected — select a session';
+        document.getElementById('dashboard-disconnect-btn').style.display = 'none';
+        
+        document.getElementById('dashboard-metrics').style.display = 'none';
+        document.getElementById('dashboard-error-msg').style.display = 'none';
+        document.getElementById('dashboard-empty-state').style.display = 'flex';
+    });
 }
