@@ -8,11 +8,9 @@ Tests for new features introduced in this PR:
 Follows existing project conventions: pytest classes, FastAPI TestClient.
 """
 
-import re
 import string
 import pytest
 from fastapi.testclient import TestClient
-import main
 from main import app, url_db
 
 
@@ -230,7 +228,7 @@ class TestShortenApiEndpoint:
 
     def test_shorten_wrong_content_type_returns_error(self):
         """Non-JSON body should result in a 422 validation error."""
-        response = client.post("/api/shorten", data="not-json")
+        response = client.post("/api/shorten", content=b"not-json")
         assert response.status_code == 422
 
     def test_shorten_get_not_allowed(self):

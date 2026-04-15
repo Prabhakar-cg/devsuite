@@ -405,7 +405,7 @@ function renderSftpSidebar() {
         groups[g].push(p);
     });
 
-    Object.keys(groups).sort().forEach(gName => {
+    Object.keys(groups).sort((a, b) => a.localeCompare(b)).forEach(gName => {
         const label    = document.createElement('div');
         label.className = 'sftp-group-lbl';
         label.textContent = gName;
@@ -464,7 +464,7 @@ function renderDashboardSidebar() {
         groups[g].push(p);
     });
 
-    Object.keys(groups).sort().forEach(gName => {
+    Object.keys(groups).sort((a, b) => a.localeCompare(b)).forEach(gName => {
         const label = document.createElement('div');
         label.className = 'sftp-group-lbl';
         label.textContent = gName;

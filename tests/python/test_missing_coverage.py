@@ -17,10 +17,6 @@ Covers endpoints not exercised by the existing test suite:
   - Security headers                (present on every HTML endpoint)
 """
 
-import json
-import tempfile
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
 

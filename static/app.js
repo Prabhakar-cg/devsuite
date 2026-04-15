@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Shared controls
     const languageSelect = document.getElementById('language-select');
     const themeSelect = document.getElementById('theme-select');
+    const getMonacoTheme = () => themeSelect?.value || localStorage.getItem('devsuite-theme') || 'vs-dark';
 
     // Tabs
     const tabBtns = document.querySelectorAll('.tab-btn');
@@ -592,7 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         textDiffEditor = monaco.editor.createDiffEditor(editorHost, {
-            theme: themeSelect.value,
+            theme: getMonacoTheme(),
             renderSideBySide: true,
             automaticLayout: true,
             scrollBeyondLastLine: false,
@@ -849,8 +850,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const oS = c.originalStartLineNumber, oE = c.originalEndLineNumber || 0;
             const mS = c.modifiedStartLineNumber, mE = c.modifiedEndLineNumber || 0;
             patch += `@@ -${oS},${Math.max(oE - oS + 1, 0)} +${mS},${Math.max(mE - mS + 1, 0)} @@\n`;
-            for (let i = oS; i <= oE && oE > 0; i++) patch += `-${origLines[i - 1] ?? ''}\n`;
-            for (let i = mS; i <= mE && mE > 0; i++) patch += `+${modLines[i - 1] ?? ''}\n`;
+            if (oE > 0) { for (let i = oS; i <= oE; i++) patch += `-${origLines[i - 1] ?? ''}\n`; }
+            if (mE > 0) { for (let i = mS; i <= mE; i++) patch += `+${modLines[i - 1] ?? ''}\n`; }
         });
         return patch;
     }
@@ -1059,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const root = [];
         const nodeByPath = new Map();
 
-        Array.from(fileMap.keys()).sort().forEach(filePath => {
+        Array.from(fileMap.keys()).sort((a, b) => a.localeCompare(b)).forEach(filePath => {
             const parts = filePath.split('/');
             const status = statusMap.get(filePath)?.status || 'unchanged';
 
@@ -1388,7 +1389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
 
         folderDiffEditor = monaco.editor.createDiffEditor(folderEditorHost, {
-            theme: themeSelect.value,
+            theme: getMonacoTheme(),
             renderSideBySide: true,
             automaticLayout: true,
             scrollBeyondLastLine: false,

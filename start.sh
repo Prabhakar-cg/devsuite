@@ -204,6 +204,10 @@ if [ -n "$MISSING_PKGS" ]; then
             scoop)
                 scoop install $MISSING_PKGS
                 ;;
+            *)
+                echo "Unsupported package manager: $PKG_MGR. Please install $MISSING_PKGS manually."
+                exit 1
+                ;;
         esac
     else
         echo "Installation aborted by the user. Please install them manually and re-run this script."

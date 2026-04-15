@@ -413,7 +413,7 @@ class DevDB:
             fd = -1
             os.replace(tmp_path, self._path)
             tmp_path = None  # ownership transferred; do not remove
-        except BaseException:
+        except BaseException:  # NOSONAR — intentional cleanup-and-reraise; catches KeyboardInterrupt/SystemExit to ensure temp file removal
             if fd != -1:
                 try:
                     os.close(fd)

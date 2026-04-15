@@ -15,14 +15,11 @@ Tests:
 """
 
 import json
-import os
-import struct
-import tempfile
 from pathlib import Path
 
 import pytest
 
-from devdb import DevDB, MAGIC, HEADER_SIZE, FLAG_ENCRYPTED
+from devdb import DevDB, MAGIC, HEADER_SIZE
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -46,7 +43,7 @@ def make_db(path: Path, password: str | None = None, stores: dict | None = None)
 
 def test_plaintext_roundtrip(tmp_db_path):
     data = {"items": [{"id": 1, "name": "test"}]}
-    db = make_db(tmp_db_path, stores={"collections": data})
+    make_db(tmp_db_path, stores={"collections": data})
 
     db2 = DevDB(tmp_db_path)
     db2.open()
@@ -57,7 +54,7 @@ def test_plaintext_roundtrip(tmp_db_path):
 
 def test_encrypted_roundtrip(tmp_db_path):
     data = {"encrypted_blob": "abc123", "iv": "deadbeef", "salt": "cafebabe"}
-    db = make_db(tmp_db_path, password="hunter2", stores={"vault": data})
+    make_db(tmp_db_path, password="hunter2", stores={"vault": data})
 
     db2 = DevDB(tmp_db_path, password="hunter2")
     db2.open()
@@ -207,7 +204,7 @@ def test_export_import_encrypted_bytes(tmp_db_path):
 
 def test_atomic_write_no_partial_state(tmp_db_path):
     """Saving should not leave a .tmp file behind."""
-    db = make_db(tmp_db_path, stores={"url_db": {"k": "v"}})
+    make_db(tmp_db_path, stores={"url_db": {"k": "v"}})
 
     tmp_files = list(tmp_db_path.parent.glob("*.tmp"))
     assert not tmp_files, f"Temp files left behind: {tmp_files}"

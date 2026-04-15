@@ -18,12 +18,9 @@ import asyncio
 import json
 import os
 import sys
-import tempfile
-import shutil
 import pytest
 
 from fastapi.testclient import TestClient
-from starlette.testclient import WebSocketTestSession
 import main
 from main import app, _tracked_task, _pending_tasks
 
@@ -552,8 +549,6 @@ class TestSSHTerminalWebSocketOrigin:
         This test verifies the origin check itself does NOT close the connection.
         """
         # Patch known_hosts resolution to trigger the ValueError path
-        import builtins
-        real_exists = os.path.exists
         monkeypatch.setattr(os.path, "exists", lambda p: False)
 
         try:
@@ -668,7 +663,7 @@ class TestTrackedTask:
         """_tracked_task should return an asyncio.Task object."""
         async def _run():
             async def noop():
-                pass
+                """No-op coroutine used as a minimal async task for testing."""
 
             task = _tracked_task(noop())
             assert hasattr(task, "done")

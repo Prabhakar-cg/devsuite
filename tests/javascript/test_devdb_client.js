@@ -358,7 +358,7 @@ describe('DevDB.importDatabase', () => {
     });
     ctx.FormData = class FakeFormData {
       constructor() {}
-      append() {}
+      append() { /* no-op stub required by FormData interface */ }
     };
     const DevDB = loadDevDB(ctx);
     await assert.rejects(
