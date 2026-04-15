@@ -86,10 +86,12 @@ async def _lifespan(_application: FastAPI):
     # (cleanup goes here if needed in future)
 
 
+APP_VERSION = "2.2.0"
+
 app = FastAPI(
     title="DevSuite",
     description="A private, locally-hosted developer suite with encrypted unified storage.",
-    version="2.2.0",
+    version=APP_VERSION,
     lifespan=_lifespan,
 )
 
@@ -187,14 +189,25 @@ async def add_security_headers(request, call_next):
     return response
 
 
+_STATIC_ASSET_RE = re.compile(r'(/static/[^"\'?]+\.(?:css|js))(?:\?v=[^"\']*)?')
+_FAVICON_TAG = (
+    '<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">\n'
+    '    <link rel="icon" href="/static/favicon.svg" sizes="any">'
+)
+
+
 def _serve_html(filename: str) -> str:
-    """Read and return an HTML file from the static directory."""
+    """Read an HTML file, inject the favicon and cache-busting version into all local static asset URLs."""
     html_path = os.path.join(static_dir, filename)
     try:
         with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
+            html = f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"{filename} not found.") from None
+    # Inject favicon into <head> if not already present
+    if 'favicon' not in html:
+        html = html.replace('<head>', f'<head>\n    {_FAVICON_TAG}', 1)
+    return _STATIC_ASSET_RE.sub(rf'\1?v={APP_VERSION}', html)
 
 
 @app.get("/", response_class=HTMLResponse, summary="Serve DevSuite homepage")
