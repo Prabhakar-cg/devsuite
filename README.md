@@ -3,6 +3,9 @@
 
 A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the **Monaco Editor**. 100% private — all file reading and data processing is done locally. No data ever leaves your machine.
 
+> [!WARNING]
+> **DevSuite is under active development.** Expect rough edges, breaking changes between versions, and features that are still taking shape. Feedback, bug reports, and ideas are very welcome — please [open an issue](https://github.com/Prabhakar-cg/devsuite/issues).
+
 ---
 
 ## Supported Tools
@@ -92,7 +95,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 ## Premium UI
 - Glassmorphic UI with dynamic gradients and ambient glow effects.
 - Neumorphic buttons and customized scrollbars.
-- **4 themes**: Midnight Dark, Clean Light, High Contrast, Frosted Glass.
+- **6 themes**: Terminal Noir, Midnight, Ocean, Solarized Dark, Clean Light, High Contrast.
 - All tools share a consistent header, theme switcher, and toast notification system.
 
 ---
@@ -154,6 +157,10 @@ devsuite/
 ├── requirements.txt         # fastapi, uvicorn, asyncssh, cryptography, openpyxl, pypdf, etc.
 ├── start.sh                 # One-shot virtual environment setup & run script
 ├── start.ps1                # PowerShell equivalent for Windows
+├── sonar-project.properties # SonarQube / SonarCloud analysis configuration
+├── tests/
+│   ├── python/              # pytest test suite (test_main.py, test_devdb.py, test_sftp.py, …)
+│   └── javascript/          # JS unit tests (test_devdb_client.js, test_cron_logic.js, …)
 └── static/
     ├── home.html            # DevSuite dashboard / homepage
     ├── home.css             # Homepage-specific styles (hero, tool cards, roadmap)

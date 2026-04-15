@@ -29,7 +29,7 @@
 | D-2 | **JS Modularization**: Split `app.js` into smaller, tool-specific modules (e.g., `diff-engine.js`, `tree-view.js`). | M | `[ ]` |
 | D-3 | **Hot Reload Sidecar**: Add a `watchdog`-based reloader that automatically refreshes the browser window on file edits. | S | `[ ]` |
 | D-4 | **Lazy Loading**: Only load Monaco Editor and heavy libraries when the user navigates to a relevant tool. | M | `[ ]` |
-| D-5 | **Accessibility (a11y)**: Complete ARIA/Role audit and ensure keyboard-only navigation for all tools. | M | `[ ]` |
+| D-5 | **Accessibility (a11y)**: Complete ARIA/Role audit and ensure keyboard-only navigation for all tools. Folder Diff picker buttons converted to `<label>` elements in v0.1.1 (partial). | M | `[/]` |
 | D-6 | **File Converter — more formats**: Add image format conversion (PNG ↔ JPG ↔ WebP) and XML ↔ JSON client-side. | M | `[ ]` |
 
 ---
@@ -39,9 +39,10 @@
 | # | Item | Effort | Status |
 |---|---|---|---|
 | T-1 | **Playwright e2e tests**: Implement happy-path browser tests for every tool in the suite. | L | `[ ]` |
-| T-2 | **Visual Regression**: Use Playwright to capture screenshots across all 4 themes to detect CSS regressions. | M | `[ ]` |
+| T-2 | **Visual Regression**: Use Playwright to capture screenshots across all 6 themes to detect CSS regressions. | M | `[ ]` |
 | T-3 | **CI/CD Pipeline**: Add GitHub Actions to run linters, security audits, and tests on every pull request. | S | `[ ]` |
 | T-4 | **Large-File Benchmarking**: Add stress tests for diffing files > 10,000 lines to optimize performance. | S | `[ ]` |
+| T-5 | **SonarQube CI Integration**: Wire `sonar-project.properties` (added in v0.1.1) into a GitHub Actions workflow for automated quality gate analysis on every PR. | S | `[ ]` |
 
 ---
 
