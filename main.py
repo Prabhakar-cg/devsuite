@@ -498,6 +498,23 @@ def _conv_any_to_pdf(src_ext: str, content: bytes) -> Response:
                     headers={"Content-Disposition": 'attachment; filename="converted.pdf"'})
 
 
+def _check_content_length_header(cl: str | None) -> None:
+    """Raise HTTPException 400/413 if the Content-Length header is invalid or too large."""
+    if not cl:
+        return
+    try:
+        cl_int = int(cl)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid Content-Length header") from exc
+    if cl_int < 0:
+        raise HTTPException(status_code=400, detail="Invalid Content-Length header")
+    if cl_int > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Upload too large (limit {MAX_UPLOAD_SIZE // 1024 // 1024} MB)",
+        )
+
+
 @app.post(
     "/api/convert",
     summary="Convert a file from one format to another (server-side)",
@@ -526,19 +543,7 @@ async def convert_file(
     original_name = (file.filename or "file").lower()
     src_ext = original_name.rsplit(".", 1)[-1] if "." in original_name else ""
 
-    cl = request.headers.get("content-length")
-    if cl:
-        try:
-            cl_int = int(cl)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Invalid Content-Length header") from exc
-        if cl_int < 0:
-            raise HTTPException(status_code=400, detail="Invalid Content-Length header")
-        if cl_int > MAX_UPLOAD_SIZE:
-            raise HTTPException(
-                status_code=413,
-                detail=f"Upload too large (limit {MAX_UPLOAD_SIZE // 1024 // 1024} MB)",
-            )
+    _check_content_length_header(request.headers.get("content-length"))
     content = await file.read(MAX_UPLOAD_SIZE + 1)
     if len(content) > MAX_UPLOAD_SIZE:
         raise HTTPException(
@@ -770,6 +775,31 @@ def _check_ip_not_private(ip_str: str) -> None:
         pass
 
 
+_HOP_BY_HOP_HEADERS = frozenset(("host", "connection", "origin", "referer", "accept-encoding"))
+
+
+def _filter_proxy_headers(headers: dict) -> dict:
+    return {k: v for k, v in headers.items() if k.lower() not in _HOP_BY_HOP_HEADERS}
+
+
+def _execute_proxy_request(request_obj) -> dict:
+    """Run a urllib request and return a normalised proxy-response dict."""
+    try:
+        with urllib.request.urlopen(request_obj, timeout=15) as resp:  # nosec B310
+            return {
+                "proxy_response": True,
+                "status": resp.status,
+                "headers": dict(resp.headers),
+                "body": resp.read().decode("utf-8", errors="replace"),
+            }
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", errors="replace") if hasattr(e, "read") else ""
+        except (OSError, ValueError):
+            body = ""
+        return {"proxy_response": True, "status": e.code, "headers": dict(e.headers), "body": body}
+
+
 @app.post(
     "/api/proxy",
     summary="Bypass CORS for API Tester",
@@ -809,49 +839,18 @@ async def proxy_request(req: ProxyRequest):  # pylint: disable=too-many-locals,t
             _check_ip_not_private(ip_str)
 
         req_body = req.body.encode('utf-8') if req.body else None
-
-        headers_to_pass = {}
-        for k, v in req.headers.items():
-            if k.lower() not in ("host", "connection", "origin", "referer", "accept-encoding"):
-                headers_to_pass[k] = v
-
         # Reconstruct the URL using the validated components to clear CodeQL dataflow taint.
-        # We fetch the exact hostname from our allowlist rather than reusing the tainted string.
         safe_host = next(h for h in ALLOWED_PROXY_HOSTS if h == parsed.hostname)
         safe_netloc = f"{safe_host}:{parsed.port}" if parsed.port else safe_host
-
         safe_url = urllib.parse.urlunparse((
-            parsed.scheme,
-            safe_netloc,
-            parsed.path,
-            parsed.params,
-            parsed.query,
-            parsed.fragment
+            parsed.scheme, safe_netloc, parsed.path, parsed.params, parsed.query, parsed.fragment
         ))
-
-        request = urllib.request.Request(
-            safe_url, data=req_body, headers=headers_to_pass, method=req.method.upper()
+        request_obj = urllib.request.Request(
+            safe_url, data=req_body,
+            headers=_filter_proxy_headers(req.headers),
+            method=req.method.upper(),
         )
-        try:
-            with urllib.request.urlopen(request, timeout=15) as response:  # nosec B310
-                body = response.read().decode('utf-8', errors='replace')
-                return {
-                    "proxy_response": True,
-                    "status": response.status,
-                    "headers": dict(response.headers),
-                    "body": body
-                }
-        except urllib.error.HTTPError as e:
-            try:
-                body = e.read().decode('utf-8', errors='replace') if hasattr(e, 'read') else ""
-            except (OSError, ValueError):
-                body = ""
-            return {
-                "proxy_response": True,
-                "status": e.code,
-                "headers": dict(e.headers),
-                "body": body
-            }
+        return _execute_proxy_request(request_obj)
     except HTTPException:
         raise
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -1338,6 +1337,20 @@ async def _run_metrics_loop(websocket: WebSocket, conn) -> None:
             break
 
 
+def _try_resize_ssh_process(process, data: str) -> bool:
+    """Apply terminal resize if *data* is a resize escape; return True if handled."""
+    if not data.startswith("\x1b[resize;"):
+        return False
+    parts = data.split(";")
+    if len(parts) == 3:
+        try:
+            cols, rows = int(parts[1]), int(parts[2].strip("m"))
+            process.change_terminal_size(cols, rows, 0, 0)
+        except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
+            pass
+    return True
+
+
 async def _run_ssh_terminal_session(websocket: WebSocket, conn) -> None:
     """Run the interactive SSH terminal I/O loop over an established connection."""
     async with conn.create_process(term_type='xterm-256color') as process:
@@ -1356,14 +1369,7 @@ async def _run_ssh_terminal_session(websocket: WebSocket, conn) -> None:
             try:
                 while True:
                     data = await websocket.receive_text()
-                    if data.startswith("\x1b[resize;"):
-                        parts = data.split(";")
-                        if len(parts) == 3:
-                            try:
-                                cols, rows = int(parts[1]), int(parts[2].strip("m"))
-                                process.change_terminal_size(cols, rows, 0, 0)
-                            except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
-                                pass
+                    if _try_resize_ssh_process(process, data):
                         continue
                     process.stdin.write(data)
             except WebSocketDisconnect:
