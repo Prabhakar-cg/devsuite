@@ -1357,10 +1357,7 @@ async def _run_ssh_terminal_session(websocket: WebSocket, conn) -> None:
 
         async def read_from_ssh():
             try:
-                while True:
-                    data = await process.stdout.read(4096)
-                    if not data:
-                        break
+                while data := await process.stdout.read(4096):
                     await websocket.send_text(str(data))
             except Exception:  # pylint: disable=broad-exception-caught
                 logger.debug("read_from_ssh: stream ended or error", exc_info=True)
