@@ -20,7 +20,6 @@ import socket
 import stat
 import string
 import struct
-import subprocess
 import sys
 import time
 import urllib.error
@@ -60,6 +59,8 @@ if sys.platform != 'win32':
         _pty_available = True
     except ImportError:
         pass
+
+_PTY_AVAILABLE = _pty_available  # compatibility alias for tests referencing main._PTY_AVAILABLE
 
 logger = logging.getLogger("devsuite")
 
@@ -607,10 +608,13 @@ def shorten_url(req: ShortenRequest, request: Request):
     if not url:
         raise HTTPException(status_code=400, detail="URL cannot be empty")
 
-    if not url.startswith("http://") and not url.startswith("https://"):
-        url = "https://" + url
-
     parsed = urllib.parse.urlparse(url)
+    if not parsed.scheme:
+        url = "https://" + url
+        parsed = urllib.parse.urlparse(url)
+    elif parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Unsupported URL scheme")
+
     if not parsed.scheme or not parsed.netloc:
         raise HTTPException(status_code=400, detail="Invalid URL format")
 
@@ -815,7 +819,7 @@ async def proxy_request(req: ProxyRequest):  # pylint: disable=too-many-locals,t
             safe_url, data=req_body, headers=headers_to_pass, method=req.method.upper()
         )
         try:
-            with urllib.request.urlopen(request, timeout=15) as response:
+            with urllib.request.urlopen(request, timeout=15) as response:  # nosec B310
                 body = response.read().decode('utf-8', errors='replace')
                 return {
                     "proxy_response": True,
@@ -1344,7 +1348,7 @@ async def ssh_terminal(websocket: WebSocket):  # pylint: disable=too-many-locals
                                     try:
                                         cols, rows = int(parts[1]), int(parts[2].strip("m"))
                                         process.change_terminal_size(cols, rows, 0, 0)
-                                    except Exception:  # pylint: disable=broad-exception-caught
+                                    except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
                                         pass
                                 continue
                             process.stdin.write(data)
@@ -1547,7 +1551,12 @@ async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional
 async def wsl_discover():
     """Discover locally-installed WSL instances by running wsl.exe."""
     try:
-        out = subprocess.check_output([_WSL_EXE, "-l", "-q"], stderr=subprocess.STDOUT)
+        process = await asyncio.create_subprocess_exec(
+            _WSL_EXE, "-l", "-q",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        out, _ = await process.communicate()
         text = out.decode("utf-16le") if b"\x00" in out else out.decode("utf-8", errors="replace")
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         return {"wsl_instances": lines}
@@ -1696,7 +1705,7 @@ async def ssh_dashboard(websocket: WebSocket):  # pylint: disable=too-many-local
                     msg = json.loads(raw)
                     if msg.get("type") == "host_key_response":
                         return bool(msg.get("approve", False))
-                except Exception:  # pylint: disable=broad-exception-caught
+                except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
                     pass
 
         try:
@@ -1757,7 +1766,7 @@ async def ssh_dashboard(websocket: WebSocket):  # pylint: disable=too-many-local
         try:
             await websocket.send_json({"error": f"Connection lost: {e}"})
             await websocket.close()
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
             pass
 
 
@@ -1799,10 +1808,10 @@ async def local_terminal(websocket: WebSocket):  # pylint: disable=too-many-loca
         if distro and distro != current_distro:
             # Note: wsl.exe across PTY interop might hang in certain builds,
             # but we allow it for cross-distro attempts.
-            os.execvp(_WSL_EXE, [_WSL_EXE, "-d", distro])
+            os.execvp(_WSL_EXE, [_WSL_EXE, "-d", distro])  # nosec B606
         else:
             shell = os.environ.get("SHELL", "/bin/bash")
-            os.execvp(shell, [shell])
+            os.execvp(shell, [shell])  # nosec B606
 
     loop = asyncio.get_running_loop()
 

@@ -217,8 +217,11 @@ async function unlockVault(password) {
             });
             if (setupRes.ok) {
                 // Challenge is now registered — acquire a server session immediately.
-                // key and sessionKey are identical (same salt + iterations), so key.toString()
-                // is the correct hex to pass to /api/auth/session.
+                // key and sessionKey are identical for new vaults (same challenge salt + iterations
+                // were just registered above), so key.toString() is the correct hex to pass to
+                // _acquireServerSession. In migration scenarios (isSetupMode && !isNewVault) the
+                // challenge salt may differ from the vault's salt, but the retry below is
+                // intentionally gated by isNewVault so behavior stays correct in both cases.
                 await _acquireServerSession(key.toString());
                 // Retry the initial vault-salt save that failed earlier (no session at that point).
                 if (isNewVault) {
