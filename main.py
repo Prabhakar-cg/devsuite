@@ -106,7 +106,7 @@ ALLOWED_PROXY_HOSTS = {
 }
 
 # ─── Shared string constants ──────────────────────────────────────────────────
-_ALLOWED_ORIGINS      = ["http://localhost:8000", "http://127.0.0.1:8000"]
+_ALLOWED_ORIGINS      = ["http://localhost:8000", "http://127.0.0.1:8000"]  # NOSONAR — localhost-only CORS; HTTPS not applicable for loopback dev server
 _ERR_ORIGIN_REQUIRED  = "Origin header required"
 _ERR_ORIGIN_NOT_ALLOWED = "Origin not allowed"
 _ERR_SFTP_FAILED      = "SFTP operation failed"
@@ -1301,8 +1301,8 @@ async def ssh_terminal(websocket: WebSocket):  # pylint: disable=too-many-locals
                 except Exception as exc:  # pylint: disable=broad-exception-caught
                     logger.debug(
                         "Ignored non-JSON message while waiting for"
-                        " host_key_response: %r — %s",
-                        raw, exc,
+                        " host_key_response (len=%d) — %s",
+                        len(raw), exc,
                     )
 
         try:

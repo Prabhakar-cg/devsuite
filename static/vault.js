@@ -62,7 +62,8 @@ function decryptVault(ciphertext, iv, key) {
 
 // ── ID generator ──────────────────────────────────────────────────
 function genId() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const rnd = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
+    return Date.now().toString(36) + rnd.slice(-5);
 }
 
 // ── Session token helpers ─────────────────────────────────────────
