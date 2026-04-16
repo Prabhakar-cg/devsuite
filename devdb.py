@@ -72,7 +72,8 @@ BLAKE2_SIZE        = 32    # 256-bit BLAKE2b digest
 # Header: !4sHH8sI32s12s  →  4+2+2+8+4+32+12 = 64 bytes
 HEADER_FMT  = "!4sHH8sI32s12s"
 HEADER_SIZE = struct.calcsize(HEADER_FMT)
-assert HEADER_SIZE == 64, f"Header size mismatch: {HEADER_SIZE}"
+if HEADER_SIZE != 64:
+    raise RuntimeError(f"Header size mismatch: {HEADER_SIZE}")
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -413,7 +414,7 @@ class DevDB:
             fd = -1
             os.replace(tmp_path, self._path)
             tmp_path = None  # ownership transferred; do not remove
-        except BaseException:
+        except BaseException:  # NOSONAR — intentional cleanup-and-reraise; catches KeyboardInterrupt/SystemExit to ensure temp file removal
             if fd != -1:
                 try:
                     os.close(fd)

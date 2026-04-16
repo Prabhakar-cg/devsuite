@@ -62,7 +62,8 @@ function decryptVault(ciphertext, iv, key) {
 
 // ── ID generator ──────────────────────────────────────────────────
 function genId() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const rnd = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
+    return Date.now().toString(36) + rnd.slice(-5);
 }
 
 // ── Session token helpers ─────────────────────────────────────────
@@ -206,7 +207,7 @@ async function unlockVault(password) {
         try {
             const verifyIv   = CryptoJS.lib.WordArray.random(16);
             const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
-            await fetch('/api/auth/setup', {
+            const setupRes = await fetch('/api/auth/setup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -215,6 +216,23 @@ async function unlockVault(password) {
                     verify_iv:   verifyIv.toString(),
                 }),
             });
+            if (setupRes.ok) {
+                // Challenge is now registered — acquire a server session immediately.
+                // key and sessionKey are identical for new vaults (same challenge salt + iterations
+                // were just registered above), so key.toString() is the correct hex to pass to
+                // _acquireServerSession. In migration scenarios (isSetupMode && !isNewVault) the
+                // challenge salt may differ from the vault's salt, but the retry below is
+                // intentionally gated by isNewVault so behavior stays correct in both cases.
+                await _acquireServerSession(key.toString());
+                // Retry the initial vault-salt save that failed earlier (no session at that point).
+                if (isNewVault) {
+                    await fetch('/api/vault', {
+                        method: 'POST',
+                        headers: _authHeaders({ 'Content-Type': 'application/json' }),
+                        body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
+                    });
+                }
+            }
             isSetupMode = false;
             // Reset lock screen to normal-unlock appearance for future locks
             document.getElementById('lock-setup-desc').textContent =

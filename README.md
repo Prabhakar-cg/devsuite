@@ -1,7 +1,16 @@
 # DevSuite — Developer Tools from Hell
+
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=bugs)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
+[![Known Vulnerabilities](https://snyk.io/test/github/Prabhakar-cg/devsuite/badge.svg)](https://snyk.io/test/github/Prabhakar-cg/devsuite)
 
 A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the **Monaco Editor**. 100% private — all file reading and data processing is done locally. No data ever leaves your machine.
+
+> [!WARNING]
+> **DevSuite is under active development.** Expect rough edges, breaking changes between versions, and features that are still taking shape. Feedback, bug reports, and ideas are very welcome — please [open an issue](https://github.com/Prabhakar-cg/devsuite/issues).
 
 ---
 
@@ -92,7 +101,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 ## Premium UI
 - Glassmorphic UI with dynamic gradients and ambient glow effects.
 - Neumorphic buttons and customized scrollbars.
-- **4 themes**: Midnight Dark, Clean Light, High Contrast, Frosted Glass.
+- **6 themes**: Terminal Noir, Midnight, Ocean, Solarized Dark, Clean Light, High Contrast.
 - All tools share a consistent header, theme switcher, and toast notification system.
 
 ---
@@ -154,6 +163,10 @@ devsuite/
 ├── requirements.txt         # fastapi, uvicorn, asyncssh, cryptography, openpyxl, pypdf, etc.
 ├── start.sh                 # One-shot virtual environment setup & run script
 ├── start.ps1                # PowerShell equivalent for Windows
+├── sonar-project.properties # SonarQube / SonarCloud analysis configuration
+├── tests/
+│   ├── python/              # pytest test suite (test_main.py, test_devdb.py, test_sftp.py, …)
+│   └── javascript/          # JS unit tests (test_devdb_client.js, test_cron_logic.js, …)
 └── static/
     ├── home.html            # DevSuite dashboard / homepage
     ├── home.css             # Homepage-specific styles (hero, tool cards, roadmap)

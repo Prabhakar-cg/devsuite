@@ -148,7 +148,7 @@ function renderSidebar() {
         groups[g].push(p);
     });
 
-    Object.keys(groups).sort().forEach(gName => {
+    Object.keys(groups).sort((a, b) => a.localeCompare(b)).forEach(gName => {
         const label = document.createElement('div');
         label.className = 'sftp-group-label';
         label.textContent = gName;

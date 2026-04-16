@@ -1,6 +1,6 @@
 # DevSuite Component & Architecture Reference
 
-> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (v0.1.0+). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
+> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (v2.2.0). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
 
 ## 1. System Tenets & Boundaries
 - **Strict Privacy**: 100% locally-hosted. No cloud telemetry, no analytics, no external services for core functionality.
@@ -20,7 +20,8 @@
   - `devdb.py`: **Unified Storage Engine**. Manages `.dsb` binary files with AES-256-GCM encryption, PBKDF2 key derivation (200k iterations), BLAKE2b integrity for plaintext mode, and atomic writes. Thread-safe via `threading.Lock`.
   - `start.sh` / `start.ps1`: Scaffold `.venv`, install `requirements.txt`, and boot Uvicorn.
   - `~/.devsuite/devdb.dsb`: The single unified database file. Stores: `url_db`, `collections`, `ssh_profiles`, `vault`.
-  - Test files: `test_devdb.py`, `test_main.py`, `test_new_features.py`, `test_sftp.py`, `test_regression.py`, and others.
+  - `sonar-project.properties`: SonarQube / SonarCloud analysis configuration.
+  - Test files live under `tests/python/` (`test_main.py`, `test_devdb.py`, `test_sftp.py`, `test_regression.py`, `test_new_features.py`, etc.) and `tests/javascript/` (`test_devdb_client.js`, `test_cron_logic.js`, etc.).
 
 - **Frontend (`/static/`)**:
   - *Core*: One HTML file per tool (`index.html` [Diff], `json.html`, `api-tester.html`, etc.).
@@ -30,7 +31,7 @@
 ## 3. UI/UX Paradigm
 - **Aesthetic**: Glassmorphism (`backdrop-filter: blur`) combined with Neumorphism (soft drop-shadows via `--neu-raise`, `--neu-press`).
 - **Tool Header Pattern**: Every tool page has an `<header class="app-header">` with a left-aligned `<a href="/" class="back-link">`, a tool icon mapped to a specific accent color class (e.g., `.tool-icon-indigo`), and a right-aligned theme selector.
-- **Global Themes**: Driven by `theme.js`. Valid themes are `vs-dark`, `vs` (Light), `hc-black` (High Contrast), and `ios-glass`. Custom event `devsuite-theme-changed` fires on toggle.
+- **Global Themes**: Driven by `theme.js`. Available themes: `vs-dark` (Terminal Noir, default), `midnight` (deep purple), `ocean` (deep blue), `solarized` (Solarized Dark), `vs` (Clean Light), `hc-black` (High Contrast). Custom event `devsuite-theme-changed` fires on toggle.
 - **Notifications**: Triggered universally via `showToast(msg, type)` (inline per-tool) or `DevSuite.toast(msg, type)` (from `components.js`).
 
 ## 4. Authentication & Session Model
@@ -51,7 +52,7 @@
 ## 6. Workflows & Updates
 - **Releases**: Require bumping the semantic version in three places concurrently: `main.py` (FastAPI `version="..."`), `README.md`, and `CHANGELOG.md`.
 - **Cache Busting**: Updates to CSS or JS necessitate bumping the URL query parameter (e.g., `href="style.css?v=58"`) in HTML templates.
-- **Tests**: Always execute backend tests (`pytest test_main.py test_new_features.py`) before final validation.
+- **Tests**: Always execute backend tests (`pytest tests/python/`) before final validation. JavaScript tests live in `tests/javascript/`.
 
 ## 7. Feature Map & Token-Saving Guide
 

@@ -14,7 +14,7 @@
 const AuthGuard = (() => {
     // ── Constants ─────────────────────────────────────────────────
     const LS_EXPIRY_KEY = 'devsuite_session_expiry';   // localStorage
-    const SS_PWD_KEY    = 'devsuite_session_pwd';      // sessionStorage
+    const SS_CRED_KEY   = 'devsuite_session_cred';     // sessionStorage — stores derived key for session
     const SESSION_MS    = 8 * 60 * 60 * 1000;         // 8 hours
     const PBKDF2_ITER   = 50000;
     const PBKDF2_KS     = 256 / 32;
@@ -111,7 +111,7 @@ const AuthGuard = (() => {
     }
 
     function _cachedPwd() {
-        return sessionStorage.getItem(SS_PWD_KEY) || null;
+        return sessionStorage.getItem(SS_CRED_KEY) || null;
     }
 
     function _sessionExpiresIn() {
@@ -125,7 +125,7 @@ const AuthGuard = (() => {
 
     function _cacheSession(pwd) {
         localStorage.setItem(LS_EXPIRY_KEY, String(Date.now() + SESSION_MS));
-        sessionStorage.setItem(SS_PWD_KEY, pwd);
+        sessionStorage.setItem(SS_CRED_KEY, pwd);
     }
 
     // ── Password verification ─────────────────────────────────────
@@ -302,7 +302,7 @@ const AuthGuard = (() => {
     /** Invalidate the current session (e.g., on explicit sign-out). */
     function clearSession() {
         localStorage.removeItem(LS_EXPIRY_KEY);
-        sessionStorage.removeItem(SS_PWD_KEY);
+        sessionStorage.removeItem(SS_CRED_KEY);
     }
 
     return { init, cachedPwd, clearSession };

@@ -5,7 +5,46 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
-## [0.1.0] — 2026-04-11
+## [Unreleased]
+
+_No changes yet._
+
+---
+
+## [0.1.1] — 2026-04-15
+
+Bugfix release. No new features; all changes address correctness, accessibility, and code-quality issues identified after the v0.1.0 baseline.
+
+### Bug Fixes
+
+#### Secret Vault (`vault.js`)
+- **New-vault setup regression** — after `POST /api/auth/setup` succeeds, a server session is now acquired immediately and the initial vault-salt save (which previously failed because no session existed yet) is retried. Without this fix a newly created vault could not persist its salt on first save.
+
+#### Diff Checker (`app.js`)
+- **Monaco theme not applied on load** — replaced direct `themeSelect.value` access with a `getMonacoTheme()` helper that falls back to `localStorage['devsuite-theme']` when `themeSelect` is `null`, preventing the editor from rendering in the wrong theme during initialisation.
+- **Patch generation silent no-op** — patch loop conditions (`&& oE > 0` / `&& mE > 0`) were inside the loop body, making loop iterations with no lines silently skip. Moved to `if`-guards around each loop.
+- **Folder tree sort non-deterministic** — file-path sort now uses `localeCompare()` for consistent locale-aware ordering across platforms.
+
+#### Folder Diff (`index.html`)
+- **Folder input blocked inside hidden parent** — browsers silently block `input.click()` when the input lives inside a `display:none` ancestor. Both folder `<input type="file">` elements are now hoisted outside the collapsible setup wrapper.
+- **Accessibility** — folder-picker trigger elements converted from `<button onclick="input.click()">` to `<label for="...">`, enabling native browser association and keyboard activation without JavaScript.
+
+#### SFTP Browser / SSH Manager (`sftp-browser.js`, `ssh-manager.js`)
+- **Group name sort non-deterministic** — SSH session group names now sort with `localeCompare()` for consistent Unicode-aware ordering.
+
+#### `start.sh`
+- **Unsupported package manager silent fall-through** — the `case` statement now has a `*)` wildcard that prints a clear error message and exits with code `1` instead of silently continuing.
+
+### Internal / Code Quality
+
+- **`main.py`** — imports reorganised alphabetically; shared string constants extracted (`_ALLOWED_ORIGINS`, `_ERR_ORIGIN_REQUIRED`, `_ERR_ORIGIN_NOT_ALLOWED`, `_ERR_SFTP_FAILED`, etc.); `# pylint: disable` annotations added to complex route handlers; unused `application` parameter in lifespan renamed to `_application`; PTY module globals renamed `_pty_available` (snake_case) for consistency.
+- **`devdb.py`** — `BaseException` catch block annotated with `# NOSONAR` to suppress false-positive static-analysis warning; clarifying comment added.
+- **SonarQube** — `sonar-project.properties` added to project root for SonarQube/SonarCloud analysis.
+- **Tests** — test files reorganised under `tests/python/` and `tests/javascript/`; JavaScript test suite now includes a `FormData` no-op stub for the devdb-client tests.
+
+---
+
+## [0.1.0] — 2026-04-12
 
 This is the **baseline release** — a comprehensive snapshot of all features, tools, and infrastructure present in DevSuite at this version. Future releases will document incremental changes against this baseline.
 
