@@ -112,7 +112,7 @@ _ERR_ORIGIN_NOT_ALLOWED = "Origin not allowed"
 _ERR_SFTP_FAILED      = "SFTP operation failed"
 _OPENPYXL_MISSING     = "openpyxl is not installed. Run: pip install openpyxl"
 _MIME_OCTET_STREAM    = "application/octet-stream"
-_RE_NON_DIGIT         = r'[^0-9]'
+_RE_NON_DIGIT         = r'\D'
 _WSL_EXE              = "wsl.exe"
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -310,8 +310,204 @@ def read_file_converter_tool():
     return _serve_html("file-converter.html")
 
 
-@app.post("/api/convert", summary="Convert a file from one format to another (server-side)")
-async def convert_file(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-return-statements
+def _conv_xlsx_to_csv_json(content: bytes, target_format: str) -> Response:
+    """Convert XLSX bytes to CSV or JSON and return the appropriate Response."""
+    import io  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    try:
+        import openpyxl  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail=_OPENPYXL_MISSING) from e
+    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        raise HTTPException(status_code=400, detail="Spreadsheet is empty")
+    headers = [str(h) if h is not None else "" for h in rows[0]]
+    data = [
+        dict(zip(headers, [str(v) if v is not None else "" for v in row]))
+        for row in rows[1:]
+    ]
+    if target_format == "csv":
+        import csv as csv_mod  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+        buf = io.StringIO()
+        writer = csv_mod.DictWriter(buf, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(data)
+        return Response(content=buf.getvalue(), media_type="text/csv",
+                        headers={"Content-Disposition": 'attachment; filename="converted.csv"'})
+    return Response(content=json.dumps(data, indent=2), media_type="application/json",
+                    headers={"Content-Disposition": 'attachment; filename="converted.json"'})
+
+
+def _conv_csv_to_xlsx(content: bytes) -> Response:
+    """Convert CSV bytes to XLSX and return the appropriate Response."""
+    import io  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    import csv as csv_mod  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    try:
+        import openpyxl  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail=_OPENPYXL_MISSING) from e
+    text = content.decode("utf-8-sig", errors="replace")
+    reader = csv_mod.reader(io.StringIO(text))
+    rows = list(reader)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for row in rows:
+        ws.append(row)
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return Response(
+        content=buf.read(),
+        media_type=_XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": 'attachment; filename="converted.xlsx"'},
+    )
+
+
+def _conv_json_to_xlsx(content: bytes) -> Response:
+    """Convert JSON bytes to XLSX and return the appropriate Response."""
+    import io  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    try:
+        import openpyxl  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail=_OPENPYXL_MISSING) from e
+    data = json.loads(content)
+    if not isinstance(data, list):
+        data = [data]
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    if data:
+        headers = list(data[0].keys())
+        ws.append(headers)
+        for row in data:
+            ws.append([str(row.get(h, "")) for h in headers])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return Response(
+        content=buf.read(),
+        media_type=_XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": 'attachment; filename="converted.xlsx"'},
+    )
+
+
+def _conv_pdf_to_txt(content: bytes) -> Response:
+    """Extract text from PDF bytes and return a plain-text Response."""
+    import io  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    try:
+        import pypdf  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail="pypdf is not installed. Run: pip install pypdf") from e
+    reader = pypdf.PdfReader(io.BytesIO(content))
+    pages_text = [page.extract_text() or "" for page in reader.pages]
+    full_text = "\n\n".join(pages_text)
+    return Response(content=full_text, media_type="text/plain",
+                    headers={"Content-Disposition": 'attachment; filename="converted.txt"'})
+
+
+def _conv_docx_to_txt(content: bytes) -> Response:
+    """Extract text from DOCX bytes and return a plain-text Response."""
+    import io  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    try:
+        import docx  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail="python-docx is not installed. Run: pip install python-docx") from e
+    doc = docx.Document(io.BytesIO(content))
+    text = "\n".join(para.text for para in doc.paragraphs)
+    return Response(content=text, media_type="text/plain",
+                    headers={"Content-Disposition": 'attachment; filename="converted.txt"'})
+
+
+def _conv_any_to_pdf(src_ext: str, content: bytes) -> Response:
+    """Convert DOCX/DOC/HTML/MD/Markdown bytes to PDF using weasyprint."""
+    import io  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    try:
+        import weasyprint  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail="weasyprint is not installed. Run: pip install weasyprint") from e
+
+    # Step 1: Get HTML content
+    if src_ext in ("docx", "doc"):
+        try:
+            import mammoth  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+        except ImportError as e:
+            raise HTTPException(status_code=503, detail="mammoth is not installed. Run: pip install mammoth") from e
+        result = mammoth.convert_to_html(io.BytesIO(content))
+        raw_html = result.value
+    elif src_ext in ("md", "markdown"):
+        import html as _html_mod  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+        try:
+            import markdown as md_lib  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+            raw_html = md_lib.markdown(
+                content.decode("utf-8", errors="replace"),
+                extensions=["tables", "fenced_code"],
+            )
+        except ImportError:
+            # Fallback: wrap text in <pre>
+            raw_html = (
+                "<pre>"
+                + _html_mod.escape(content.decode("utf-8", errors="replace"))
+                + "</pre>"
+            )
+    else:  # html / htm
+        raw_html = content.decode("utf-8", errors="replace")
+
+    # Step 2: Wrap in a full HTML document with print-friendly CSS
+    full_html = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body {{ font-family: Georgia, 'Times New Roman', serif; font-size: 12pt; line-height: 1.6;
+          margin: 2cm; color: #111; }}
+  h1,h2,h3,h4,h5,h6 {{ font-family: Arial, Helvetica, sans-serif; margin-top: 1.2em; }}
+  h1 {{ font-size: 22pt; }} h2 {{ font-size: 17pt; }} h3 {{ font-size: 14pt; }}
+  p {{ margin: 0.5em 0 0.8em; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
+  th, td {{ border: 1px solid #ccc; padding: 6px 10px; text-align: left; }}
+  th {{ background: #f0f0f0; font-weight: bold; }}
+  pre, code {{ font-family: 'Courier New', monospace; font-size: 10pt;
+               background: #f5f5f5; padding: 0.2em 0.4em; border-radius: 3px; }}
+  pre {{ padding: 0.8em; white-space: pre-wrap; word-break: break-word; }}
+  img {{ max-width: 100%; height: auto; }}
+  a {{ color: #1a56db; }}
+  @page {{ margin: 2cm; }}
+</style>
+</head>
+<body>{raw_html}</body>
+</html>"""
+
+    # Step 3: Render to PDF with a safe URL fetcher to prevent SSRF/LFI
+    try:
+        from weasyprint import default_url_fetcher as _default_url_fetcher  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    except ImportError:
+        _default_url_fetcher = None
+
+    def _safe_url_fetcher(url: str):
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ('', 'data'):
+            raise ValueError(
+                f"Blocked disallowed URL scheme '{parsed.scheme}' in PDF conversion: {url!r}"
+            )
+        if _default_url_fetcher is not None:
+            return _default_url_fetcher(url)
+        raise ValueError(f"No URL fetcher available for: {url!r}")
+
+    pdf_bytes = weasyprint.HTML(string=full_html, url_fetcher=_safe_url_fetcher).write_pdf()
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="converted.pdf"'})
+
+
+@app.post(
+    "/api/convert",
+    summary="Convert a file from one format to another (server-side)",
+    responses={
+        400: {"description": "Invalid content-length or unsupported conversion"},
+        413: {"description": "Upload too large"},
+        503: {"description": "Required conversion library not installed"},
+    },
+)
+async def convert_file(
     request: Request,
     file: Annotated[UploadFile, File(...)],
     target_format: Annotated[str, Form(...)],
@@ -322,12 +518,10 @@ async def convert_file(  # pylint: disable=too-many-locals,too-many-branches,too
     Handles conversions that require Python libraries:
     - XLSX ↔ CSV / JSON
     - PDF → TXT
-    - DOCX / DOC → PDF (requires LibreOffice)
-    - Markdown → PDF (requires LibreOffice or weasyprint)
-    - HTML → PDF (requires LibreOffice)
+    - DOCX / DOC → PDF (requires weasyprint)
+    - Markdown → PDF (requires weasyprint)
+    - HTML → PDF (requires weasyprint)
     """
-    import io  # pylint: disable=import-outside-toplevel
-
     target_format = target_format.lower().strip()
     original_name = (file.filename or "file").lower()
     src_ext = original_name.rsplit(".", 1)[-1] if "." in original_name else ""
@@ -352,205 +546,18 @@ async def convert_file(  # pylint: disable=too-many-locals,too-many-branches,too
             detail=f"Upload too large (limit {MAX_UPLOAD_SIZE // 1024 // 1024} MB)",
         )
 
-    # ── XLSX → CSV / JSON ──────────────────────────────────────────────────
     if src_ext == "xlsx" and target_format in ("csv", "json"):
-        try:
-            import openpyxl  # pylint: disable=import-outside-toplevel
-        except ImportError as e:
-            raise HTTPException(
-                status_code=503,
-                detail=_OPENPYXL_MISSING,
-            ) from e
-        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
-        if not rows:
-            raise HTTPException(status_code=400, detail="Spreadsheet is empty")
-        headers = [str(h) if h is not None else "" for h in rows[0]]
-        data = [
-            dict(zip(headers, [str(v) if v is not None else "" for v in row]))
-            for row in rows[1:]
-        ]
-
-        if target_format == "csv":
-            import csv as csv_mod  # pylint: disable=import-outside-toplevel
-            buf = io.StringIO()
-            writer = csv_mod.DictWriter(buf, fieldnames=headers)
-            writer.writeheader()
-            writer.writerows(data)
-            return Response(content=buf.getvalue(), media_type="text/csv",
-                            headers={"Content-Disposition": 'attachment; filename="converted.csv"'})
-        return Response(content=json.dumps(data, indent=2), media_type="application/json",
-                        headers={"Content-Disposition": 'attachment; filename="converted.json"'})
-
-    # ── CSV → XLSX ─────────────────────────────────────────────────────────
+        return _conv_xlsx_to_csv_json(content, target_format)
     if src_ext == "csv" and target_format == "xlsx":
-        try:
-            import openpyxl  # pylint: disable=import-outside-toplevel
-        except ImportError as e:
-            raise HTTPException(
-                status_code=503,
-                detail=_OPENPYXL_MISSING,
-            ) from e
-        import csv as csv_mod  # pylint: disable=import-outside-toplevel
-        text = content.decode("utf-8-sig", errors="replace")
-        reader = csv_mod.reader(io.StringIO(text))
-        rows = list(reader)
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        for row in rows:
-            ws.append(row)
-        buf = io.BytesIO()
-        wb.save(buf)
-        buf.seek(0)
-        return Response(
-            content=buf.read(),
-            media_type=_XLSX_MEDIA_TYPE,
-            headers={"Content-Disposition": 'attachment; filename="converted.xlsx"'},
-        )
-
-    # ── JSON → XLSX ────────────────────────────────────────────────────────
+        return _conv_csv_to_xlsx(content)
     if src_ext == "json" and target_format == "xlsx":
-        try:
-            import openpyxl  # pylint: disable=import-outside-toplevel
-        except ImportError as e:
-            raise HTTPException(
-                status_code=503,
-                detail=_OPENPYXL_MISSING,
-            ) from e
-        data = json.loads(content)
-        if not isinstance(data, list):
-            data = [data]
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        if data:
-            headers = list(data[0].keys())
-            ws.append(headers)
-            for row in data:
-                ws.append([str(row.get(h, "")) for h in headers])
-        buf = io.BytesIO()
-        wb.save(buf)
-        buf.seek(0)
-        return Response(
-            content=buf.read(),
-            media_type=_XLSX_MEDIA_TYPE,
-            headers={"Content-Disposition": 'attachment; filename="converted.xlsx"'},
-        )
-
-    # ── PDF → TXT ──────────────────────────────────────────────────────────
+        return _conv_json_to_xlsx(content)
     if src_ext == "pdf" and target_format == "txt":
-        try:
-            import pypdf  # pylint: disable=import-outside-toplevel
-        except ImportError as e:
-            raise HTTPException(
-                status_code=503,
-                detail="pypdf is not installed. Run: pip install pypdf",
-            ) from e
-        reader = pypdf.PdfReader(io.BytesIO(content))
-        pages_text = [page.extract_text() or "" for page in reader.pages]
-        full_text = "\n\n".join(pages_text)
-        return Response(content=full_text, media_type="text/plain",
-                        headers={"Content-Disposition": 'attachment; filename="converted.txt"'})
-
-    # ── DOCX → TXT ────────────────────────────────────────────────────────
+        return _conv_pdf_to_txt(content)
     if src_ext == "docx" and target_format == "txt":
-        try:
-            import docx  # pylint: disable=import-outside-toplevel
-        except ImportError as e:
-            raise HTTPException(
-                status_code=503,
-                detail="python-docx is not installed. Run: pip install python-docx",
-            ) from e
-        doc = docx.Document(io.BytesIO(content))
-        text = "\n".join(para.text for para in doc.paragraphs)
-        return Response(content=text, media_type="text/plain",
-                        headers={"Content-Disposition": 'attachment; filename="converted.txt"'})
-
-    # ── Pure-Python PDF conversions: DOCX/DOC/HTML/MD → PDF ──────────────
+        return _conv_docx_to_txt(content)
     if target_format == "pdf" and src_ext in ("docx", "doc", "html", "htm", "md", "markdown"):
-        try:
-            import weasyprint  # pylint: disable=import-outside-toplevel
-        except ImportError as e:
-            raise HTTPException(
-                status_code=503,
-                detail="weasyprint is not installed. Run: pip install weasyprint",
-            ) from e
-
-        # Step 1: Get HTML content
-        if src_ext in ("docx", "doc"):
-            try:
-                import mammoth  # pylint: disable=import-outside-toplevel
-            except ImportError as e:
-                raise HTTPException(
-                    status_code=503,
-                    detail="mammoth is not installed. Run: pip install mammoth",
-                ) from e
-            result = mammoth.convert_to_html(io.BytesIO(content))
-            raw_html = result.value
-        elif src_ext in ("md", "markdown"):
-            import html as _html_mod  # pylint: disable=import-outside-toplevel
-            try:
-                import markdown as md_lib  # pylint: disable=import-outside-toplevel
-                raw_html = md_lib.markdown(
-                    content.decode("utf-8", errors="replace"),
-                    extensions=["tables", "fenced_code"],
-                )
-            except ImportError:
-                # Fallback: wrap text in <pre>
-                raw_html = (
-                    "<pre>"
-                    + _html_mod.escape(content.decode("utf-8", errors="replace"))
-                    + "</pre>"
-                )
-        else:  # html / htm
-            raw_html = content.decode("utf-8", errors="replace")
-
-        # Step 2: Wrap in a full HTML document with print-friendly CSS
-        full_html = f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  body {{ font-family: Georgia, 'Times New Roman', serif; font-size: 12pt; line-height: 1.6;
-          margin: 2cm; color: #111; }}
-  h1,h2,h3,h4,h5,h6 {{ font-family: Arial, Helvetica, sans-serif; margin-top: 1.2em; }}
-  h1 {{ font-size: 22pt; }} h2 {{ font-size: 17pt; }} h3 {{ font-size: 14pt; }}
-  p {{ margin: 0.5em 0 0.8em; }}
-  table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
-  th, td {{ border: 1px solid #ccc; padding: 6px 10px; text-align: left; }}
-  th {{ background: #f0f0f0; font-weight: bold; }}
-  pre, code {{ font-family: 'Courier New', monospace; font-size: 10pt;
-               background: #f5f5f5; padding: 0.2em 0.4em; border-radius: 3px; }}
-  pre {{ padding: 0.8em; white-space: pre-wrap; word-break: break-word; }}
-  img {{ max-width: 100%; height: auto; }}
-  a {{ color: #1a56db; }}
-  @page {{ margin: 2cm; }}
-</style>
-</head>
-<body>{raw_html}</body>
-</html>"""
-
-        # Step 3: Render to PDF with a safe URL fetcher to prevent SSRF/LFI
-        try:
-            from weasyprint import default_url_fetcher as _default_url_fetcher  # pylint: disable=import-outside-toplevel
-        except ImportError:
-            _default_url_fetcher = None
-
-        def _safe_url_fetcher(url: str):
-            parsed = urllib.parse.urlparse(url)
-            if parsed.scheme not in ('', 'data'):
-                raise ValueError(
-                    f"Blocked disallowed URL scheme '{parsed.scheme}' in PDF conversion: {url!r}"
-                )
-            if _default_url_fetcher is not None:
-                return _default_url_fetcher(url)
-            raise ValueError(f"No URL fetcher available for: {url!r}")
-
-        pdf_bytes = weasyprint.HTML(string=full_html, url_fetcher=_safe_url_fetcher).write_pdf()
-
-        return Response(content=pdf_bytes, media_type="application/pdf",
-                        headers={"Content-Disposition": 'attachment; filename="converted.pdf"'})
-
+        return _conv_any_to_pdf(src_ext, content)
     raise HTTPException(
         status_code=400,
         detail=f"Unsupported server-side conversion: {src_ext} → {target_format}"
@@ -582,7 +589,11 @@ def save_vault(data: dict, request: Request):
         raise HTTPException(status_code=500, detail="Failed to save vault") from e
 
 
-@app.post("/api/shorten", summary="Create a short URL")
+@app.post(
+    "/api/shorten",
+    summary="Create a short URL",
+    responses={400: {"description": "Invalid or empty URL"}},
+)
 def shorten_url(req: ShortenRequest, request: Request):
     """
     Create and store a 6-character short identifier for the provided URL and return
@@ -743,7 +754,30 @@ class ProxyRequest(BaseModel):
     body: str | None = None
 
 
-@app.post("/api/proxy", summary="Bypass CORS for API Tester")
+def _check_ip_not_private(ip_str: str) -> None:
+    """Raise HTTPException 403 if the IP is private/reserved/loopback."""
+    try:
+        ip_obj = ipaddress.ip_address(ip_str)
+        if (ip_obj.is_loopback or ip_obj.is_private or ip_obj.is_link_local
+                or ip_obj.is_multicast or ip_obj.is_reserved):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Access to private/reserved IP addresses is forbidden: {ip_str}",
+            )
+        if ip_str.startswith("169.254."):
+            raise HTTPException(status_code=403, detail="Access to cloud metadata endpoints is forbidden")
+    except ValueError:
+        pass
+
+
+@app.post(
+    "/api/proxy",
+    summary="Bypass CORS for API Tester",
+    responses={
+        400: {"description": "Invalid URL or DNS failure"},
+        403: {"description": "Target IP is private or reserved"},
+    },
+)
 async def proxy_request(req: ProxyRequest):  # pylint: disable=too-many-locals,too-many-branches
     """Provides a local CORS bypass proxy using urllib for the API tester tool."""
     try:
@@ -772,27 +806,7 @@ async def proxy_request(req: ProxyRequest):  # pylint: disable=too-many-locals,t
 
         for _, _, _, _, sockaddr in addr_info:
             ip_str = sockaddr[0]
-            try:
-                ip_obj = ipaddress.ip_address(ip_str)
-                # Reject loopback, private, link-local, multicast, and reserved addresses
-                if (ip_obj.is_loopback or ip_obj.is_private or ip_obj.is_link_local
-                        or ip_obj.is_multicast or ip_obj.is_reserved):
-                    raise HTTPException(
-                        status_code=403,
-                        detail=(
-                            "Access to private/reserved IP addresses is forbidden:"
-                            f" {ip_str}"
-                        ),
-                    )
-                # Special check for cloud metadata endpoint
-                if ip_str.startswith("169.254."):
-                    raise HTTPException(
-                        status_code=403,
-                        detail="Access to cloud metadata endpoints is forbidden",
-                    )
-            except ValueError:
-                # Not a valid IP address, skip
-                pass
+            _check_ip_not_private(ip_str)
 
         req_body = req.body.encode('utf-8') if req.body else None
 
@@ -1015,7 +1029,14 @@ def auth_challenge():
     }
 
 
-@app.post("/api/auth/setup", summary="Initialize master password (first-time setup)")
+@app.post(
+    "/api/auth/setup",
+    summary="Initialize master password (first-time setup)",
+    responses={
+        400: {"description": "Missing required fields"},
+        409: {"description": "Master password already configured"},
+    },
+)
 def auth_setup(data: dict):
     """One-time setup: store the PBKDF2 salt and AES verification blob in app_prefs.
     Called by vault.js after the user sets their master password for the first time.
@@ -1049,6 +1070,7 @@ def auth_setup(data: dict):
 @app.post(
     "/api/auth/update-challenge",
     summary="Update master password challenge after password change",
+    responses={400: {"description": "Missing required fields"}},
 )
 def auth_update_challenge(data: dict, request: Request):
     """Replace the verification challenge when the master password is changed.
@@ -1085,6 +1107,10 @@ def auth_update_challenge(data: dict, request: Request):
 @app.post(
     "/api/auth/session",
     summary="Exchange verified master key for a server-side session token",
+    responses={
+        400: {"description": "Missing key_hex"},
+        401: {"description": "Invalid master key or key verification failed"},
+    },
 )
 def auth_session(data: dict):  # pylint: disable=too-many-locals
     """Verify the PBKDF2-derived key (hex) against the stored challenge and issue a session token.
@@ -1136,6 +1162,19 @@ def auth_session(data: dict):  # pylint: disable=too-many-locals
     return {"session_token": token, "expires_in": _SESSION_TTL}
 
 
+def _create_known_hosts(path: str) -> None:
+    """Create an empty known_hosts file with mode 600."""
+    with open(path, "w", encoding="utf-8"):
+        pass
+    os.chmod(path, 0o600)
+
+
+def _append_known_hosts(path: str, data: bytes) -> None:
+    """Append a host-key entry to the known_hosts file."""
+    with open(path, "ab") as fh:
+        fh.write(data)
+
+
 async def _ensure_host_key(  # pylint: disable=too-many-locals
     host: str,
     port: int,
@@ -1166,9 +1205,7 @@ async def _ensure_host_key(  # pylint: disable=too-many-locals
     # Create ~/.ssh (mode 700) and known_hosts (mode 600) if absent
     os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
     if not os.path.exists(known_hosts_path):
-        with open(known_hosts_path, "w", encoding="utf-8"):
-            pass
-        os.chmod(known_hosts_path, 0o600)
+        await asyncio.to_thread(_create_known_hosts, known_hosts_path)
 
     # ssh-keygen -F checks whether host:port already has an entry
     lookup = f"[{host}]:{port}" if port != 22 else host
@@ -1230,8 +1267,7 @@ async def _ensure_host_key(  # pylint: disable=too-many-locals
             f"Host key for {host}:{port} (fingerprint {fingerprint}) was rejected by the user."
         )
 
-    with open(known_hosts_path, "ab") as fh:
-        fh.write(stdout)
+    await asyncio.to_thread(_append_known_hosts, known_hosts_path, stdout)
 
     return known_hosts_path
 
@@ -1245,25 +1281,110 @@ class HostKeyApprovalRequired(Exception):
         self.fingerprint = fingerprint
 
 
-@app.websocket("/api/ssh/terminal")
-async def ssh_terminal(websocket: WebSocket):  # pylint: disable=too-many-locals,too-many-statements
-    """WebSocket endpoint: interactive SSH terminal session."""
-    # Validate Origin header — reject missing AND disallowed origins
+async def _ws_check_origin(websocket: WebSocket) -> bool:
+    """Return True if origin is valid; close the socket and return False otherwise."""
     origin = websocket.headers.get("origin", "")
     host = websocket.headers.get("host", "")
-    allowed_origins = _ALLOWED_ORIGINS
     if not origin:
         await websocket.close(code=1008, reason=_ERR_ORIGIN_REQUIRED)
-        return
-    if origin not in allowed_origins and host and not origin.endswith(f"//{host}"):
+        return False
+    if origin not in _ALLOWED_ORIGINS and host and not origin.endswith(f"//{host}"):
         await websocket.close(code=1008, reason=_ERR_ORIGIN_NOT_ALLOWED)
+        return False
+    return True
+
+
+def _build_ssh_connect_kwargs(
+    host: str,
+    port: int,
+    username: str,
+    password: str | None,
+    private_key: str | None,
+    known_hosts_path: str,
+) -> dict:
+    """Build the keyword arguments dict for asyncssh.connect()."""
+    kwargs: dict = {"host": host, "port": port, "username": username, "known_hosts": known_hosts_path}
+    if password:
+        kwargs["password"] = password
+    if private_key:
+        kwargs["client_keys"] = [asyncssh.import_private_key(private_key)]
+    return kwargs
+
+
+async def _run_metrics_loop(websocket: WebSocket, conn) -> None:
+    """Poll SSH server metrics every 2 s and push them over *websocket*."""
+    script = (
+        "cat /proc/stat | head -n 1; echo '---'; "
+        "cat /proc/meminfo | grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):'; echo '---'; "
+        "df -m | awk 'NR>1 {print $1, $2, $3, $4, $5, $6}'; echo '---'; "
+        "cat /proc/uptime | awk '{print $1}'"
+    )
+    await websocket.send_json({"status": "connected"})
+    prev_idle = 0
+    prev_total = 0
+    while True:
+        try:
+            res = await asyncio.wait_for(conn.run(script), timeout=5.0)
+            if res.exit_status == 0:
+                parts = res.stdout.strip().split('---')
+                if len(parts) == 4:
+                    payload, prev_idle, prev_total = _parse_ssh_metrics(parts, prev_idle, prev_total)
+                    await websocket.send_json(payload)
+            await asyncio.sleep(2)
+        except asyncio.TimeoutError:
+            continue
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.debug("ssh_dashboard iteration error: %s", e)
+            break
+
+
+async def _run_ssh_terminal_session(websocket: WebSocket, conn) -> None:
+    """Run the interactive SSH terminal I/O loop over an established connection."""
+    async with conn.create_process(term_type='xterm-256color') as process:
+
+        async def read_from_ssh():
+            try:
+                while True:
+                    data = await process.stdout.read(4096)
+                    if not data:
+                        break
+                    await websocket.send_text(str(data))
+            except Exception:  # pylint: disable=broad-exception-caught
+                logger.debug("read_from_ssh: stream ended or error", exc_info=True)
+
+        async def write_to_ssh():
+            try:
+                while True:
+                    data = await websocket.receive_text()
+                    if data.startswith("\x1b[resize;"):
+                        parts = data.split(";")
+                        if len(parts) == 3:
+                            try:
+                                cols, rows = int(parts[1]), int(parts[2].strip("m"))
+                                process.change_terminal_size(cols, rows, 0, 0)
+                            except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
+                                pass
+                        continue
+                    process.stdin.write(data)
+            except WebSocketDisconnect:
+                process.terminate()
+            except Exception:  # pylint: disable=broad-exception-caught
+                logger.debug("write_to_ssh: error writing to SSH process", exc_info=True)
+
+        await asyncio.gather(read_from_ssh(), write_to_ssh())
+
+
+@app.websocket("/api/ssh/terminal")
+async def ssh_terminal(websocket: WebSocket):
+    """WebSocket endpoint: interactive SSH terminal session."""
+    if not await _ws_check_origin(websocket):
         return
 
     await websocket.accept()
     try:
         data = await websocket.receive_text()
         config = json.loads(data)
-        host = config.get("host")
+        ssh_host = config.get("host")
         port = int(config.get("port", 22))
         username = config.get("username")
         password = config.get("password")
@@ -1271,7 +1392,7 @@ async def ssh_terminal(websocket: WebSocket):  # pylint: disable=too-many-locals
 
         # Ensure known_hosts exists and has an entry for this host.
         # For new hosts the fingerprint is sent to the browser for user approval.
-        await websocket.send_text(f"Verifying host key for {host}:{port}...\r\n")
+        await websocket.send_text(f"Verifying host key for {ssh_host}:{port}...\r\n")
 
         async def _ws_approve_host(h: str, p: int, fingerprint: str, _key_line: bytes) -> bool:
             """Send a JSON approval request over the WebSocket and wait for the browser reply.
@@ -1306,58 +1427,15 @@ async def ssh_terminal(websocket: WebSocket):  # pylint: disable=too-many-locals
                     )
 
         try:
-            known_hosts_path = await _ensure_host_key(host, port, approve_host=_ws_approve_host)
+            known_hosts_path = await _ensure_host_key(ssh_host, port, approve_host=_ws_approve_host)
         except RuntimeError as exc:
             await websocket.send_text(f"\r\nHost key error: {exc}\r\n")
             await websocket.close()
             return
 
-        connect_kwargs = {
-            "host": host,
-            "port": port,
-            "username": username,
-            "known_hosts": known_hosts_path
-        }
-        if password:
-            connect_kwargs["password"] = password
-        if private_key:
-            connect_kwargs["client_keys"] = [asyncssh.import_private_key(private_key)]
-
+        connect_kwargs = _build_ssh_connect_kwargs(ssh_host, port, username, password, private_key, known_hosts_path)
         async with asyncssh.connect(**connect_kwargs) as conn:
-            # We must use create_process with a PTY to get interactive shell
-            async with conn.create_process(term_type='xterm-256color') as process:
-
-                async def read_from_ssh():
-                    try:
-                        while True:
-                            data = await process.stdout.read(4096)
-                            if not data:
-                                break
-                            # asyncssh reads string by default, we send text
-                            await websocket.send_text(str(data))
-                    except Exception:  # pylint: disable=broad-exception-caught
-                        logger.debug("read_from_ssh: stream ended or error", exc_info=True)
-
-                async def write_to_ssh():
-                    try:
-                        while True:
-                            data = await websocket.receive_text()
-                            if data.startswith("\x1b[resize;"):
-                                parts = data.split(";")
-                                if len(parts) == 3:
-                                    try:
-                                        cols, rows = int(parts[1]), int(parts[2].strip("m"))
-                                        process.change_terminal_size(cols, rows, 0, 0)
-                                    except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
-                                        pass
-                                continue
-                            process.stdin.write(data)
-                    except WebSocketDisconnect:
-                        process.terminate()
-                    except Exception:  # pylint: disable=broad-exception-caught
-                        logger.debug("write_to_ssh: error writing to SSH process", exc_info=True)
-
-                await asyncio.gather(read_from_ssh(), write_to_ssh())
+            await _run_ssh_terminal_session(websocket, conn)
     except Exception as e:  # pylint: disable=broad-exception-caught
         try:
             await websocket.send_text(f"\r\nError: {e}\r\n")
@@ -1378,7 +1456,11 @@ class SFTPRequest(BaseModel):
     approved_fingerprint: str | None = None
 
 
-@app.post("/api/sftp/list", summary="List files via SFTP")
+@app.post(
+    "/api/sftp/list",
+    summary="List files via SFTP",
+    responses={500: {"description": "SFTP operation failed"}},
+)
 async def sftp_list(req: SFTPRequest):
     """List files in a directory on a remote host via SFTP."""
     try:
@@ -1442,7 +1524,11 @@ class SFTPDownloadRequest(BaseModel):
     approved_fingerprint: str | None = None
 
 
-@app.post("/api/sftp/download", summary="Download a file via SFTP")
+@app.post(
+    "/api/sftp/download",
+    summary="Download a file via SFTP",
+    responses={500: {"description": "SFTP operation failed"}},
+)
 async def sftp_download(req: SFTPDownloadRequest):
     """Stream a file download from a remote host via SFTP."""
     try:
@@ -1495,7 +1581,11 @@ async def sftp_download(req: SFTPDownloadRequest):
         raise HTTPException(status_code=500, detail=_ERR_SFTP_FAILED) from e
 
 
-@app.post("/api/sftp/upload", summary="Upload a file via SFTP")
+@app.post(
+    "/api/sftp/upload",
+    summary="Upload a file via SFTP",
+    responses={500: {"description": "SFTP operation failed"}},
+)
 async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     host: Annotated[str, Form(...)],
     username: Annotated[str, Form(...)],
@@ -1577,16 +1667,10 @@ def _tracked_task(coro):
     return task
 
 
-def _parse_ssh_metrics(  # pylint: disable=too-many-locals
-    parts: list, prev_idle: int, prev_total: int
-) -> tuple:
-    """Parse the four-section script output into a metrics payload.
-
-    Returns (payload_dict_or_None, new_prev_idle, new_prev_total).
-    """
-    # 1: CPU
-    cpu_line = parts[0].strip()
+def _parse_cpu_section(cpu_line: str, prev_idle: int, prev_total: int) -> tuple:
+    """Parse the first line of /proc/stat and return (cpu_usage_float, new_idle, new_total)."""
     cpu_usage = 0
+    idle, total = prev_idle, prev_total
     if cpu_line.startswith('cpu '):
         vals = [int(v) for v in cpu_line.split()[1:]]
         idle = vals[3] + vals[4]
@@ -1598,11 +1682,13 @@ def _parse_ssh_metrics(  # pylint: disable=too-many-locals
                 (1000 * (diff_total - diff_idle) / diff_total + 5) / 10
                 if diff_total > 0 else 0
             )
-        prev_idle, prev_total = idle, total
+    return cpu_usage, idle, total
 
-    # 2: RAM & Swap
+
+def _parse_mem_section(mem_text: str) -> tuple:
+    """Parse /proc/meminfo excerpt and return (mem_total_kb, mem_avail_kb, swap_total_kb, swap_free_kb)."""
     mem_total, mem_avail, swap_total, swap_free = 1, 0, 0, 0
-    for line in parts[1].strip().split('\n'):
+    for line in mem_text.strip().split('\n'):
         if 'MemTotal' in line:
             mem_total = int(re.sub(_RE_NON_DIGIT, '', line))
         elif 'MemAvailable' in line:
@@ -1611,39 +1697,41 @@ def _parse_ssh_metrics(  # pylint: disable=too-many-locals
             swap_total = int(re.sub(_RE_NON_DIGIT, '', line))
         elif 'SwapFree' in line:
             swap_free = int(re.sub(_RE_NON_DIGIT, '', line))
-    ram_usage = (mem_total - mem_avail) / mem_total * 100 if mem_total > 0 else 0
-    swap_usage = (
-        (swap_total - swap_free) / swap_total * 100 if swap_total > 0 else 0
-    )
+    return mem_total, mem_avail, swap_total, swap_free
 
-    # 3: Disk
+
+def _parse_disk_section(disk_text: str) -> list:
+    """Parse ``df -m`` output (NR>1 columns) and return a list of disk dicts."""
     disks = []
     _skip_fs = ('tmpfs', 'devtmpfs', 'overlay', 'shm')
-    for d_line in parts[2].strip().split('\n'):
+    for d_line in disk_text.strip().split('\n'):
         tokens = d_line.strip().split()
         if len(tokens) < 6:
             continue
         fs = tokens[0]
-        if (fs in _skip_fs
-                or fs.startswith('/dev/loop')
-                or fs.startswith('squashfs')):
+        if fs in _skip_fs or fs.startswith('/dev/loop') or fs.startswith('squashfs'):
             continue
         try:
             disk_total = int(tokens[1])
             disk_used = int(tokens[2])
             disk_usage = (disk_used / disk_total) * 100 if disk_total > 0 else 0
-            disks.append({
-                "mount": tokens[5],
-                "total_mb": disk_total,
-                "used_mb": disk_used,
-                "pct": disk_usage,
-            })
+            disks.append({"mount": tokens[5], "total_mb": disk_total, "used_mb": disk_used, "pct": disk_usage})
         except ValueError:
             pass
+    return disks
 
-    # 4: Uptime
+
+def _parse_ssh_metrics(parts: list, prev_idle: int, prev_total: int) -> tuple:
+    """Parse the four-section script output into a metrics payload.
+
+    Returns (payload_dict, new_prev_idle, new_prev_total).
+    """
+    cpu_usage, prev_idle, prev_total = _parse_cpu_section(parts[0].strip(), prev_idle, prev_total)
+    mem_total, mem_avail, swap_total, swap_free = _parse_mem_section(parts[1])
+    disks = _parse_disk_section(parts[2])
     uptime_sec = float(parts[3].strip() or "0")
-
+    ram_usage = (mem_total - mem_avail) / mem_total * 100 if mem_total > 0 else 0
+    swap_usage = (swap_total - swap_free) / swap_total * 100 if swap_total > 0 else 0
     payload = {
         "type": "metrics",
         "cpu": min(max(cpu_usage, 0), 100),
@@ -1660,23 +1748,16 @@ def _parse_ssh_metrics(  # pylint: disable=too-many-locals
 
 
 @app.websocket("/api/ssh/dashboard")
-async def ssh_dashboard(websocket: WebSocket):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+async def ssh_dashboard(websocket: WebSocket):
     """WebSocket endpoint: real-time SSH server metrics dashboard."""
-    origin = websocket.headers.get("origin", "")
-    host = websocket.headers.get("host", "")
-    allowed_origins = _ALLOWED_ORIGINS
-    if not origin:
-        await websocket.close(code=1008, reason=_ERR_ORIGIN_REQUIRED)
-        return
-    if origin not in allowed_origins and host and not origin.endswith(f"//{host}"):
-        await websocket.close(code=1008, reason=_ERR_ORIGIN_NOT_ALLOWED)
+    if not await _ws_check_origin(websocket):
         return
 
     await websocket.accept()
     try:
         data = await websocket.receive_text()
         config = json.loads(data)
-        host = config.get("host")
+        ssh_host = config.get("host")
         port = int(config.get("port", 22))
         username = config.get("username")
         password = config.get("password")
@@ -1709,7 +1790,7 @@ async def ssh_dashboard(websocket: WebSocket):  # pylint: disable=too-many-local
                     pass
 
         try:
-            known_hosts_path = await _ensure_host_key(host, port, approve_host=_ws_approve_host)
+            known_hosts_path = await _ensure_host_key(ssh_host, port, approve_host=_ws_approve_host)
         except RuntimeError as exc:
             await websocket.send_json({"error": str(exc)})
             await websocket.close()
@@ -1719,47 +1800,9 @@ async def ssh_dashboard(websocket: WebSocket):  # pylint: disable=too-many-local
             await websocket.close()
             return
 
-        connect_kwargs = {
-            "host": host,
-            "port": port,
-            "username": username,
-            "known_hosts": known_hosts_path
-        }
-        if password:
-            connect_kwargs["password"] = password
-        if private_key:
-            connect_kwargs["client_keys"] = [asyncssh.import_private_key(private_key)]
-
+        connect_kwargs = _build_ssh_connect_kwargs(ssh_host, port, username, password, private_key, known_hosts_path)
         async with asyncssh.connect(**connect_kwargs) as conn:
-            script = (
-                "cat /proc/stat | head -n 1; echo '---'; "
-                "cat /proc/meminfo | grep -E "
-                "'^(MemTotal|MemAvailable|SwapTotal|SwapFree):'; echo '---'; "
-                "df -m | awk 'NR>1 {print $1, $2, $3, $4, $5, $6}'; echo '---'; "
-                "cat /proc/uptime | awk '{print $1}'"
-            )
-            await websocket.send_json({"status": "connected"})
-
-            prev_idle = 0
-            prev_total = 0
-
-            while True:
-                try:
-                    res = await asyncio.wait_for(conn.run(script), timeout=5.0)
-                    if res.exit_status == 0:
-                        parts = res.stdout.strip().split('---')
-                        if len(parts) == 4:
-                            payload, prev_idle, prev_total = _parse_ssh_metrics(
-                                parts, prev_idle, prev_total
-                            )
-                            await websocket.send_json(payload)
-
-                    await asyncio.sleep(2)
-                except asyncio.TimeoutError:
-                    continue
-                except Exception as e:  # pylint: disable=broad-exception-caught
-                    logger.debug("ssh_dashboard iteration error: %s", e)
-                    break
+            await _run_metrics_loop(websocket, conn)
     except WebSocketDisconnect:
         pass
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -1770,18 +1813,41 @@ async def ssh_dashboard(websocket: WebSocket):  # pylint: disable=too-many-local
             pass
 
 
+def _make_pty_read_handler(fd: int, loop, websocket: WebSocket):
+    """Return a callback that reads from *fd* and forwards data over *websocket*."""
+    def on_pty_read():
+        try:
+            data = os.read(fd, 8192)
+            if data:
+                _tracked_task(websocket.send_text(data.decode("utf-8", errors="replace")))
+            else:
+                loop.remove_reader(fd)
+                _tracked_task(websocket.close())
+        except OSError:
+            loop.remove_reader(fd)
+            _tracked_task(websocket.close())
+    return on_pty_read
+
+
+def _apply_terminal_resize(fd: int, data: str, resize_pattern) -> bool:
+    """Apply a terminal resize if *data* matches the resize escape sequence.
+
+    Returns True if the message was a resize and was handled, False otherwise.
+    """
+    match = resize_pattern.match(data)
+    if not match:
+        return False
+    cols = int(match.group(1))
+    rows = int(match.group(2))
+    winsize = struct.pack("HHHH", rows, cols, 0, 0)
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
+    return True
+
+
 @app.websocket("/api/local/terminal")
-async def local_terminal(websocket: WebSocket):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+async def local_terminal(websocket: WebSocket):
     """WebSocket endpoint: local PTY terminal (Linux/macOS only)."""
-    # Validate Origin header — reject missing AND disallowed origins
-    origin = websocket.headers.get("origin", "")
-    host = websocket.headers.get("host", "")
-    allowed_origins = _ALLOWED_ORIGINS
-    if not origin:
-        await websocket.close(code=1008, reason=_ERR_ORIGIN_REQUIRED)
-        return
-    if origin not in allowed_origins and host and not origin.endswith(f"//{host}"):
-        await websocket.close(code=1008, reason=_ERR_ORIGIN_NOT_ALLOWED)
+    if not await _ws_check_origin(websocket):
         return
 
     if not _pty_available:
@@ -1814,33 +1880,14 @@ async def local_terminal(websocket: WebSocket):  # pylint: disable=too-many-loca
             os.execvp(shell, [shell])  # nosec B606
 
     loop = asyncio.get_running_loop()
-
-    def on_pty_read():
-        try:
-            data = os.read(fd, 8192)
-            if data:
-                _tracked_task(websocket.send_text(data.decode("utf-8", errors="replace")))
-            else:
-                loop.remove_reader(fd)
-                _tracked_task(websocket.close())
-        except OSError:
-            loop.remove_reader(fd)
-            _tracked_task(websocket.close())
-
-    loop.add_reader(fd, on_pty_read)
+    loop.add_reader(fd, _make_pty_read_handler(fd, loop, websocket))
 
     resize_pattern = re.compile(r"^\x1b\[resize;(\d+);(\d+)m$")
 
     try:
         while True:
             data = await websocket.receive_text()
-            match = resize_pattern.match(data)
-            if match:
-                cols = int(match.group(1))
-                rows = int(match.group(2))
-                winsize = struct.pack("HHHH", rows, cols, 0, 0)
-                fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
-            else:
+            if not _apply_terminal_resize(fd, data, resize_pattern):
                 os.write(fd, data.encode("utf-8"))
     except WebSocketDisconnect:
         pass
