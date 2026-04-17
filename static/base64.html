@@ -136,28 +136,28 @@
                 <div class="pane-header">
                     <span class="pane-label">Input</span>
                     <div class="pane-actions">
-                        <span id="char-count-2" class="line-badge">0 chars</span>
-                        <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;">📋 Paste</button>
+                        <span id="char-count-2" class="line-badge" aria-live="polite" aria-atomic="true">0 chars</span>
+                        <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="Paste from clipboard">📋 Paste</button>
                     </div>
                 </div>
-                <div id="input-editor" class="monaco-host"></div>
+                <div id="input-editor" class="monaco-host" role="textbox" aria-label="Base64 input editor" aria-multiline="true"></div>
             </div>
 
             <!-- Output -->
             <div class="pane-output">
                 <div class="pane-header">
                     <span class="pane-label" id="output-label">Output</span>
-                    <span id="output-char-count" class="line-badge" style="display:none;"></span>
+                    <span id="output-char-count" class="line-badge" style="display:none;" aria-live="polite" aria-atomic="true"></span>
                 </div>
-                <div id="output-empty" class="output-empty">
-                    <span class="output-empty-icon">🔀</span>
+                <div id="output-empty" class="output-empty" aria-label="Output area — empty">
+                    <span class="output-empty-icon" aria-hidden="true">🔀</span>
                     <span>Click Encode or Decode to see output</span>
                 </div>
-                <div id="output-editor" class="output-monaco-host" style="display:none;"></div>
+                <div id="output-editor" class="output-monaco-host" style="display:none;" role="region" aria-label="Encoded/decoded output" aria-live="polite"></div>
 
                 <!-- Error panel inside output pane -->
-                <div id="error-panel" class="error-panel">
-                    <span class="error-icon">⚠️</span>
+                <div id="error-panel" class="error-panel" role="alert" aria-live="assertive" aria-atomic="true">
+                    <span class="error-icon" aria-hidden="true">⚠️</span>
                     <div class="error-body">
                         <div id="error-message" class="error-message"></div>
                         <div id="error-hint" class="error-hint"></div>
@@ -167,23 +167,23 @@
         </div>
 
         <!-- JWT breakdown section -->
-        <div class="jwt-section" id="jwt-section">
+        <div class="jwt-section" id="jwt-section" role="region" aria-label="JWT decoded breakdown" aria-live="polite">
             <div class="jwt-header-bar">
                 <span>JWT Decoded</span>
-                <button onclick="document.getElementById('jwt-section').classList.remove('visible')" class="btn btn-ghost" style="padding:1px 6px;font-size:0.7rem;">✕</button>
+                <button onclick="document.getElementById('jwt-section').classList.remove('visible')" class="btn btn-ghost" style="padding:1px 6px;font-size:0.7rem;" aria-label="Close JWT panel">✕</button>
             </div>
             <div class="jwt-parts">
                 <div class="jwt-part">
-                    <div class="jwt-part-label jwt-header-color">Header</div>
-                    <div id="jwt-header" class="jwt-header-color"></div>
+                    <div class="jwt-part-label jwt-header-color" aria-hidden="true">Header</div>
+                    <div id="jwt-header" class="jwt-header-color" aria-label="JWT header"></div>
                 </div>
                 <div class="jwt-part">
-                    <div class="jwt-part-label jwt-payload-color">Payload</div>
-                    <div id="jwt-payload" class="jwt-payload-color"></div>
+                    <div class="jwt-part-label jwt-payload-color" aria-hidden="true">Payload</div>
+                    <div id="jwt-payload" class="jwt-payload-color" aria-label="JWT payload"></div>
                 </div>
                 <div class="jwt-part">
-                    <div class="jwt-part-label jwt-sig-color">Signature</div>
-                    <div id="jwt-sig" class="jwt-sig-color" style="word-break:break-all;font-size:0.65rem;color:var(--text-muted)"></div>
+                    <div class="jwt-part-label jwt-sig-color" aria-hidden="true">Signature</div>
+                    <div id="jwt-sig" class="jwt-sig-color" style="word-break:break-all;font-size:0.65rem;color:var(--text-muted)" aria-label="JWT signature"></div>
                 </div>
             </div>
         </div>
@@ -354,12 +354,16 @@
         document.getElementById('mode-std').addEventListener('click', () => {
             urlSafe = false;
             document.getElementById('mode-std').classList.add('active');
+            document.getElementById('mode-std').setAttribute('aria-pressed', 'true');
             document.getElementById('mode-url').classList.remove('active');
+            document.getElementById('mode-url').setAttribute('aria-pressed', 'false');
         });
         document.getElementById('mode-url').addEventListener('click', () => {
             urlSafe = true;
             document.getElementById('mode-url').classList.add('active');
+            document.getElementById('mode-url').setAttribute('aria-pressed', 'true');
             document.getElementById('mode-std').classList.remove('active');
+            document.getElementById('mode-std').setAttribute('aria-pressed', 'false');
         });
 
         /* SWAP */

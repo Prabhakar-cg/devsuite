@@ -52,12 +52,12 @@
     <!-- ============================================================
          HEADER
          ============================================================ -->
-    <header class="app-header">
+    <header class="app-header" aria-label="Diff tool toolbar">
         <!-- Logo + Back Link -->
         <div style="display:flex; align-items:center; gap:0.75rem;">
-            <a href="/tools" class="back-link" title="Back to DevSuite">
+            <a href="/tools" class="back-link" title="Back to DevSuite" aria-label="Back to DevSuite tools">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round" stroke-linejoin="round">
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <polyline points="15 18 9 12 15 6" />
                 </svg>
                 DevSuite
@@ -153,34 +153,34 @@
                 <div class="input-panel" id="panel-original">
                     <div class="panel-header">
                         <div class="panel-title-wrap">
-                            <span class="panel-label">File 1</span>
-                            <span class="line-count-badge" id="lines-original">0 lines</span>
+                            <span class="panel-label" id="label-panel-original">File 1</span>
+                            <span class="line-count-badge" id="lines-original" aria-live="polite" aria-atomic="true">0 lines</span>
                         </div>
                         <div class="panel-actions">
-                            <button class="btn btn-ghost" id="paste-original-btn" title="Paste from clipboard">
+                            <button class="btn btn-ghost" id="paste-original-btn" title="Paste from clipboard" aria-label="Paste File 1 from clipboard">
                                 📋 Paste
                             </button>
-                            <label class="btn-upload" id="drop-original" title="Upload a file">
+                            <label class="btn-upload" id="drop-original" title="Upload a file" aria-label="Upload File 1">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                 </svg>
                                 <span class="filename" id="label-original">Upload File</span>
-                                <input type="file" id="file-original">
+                                <input type="file" id="file-original" aria-label="Upload File 1">
                             </label>
                             <button class="btn btn-ghost copy-panel-btn" data-target="original-input"
-                                title="Copy content">
+                                title="Copy content" aria-label="Copy File 1 content">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                                     <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
                                 </svg>
                             </button>
                             <button class="btn btn-ghost clear-btn" data-target="original-input"
-                                title="Clear">✕</button>
+                                title="Clear" aria-label="Clear File 1">✕</button>
                         </div>
                     </div>
-                    <textarea id="original-input" spellcheck="false"
+                    <textarea id="original-input" spellcheck="false" aria-label="File 1 content"
                         placeholder="Paste File 1 content here…&#10;&#10;Tip: Upload a file or drag &amp; drop it onto this panel."></textarea>
                 </div>
 
@@ -188,75 +188,75 @@
                 <div class="input-panel" id="panel-modified">
                     <div class="panel-header">
                         <div class="panel-title-wrap">
-                            <span class="panel-label">File 2</span>
-                            <span class="line-count-badge" id="lines-modified">0 lines</span>
+                            <span class="panel-label" id="label-panel-modified">File 2</span>
+                            <span class="line-count-badge" id="lines-modified" aria-live="polite" aria-atomic="true">0 lines</span>
                         </div>
                         <div class="panel-actions">
-                            <button class="btn btn-ghost" id="paste-modified-btn" title="Paste from clipboard">
+                            <button class="btn btn-ghost" id="paste-modified-btn" title="Paste from clipboard" aria-label="Paste File 2 from clipboard">
                                 📋 Paste
                             </button>
-                            <label class="btn-upload" id="drop-modified" title="Upload a file">
+                            <label class="btn-upload" id="drop-modified" title="Upload a file" aria-label="Upload File 2">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                 </svg>
                                 <span class="filename" id="label-modified">Upload File</span>
-                                <input type="file" id="file-modified">
+                                <input type="file" id="file-modified" aria-label="Upload File 2">
                             </label>
                             <button class="btn btn-ghost copy-panel-btn" data-target="modified-input"
-                                title="Copy content">
+                                title="Copy content" aria-label="Copy File 2 content">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                                     <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
                                 </svg>
                             </button>
                             <button class="btn btn-ghost clear-btn" data-target="modified-input"
-                                title="Clear">✕</button>
+                                title="Clear" aria-label="Clear File 2">✕</button>
                         </div>
                     </div>
-                    <textarea id="modified-input" spellcheck="false"
+                    <textarea id="modified-input" spellcheck="false" aria-label="File 2 content"
                         placeholder="Paste File 2 content here…&#10;&#10;Tip: The diff will highlight exactly what changed between the two files."></textarea>
                 </div>
             </div>
 
             <!-- Action Bar -->
             <div class="action-bar" id="action-bar-text">
-                <button id="compare-btn" class="btn btn-primary">
+                <button id="compare-btn" class="btn btn-primary" aria-label="Compare File 1 and File 2 (Ctrl+Enter)">
                     <span class="compare-btn-label">Compare</span>
                     <svg class="compare-btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <line x1="5" y1="12" x2="19" y2="12" />
                         <polyline points="12 5 19 12 12 19" />
                     </svg>
-                    <span class="btn-spinner"></span>
+                    <span class="btn-spinner" aria-hidden="true"></span>
                 </button>
             </div>
 
             <!-- Monaco Diff Wrapper (hidden until compare clicked) -->
-            <div class="diff-wrapper hidden" id="diff-container">
+            <section class="diff-wrapper hidden" id="diff-container" aria-label="Diff results">
 
                 <!-- Diff Stats Bar -->
-                <div class="stats-bar" id="stats-bar">
+                <output class="stats-bar" id="stats-bar" aria-live="polite" aria-atomic="true">
                     <span class="stats-bar-title">Changes</span>
-                    <span class="stat-chip additions" id="stat-additions">
+                    <span class="stat-chip additions" id="stat-additions" aria-label="Lines added">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="3">
+                            stroke-width="3" aria-hidden="true">
                             <line x1="12" y1="5" x2="12" y2="19" />
                             <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
                         <span id="stat-additions-count">0</span> added
                     </span>
-                    <span class="stat-chip deletions" id="stat-deletions">
+                    <span class="stat-chip deletions" id="stat-deletions" aria-label="Lines removed">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="3">
+                            stroke-width="3" aria-hidden="true">
                             <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
                         <span id="stat-deletions-count">0</span> removed
                     </span>
-                    <span class="stat-chip changes" id="stat-changes">
+                    <span class="stat-chip changes" id="stat-changes" aria-label="Number of change hunks">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
+                            stroke-width="2.5" aria-hidden="true">
                             <polyline points="16 3 21 3 21 8" />
                             <line x1="4" y1="20" x2="21" y2="3" />
                             <polyline points="21 16 21 21 16 21" />
@@ -270,44 +270,44 @@
                     </span>
                     <div class="stats-bar-actions">
                         <div class="btn-group">
-                            <button id="merge-all-right-btn" class="btn btn-ghost">→ Copy to Right</button>
-                            <button id="merge-all-left-btn" class="btn btn-ghost">Copy to Left ←</button>
+                            <button id="merge-all-right-btn" class="btn btn-ghost" title="Copy all changes to File 2">→ Copy to Right</button>
+                            <button id="merge-all-left-btn" class="btn btn-ghost" title="Copy all changes to File 1">Copy to Left ←</button>
                         </div>
-                        <button id="toggle-inline-btn" class="btn btn-ghost">Inline View</button>
+                        <button id="toggle-inline-btn" class="btn btn-ghost" aria-pressed="false">Inline View</button>
                         <!-- Export Menu -->
                         <div class="export-menu-wrap">
-                            <button id="export-btn" class="btn btn-ghost">
+                            <button id="export-btn" class="btn btn-ghost" aria-haspopup="true" aria-expanded="false">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                                     <polyline points="7 10 12 15 17 10" />
                                     <line x1="12" y1="15" x2="12" y2="3" />
                                 </svg>
                                 Export
                             </button>
-                            <div class="export-menu hidden" id="export-menu">
-                                <button class="export-menu-item" id="export-patch-btn">
+                            <div class="export-menu hidden" id="export-menu" role="menu">
+                                <button class="export-menu-item" id="export-patch-btn" role="menuitem">
                                     📄 Download as .patch
                                 </button>
-                                <button class="export-menu-item" id="export-copy-btn">
+                                <button class="export-menu-item" id="export-copy-btn" role="menuitem">
                                     📋 Copy unified diff
                                 </button>
                             </div>
                         </div>
                         <button id="edit-btn" class="btn btn-ghost">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                             Edit
                         </button>
                     </div>
-                </div>
+                </output>
 
                 <!-- Monaco Diff Editor -->
                 <div id="monaco-diff-editor" class="editor-host"></div>
-            </div>
+            </section>
 
         </div><!-- end #text-diff -->
 
@@ -390,11 +390,11 @@
                         </span>
                     </div>
                     <div class="folder-summary-right">
-                        <div class="folder-filter-chips-bar">
-                            <span class="folder-filter-chip active-filter" data-filter="all">All</span>
-                            <span class="folder-filter-chip modified" data-filter="modified">● Differs</span>
-                            <span class="folder-filter-chip added" data-filter="added">● Added only</span>
-                            <span class="folder-filter-chip removed" data-filter="removed">● Removed only</span>
+                        <div class="folder-filter-chips-bar" role="group" aria-label="Filter file list">
+                            <button class="folder-filter-chip active-filter" data-filter="all" aria-pressed="true">All</button>
+                            <button class="folder-filter-chip modified" data-filter="modified" aria-pressed="false">● Differs</button>
+                            <button class="folder-filter-chip added" data-filter="added" aria-pressed="false">● Added only</button>
+                            <button class="folder-filter-chip removed" data-filter="removed" aria-pressed="false">● Removed only</button>
                         </div>
                         <div class="tree-expand-controls">
                             <button class="tree-expand-btn" id="expand-all-btn" title="Expand all folders">Expand All</button>
@@ -412,8 +412,8 @@
                                 <div class="folder-panel-name" id="folder-panel-name-left">Folder 1</div>
                                 <div class="folder-panel-size" id="folder-panel-size-left">—</div>
                             </div>
-                            <button class="folder-panel-select-btn" id="reselect-left-btn" title="Change folder">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <button class="folder-panel-select-btn" id="reselect-left-btn" title="Change Folder 1" aria-label="Change Folder 1">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <polyline points="6 9 12 15 18 9"></polyline>
                                 </svg>
                             </button>
@@ -434,8 +434,8 @@
                                 <div class="folder-panel-name" id="folder-panel-name-right">Folder 2</div>
                                 <div class="folder-panel-size" id="folder-panel-size-right">—</div>
                             </div>
-                            <button class="folder-panel-select-btn" id="reselect-right-btn" title="Change folder">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <button class="folder-panel-select-btn" id="reselect-right-btn" title="Change Folder 2" aria-label="Change Folder 2">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <polyline points="6 9 12 15 18 9"></polyline>
                                 </svg>
                             </button>
@@ -464,28 +464,28 @@
                     </div>
 
                     <!-- Folder Diff Stats Bar (hidden initially) -->
-                    <div class="stats-bar hidden" id="folder-stats-bar">
+                    <output class="stats-bar hidden" id="folder-stats-bar" aria-live="polite" aria-atomic="true">
                         <button class="btn btn-primary" id="back-to-folders-btn" style="margin-right: 1rem; padding: 0.35rem 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                             Back to Folders
                         </button>
                         <span class="stats-bar-title" id="active-diff-file-name" style="margin-right: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-1);"></span>
 
-                        <span class="stat-chip additions" id="folder-stat-additions">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <span class="stat-chip additions" id="folder-stat-additions" aria-label="Lines added">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
                                 <line x1="12" y1="5" x2="12" y2="19" />
                                 <line x1="5" y1="12" x2="19" y2="12" />
                             </svg>
                             <span id="folder-stat-additions-count">0</span> added
                         </span>
-                        <span class="stat-chip deletions" id="folder-stat-deletions">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <span class="stat-chip deletions" id="folder-stat-deletions" aria-label="Lines removed">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
                                 <line x1="5" y1="12" x2="19" y2="12" />
                             </svg>
                             <span id="folder-stat-deletions-count">0</span> removed
                         </span>
-                        <span class="stat-chip changes" id="folder-stat-changes">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <span class="stat-chip changes" id="folder-stat-changes" aria-label="Number of change hunks">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                                 <polyline points="16 3 21 3 21 8" />
                                 <line x1="4" y1="20" x2="21" y2="3" />
                                 <polyline points="21 16 21 21 16 21" />
@@ -499,12 +499,12 @@
                         </span>
                         <div class="stats-bar-actions">
                             <div class="btn-group">
-                                <button id="folder-merge-all-right-btn" class="btn btn-ghost">→ Copy to Right</button>
-                                <button id="folder-merge-all-left-btn" class="btn btn-ghost">Copy to Left ←</button>
+                                <button id="folder-merge-all-right-btn" class="btn btn-ghost" title="Copy all changes to Folder 2">→ Copy to Right</button>
+                                <button id="folder-merge-all-left-btn" class="btn btn-ghost" title="Copy all changes to Folder 1">Copy to Left ←</button>
                             </div>
-                            <button id="folder-toggle-inline-btn" class="btn btn-ghost">Inline View</button>
+                            <button id="folder-toggle-inline-btn" class="btn btn-ghost" aria-pressed="false">Inline View</button>
                         </div>
-                    </div>
+                    </output>
 
                     <div id="folder-monaco-diff-editor" class="editor-host hidden"></div>
                 </div>

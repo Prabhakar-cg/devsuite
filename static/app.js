@@ -674,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nowInline = toggleInlineBtn.classList.contains('active');
         textDiffEditor.updateOptions({ renderSideBySide: nowInline });
         toggleInlineBtn.classList.toggle('active', !nowInline);
+        toggleInlineBtn.setAttribute('aria-pressed', nowInline ? 'false' : 'true');
         toggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
         setTimeout(() => textDiffEditor.layout(), 50);
     });
@@ -713,6 +714,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const nowInline = folderToggleInlineBtn.classList.contains('active');
             folderDiffEditor.updateOptions({ renderSideBySide: nowInline });
             folderToggleInlineBtn.classList.toggle('active', !nowInline);
+            folderToggleInlineBtn.setAttribute('aria-pressed', nowInline ? 'false' : 'true');
             folderToggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
             setTimeout(() => folderDiffEditor.layout(), 50);
         });
@@ -883,10 +885,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     exportBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        const isOpen = !exportMenu.classList.contains('hidden');
         exportMenu.classList.toggle('hidden');
+        exportBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
     });
 
-    document.addEventListener('click', () => exportMenu.classList.add('hidden'));
+    document.addEventListener('click', () => {
+        exportMenu.classList.add('hidden');
+        exportBtn.setAttribute('aria-expanded', 'false');
+    });
 
     function buildUnifiedDiff(origText, modText) {
         const origLines = origText.split('\n');
@@ -921,6 +928,7 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(url);
         showToast('Patch file downloaded.', 'success');
         exportMenu.classList.add('hidden');
+        exportBtn.setAttribute('aria-expanded', 'false');
     });
 
     exportCopyBtn.addEventListener('click', async () => {
@@ -936,6 +944,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Failed to copy to clipboard.', 'error');
         }
         exportMenu.classList.add('hidden');
+        exportBtn.setAttribute('aria-expanded', 'false');
     });
 
 
@@ -1057,8 +1066,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filter chips
     document.querySelectorAll('.folder-filter-chip').forEach(chip => {
         chip.addEventListener('click', () => {
-            document.querySelectorAll('.folder-filter-chip').forEach(c => c.classList.remove('active-filter'));
+            document.querySelectorAll('.folder-filter-chip').forEach(c => {
+                c.classList.remove('active-filter');
+                c.setAttribute('aria-pressed', 'false');
+            });
             chip.classList.add('active-filter');
+            chip.setAttribute('aria-pressed', 'true');
             currentFolderFilter = chip.dataset.filter;
             renderFileTree();
         });

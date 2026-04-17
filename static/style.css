@@ -472,6 +472,8 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
     font-size: 0.65rem; font-weight: 500; padding: 0.2rem 0.6rem; border-radius: 980px;
     cursor: pointer; border: 1px solid var(--border-mid); background: var(--bg);
     color: var(--text-muted); transition: var(--transition); white-space: nowrap; user-select: none;
+    /* Reset native <button> styles */
+    font-family: inherit; line-height: inherit; appearance: none;
 }
 .folder-filter-chip:hover, .folder-filter-chip.active-filter { background: var(--text); border-color: var(--text); color: #fff; }
 .folder-filter-chip.modified.active-filter { background: var(--amber-mid); border-color: var(--amber-mid); }

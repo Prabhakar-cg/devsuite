@@ -10,6 +10,13 @@
     <script src="/static/theme.js?v=2"></script>
     <script src="/static/bwip-js-min.js"></script>
     <style>
+        /* Screen-reader-only utility */
+        .sr-only {
+            position: absolute; width: 1px; height: 1px;
+            padding: 0; margin: -1px; overflow: hidden;
+            clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
+
         /* Tool-specific Layout Variables mapped to generic tokens */
         :root {
             --url-accent: #0284c7;
@@ -162,14 +169,14 @@
 <div id="toast-container"></div>
 
 <!-- HEADER -->
-<header class="tool-header">
+<header class="tool-header" aria-label="Link and QR Studio toolbar">
     <div class="header-left">
-        <a href="/tools" class="back-link">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        <a href="/tools" class="back-link" aria-label="Back to DevSuite tools">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
             DevSuite
         </a>
         <div class="tool-identity">
-            <div class="tool-icon" style="background:linear-gradient(135deg,#0284c7,#38bdf8);box-shadow:0 0 16px rgba(56,189,248,0.4);">
+            <div class="tool-icon" style="background:linear-gradient(135deg,#0284c7,#38bdf8);box-shadow:0 0 16px rgba(56,189,248,0.4);" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
@@ -186,38 +193,39 @@
 <main class="url-layout">
     <div class="url-card">
         <h1 class="url-header">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
             Generate Local Link & Codes
         </h1>
         <div class="input-group">
-            <input type="url" id="url-input" class="url-input" placeholder="https://github.com/microsoft/monaco-editor..." autocomplete="off">
-            <button id="btn-shorten" class="btn-shorten">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            <label for="url-input" class="sr-only">URL to shorten</label>
+            <input type="url" id="url-input" class="url-input" placeholder="https://github.com/microsoft/monaco-editor..." autocomplete="off" aria-label="URL to shorten">
+            <button id="btn-shorten" class="btn-shorten" aria-label="Create short link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 Create Short Link
             </button>
         </div>
 
-        <div id="result-box">
+        <div id="result-box" role="region" aria-label="Generated short link result" aria-live="polite">
             <div class="result-label">Success! Your local short link:</div>
-            <div id="short-url-val" class="short-url-val"></div>
-            <button id="btn-copy-main" class="btn-copy" style="margin-bottom: 1rem;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <div id="short-url-val" class="short-url-val" aria-live="polite"></div>
+            <button id="btn-copy-main" class="btn-copy" style="margin-bottom: 1rem;" aria-label="Copy short link to clipboard">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 Copy Link
             </button>
             <div class="barcode-section">
                 <div class="barcode-card">
-                    <div class="barcode-title">QR Code</div>
-                    <div class="canvas-bg"><canvas id="qr-canvas"></canvas></div>
-                    <button class="btn-dl" onclick="downloadCanvas('qr-canvas', 'qr_code.png')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <div class="barcode-title" id="qr-label">QR Code</div>
+                    <div class="canvas-bg"><canvas id="qr-canvas" aria-labelledby="qr-label" role="img"></canvas></div>
+                    <button class="btn-dl" onclick="downloadCanvas('qr-canvas', 'qr_code.png')" aria-label="Download QR Code as PNG">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Download PNG
                     </button>
                 </div>
                 <div class="barcode-card">
-                    <div class="barcode-title">Barcode (Code128)</div>
-                    <div class="canvas-bg"><canvas id="barcode-canvas"></canvas></div>
-                    <button class="btn-dl" onclick="downloadCanvas('barcode-canvas', 'barcode.png')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <div class="barcode-title" id="barcode-label">Barcode (Code128)</div>
+                    <div class="canvas-bg"><canvas id="barcode-canvas" aria-labelledby="barcode-label" role="img"></canvas></div>
+                    <button class="btn-dl" onclick="downloadCanvas('barcode-canvas', 'barcode.png')" aria-label="Download Barcode as PNG">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Download PNG
                     </button>
                 </div>
@@ -225,7 +233,7 @@
         </div>
     </div>
 
-    <div class="recent-links" id="recent-links-section">
+    <div class="recent-links" id="recent-links-section" role="region" aria-label="Recent links">
         <div class="recent-header">Recent Links (Session)</div>
         <div class="link-list" id="link-list">
             <!-- Dynamically populated -->
@@ -302,9 +310,15 @@
             anchor.style.color = 'inherit';
             anchor.textContent = r.shortUrl.split('//')[1] || r.shortUrl;
 
-            const copySvg = document.createElement('div');
+            const copySvg = document.createElement('button');
             copySvg.className = 'link-copy-icon';
-            copySvg.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+            copySvg.setAttribute('aria-label', 'Copy short URL to clipboard');
+            copySvg.style.background = 'none';
+            copySvg.style.border = 'none';
+            copySvg.style.cursor = 'pointer';
+            copySvg.style.padding = '0';
+            copySvg.style.color = 'inherit';
+            copySvg.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
             copySvg.onclick = async () => {
                 try {
                     await navigator.clipboard.writeText(r.shortUrl);
