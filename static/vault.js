@@ -73,7 +73,7 @@ function _serverToken() {
 
 function _authHeaders(extra) {
     const token = _serverToken();
-    const h = Object.assign({}, extra);
+    const h = { ...extra };
     if (token) h['X-Session-Token'] = token;
     return h;
 }
@@ -118,6 +118,96 @@ async function loadVault(key) {
     }
 }
 
+// ── Unlock helpers (extracted to reduce cognitive complexity) ─────
+
+/**
+ * Validates the new-password form fields during setup mode.
+ * Returns an error string, or null if validation passes.
+ */
+function _validateSetupPassword(password) {
+    const confirm = document.getElementById('master-pw-confirm').value;
+    if (password !== confirm) return '❌ Passwords do not match.';
+    if (password.length < 8) return '❌ Master password must be at least 8 characters.';
+    return null;
+}
+
+/**
+ * Derives a session key from the auth-challenge salt and acquires a server session.
+ * Non-fatal — errors are silently swallowed.
+ */
+async function _acquireChallengeSession(password) {
+    const PBKDF2_AG_ITER = 50000;
+    const PBKDF2_AG_KS   = 256 / 32;
+    try {
+        const chRes = await fetch('/api/auth/challenge');
+        if (!chRes.ok) return;
+        const ch = await chRes.json();
+        if (ch.salt) {
+            const sessionKey = CryptoJS.PBKDF2(password, CryptoJS.enc.Hex.parse(ch.salt), {
+                keySize: PBKDF2_AG_KS, iterations: PBKDF2_AG_ITER,
+            });
+            await _acquireServerSession(sessionKey.toString());
+        }
+    } catch { /* non-fatal */ }
+}
+
+/**
+ * Resolves (or initialises) the vault PBKDF2 salt from the given API response.
+ * Sets vaultSaltHex and returns the CryptoJS WordArray salt.
+ */
+async function _resolveVaultSalt(data) {
+    if (data.salt) {
+        vaultSaltHex = data.salt;
+        return CryptoJS.enc.Hex.parse(data.salt);
+    }
+    // New vault — generate a salt and persist an empty placeholder.
+    const salt = CryptoJS.lib.WordArray.random(16);
+    vaultSaltHex = salt.toString();
+    await fetch('/api/vault', {
+        method: 'POST',
+        headers: _authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
+    });
+    return salt;
+}
+
+/**
+ * Registers the master password challenge on first-run / migration.
+ * Updates the lock-screen UI to reflect the completed setup.
+ */
+async function _registerSetupChallenge(key, salt) {
+    try {
+        const verifyIv   = CryptoJS.lib.WordArray.random(16);
+        const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
+        const setupRes = await fetch('/api/auth/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                salt:        salt.toString(),
+                verify_blob: verifyBlob.toString(),
+                verify_iv:   verifyIv.toString(),
+            }),
+        });
+        if (setupRes.ok) {
+            await _acquireServerSession(key.toString());
+            if (isNewVault) {
+                await fetch('/api/vault', {
+                    method: 'POST',
+                    headers: _authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
+                });
+            }
+        }
+        isSetupMode = false;
+        document.getElementById('lock-setup-desc').textContent =
+            'Your secrets are encrypted with AES-256. Enter your master password to unlock.';
+        document.getElementById('master-pw-confirm-wrap').style.display = 'none';
+        document.getElementById('unlock-btn').textContent = 'Unlock Vault';
+    } catch (e) {
+        console.warn('Failed to register master password challenge:', e);
+    }
+}
+
 // ── Lock / Unlock ─────────────────────────────────────────────────
 function lockVault() {
     masterKey = null;
@@ -139,56 +229,22 @@ async function unlockVault(password) {
 
     // ── Setup-mode validations ──────────────────────────────────────
     if (isSetupMode && isNewVault) {
-        // Creating a brand-new master password: enforce confirm match + min length
-        const confirm = document.getElementById('master-pw-confirm').value;
-        if (password !== confirm) {
-            errEl.textContent = '❌ Passwords do not match.';
-            errEl.style.display = 'block';
-            return;
-        }
-        if (password.length < 8) {
-            errEl.textContent = '❌ Master password must be at least 8 characters.';
+        const validationError = _validateSetupPassword(password);
+        if (validationError) {
+            errEl.textContent = validationError;
             errEl.style.display = 'block';
             return;
         }
     }
 
     // Acquire a server session before hitting the protected API.
-    // Use the auth-challenge salt for the server session key derivation.
-    const PBKDF2_AG_ITER = 50000;
-    const PBKDF2_AG_KS   = 256 / 32;
-    try {
-        const chRes = await fetch('/api/auth/challenge');
-        if (chRes.ok) {
-            const ch = await chRes.json();
-            if (ch.salt) {
-                const sessionKey = CryptoJS.PBKDF2(password, CryptoJS.enc.Hex.parse(ch.salt), {
-                    keySize: PBKDF2_AG_KS, iterations: PBKDF2_AG_ITER,
-                });
-                await _acquireServerSession(sessionKey.toString());
-            }
-        }
-    } catch { /* non-fatal */ }
+    await _acquireChallengeSession(password);
 
     const res  = await fetch('/api/vault', { headers: _authHeaders() });
     const data = await res.json();
 
-    let salt;
-    if (data.salt) {
-        vaultSaltHex = data.salt;
-        salt = CryptoJS.enc.Hex.parse(data.salt);
-    } else {
-        // New vault — generate a salt and save it
-        salt = CryptoJS.lib.WordArray.random(16);
-        vaultSaltHex = salt.toString();
-        await fetch('/api/vault', {
-            method: 'POST',
-            headers: _authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
-        });
-    }
-
-    const key = deriveKey(password, salt);
+    const salt = await _resolveVaultSalt(data);
+    const key  = deriveKey(password, salt);
 
     if (data.encrypted_blob) {
         try {
@@ -204,45 +260,7 @@ async function unlockVault(password) {
 
     // ── Register master password challenge (first-time or migration) ─
     if (isSetupMode) {
-        try {
-            const verifyIv   = CryptoJS.lib.WordArray.random(16);
-            const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
-            const setupRes = await fetch('/api/auth/setup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    salt:        salt.toString(),
-                    verify_blob: verifyBlob.toString(),
-                    verify_iv:   verifyIv.toString(),
-                }),
-            });
-            if (setupRes.ok) {
-                // Challenge is now registered — acquire a server session immediately.
-                // key and sessionKey are identical for new vaults (same challenge salt + iterations
-                // were just registered above), so key.toString() is the correct hex to pass to
-                // _acquireServerSession. In migration scenarios (isSetupMode && !isNewVault) the
-                // challenge salt may differ from the vault's salt, but the retry below is
-                // intentionally gated by isNewVault so behavior stays correct in both cases.
-                await _acquireServerSession(key.toString());
-                // Retry the initial vault-salt save that failed earlier (no session at that point).
-                if (isNewVault) {
-                    await fetch('/api/vault', {
-                        method: 'POST',
-                        headers: _authHeaders({ 'Content-Type': 'application/json' }),
-                        body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
-                    });
-                }
-            }
-            isSetupMode = false;
-            // Reset lock screen to normal-unlock appearance for future locks
-            document.getElementById('lock-setup-desc').textContent =
-                'Your secrets are encrypted with AES-256. Enter your master password to unlock.';
-            document.getElementById('master-pw-confirm-wrap').style.display = 'none';
-            document.getElementById('unlock-btn').textContent = 'Unlock Vault';
-        } catch (e) {
-            // Non-fatal — vault still works; warn in console
-            console.warn('Failed to register master password challenge:', e);
-        }
+        await _registerSetupChallenge(key, salt);
     }
 
     masterKey = key;
@@ -270,8 +288,9 @@ function onVisibilityChange() {
         autoLockTimer = setTimeout(() => {
             if (masterKey) { lockVault(); toast('Vault auto-locked after inactivity', 'error'); }
         }, AUTO_LOCK_AFTER_MS);
-    } else {
-        if (autoLockTimer) { clearTimeout(autoLockTimer); autoLockTimer = null; }
+    } else if (autoLockTimer) {
+        clearTimeout(autoLockTimer);
+        autoLockTimer = null;
     }
 }
 
@@ -316,7 +335,7 @@ function subtitleFor(e) {
         case 'ssh':      return e.host || '';
         case 'api':      return e.service + (e.environment ? ` · ${e.environment}` : '');
         case 'env':      return e.varname || '';
-        case 'note':     return (e.content || '').slice(0, 60).replace(/\n/g, ' ');
+        case 'note':     return (e.content || '').slice(0, 60).replaceAll('\n', ' ');
         default: return '';
     }
 }
@@ -409,53 +428,72 @@ function renderDetail() {
     buildDetailFields(e, fieldsEl);
 }
 
-function buildDetailFields(e, container) {
-    switch(e.type) {
-        case 'password':
-            if (e.username) addFieldRow(container, 'Username', e.username, false, 'username', 'Username');
-            addFieldRow(container, 'Password', e.password, true, 'password', 'Password');
-            if (e.url) addFieldRow(container, 'Website', e.url, false, 'url', 'URL', true);
-            if (e.notes) addNotesRow(container, e.notes);
-            break;
-        case 'token':
-            if (e.service) addFieldRow(container, 'Service', e.service, false, 'service', 'Service');
-            addFieldRow(container, 'Token', e.token, true, 'token', 'Token');
-            if (e.expiry) addFieldRow(container, 'Expiry', e.expiry, false, 'expiry', 'Expiry');
-            if (e.environment) addFieldRow(container, 'Environment', e.environment, false);
-            if (e.notes) addNotesRow(container, e.notes);
-            break;
-        case 'ssh':
-            if (e.host) addFieldRow(container, 'Host', e.host, false, 'host', 'Host');
-            if (e.username) addFieldRow(container, 'Username', e.username, false, 'username', 'Username');
-            addFieldRow(container, 'Private Key', e.private_key, true, 'private_key', 'Private Key', false, true);
-            if (e.passphrase) addFieldRow(container, 'Passphrase', e.passphrase, true, 'passphrase', 'Passphrase');
-            if (e.notes) addNotesRow(container, e.notes);
-            break;
-        case 'api':
-            if (e.service) addFieldRow(container, 'Service', e.service, false, 'service', 'Service');
-            addFieldRow(container, 'API Key', e.api_key, true, 'api_key', 'API Key', false, true);
-            if (e.environment) addFieldRow(container, 'Environment', e.environment, false);
-            if (e.notes) addNotesRow(container, e.notes);
-            break;
-        case 'env':
-            addFieldRow(container, 'Variable Name', e.varname, false, 'varname', 'Variable Name');
-            addFieldRow(container, 'Value', e.value, true, 'value', 'Value', false, true);
-            if (e.notes) addNotesRow(container, e.notes);
-            break;
-        case 'note':
-            addNotesRow(container, e.content);
-            break;
-    }
+// ── Per-type detail field builders (extracted to reduce cognitive complexity) ──
+
+function _buildPasswordFields(e, c) {
+    if (e.username) addFieldRow(c, { label: 'Username', value: e.username, secret: false, fieldId: 'username', clipLabel: 'Username' });
+    addFieldRow(c, { label: 'Password', value: e.password, secret: true, fieldId: 'password', clipLabel: 'Password' });
+    if (e.url) addFieldRow(c, { label: 'Website', value: e.url, secret: false, fieldId: 'url', clipLabel: 'URL', isUrl: true });
+    if (e.notes) addNotesRow(c, e.notes);
 }
 
-function addFieldRow(container, label, value, secret, fieldId, clipLabel, isUrl=false, isTextarea=false) {
+function _buildTokenFields(e, c) {
+    if (e.service) addFieldRow(c, { label: 'Service', value: e.service, secret: false, fieldId: 'service', clipLabel: 'Service' });
+    addFieldRow(c, { label: 'Token', value: e.token, secret: true, fieldId: 'token', clipLabel: 'Token' });
+    if (e.expiry) addFieldRow(c, { label: 'Expiry', value: e.expiry, secret: false, fieldId: 'expiry', clipLabel: 'Expiry' });
+    if (e.environment) addFieldRow(c, { label: 'Environment', value: e.environment, secret: false });
+    if (e.notes) addNotesRow(c, e.notes);
+}
+
+function _buildSshFields(e, c) {
+    if (e.host) addFieldRow(c, { label: 'Host', value: e.host, secret: false, fieldId: 'host', clipLabel: 'Host' });
+    if (e.username) addFieldRow(c, { label: 'Username', value: e.username, secret: false, fieldId: 'username', clipLabel: 'Username' });
+    addFieldRow(c, { label: 'Private Key', value: e.private_key, secret: true, fieldId: 'private_key', clipLabel: 'Private Key', isTextarea: true });
+    if (e.passphrase) addFieldRow(c, { label: 'Passphrase', value: e.passphrase, secret: true, fieldId: 'passphrase', clipLabel: 'Passphrase' });
+    if (e.notes) addNotesRow(c, e.notes);
+}
+
+function _buildApiFields(e, c) {
+    if (e.service) addFieldRow(c, { label: 'Service', value: e.service, secret: false, fieldId: 'service', clipLabel: 'Service' });
+    addFieldRow(c, { label: 'API Key', value: e.api_key, secret: true, fieldId: 'api_key', clipLabel: 'API Key', isTextarea: true });
+    if (e.environment) addFieldRow(c, { label: 'Environment', value: e.environment, secret: false });
+    if (e.notes) addNotesRow(c, e.notes);
+}
+
+function _buildEnvFields(e, c) {
+    addFieldRow(c, { label: 'Variable Name', value: e.varname, secret: false, fieldId: 'varname', clipLabel: 'Variable Name' });
+    addFieldRow(c, { label: 'Value', value: e.value, secret: true, fieldId: 'value', clipLabel: 'Value', isTextarea: true });
+    if (e.notes) addNotesRow(c, e.notes);
+}
+
+const _TYPE_FIELD_BUILDERS = {
+    password: _buildPasswordFields,
+    token:    _buildTokenFields,
+    ssh:      _buildSshFields,
+    api:      _buildApiFields,
+    env:      _buildEnvFields,
+    note:     (e, c) => addNotesRow(c, e.content),
+};
+
+function buildDetailFields(e, container) {
+    const builder = _TYPE_FIELD_BUILDERS[e.type];
+    if (builder) builder(e, container);
+}
+
+function _fieldDisplayVal(secret, isUrl, value) {
+    if (secret) return '••••••••••••';
+    if (isUrl) return `<span class="url-inner">${escHtml(value)}</span>`;
+    return escHtml(value);
+}
+
+function addFieldRow(container, { label, value, secret, fieldId, clipLabel, isUrl = false, isTextarea = false }) {
     const row = document.createElement('div');
     row.className = 'field-row';
 
-    let displayVal = secret ? '••••••••••••' : (isUrl ? `<span class="url-inner">${escHtml(value)}</span>` : escHtml(value));
-    let hiddenClass = secret ? 'secret-hidden' : '';
-    let textareaClass = isTextarea ? 'is-textarea' : '';
-    let urlClass = isUrl ? 'url-val' : '';
+    const displayVal = _fieldDisplayVal(secret, isUrl, value);
+    const hiddenClass = secret ? 'secret-hidden' : '';
+    const textareaClass = isTextarea ? 'is-textarea' : '';
+    const urlClass = isUrl ? 'url-val' : '';
 
     row.innerHTML = `
         <div class="field-label">${escHtml(label)}</div>
@@ -504,7 +542,7 @@ function addNotesRow(container, text) {
     container.appendChild(row);
 }
 
-window.toggleReveal = function(fieldId) {
+globalThis.toggleReveal = function(fieldId) {
     const el = document.getElementById(`fv-${fieldId}`);
     if (!el) return;
     const raw = decodeURIComponent(el.dataset.raw);
@@ -767,8 +805,8 @@ function renderAll() {
 // ── Utilities ─────────────────────────────────────────────────────
 function escHtml(str) {
     if (!str) return '';
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-              .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+              .replaceAll('"','&quot;').replaceAll("'",'&#39;');
 }
 
 function relativeTime(ts) {
@@ -908,4 +946,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // expose for inline onclick attributes
-window.copyToClipboard = copyToClipboard;
+globalThis.copyToClipboard = copyToClipboard;
