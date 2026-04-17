@@ -124,7 +124,7 @@
 
 .server-item.active {
     background: rgba(14, 165, 233, 0.15);
-    color: #0ea5e9;
+    color: #0c4a6e;
 }
 
 .server-name-lbl {
@@ -150,7 +150,7 @@
 }
 .del-srv-icon:hover {
     background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    color: #991b1b;
 }
 .server-item:hover .edit-srv-icon,
 .server-item:hover .del-srv-icon {
@@ -345,12 +345,12 @@
 .sftp-sess-item.active {
     background: rgba(14,165,233,0.12);
     border-color: rgba(14,165,233,0.35);
-    color: #0ea5e9;
+    color: #0c4a6e;
 }
 .sftp-sess-avatar {
     width: 30px; height: 30px;
     border-radius: 8px;
-    background: linear-gradient(135deg,#0ea5e9,#06b6d4);
+    background: linear-gradient(135deg,#0369a1,#0e7490);
     display: flex; align-items: center; justify-content: center;
     color: #fff;
     font-size: 0.75rem;

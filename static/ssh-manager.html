@@ -25,7 +25,7 @@
         <div style="display:flex; align-items:center; gap:0.75rem;">
             <a href="/tools" class="back-link">← DevSuite</a>
             <div class="tool-identity">
-                <div class="tool-icon tool-icon-cyan" style="background:linear-gradient(135deg,#06b6d4,#0ea5e9);color:#fff;">
+                <div class="tool-icon tool-icon-cyan" style="background:linear-gradient(135deg,#0e7490,#0369a1);color:#fff;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="4 17 10 11 4 5"></polyline>
                         <line x1="12" y1="19" x2="20" y2="19"></line>
@@ -38,7 +38,7 @@
             </div>
         </div>
         <div class="header-controls">
-            <button id="add-server-btn" class="btn-small" style="background:#0ea5e9; color:#fff; border:none; margin-left:1rem;">+ Add Session</button>
+            <button id="add-server-btn" class="btn-small" style="background:#0369a1; color:#fff; border:none; margin-left:1rem;">+ Add Session</button>
         </div>
     </header>
 
@@ -48,7 +48,7 @@
             <h2>Unlock Session Storage</h2>
             <p style="color:var(--text-muted); margin-top:0.5rem; font-size:0.9rem;">Your SSH profiles are encrypted locally. Enter your Master Password to unlock Terminal and SFTP.</p>
             <input type="password" id="master-password" class="url-input" placeholder="Master Password" style="width:100%; margin:1rem 0;">
-            <button id="unlock-btn" class="send-btn" style="width:100%; background:#0ea5e9; color:#fff;">Unlock / Initialize</button>
+            <button id="unlock-btn" class="send-btn" style="width:100%; background:#0369a1; color:#fff;">Unlock / Initialize</button>
         </div>
     </div>
 
@@ -68,9 +68,9 @@
             <textarea id="srv-key" class="url-input" placeholder="Private Key (Optional, PEM format)" style="width:100%; margin-bottom:0.5rem; height:100px; font-family:var(--font-mono); font-size:0.8rem;"></textarea>
             <div style="display:flex; gap:1rem; margin-top:1rem;">
                 <button id="cancel-srv-btn" class="btn-small" style="flex:1;">Cancel</button>
-                <button id="save-srv-btn" class="send-btn" style="flex:1; background:#0ea5e9; color:#fff;">Save</button>
+                <button id="save-srv-btn" class="send-btn" style="flex:1; background:#0369a1; color:#fff;">Save</button>
             </div>
-            <button id="delete-srv-btn" class="btn-small" style="width:100%; margin-top:0.5rem; background:#ef4444; color:#fff; display:none;">Delete Session</button>
+            <button id="delete-srv-btn" class="btn-small" style="width:100%; margin-top:0.5rem; background:#dc2626; color:#fff; display:none;">Delete Session</button>
         </div>
     </div>
 
@@ -167,7 +167,7 @@
                     <button id="sftp-refresh-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↺</button>
                     <button id="sftp-upload-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↑ Upload</button>
                     <input type="file" id="sftp-upload-input" style="display:none;" multiple>
-                    <button id="sftp-disconnect-btn" class="btn-small" style="background:rgba(239,68,68,0.12); color:#ef4444; border-color:rgba(239,68,68,0.3); display:none;">Disconnect</button>
+                    <button id="sftp-disconnect-btn" class="btn-small" style="background:rgba(239,68,68,0.12); color:#991b1b; border-color:rgba(239,68,68,0.3); display:none;">Disconnect</button>
                 </div>
 
                 <!-- Path bar -->
@@ -193,7 +193,7 @@
                         <span style="font-size:0.9rem;">Loading directory…</span>
                     </div>
                     <!-- Error -->
-                    <div id="sftp-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:0.5rem;"></div>
+                    <div id="sftp-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); color:#991b1b; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:0.5rem;"></div>
                     <!-- File grid -->
                     <div id="sftp-file-grid" class="sftp-grid"></div>
                 </div>

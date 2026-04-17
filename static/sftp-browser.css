@@ -45,7 +45,7 @@
 }
 .sftp-icon-btn svg { width: 14px; height: 14px; }
 .sftp-icon-btn:hover {
-    color: #0ea5e9;
+    color: #0c4a6e;
     border-color: #0ea5e9;
     background: rgba(14,165,233,0.08);
 }
@@ -89,12 +89,12 @@
 .sftp-session-item.active {
     background: rgba(14,165,233,0.12);
     border-color: rgba(14,165,233,0.35);
-    color: #0ea5e9;
+    color: #0c4a6e;
 }
 .sftp-session-icon {
     width: 28px; height: 28px;
     border-radius: 7px;
-    background: linear-gradient(135deg,#0ea5e9,#06b6d4);
+    background: linear-gradient(135deg,#0369a1,#0e7490);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     color: #fff;
@@ -231,7 +231,7 @@
 .sftp-nav-btn svg { width: 14px; height: 14px; }
 .sftp-nav-btn:hover:not(:disabled) {
     background: rgba(14,165,233,0.12);
-    color: #0ea5e9;
+    color: #0c4a6e;
 }
 .sftp-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .sftp-path-input {
@@ -371,7 +371,7 @@
 .sftp-btn-primary {
     padding: 0.6rem 1.25rem;
     border-radius: 8px;
-    background: #0ea5e9;
+    background: #0369a1;
     color: #fff;
     border: none;
     font-size: 0.9rem;
@@ -448,7 +448,7 @@
 .sftp-modal-icon {
     width: 48px; height: 48px;
     border-radius: 12px;
-    background: linear-gradient(135deg,#0ea5e9,#06b6d4);
+    background: linear-gradient(135deg,#0369a1,#0e7490);
     display: flex; align-items: center; justify-content: center;
     color: #fff;
     margin-bottom: 0.25rem;
@@ -491,7 +491,7 @@
     border-radius: 8px;
     background: rgba(239,68,68,0.08);
     border: 1px solid rgba(239,68,68,0.3);
-    color: #ef4444;
+    color: #991b1b;
     font-size: 0.85rem;
 }
 
@@ -515,9 +515,9 @@
     transition: opacity 0.3s;
     backdrop-filter: blur(8px);
 }
-.toast-info    { background: rgba(14,165,233,0.92); color: #fff; }
-.toast-success { background: rgba(34,197,94,0.92);  color: #fff; }
-.toast-error   { background: rgba(239,68,68,0.92);  color: #fff; }
+.toast-info    { background: #0369a1; color: #fff; }
+.toast-success { background: #15803d; color: #fff; }
+.toast-error   { background: #dc2626; color: #fff; }
 
 /* Empty file grid state */
 .sftp-empty-dir {

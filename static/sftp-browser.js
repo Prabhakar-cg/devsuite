@@ -6,7 +6,7 @@
 // ──────────────────────────────────────────
 let masterKey  = null;
 let profiles   = [];             // decrypted SSH profiles (from shared blob)
-let activeConn = null;           // { profile, path }
+let activeConn = null;
 
 // ──────────────────────────────────────────
 // Toast
@@ -258,7 +258,7 @@ async function loadDirectory(path) {
     try {
         const payload = {
             host:        currentConn.profile.host,
-            port:        parseInt(currentConn.profile.port || 22),
+            port:        Number.parseInt(currentConn.profile.port || 22),
             username:    currentConn.profile.user,
             password:    currentConn.profile.pass  || null,
             private_key: currentConn.profile.key   || null,
@@ -400,10 +400,10 @@ function hideBrowserPanel() {
 // ──────────────────────────────────────────
 function escHtml(str) {
     return (str || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
 }
 
 function formatSize(bytes) {
