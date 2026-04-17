@@ -806,7 +806,7 @@ def _check_ip_not_private(ip_str: str) -> None:
         if ip_str.startswith("169.254."):
             raise HTTPException(status_code=403, detail="Access to cloud metadata endpoints is forbidden")
     except ValueError:
-        pass
+        pass  # intentionally ignored: non-IP strings (hostnames) are not checked
 
 
 _HOP_BY_HOP_HEADERS = frozenset(("host", "connection", "origin", "referer", "accept-encoding"))
@@ -840,6 +840,7 @@ def _execute_proxy_request(request_obj) -> dict:
     responses={
         400: {"description": "Invalid URL or DNS failure"},
         403: {"description": "Target IP is private or reserved"},
+        500: {"description": "Proxy request failed"},
     },
 )
 async def proxy_request(req: ProxyRequest):  # pylint: disable=too-many-locals,too-many-branches
@@ -1622,7 +1623,7 @@ async def sftp_list(req: SFTPRequest):
     except HTTPException:
         raise
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("SFTP list error for %s: %s", req.host, e)
+        logger.error("SFTP list error for %s: %s", req.host[:50], e)
         raise HTTPException(status_code=500, detail=_ERR_SFTP_FAILED) from e
 
 
@@ -1694,7 +1695,7 @@ async def sftp_download(req: SFTPDownloadRequest):
     except HTTPException:
         raise
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("SFTP download error for %s: %s", req.host, e)
+        logger.error("SFTP download error for %s: %s", req.host[:50], e)
         raise HTTPException(status_code=500, detail=_ERR_SFTP_FAILED) from e
 
 
@@ -1753,7 +1754,7 @@ async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional
     except HTTPException:
         raise
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("SFTP upload error for %s: %s", host, e)
+        logger.error("SFTP upload error for %s: %s", host[:50], e)
         raise HTTPException(status_code=500, detail=_ERR_SFTP_FAILED) from e
 
 
