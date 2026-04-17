@@ -80,7 +80,7 @@ const DevDB = (() => {
         });
         if (!res.ok) {
             let detail = `HTTP ${res.status}`;
-            try { const j = await res.json(); detail = j.detail || detail; } catch (_) {}
+            try { const j = await res.json(); detail = j.detail || detail; } catch (err) { console.error(err); }
             throw new Error(`DevDB export: ${detail}`);
         }
         const blob = await res.blob();
