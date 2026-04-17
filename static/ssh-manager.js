@@ -11,13 +11,13 @@ let wslProfiles      = [];
 let activeTabs   = {};
 let currentTabId = null;
 
-// SFTP state
-let sftpConn = null;  // { profile, path }
-let dashConn = null;  // { profile, ws }
+// SFTP state — sftpConn holds profile and current path; dashConn holds profile and websocket
+let sftpConn = null;
+let dashConn = null;
 let dashCharts = { cpu_history: [], ram_history: [], instances: {}, disksRendered: false };
 
 function destroyAllDashCharts() {
-    if (dashCharts && dashCharts.instances) {
+    if (dashCharts?.instances) {
         Object.values(dashCharts.instances).forEach(c => {
             try { c.destroy(); } catch {}
         });
@@ -511,7 +511,7 @@ document.getElementById('cancel-srv-btn').addEventListener('click', () => {
 });
 
 function uuidv4() {
-    return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
+    return '10000000-1000-4000-8000-100000000000'.replaceAll(/[018]/g, c =>
         (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
     );
 }
@@ -577,8 +577,8 @@ function openTerminalTab(p) {
     term.loadAddon(fitAddon);
     term.open(pane);
 
-    const host     = window.location.host;
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host     = globalThis.location.host;
+    const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl    = p.isWsl ? `${protocol}//${host}/api/local/terminal` : `${protocol}//${host}/api/ssh/terminal`;
     const ws       = new WebSocket(wsUrl);
 
@@ -588,7 +588,7 @@ function openTerminalTab(p) {
         if (p.isWsl) {
             ws.send(JSON.stringify({ distro: p.distro }));
         } else {
-            ws.send(JSON.stringify({ host: p.host, port: parseInt(p.port), username: p.user, password: p.pass, private_key: p.key }));
+            ws.send(JSON.stringify({ host: p.host, port: Number.parseInt(p.port), username: p.user, password: p.pass, private_key: p.key }));
         }
         setTimeout(() => { if (ws.readyState === WebSocket.OPEN) ws.send(`\x1b[resize;${term.cols};${term.rows}m`); }, 500);
     };
@@ -609,7 +609,7 @@ function openTerminalTab(p) {
     };
     ws.onclose    = ()  => { try { term.write('\r\nConnection closed.'); } catch {} };
     ws.onerror    = ()  => { try { term.write('\r\nWebSocket error.'); }   catch {} };
-    term.onData(d => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(d); });
+    term.onData(d => { if (ws?.readyState === WebSocket.OPEN) ws.send(d); });
     term.write(`Connecting to ${p.host}...\r\n`);
 
     renderTabsHeader();
@@ -657,7 +657,7 @@ function closeTab(tabId) {
         currentTabId = null;
         document.getElementById('terminal-overlay').style.display = 'flex';
     } else if (currentTabId === tabId) {
-        switchTab(keys[keys.length - 1]);
+        switchTab(keys.at(-1));
     }
     renderTabsHeader();
     renderSidebar();
@@ -667,7 +667,7 @@ window.addEventListener('resize', () => {
     if (currentTabId && activeTabs[currentTabId]?.fitAddon) {
         const t = activeTabs[currentTabId];
         t.fitAddon.fit();
-        if (t.ws && t.ws.readyState === WebSocket.OPEN) t.ws.send(`\x1b[resize;${t.term.cols};${t.term.rows}m`);
+        if (t.ws?.readyState === WebSocket.OPEN) t.ws.send(`\x1b[resize;${t.term.cols};${t.term.rows}m`);
     }
 });
 
@@ -740,7 +740,7 @@ async function sftpLoadDir(path) {
     try {
         const payload = {
             host:        sftpConn.profile.host,
-            port:        parseInt(sftpConn.profile.port || 22),
+            port:        Number.parseInt(sftpConn.profile.port || 22),
             username:    sftpConn.profile.user,
             password:    sftpConn.profile.pass  || null,
             private_key: sftpConn.profile.key   || null,
@@ -854,7 +854,7 @@ async function sftpDownloadFile(filename) {
     try {
         const payload = {
             host:        sftpConn.profile.host,
-            port:        parseInt(sftpConn.profile.port || 22),
+            port:        Number.parseInt(sftpConn.profile.port || 22),
             username:    sftpConn.profile.user,
             password:    sftpConn.profile.pass  || null,
             private_key: sftpConn.profile.key   || null,
@@ -868,11 +868,11 @@ async function sftpDownloadFile(filename) {
         // Host-key approval required (TOFU gate)
         if (r.status === 409) {
             const errBody = await r.json().catch(() => ({}));
-            const errCode = errBody.error || (errBody.detail && errBody.detail.error);
+            const errCode = errBody.error || errBody.detail?.error;
             if (errCode === 'host_key_approval_required') {
-                const host        = errBody.host        || (errBody.detail && errBody.detail.host)        || '';
-                const port        = errBody.port        || (errBody.detail && errBody.detail.port)        || '';
-                const fingerprint = errBody.fingerprint || (errBody.detail && errBody.detail.fingerprint) || '(unknown)';
+                const host        = errBody.host        || errBody.detail?.host        || '';
+                const port        = errBody.port        || errBody.detail?.port        || '';
+                const fingerprint = errBody.fingerprint || errBody.detail?.fingerprint || '(unknown)';
                 const approved = confirm(
                     `New SFTP host detected:\n\n${host}:${port}\nFingerprint: ${fingerprint}\n\nTrust this host key?`
                 );
@@ -886,7 +886,7 @@ async function sftpDownloadFile(filename) {
         }
         if (!r.ok) {
             const e = await r.json().catch(() => ({}));
-            throw new Error((e.detail && e.detail.error) || e.detail || `Server error ${r.status}`);
+            throw new Error(e.detail?.error || e.detail || `Server error ${r.status}`);
         }
         const blob = await r.blob();
         const url  = URL.createObjectURL(blob);
@@ -1006,11 +1006,11 @@ async function sftpUploadFile(file) {
 // ──────────────────────────────────────────
 function escHtml(str) {
     return (str || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 }
 
 function formatFileSize(bytes) {
@@ -1037,11 +1037,11 @@ function getSftpFileIcon(name) {
 // Dashboard Logic
 // ──────────────────────────────────────────
 async function dashConnectTo(profile) {
-    if (dashConn && dashConn.ws) {
+    if (dashConn?.ws) {
         dashConn.ws.close();
         dashConn = null;
     }
-    
+
     destroyAllDashCharts();
     
     dashConn = { profile, ws: null };
@@ -1058,8 +1058,8 @@ async function dashConnectTo(profile) {
     document.getElementById('dashboard-loading').style.display = 'flex';
 
     try {
-        const host     = window.location.host;
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host     = globalThis.location.host;
+        const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl    = `${protocol}//${host}/api/ssh/dashboard`;
         
         const ws = new WebSocket(wsUrl);
@@ -1067,11 +1067,11 @@ async function dashConnectTo(profile) {
 
         ws.onopen = () => {
             ws.send(JSON.stringify({ 
-                host: profile.host, 
-                port: parseInt(profile.port || 22), 
-                username: profile.user, 
-                password: profile.pass, 
-                private_key: profile.key 
+                host: profile.host,
+                port: Number.parseInt(profile.port || 22),
+                username: profile.user,
+                password: profile.pass,
+                private_key: profile.key
             }));
         };
         
@@ -1140,7 +1140,7 @@ if (typeof Chart !== 'undefined') {
 function updateDashboardGauges(metrics) {
     if (typeof Chart === 'undefined') return; // wait for chart.js to load
     
-    const sec = parseInt(metrics.uptime);
+    const sec = Number.parseInt(metrics.uptime);
     const d = Math.floor(sec / (3600*24));
     const h = Math.floor(sec % (3600*24) / 3600);
     const m = Math.floor(sec % 3600 / 60);
@@ -1279,9 +1279,7 @@ function updateDashboardGauges(metrics) {
 
 if(document.getElementById('dashboard-disconnect-btn')) {
     document.getElementById('dashboard-disconnect-btn').addEventListener('click', () => {
-        if (dashConn && dashConn.ws) {
-            dashConn.ws.close();
-        }
+        dashConn?.ws?.close();
         dashConn = null;
         destroyAllDashCharts();
         renderDashboardSidebar();

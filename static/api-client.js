@@ -12,8 +12,8 @@ export class ApiClient {
         const encoder = new TextEncoder();
         const bytes = encoder.encode(str);
         let binaryString = '';
-        for (let i = 0; i < bytes.length; i++) {
-            binaryString += String.fromCharCode(bytes[i]);
+        for (const byte of bytes) {
+            binaryString += String.fromCodePoint(byte);
         }
         return btoa(binaryString);
     }
@@ -78,97 +78,118 @@ export class ApiClient {
         return config.body;
     }
     /**
-     * Executes the API Request
+     * Serialises a fetch body to a plain string for proxy forwarding.
      */
-    static async execute(config, isRetry = false) {
-        const startTime = performance.now();
-        let targetUrl = this.buildUrl(config.url, config.queryParams);
-        const headers = this.buildHeaders(config);
-        const body = this.buildBody(config);
-        let fetchUrl = targetUrl;
-        let fetchOptions = {
-            method: config.method,
-            headers: headers,
-            body: body
+    static _bodyToString(body) {
+        if (body === null) return null;
+        return body.toString();
+    }
+
+    /**
+     * Tries to decode a proxy wrapper response. Returns the decoded ResponseData
+     * object when the response was a proxy-wrapped payload, otherwise null.
+     */
+    static _decodeProxyResponse(bodyText, timeMs) {
+        try {
+            const proxyWrapper = JSON.parse(bodyText);
+            if (!proxyWrapper.proxy_response) return null;
+            return {
+                status: proxyWrapper.status,
+                statusText: 'Proxy Forwarded',
+                headers: proxyWrapper.headers || {},
+                bodyText: proxyWrapper.body || '',
+                body: (() => { try { return JSON.parse(proxyWrapper.body); } catch { return null; } })(),
+                timeMs: timeMs,
+                sizeBytes: proxyWrapper.body ? new TextEncoder().encode(proxyWrapper.body).length : 0,
+                wasProxied: true
+            };
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Parses a raw fetch Response into a ResponseData-shaped object.
+     * Handles proxy-wrapped payloads when isProxied is true.
+     */
+    static async _parseResponse(response, startTime, isProxied) {
+        const arrayBuffer = await response.arrayBuffer();
+        const timeMs = Math.round(performance.now() - startTime);
+        const sizeBytes = arrayBuffer.byteLength;
+        const bodyText = new TextDecoder('utf-8').decode(arrayBuffer);
+
+        let responseJson = null;
+        try {
+            responseJson = JSON.parse(bodyText);
+        } catch (e) {
+            // Response body is not JSON — leave responseJson as null
+            console.debug('Response is not JSON:', e.message);
+        }
+
+        const responseHeaders = {};
+        response.headers.forEach((v, k) => { responseHeaders[k] = v; });
+
+        if (isProxied && response.ok && responseHeaders['content-type'] === 'application/json') {
+            const decoded = this._decodeProxyResponse(bodyText, timeMs);
+            if (decoded) return decoded;
+        }
+
+        return {
+            status: response.status,
+            statusText: response.statusText,
+            headers: responseHeaders,
+            body: responseJson,
+            bodyText: bodyText,
+            timeMs: timeMs,
+            sizeBytes: sizeBytes,
+            wasProxied: isProxied
         };
-        // If local cors proxy is required (feature for DevSuite)
-        if (config.useProxy || isRetry) {
-            const proxyTargetHeaders = {};
-            headers.forEach((v, k) => { proxyTargetHeaders[k] = v; });
-            let finalBodyText = null;
-            if (body instanceof URLSearchParams) {
-                finalBodyText = body.toString();
-            }
-            else if (body !== null) {
-                finalBodyText = body.toString();
-            }
-            fetchUrl = '/api/proxy';
-            fetchOptions = {
+    }
+
+    /**
+     * Builds the fetch URL and options for a proxy request.
+     */
+    static _buildProxyOptions(targetUrl, config, body, headers) {
+        const proxyTargetHeaders = {};
+        headers.forEach((v, k) => { proxyTargetHeaders[k] = v; });
+        return {
+            fetchUrl: '/api/proxy',
+            fetchOptions: {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     url: targetUrl,
                     method: config.method,
                     headers: proxyTargetHeaders,
-                    body: finalBodyText
+                    body: this._bodyToString(body)
                 })
-            };
+            }
+        };
+    }
+
+    /**
+     * Executes the API Request
+     */
+    static async execute(config, isRetry = false) {
+        const startTime = performance.now();
+        const targetUrl = this.buildUrl(config.url, config.queryParams);
+        const headers = this.buildHeaders(config);
+        const body = this.buildBody(config);
+        const isProxied = config.useProxy || isRetry;
+
+        let fetchUrl = targetUrl;
+        let fetchOptions = { method: config.method, headers: headers, body: body };
+
+        if (isProxied) {
+            const proxy = this._buildProxyOptions(targetUrl, config, body, headers);
+            fetchUrl = proxy.fetchUrl;
+            fetchOptions = proxy.fetchOptions;
         }
+
         try {
             const response = await fetch(fetchUrl, fetchOptions);
-            const arrayBuffer = await response.arrayBuffer();
-            const timeMs = Math.round(performance.now() - startTime);
-            const sizeBytes = arrayBuffer.byteLength;
-            const textDecoder = new TextDecoder('utf-8');
-            const bodyText = textDecoder.decode(arrayBuffer);
-            let responseJson = null;
-            try {
-                responseJson = JSON.parse(bodyText);
-            }
-            catch (e) {
-                // Not JSON
-            }
-            const responseHeaders = {};
-            response.headers.forEach((v, k) => {
-                responseHeaders[k] = v;
-            });
-            // If proxy was used, we decode what the proxy sent us
-            if ((config.useProxy || isRetry) && response.ok && responseHeaders['content-type'] === 'application/json') {
-                try {
-                    const proxyWrapper = JSON.parse(bodyText);
-                    if (proxyWrapper.proxy_response) {
-                        return {
-                            status: proxyWrapper.status,
-                            statusText: 'Proxy Forwarded',
-                            headers: proxyWrapper.headers || {},
-                            bodyText: proxyWrapper.body || '',
-                            body: (() => { try {
-                                return JSON.parse(proxyWrapper.body);
-                            }
-                            catch {
-                                return null;
-                            } })(),
-                            timeMs: timeMs,
-                            sizeBytes: proxyWrapper.body ? new TextEncoder().encode(proxyWrapper.body).length : 0,
-                            wasProxied: true
-                        };
-                    }
-                }
-                catch (e) { }
-            }
-            return {
-                status: response.status,
-                statusText: response.statusText,
-                headers: responseHeaders,
-                body: responseJson,
-                bodyText: bodyText,
-                timeMs: timeMs,
-                sizeBytes: sizeBytes,
-                wasProxied: isRetry || config.useProxy
-            };
-        }
-        catch (error) {
-            // Retry with proxy on network/CORS failure if not already tried
+            return await this._parseResponse(response, startTime, isProxied);
+        } catch (error) {
             if (!isRetry && !config.useProxy) {
                 console.warn("Direct fetch failed (likely CORS). Retrying automatically via local proxy bypass...");
                 return await this.execute(config, true);
@@ -183,7 +204,7 @@ export class ApiClient {
                 timeMs: timeMs,
                 sizeBytes: 0,
                 error: error.message,
-                wasProxied: isRetry || config.useProxy
+                wasProxied: isProxied
             };
         }
     }

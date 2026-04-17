@@ -19,14 +19,14 @@
 <!-- ====================================================
      HEADER
      ==================================================== -->
-<header class="tool-header">
+<header class="tool-header" aria-label="JSON Linter toolbar">
     <div class="header-left">
-        <a href="/tools" class="back-link">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        <a href="/tools" class="back-link" aria-label="Back to DevSuite tools">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
             DevSuite
         </a>
         <div class="tool-identity">
-            <div class="tool-icon tool-icon-emerald">
+            <div class="tool-icon tool-icon-emerald" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M8 3H7a2 2 0 00-2 2v5a2 2 0 01-2 2 2 2 0 012 2v5c0 1.1.9 2 2 2h1"/>
                     <path d="M16 21h1a2 2 0 002-2v-5c0-1.1.9-2 2-2a2 2 0 01-2-2V5a2 2 0 00-2-2h-1"/>
@@ -37,47 +37,47 @@
         </div>
     </div>
     <div class="header-right">
-        <span id="char-count" class="line-badge">0 chars</span>
+        <span id="char-count" class="line-badge" aria-live="polite" aria-atomic="true">0 chars</span>
     </div>
 </header>
 
 <!-- ====================================================
      ACTION TOOLBAR
      ==================================================== -->
-<div class="action-toolbar">
-    <div id="status-pill" class="status-pill idle">
-        <span class="status-dot"></span>
+<div class="action-toolbar" role="toolbar" aria-label="JSON actions">
+    <div id="status-pill" class="status-pill idle" role="status" aria-live="polite" aria-atomic="true">
+        <span class="status-dot" aria-hidden="true"></span>
         <span id="status-text">Ready</span>
     </div>
-    <div class="toolbar-sep"></div>
-    <button id="btn-validate" class="btn btn-primary" title="Validate JSON (Ctrl+Enter)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    <div class="toolbar-sep" aria-hidden="true"></div>
+    <button id="btn-validate" class="btn btn-primary" title="Validate JSON (Ctrl+Enter)" aria-label="Validate JSON (Ctrl+Enter)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
         Validate
     </button>
-    <button id="btn-format" class="btn btn-ghost" title="Pretty-print with 2-space indent">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+    <button id="btn-format" class="btn btn-ghost" title="Pretty-print with 2-space indent" aria-label="Format JSON with 2-space indent">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
         Format
     </button>
-    <button id="btn-minify" class="btn btn-ghost" title="Compact single-line JSON">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 8 2 5 5 2"/><line x1="2" y1="5" x2="12" y2="5"/><polyline points="19 16 22 19 19 22"/><line x1="22" y1="19" x2="12" y2="19"/></svg>
+    <button id="btn-minify" class="btn btn-ghost" title="Compact single-line JSON" aria-label="Minify JSON to single line">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 8 2 5 5 2"/><line x1="2" y1="5" x2="12" y2="5"/><polyline points="19 16 22 19 19 22"/><line x1="22" y1="19" x2="12" y2="19"/></svg>
         Minify
     </button>
-    <button id="btn-sort-keys" class="btn btn-ghost" title="Sort all object keys alphabetically">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    <button id="btn-sort-keys" class="btn btn-ghost" title="Sort all object keys alphabetically" aria-label="Sort JSON keys alphabetically">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         Sort Keys
     </button>
-    <div class="toolbar-sep"></div>
-    <button id="btn-to-yaml" class="btn btn-ghost" title="Convert JSON to YAML">
+    <div class="toolbar-sep" aria-hidden="true"></div>
+    <button id="btn-to-yaml" class="btn btn-ghost" title="Convert JSON to YAML" aria-label="Convert JSON to YAML">
         → YAML
     </button>
-    <div class="toolbar-sep"></div>
-    <button id="btn-clear" class="btn btn-ghost" title="Clear editor">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    <div class="toolbar-sep" aria-hidden="true"></div>
+    <button id="btn-clear" class="btn btn-ghost" title="Clear editor" aria-label="Clear editor">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
         Clear
     </button>
-    <div class="toolbar-spacer"></div>
-    <button id="btn-copy-output" class="btn btn-ghost" disabled title="Copy output to clipboard">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+    <div class="toolbar-spacer" aria-hidden="true"></div>
+    <button id="btn-copy-output" class="btn btn-ghost" disabled title="Copy output to clipboard" aria-label="Copy output to clipboard">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         Copy Output
     </button>
 </div>
@@ -91,16 +91,16 @@
         <!-- Input (Editor) -->
         <div class="pane-editor">
             <div class="pane-header">
-                <span class="pane-label">Input JSON</span>
+                <span class="pane-label" id="input-editor-label">Input JSON</span>
                 <div class="pane-actions">
-                    <span id="line-count" class="line-badge">0 lines</span>
-                    <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;">📋 Paste</button>
+                    <span id="line-count" class="line-badge" aria-live="polite" aria-atomic="true">0 lines</span>
+                    <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="Paste from clipboard">📋 Paste</button>
                 </div>
             </div>
-            <div id="input-editor" class="monaco-host"></div>
+            <div id="input-editor" class="monaco-host" role="textbox" aria-label="JSON input editor" aria-multiline="true"></div>
             <!-- Error panel sits at bottom of input pane -->
-            <div id="error-panel" class="error-panel">
-                <span class="error-icon">⚠️</span>
+            <div id="error-panel" class="error-panel" role="alert" aria-live="assertive" aria-atomic="true">
+                <span class="error-icon" aria-hidden="true">⚠️</span>
                 <div class="error-body">
                     <div id="error-message" class="error-message"></div>
                     <div id="error-hint"   class="error-hint"></div>
@@ -113,14 +113,14 @@
             <div class="pane-header">
                 <span class="pane-label" id="output-label">Output</span>
                 <div class="pane-actions">
-                    <span id="output-line-count" class="line-badge" style="display:none;">0 lines</span>
+                    <span id="output-line-count" class="line-badge" style="display:none;" aria-live="polite" aria-atomic="true">0 lines</span>
                 </div>
             </div>
-            <div id="output-empty" class="output-empty">
-                <span class="output-empty-icon">{ }</span>
+            <div id="output-empty" class="output-empty" aria-label="Output area — empty">
+                <span class="output-empty-icon" aria-hidden="true">{ }</span>
                 <span>Run Validate, Format or Minify to see output</span>
             </div>
-            <div id="output-editor" class="output-monaco-host" style="display:none;"></div>
+            <div id="output-editor" class="output-monaco-host" style="display:none;" role="region" aria-label="JSON output" aria-live="polite"></div>
         </div>
 
     </div>

@@ -117,9 +117,10 @@ class CronParser {
     const maxFields = fields.length;
 
     if (parts.length < minFields || parts.length > maxFields) {
+      const rangeStr = this.dialect.supportsYear ? `–${maxFields}` : '';
       return {
         valid: false,
-        error: `Expected ${minFields}${this.dialect.supportsYear ? `–${maxFields}` : ''} fields, got ${parts.length}`,
+        error: `Expected ${minFields}${rangeStr} fields, got ${parts.length}`,
         fields: []
       };
     }
@@ -148,6 +149,16 @@ class CronParser {
     const range = this.dialect.fieldRanges[idx];
     const d = this.dialect;
 
+    const specialResult = this._parseSpecialTokens(token, fieldName, d);
+    if (specialResult !== null) return specialResult;
+
+    // Attempt to resolve named values before parsing numeric
+    const resolved = this._resolveNamed(token, fieldName);
+
+    return this._parseResolvedToken(resolved, token, range, fieldName, d);
+  }
+
+  _parseSpecialTokens(token, fieldName, d) {
     // Special tokens
     if (token === '*') return { valid: true, token, fieldName, type: 'wildcard', values: null };
 
@@ -171,9 +182,10 @@ class CronParser {
       return { valid: true, token, fieldName, type: 'last', values: null };
     }
 
-    // Attempt to resolve named values before parsing numeric
-    const resolved = this._resolveNamed(token, fieldName);
+    return null;
+  }
 
+  _parseResolvedToken(resolved, token, range, fieldName, d) {
     // Step value: */n or start/n
     if (/\//.test(resolved)) {
       return this._parseStep(resolved, range, fieldName, token);
@@ -185,12 +197,8 @@ class CronParser {
     }
 
     // W nearest weekday (Quartz)
-    if (/W$/.test(resolved) && d.supportsW) {
-      const num = parseInt(resolved, 10);
-      if (isNaN(num) || num < range.min || num > range.max) {
-        return { valid: false, token, fieldName, error: `'W' requires a valid day number (${range.min}–${range.max})` };
-      }
-      return { valid: true, token, fieldName, type: 'weekday', values: [num] };
+    if (resolved.endsWith('W') && d.supportsW) {
+      return this._parseWeekdayW(resolved, token, range, fieldName);
     }
 
     // List: a,b,c
@@ -204,8 +212,20 @@ class CronParser {
     }
 
     // Single number
+    return this._parseSingleNumber(resolved, token, range, fieldName);
+  }
+
+  _parseWeekdayW(resolved, token, range, fieldName) {
+    const num = Number.parseInt(resolved, 10);
+    if (Number.isNaN(num) || num < range.min || num > range.max) {
+      return { valid: false, token, fieldName, error: `'W' requires a valid day number (${range.min}–${range.max})` };
+    }
+    return { valid: true, token, fieldName, type: 'weekday', values: [num] };
+  }
+
+  _parseSingleNumber(resolved, token, range, fieldName) {
     const num = this._toNumber(resolved, fieldName);
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       return { valid: false, token, fieldName, error: `Unrecognised value: "${token}"` };
     }
     if (num < range.min || num > range.max) {
@@ -217,34 +237,34 @@ class CronParser {
   _resolveNamed(token, fieldName) {
     let t = token.toUpperCase();
     if (fieldName === 'month') {
-      MONTH_NAMES.forEach((m, i) => { t = t.replace(new RegExp(m, 'g'), i + 1); });
+      MONTH_NAMES.forEach((m, i) => { t = t.replaceAll(m, i + 1); });
     }
     if (fieldName === 'dow') {
       const isQuartzLike = this.dialect.id === 'quartz' || this.dialect.id === 'aws';
       // Quartz/AWS: SUN=1 .. SAT=7.  Unix/GitHub: SUN=0 .. SAT=6.
       DOW_NAMES.forEach((d, i) => {
         const val = isQuartzLike ? i + 1 : i;
-        t = t.replace(new RegExp(d, 'g'), val);
+        t = t.replaceAll(d, val);
       });
     }
     return t;
   }
 
   _toNumber(str, fieldName) {
-    return parseInt(str, 10);
+    return Number.parseInt(str, 10);
   }
 
   _parseStep(token, range, fieldName, original) {
     const [startPart, stepPart] = token.split('/');
-    const step = parseInt(stepPart, 10);
-    if (isNaN(step) || step < 1) {
+    const step = Number.parseInt(stepPart, 10);
+    if (Number.isNaN(step) || step < 1) {
       return { valid: false, token: original, fieldName, error: `Invalid step value in "${original}"` };
     }
     if (startPart === '*') {
       return { valid: true, token: original, fieldName, type: 'step', start: range.min, step, values: null };
     }
-    const start = parseInt(startPart, 10);
-    if (isNaN(start) || start < range.min || start > range.max) {
+    const start = Number.parseInt(startPart, 10);
+    if (Number.isNaN(start) || start < range.min || start > range.max) {
       return { valid: false, token: original, fieldName, error: `Step start ${start} out of range ${range.min}–${range.max}` };
     }
     return { valid: true, token: original, fieldName, type: 'step', start, step, values: null };
@@ -255,8 +275,8 @@ class CronParser {
     if (parts.length !== 2) {
       return { valid: false, token: original, fieldName, error: `Invalid range: "${original}"` };
     }
-    const [a, b] = parts.map(p => parseInt(p, 10));
-    if (isNaN(a) || isNaN(b)) {
+    const [a, b] = parts.map(p => Number.parseInt(p, 10));
+    if (Number.isNaN(a) || Number.isNaN(b)) {
       return { valid: false, token: original, fieldName, error: `Non-numeric range values in "${original}"` };
     }
     if (a < range.min || b > range.max || a > b) {
@@ -286,8 +306,8 @@ class CronParser {
         continue;
       }
       // Plain integer
-      const n = parseInt(item, 10);
-      if (isNaN(n) || n < range.min || n > range.max) {
+      const n = Number.parseInt(item, 10);
+      if (Number.isNaN(n) || n < range.min || n > range.max) {
         return { valid: false, token: original, fieldName, error: `List value "${item}" invalid for ${fieldName} (${range.min}–${range.max})` };
       }
       values.push(n);
@@ -297,9 +317,9 @@ class CronParser {
 
   _parseHash(token, range, fieldName, original) {
     const [dayPart, nthPart] = token.split('#');
-    const day = parseInt(dayPart, 10);
-    const nth = parseInt(nthPart, 10);
-    if (isNaN(day) || isNaN(nth) || nth < 1 || nth > 5) {
+    const day = Number.parseInt(dayPart, 10);
+    const nth = Number.parseInt(nthPart, 10);
+    if (Number.isNaN(day) || Number.isNaN(nth) || nth < 1 || nth > 5) {
       return { valid: false, token: original, fieldName, error: `Invalid # expression: "${original}"` };
     }
     return { valid: true, token: original, fieldName, type: 'hash', day, nth, values: null };
@@ -367,15 +387,8 @@ class CronDescriber {
     if (!parsed.valid) return 'Invalid expression';
     const d = DIALECTS[dialectId];
     const fields = parsed.fields;
-    const isQuartz = dialectId === 'quartz';
 
-    // Offset indexes based on dialect
-    let secIdx = -1, minIdx = 0, hourIdx = 1, domIdx = 2, monIdx = 3, dowIdx = 4;
-    if (isQuartz || dialectId === 'aws') {
-      if (d.fields[0] === 'second') { secIdx = 0; minIdx = 1; hourIdx = 2; domIdx = 3; monIdx = 4; dowIdx = 5; }
-      else { minIdx = 0; hourIdx = 1; domIdx = 2; monIdx = 3; dowIdx = 4; } // AWS no sec
-    }
-    if (dialectId === 'aws') { minIdx = 0; hourIdx = 1; domIdx = 2; monIdx = 3; dowIdx = 4; }
+    const { minIdx, hourIdx, domIdx, monIdx, dowIdx } = this._fieldIndexes(d, dialectId);
 
     const minute = fields[minIdx];
     const hour = fields[hourIdx];
@@ -384,47 +397,68 @@ class CronDescriber {
     const dow = fields[dowIdx];
 
     const parts = [];
+    parts.push(this._describeFrequency(minute, hour));
 
-    // Frequency (minute + hour)
-    if (minute.type === 'wildcard' && hour.type === 'wildcard') {
-      parts.push('every minute');
-    } else if (minute.type === 'step' && minute.start === 0 && hour.type === 'wildcard') {
-      parts.push(`every ${minute.step} minute${minute.step !== 1 ? 's' : ''}`);
-    } else if (minute.type === 'value' && minute.values[0] === 0 && hour.type === 'step') {
-      parts.push(`every ${hour.step} hour${hour.step !== 1 ? 's' : ''}`);
-    } else if (minute.type === 'value' && minute.values[0] === 0 && hour.type === 'wildcard') {
-      parts.push('at the start of every hour');
-    } else if (minute.type === 'value' && hour.type === 'value') {
-      const h = hour.values[0];
-      const m = minute.values[0];
-      const ampm = h < 12 ? 'AM' : 'PM';
-      const h12 = h % 12 || 12;
-      parts.push(`at ${h12}:${String(m).padStart(2, '0')} ${ampm}`);
-    } else if (minute.type === 'step') {
-      parts.push(`every ${minute.step} minute${minute.step !== 1 ? 's' : ''}`);
-      if (hour.type === 'range') {
-        parts.push(`between ${this._hourLabel(hour.start)} and ${this._hourLabel(hour.end)}`);
-      }
-    } else {
-      parts.push(this._describeField(minute, 'minute') + ' past ' + this._describeField(hour, 'hour'));
+    this._appendDayParts(parts, dow, dom, month);
+
+    return parts.length ? this._capitalize(parts.join(', ')) : 'Every minute';
+  }
+
+  _fieldIndexes(d, dialectId) {
+    // Quartz with seconds field
+    if ((dialectId === 'quartz') && d.fields[0] === 'second') {
+      return { secIdx: 0, minIdx: 1, hourIdx: 2, domIdx: 3, monIdx: 4, dowIdx: 5 };
     }
+    // All other dialects (unix, aws, github, quartz without sec)
+    return { secIdx: -1, minIdx: 0, hourIdx: 1, domIdx: 2, monIdx: 3, dowIdx: 4 };
+  }
 
-    // Day of week
+  _plural(n, unit) {
+    return n === 1 ? `every ${n} ${unit}` : `every ${n} ${unit}s`;
+  }
+
+  _describeFrequency(minute, hour) {
+    if (minute.type === 'wildcard' && hour.type === 'wildcard') {
+      return 'every minute';
+    }
+    if (minute.type === 'step' && minute.start === 0 && hour.type === 'wildcard') {
+      return this._plural(minute.step, 'minute');
+    }
+    if (minute.type === 'value' && minute.values[0] === 0 && hour.type === 'step') {
+      return this._plural(hour.step, 'hour');
+    }
+    if (minute.type === 'value' && minute.values[0] === 0 && hour.type === 'wildcard') {
+      return 'at the start of every hour';
+    }
+    if (minute.type === 'value' && hour.type === 'value') {
+      return this._describeExactTime(hour.values[0], minute.values[0]);
+    }
+    if (minute.type === 'step') {
+      const freq = this._plural(minute.step, 'minute');
+      if (hour.type === 'range') {
+        return `${freq} between ${this._hourLabel(hour.start)} and ${this._hourLabel(hour.end)}`;
+      }
+      return freq;
+    }
+    return this._describeField(minute, 'minute') + ' past ' + this._describeField(hour, 'hour');
+  }
+
+  _describeExactTime(h, m) {
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const h12 = h % 12 || 12;
+    return `at ${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  }
+
+  _appendDayParts(parts, dow, dom, month) {
     if (dow && dow.type !== 'wildcard' && dow.type !== 'question') {
       parts.push('on ' + this._describeDow(dow));
     }
-
-    // Day of month
     if (dom && dom.type !== 'wildcard' && dom.type !== 'question') {
       parts.push('on day ' + this._describeField(dom, 'dom'));
     }
-
-    // Month
     if (month && month.type !== 'wildcard') {
       parts.push('in ' + this._describeMonth(month));
     }
-
-    return parts.length ? this._capitalize(parts.join(', ')) : 'Every minute';
   }
 
   _capitalize(s) {
@@ -598,12 +632,13 @@ const PRESETS = {
 // ─────────────────────────────────────────────
 
 class CronVisualizer {
+  currentDialect = 'unix';
+  describer = new CronDescriber();
+  parsed = null;
+  debounceTimer = null;
+
   constructor() {
-    this.currentDialect = 'unix';
-    this.parser = new CronParser('unix');
-    this.describer = new CronDescriber();
-    this.parsed = null;
-    this.debounceTimer = null;
+    this.parser = new CronParser(this.currentDialect);
 
     this._bindElements();
     this._bindEvents();
@@ -699,6 +734,8 @@ class CronVisualizer {
     }
   }
 
+  // S7757: negated condition helpers replaced with positive form above
+
   _updateDescription() {
     if (!this.descOutput) return;
     if (!this.parsed.valid) {
@@ -728,16 +765,13 @@ class CronVisualizer {
       value.className = 'field-chip-value';
       value.textContent = field.token;
 
+      wrap.appendChild(label);
+      wrap.appendChild(value);
       if (!field.valid) {
         const err = document.createElement('span');
         err.className = 'field-chip-err-msg';
         err.textContent = field.error;
-        wrap.appendChild(label);
-        wrap.appendChild(value);
         wrap.appendChild(err);
-      } else {
-        wrap.appendChild(label);
-        wrap.appendChild(value);
       }
       this.fieldsDisplay.appendChild(wrap);
     });
@@ -798,7 +832,7 @@ class CronVisualizer {
   }
 
   _relativeTime(date) {
-    const diff = date - new Date();
+    const diff = date - Date.now();
     const min = Math.floor(diff / 60000);
     if (min < 60) return `in ${min}m`;
     const hr = Math.floor(min / 60);
@@ -874,7 +908,7 @@ class CronVisualizer {
       cell.appendChild(countLabel);
 
       // Tooltip via data attr (safe, no innerHTML)
-      cell.dataset.tooltip = `${d.toDateString()}: ${count} run${count !== 1 ? 's' : ''}`;
+      cell.dataset.tooltip = `${d.toDateString()}: ${count} run${count === 1 ? '' : 's'}`;
       cell.addEventListener('mouseenter', (e) => this._showTooltip(e, cell.dataset.tooltip));
       cell.addEventListener('mouseleave', () => this._hideTooltip());
 
@@ -901,18 +935,21 @@ class CronVisualizer {
   }
 
   _showTooltip(e, text) {
-    let tip = document.getElementById('cron-tooltip');
-    if (!tip) {
-      tip = document.createElement('div');
-      tip.id = 'cron-tooltip';
-      tip.className = 'cron-tooltip';
-      document.body.appendChild(tip);
-    }
+    const existing = document.getElementById('cron-tooltip');
+    const tip = existing ?? this._createTooltipEl();
     tip.textContent = text;
     tip.style.display = 'block';
     const rect = e.target.getBoundingClientRect();
-    tip.style.left = (rect.left + window.scrollX) + 'px';
-    tip.style.top = (rect.top + window.scrollY - 36) + 'px';
+    tip.style.left = (rect.left + globalThis.scrollX) + 'px';
+    tip.style.top = (rect.top + globalThis.scrollY - 36) + 'px';
+  }
+
+  _createTooltipEl() {
+    const tip = document.createElement('div');
+    tip.id = 'cron-tooltip';
+    tip.className = 'cron-tooltip';
+    document.body.appendChild(tip);
+    return tip;
   }
 
   _hideTooltip() {
@@ -947,7 +984,7 @@ class CronVisualizer {
       grid.style.setProperty('--cols', def.cols);
 
       const parsedField = this.parsed.fields[def.idx];
-      const activeSet = parsedField && parsedField.valid
+      const activeSet = parsedField?.valid
         ? this.parser.expandField(parsedField, { min: def.min, max: def.max })
         : new Set();
 

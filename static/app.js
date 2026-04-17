@@ -16,6 +16,169 @@
  *  - Language auto-detection via highlight.js + file extension
  */
 
+// ── Module-level helpers (S7721: hoisted out of DOMContentLoaded) ──
+
+function countLines(text) {
+    if (!text) return 0;
+    return text.split('\n').length;
+}
+
+function isBinaryFile(file, bytes) {
+    const binaryMimes = ['image/', 'video/', 'audio/', 'application/pdf',
+        'application/zip', 'application/octet-stream'];
+    if (binaryMimes.some(m => file.type.startsWith(m))) return true;
+    const arr = new Uint8Array(bytes.slice(0, 512));
+    for (const byte of arr) { if (byte === 0) return true; }
+    return false;
+}
+
+/** Format a file's lastModified timestamp as "28 Feb 2024 14:30" */
+function formatFileDate(timestamp) {
+    const d = new Date(timestamp);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${hh}:${mm}`;
+}
+
+/** Format a byte count as a human-readable string */
+function formatSize(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function getLanguageFromPath(path) {
+    if (!path) return null;
+    const filename = path.split('/').pop().toLowerCase();
+    if (filename === 'dockerfile') return 'dockerfile';
+    if (filename === 'jenkinsfile') return 'groovy';
+    const ext = filename.split('.').pop();
+    const map = {
+        'js': 'javascript', 'jsx': 'javascript', 'ts': 'typescript', 'tsx': 'typescript',
+        'py': 'python', 'html': 'html', 'htm': 'html', 'css': 'css', 'scss': 'scss', 'less': 'less',
+        'json': 'json', 'md': 'markdown', 'xml': 'xml', 'svg': 'xml', 'yml': 'yaml', 'yaml': 'yaml',
+        'sh': 'shell', 'bash': 'shell', 'c': 'c', 'cpp': 'cpp', 'h': 'c', 'hpp': 'cpp',
+        'cs': 'csharp', 'go': 'go', 'rs': 'rust', 'php': 'php', 'rb': 'ruby', 'java': 'java',
+        'swift': 'swift', 'kt': 'kotlin', 'sql': 'sql', 'tf': 'terraform', 'tfvars': 'terraform',
+        'log': 'plaintext', 'txt': 'plaintext', 'gitignore': 'plaintext', 'env': 'plaintext'
+    };
+    return map[ext] || null;
+}
+
+function allFileStatuses(node) {
+    if (!node.isFolder) return [node.status];
+    return node.children.flatMap(c => allFileStatuses(c));
+}
+
+function collectFilePaths(node) {
+    if (!node.isFolder) return [node.path];
+    return node.children.flatMap(c => collectFilePaths(c));
+}
+
+function propagateFolderStatuses(nodes) {
+    nodes.forEach(n => {
+        if (!n.isFolder) return;
+        propagateFolderStatuses(n.children);
+        const statuses = allFileStatuses(n);
+        if (statuses.every(s => s === 'unchanged'))      n.status = 'unchanged';
+        else if (statuses.every(s => s === 'removed'))   n.status = 'removed';
+        else if (statuses.every(s => s === 'added'))     n.status = 'added';
+        else if (statuses.every(s => s === 'modified'))  n.status = 'modified';
+        else                                             n.status = 'mixed';
+    });
+}
+
+// ── handleMergeClick helpers (extracted to reduce S3776 cognitive complexity) ──
+
+function _mergeToRightPureDeletion(change, modModel) {
+    const { modifiedStartLineNumber: mStart, modifiedEndLineNumber: mEnd } = change;
+    let range;
+    if (mEnd < modModel.getLineCount()) {
+        range = new monaco.Range(mStart, 1, mEnd + 1, 1);
+    } else {
+        const prevEndCol = mStart > 1 ? modModel.getLineMaxColumn(mStart - 1) : 1;
+        range = new monaco.Range(Math.max(mStart - 1, 1), prevEndCol,
+            mEnd, modModel.getLineMaxColumn(mEnd));
+    }
+    return { text: '', range };
+}
+
+function _mergeToRightPureInsertion(change, origModel, modModel) {
+    const { originalStartLineNumber: oStart, originalEndLineNumber: oEnd,
+            modifiedStartLineNumber: mStart } = change;
+    const srcText = origModel.getValueInRange(
+        new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
+    if (mStart === 0) {
+        return { text: srcText + '\n', range: new monaco.Range(1, 1, 1, 1) };
+    }
+    const endCol = modModel.getLineMaxColumn(mStart);
+    return { text: '\n' + srcText, range: new monaco.Range(mStart, endCol, mStart, endCol) };
+}
+
+function _mergeToLeftPureDeletion(change, origModel) {
+    const { originalStartLineNumber: oStart, originalEndLineNumber: oEnd } = change;
+    let range;
+    if (oEnd < origModel.getLineCount()) {
+        range = new monaco.Range(oStart, 1, oEnd + 1, 1);
+    } else {
+        const prevEndCol = oStart > 1 ? origModel.getLineMaxColumn(oStart - 1) : 1;
+        range = new monaco.Range(Math.max(oStart - 1, 1), prevEndCol,
+            oEnd, origModel.getLineMaxColumn(oEnd));
+    }
+    return { text: '', range };
+}
+
+function _mergeToLeftPureInsertion(change, origModel, modModel) {
+    const { modifiedStartLineNumber: mStart, modifiedEndLineNumber: mEnd,
+            originalStartLineNumber: oStart } = change;
+    const srcText = modModel.getValueInRange(
+        new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
+    if (oStart === 0) {
+        return { text: srcText + '\n', range: new monaco.Range(1, 1, 1, 1) };
+    }
+    const endCol = origModel.getLineMaxColumn(oStart);
+    return { text: '\n' + srcText, range: new monaco.Range(oStart, endCol, oStart, endCol) };
+}
+
+function handleMergeClick(diffEditor, change, direction) {
+    if (!change) return;
+    const origModel = diffEditor.getModel().original;
+    const modModel = diffEditor.getModel().modified;
+
+    if (direction === 'to-right') {
+        const { originalEndLineNumber: oEnd, modifiedStartLineNumber: mStart,
+                modifiedEndLineNumber: mEnd } = change;
+        let edit;
+        if (oEnd === 0) {
+            edit = _mergeToRightPureDeletion(change, modModel);
+        } else if (mEnd === 0) {
+            edit = _mergeToRightPureInsertion(change, origModel, modModel);
+        } else {
+            const { originalStartLineNumber: oStart } = change;
+            const text = origModel.getValueInRange(
+                new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
+            edit = { text, range: new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)) };
+        }
+        modModel.pushEditOperations([], [edit], () => null);
+    } else { // to-left
+        const { modifiedEndLineNumber: mEnd, originalStartLineNumber: oStart,
+                originalEndLineNumber: oEnd } = change;
+        let edit;
+        if (mEnd === 0) {
+            edit = _mergeToLeftPureDeletion(change, origModel);
+        } else if (oEnd === 0) {
+            edit = _mergeToLeftPureInsertion(change, origModel, modModel);
+        } else {
+            const { modifiedStartLineNumber: mStart } = change;
+            const text = modModel.getValueInRange(
+                new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
+            edit = { text, range: new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)) };
+        }
+        origModel.pushEditOperations([], [edit], () => null);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
@@ -40,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorHost = document.getElementById('monaco-diff-editor');
     const langLabelContainer = document.getElementById('detected-language-label');
     const langNameSpan = document.getElementById('lang-name');
-    const statsBar = document.getElementById('stats-bar');
 
     // Stats chips
     const statAdditionsCount = document.getElementById('stat-additions-count');
@@ -97,7 +259,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderSetupPanelsWrap = document.getElementById('folder-setup-panels-wrapper');
     const actionBarFolder = document.getElementById('action-bar-folder');
     const folderResultsContainer = document.getElementById('folder-results-container');
-    const fileTreeEl = document.getElementById('file-tree');
     
     // Updated references for Folder Editor Host
     const folderEditorWrapper = document.getElementById('folder-editor-wrapper');
@@ -109,8 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderTitleLeft = document.getElementById('folder-title-left');
     const folderTitleRight = document.getElementById('folder-title-right');
     
-    const changedFilesCount = document.getElementById('changed-files-count');
-
     // New folder table layout elements
     const folderTableLeft = document.getElementById('folder-table-left');
     const folderTableRight = document.getElementById('folder-table-right');
@@ -132,8 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderStatAdditionsCount = document.getElementById('folder-stat-additions-count');
     const folderStatDeletionsCount = document.getElementById('folder-stat-deletions-count');
     const folderStatChangesCount = document.getElementById('folder-stat-changes-count');
-    const folderLangLabelContainer = document.getElementById('folder-detected-language-label');
-    const folderLangNameSpan = document.getElementById('folder-lang-name');
     const folderMergeAllRightBtn = document.getElementById('folder-merge-all-right-btn');
     const folderMergeAllLeftBtn = document.getElementById('folder-merge-all-left-btn');
     const folderToggleInlineBtn = document.getElementById('folder-toggle-inline-btn');
@@ -199,7 +356,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let modifiedFiles = new Map();
     let fileDiffStatusMap = new Map();
     let currentFolderFilter = 'all';
-    let activeFilePath = null;
     let origFolderRootName = 'Folder 1';
     let modFolderRootName = 'Folder 2';
     let origFolderTotalSize = 0;
@@ -258,11 +414,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // LINE COUNT BADGES
     // ==========================================
-    function countLines(text) {
-        if (!text) return 0;
-        return text.split('\n').length;
-    }
-
     function updateLineCounts() {
         const ol = countLines(originalInput.value);
         const ml = countLines(modifiedInput.value);
@@ -309,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // MONACO INITIALIZATION
     // ==========================================
     require.config({ paths: { 'vs': '/static/libs/vs' } });
-    window.MonacoEnvironment = { getWorkerUrl: () => proxy };
+    globalThis.MonacoEnvironment = { getWorkerUrl: () => proxy };
     let proxy = URL.createObjectURL(new Blob([`
         self.MonacoEnvironment = { baseUrl: '/static/libs/' };
         importScripts('/static/libs/vs/base/worker/workerMain.js');
@@ -327,15 +478,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // FILE UPLOAD — BINARY CHECK + CLIENT-SIDE
     // ==========================================
-    function isBinaryFile(file, bytes) {
-        const binaryMimes = ['image/', 'video/', 'audio/', 'application/pdf',
-            'application/zip', 'application/octet-stream'];
-        if (binaryMimes.some(m => file.type.startsWith(m))) return true;
-        const arr = new Uint8Array(bytes.slice(0, 512));
-        for (let i = 0; i < arr.length; i++) { if (arr[i] === 0) return true; }
-        return false;
-    }
-
     function handleFileUpload(file, labelEl, textareaEl) {
         if (!file) return;
         const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
@@ -585,7 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} modifiedTxt - Initial content for the modified (right) side model.
      */
     function initTextDiffEditor(originalTxt, modifiedTxt) {
-        if (!window.monaco) {
+        if (!globalThis.monaco) {
             showError('Editor is still loading — please try again in a moment.');
             compareBtn.classList.remove('loading');
             compareBtn.disabled = false;
@@ -711,96 +853,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         diffEditor.onDidUpdateDiff(applyDecorations);
-    }
-
-    function handleMergeClick(diffEditor, change, direction) {
-        if (!change) return;
-        const origModel = diffEditor.getModel().original;
-        const modModel = diffEditor.getModel().modified;
-
-        if (direction === 'to-right') {
-            const oStart = change.originalStartLineNumber, oEnd = change.originalEndLineNumber;
-            const mStart = change.modifiedStartLineNumber, mEnd = change.modifiedEndLineNumber;
-            let text, range;
-
-            if (oEnd === 0) {
-                // Pure deletion: orig has nothing here → delete the modified lines entirely.
-                // Extend range to include the trailing newline (to line mEnd+1 col 1) so no
-                // blank line ghost remains.
-                if (mEnd < modModel.getLineCount()) {
-                    range = new monaco.Range(mStart, 1, mEnd + 1, 1);
-                } else {
-                    // Last line(s) — delete from end of preceding line to avoid orphan newline
-                    const prevEndCol = mStart > 1 ? modModel.getLineMaxColumn(mStart - 1) : 1;
-                    range = new monaco.Range(Math.max(mStart - 1, 1), prevEndCol,
-                        mEnd, modModel.getLineMaxColumn(mEnd));
-                }
-                text = '';
-
-            } else if (mEnd === 0) {
-                // Pure insertion: orig has lines oStart..oEnd that don't exist in modified.
-                // Monaco sets mStart = the line in modified AFTER WHICH to insert.
-                //   → insert at the END of line mStart (append \n + source text).
-                // Special edge case: mStart === 0 means insert before the very first line.
-                const srcText = origModel.getValueInRange(
-                    new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
-                if (mStart === 0) {
-                    // Prepend to start of file
-                    text = srcText + '\n';
-                    range = new monaco.Range(1, 1, 1, 1);
-                } else {
-                    // Append AFTER line mStart
-                    const endCol = modModel.getLineMaxColumn(mStart);
-                    text = '\n' + srcText;
-                    range = new monaco.Range(mStart, endCol, mStart, endCol);
-                }
-
-            } else {
-                // Modification: replace the modified range with the original text.
-                text = origModel.getValueInRange(
-                    new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
-                range = new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd));
-            }
-            modModel.pushEditOperations([], [{ range, text }], () => null);
-
-        } else { // to-left
-            const mStart = change.modifiedStartLineNumber, mEnd = change.modifiedEndLineNumber;
-            const oStart = change.originalStartLineNumber, oEnd = change.originalEndLineNumber;
-            let text, range;
-
-            if (mEnd === 0) {
-                // Pure deletion: modified has nothing here → delete the original lines entirely.
-                if (oEnd < origModel.getLineCount()) {
-                    range = new monaco.Range(oStart, 1, oEnd + 1, 1);
-                } else {
-                    const prevEndCol = oStart > 1 ? origModel.getLineMaxColumn(oStart - 1) : 1;
-                    range = new monaco.Range(Math.max(oStart - 1, 1), prevEndCol,
-                        oEnd, origModel.getLineMaxColumn(oEnd));
-                }
-                text = '';
-
-            } else if (oEnd === 0) {
-                // Pure insertion: modified has lines mStart..mEnd that don't exist in original.
-                // Monaco sets oStart = the line in original AFTER WHICH to insert.
-                const srcText = modModel.getValueInRange(
-                    new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
-                if (oStart === 0) {
-                    text = srcText + '\n';
-                    range = new monaco.Range(1, 1, 1, 1);
-                } else {
-                    const endCol = origModel.getLineMaxColumn(oStart);
-                    text = '\n' + srcText;
-                    range = new monaco.Range(oStart, endCol, oStart, endCol);
-                }
-
-            } else {
-                // Modification: replace the original range with the modified text.
-                text = modModel.getValueInRange(
-                    new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
-                range = new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd));
-            }
-            origModel.pushEditOperations([], [{ range, text }], () => null);
-        }
     }
 
     function applyMergeAll(direction) {
@@ -955,6 +1007,24 @@ document.addEventListener('DOMContentLoaded', () => {
         await rerunComparison();
     });
 
+    async function _hasFileContentChanged(o, m, path) {
+        if (o.size !== m.size) return true;
+        if (o.size >= 5 * 1024 * 1024) return true; // too large to hash — treat as modified
+        try {
+            const [bufO, bufM] = await Promise.all([o.arrayBuffer(), m.arrayBuffer()]);
+            const [hashO, hashM] = await Promise.all([
+                crypto.subtle.digest('SHA-256', bufO),
+                crypto.subtle.digest('SHA-256', bufM)
+            ]);
+            const strO = Array.from(new Uint8Array(hashO)).join(',');
+            const strM = Array.from(new Uint8Array(hashM)).join(',');
+            return strO !== strM;
+        } catch (e) {
+            console.warn("Failed to hash " + path, e);
+            return true; // conservatively treat hash failures as modified
+        }
+    }
+
     /**
      * (Re-)compute fileDiffStatusMap from the current originalFiles / modifiedFiles
      * and refresh the tree UI. Called by the compare button and by move operations.
@@ -977,27 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileDiffStatusMap.set(path, { status: 'added' });
             } else {
                 const o = originalFiles.get(path), m = modifiedFiles.get(path);
-                let changed = o.size !== m.size;
-                if (!changed) {
-                    if (o.size >= 5 * 1024 * 1024) {
-                        // Too large to hash in-browser — conservatively treat as modified
-                        changed = true;
-                    } else {
-                        try {
-                            const [bufO, bufM] = await Promise.all([o.arrayBuffer(), m.arrayBuffer()]);
-                            const [hashO, hashM] = await Promise.all([
-                                crypto.subtle.digest('SHA-256', bufO),
-                                crypto.subtle.digest('SHA-256', bufM)
-                            ]);
-                            const strO = Array.from(new Uint8Array(hashO)).join(',');
-                            const strM = Array.from(new Uint8Array(hashM)).join(',');
-                            changed = strO !== strM;
-                        } catch (e) {
-                            console.warn("Failed to hash " + path, e);
-                            changed = true; // conservatively treat hash failures as modified
-                        }
-                    }
-                }
+                const changed = await _hasFileContentChanged(o, m, path);
                 fileDiffStatusMap.set(path, { status: changed ? 'modified' : 'unchanged' });
             }
         }
@@ -1081,24 +1131,8 @@ document.addEventListener('DOMContentLoaded', () => {
             (parts.length === 1 ? root : nodeByPath.get(parentPath).children).push(fileNode);
         });
 
-        // Propagate status up to folders
-        const propagate = nodes => nodes.forEach(n => {
-            if (!n.isFolder) return;
-            propagate(n.children);
-            const statuses = allFileStatuses(n);
-            if (statuses.every(s => s === 'unchanged')) n.status = 'unchanged';
-            else if (statuses.every(s => s === 'removed')) n.status = 'removed';
-            else if (statuses.every(s => s === 'added'))   n.status = 'added';
-            else if (statuses.every(s => s === 'modified')) n.status = 'modified';
-            else n.status = 'mixed';
-        });
-        propagate(root);
+        propagateFolderStatuses(root);
         return root;
-    }
-
-    function allFileStatuses(node) {
-        if (!node.isFolder) return [node.status];
-        return node.children.flatMap(c => allFileStatuses(c));
     }
 
     // ─── Tree rendering ───────────────────────────────────────────────────────
@@ -1243,7 +1277,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Remove active class from previous active row
                 document.querySelectorAll('.tree-file-row.active-file').forEach(r => r.classList.remove('active-file'));
                 row.classList.add('active-file');
-                activeFilePath = node.path;
                 openFileDiff(node.path, node.status, node.name);
             });
         }
@@ -1299,11 +1332,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(`Copied "${path.split('/').pop()}" to ${targetSide}.`, 'success');
     }
 
-    function collectFilePaths(node) {
-        if (!node.isFolder) return [node.path];
-        return node.children.flatMap(c => collectFilePaths(c));
-    }
-
     async function copyFolderToSide(node, targetSide) {
         const paths = collectFilePaths(node);
         paths.forEach(path => {
@@ -1315,22 +1343,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         await rerunComparison();
         showToast(`Copied folder "${node.name}" to ${targetSide}.`, 'success');
-    }
-
-    /** Format a file's lastModified timestamp as "28 Feb 2024 14:30" */
-    function formatFileDate(timestamp) {
-        const d = new Date(timestamp);
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const hh = String(d.getHours()).padStart(2, '0');
-        const mm = String(d.getMinutes()).padStart(2, '0');
-        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${hh}:${mm}`;
-    }
-
-    /** Format a byte count as a human-readable string */
-    function formatSize(bytes) {
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }
 
     /**
@@ -1435,24 +1447,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-
-    function getLanguageFromPath(path) {
-        if (!path) return null;
-        const filename = path.split('/').pop().toLowerCase();
-        if (filename === 'dockerfile') return 'dockerfile';
-        if (filename === 'jenkinsfile') return 'groovy';
-        const ext = filename.split('.').pop();
-        const map = {
-            'js': 'javascript', 'jsx': 'javascript', 'ts': 'typescript', 'tsx': 'typescript',
-            'py': 'python', 'html': 'html', 'htm': 'html', 'css': 'css', 'scss': 'scss', 'less': 'less',
-            'json': 'json', 'md': 'markdown', 'xml': 'xml', 'svg': 'xml', 'yml': 'yaml', 'yaml': 'yaml',
-            'sh': 'shell', 'bash': 'shell', 'c': 'c', 'cpp': 'cpp', 'h': 'c', 'hpp': 'cpp',
-            'cs': 'csharp', 'go': 'go', 'rs': 'rust', 'php': 'php', 'rb': 'ruby', 'java': 'java',
-            'swift': 'swift', 'kt': 'kotlin', 'sql': 'sql', 'tf': 'terraform', 'tfvars': 'terraform',
-            'log': 'plaintext', 'txt': 'plaintext', 'gitignore': 'plaintext', 'env': 'plaintext'
-        };
-        return map[ext] || null;
-    }
 
     function detectLanguage(text) {
         if (!text || !window.hljs) return null;
