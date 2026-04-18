@@ -564,9 +564,12 @@ class CronSchedule {
       const month = cursor.getMonth() + 1; // 1-based
       const dom = cursor.getDate();
       const rawDow = cursor.getDay(); // 0=Sun..6=Sat (JS)
-      const dow = (this.dialect.id === 'quartz' || this.dialect.id === 'aws')
-        ? (rawDow === 0 ? 7 : rawDow) // map to 1=Sun..7=Sat for Quartz/AWS
-        : rawDow;
+      let dow;
+      if (this.dialect.id === 'quartz' || this.dialect.id === 'aws') {
+        dow = rawDow === 0 ? 7 : rawDow; // map to 1=Sun..7=Sat for Quartz/AWS
+      } else {
+        dow = rawDow;
+      }
       const hour = cursor.getHours();
       const min = cursor.getMinutes();
 

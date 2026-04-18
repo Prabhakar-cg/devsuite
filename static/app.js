@@ -1058,7 +1058,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const o = originalFiles.get(path), m = modifiedFiles.get(path);
                 const changed = await _hasFileContentChanged(o, m, path);
-                fileDiffStatusMap.set(path, { status: changed === null ? 'unchanged' : changed ? 'modified' : 'unchanged' });
+                let status;
+                if (changed === null) {
+                    status = 'unchanged';
+                } else if (changed) {
+                    status = 'modified';
+                } else {
+                    status = 'unchanged';
+                }
+                fileDiffStatusMap.set(path, { status });
             }
         }
         renderFileTree();

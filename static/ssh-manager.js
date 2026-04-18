@@ -1120,7 +1120,7 @@ async function dashConnectTo(profile) {
         };
 
         ws.onclose = () => {
-            if (!dashConn || dashConn.ws !== expectedWs) return;
+            if (!dashConn?.ws || dashConn.ws !== expectedWs) return;
             document.getElementById('dashboard-status-dot').style.background = '#ef4444';
             document.getElementById('dashboard-status-dot').style.boxShadow  = 'none';
             document.getElementById('dashboard-conn-label').textContent = 'Disconnected';

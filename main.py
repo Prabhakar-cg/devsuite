@@ -1471,19 +1471,14 @@ async def _run_ssh_terminal_session(websocket: WebSocket, conn) -> None:
         await asyncio.gather(read_from_ssh(), write_to_ssh())
 
 
-async def _ws_wait_for_host_key_response(websocket: WebSocket, timeout: float) -> bool:
-    """Wait up to *timeout* seconds for a host_key_response message over *websocket*.
+async def _ws_wait_for_host_key_response(websocket: WebSocket) -> bool:
+    """Wait for a host_key_response message over *websocket*.
 
     Returns True if the user approved, False on timeout or rejection.
     """
-    deadline = asyncio.get_event_loop().time() + timeout
     while True:
-        remaining = deadline - asyncio.get_event_loop().time()
-        if remaining <= 0:
-            return False
         try:
-            async with asyncio.timeout(remaining):
-                raw = await websocket.receive_text()
+            raw = await websocket.receive_text()
         except asyncio.TimeoutError:
             return False
         try:
@@ -1512,7 +1507,8 @@ async def _terminal_ws_approve_host(
         "port": p,
         "fingerprint": fingerprint,
     })
-    return await _ws_wait_for_host_key_response(websocket, timeout=60)
+    async with asyncio.timeout(60):
+    return await _ws_wait_for_host_key_response(websocket)
 
 
 @app.websocket("/api/ssh/terminal")
@@ -1885,7 +1881,8 @@ async def _dashboard_ws_approve_host(
         "port": p,
         "fingerprint": fingerprint,
     })
-    return await _ws_wait_for_host_key_response(websocket, timeout=60)
+    async with asyncio.timeout(60):
+         return await _ws_wait_for_host_key_response(websocket)
 
 
 async def _ssh_dashboard_connect(websocket: WebSocket, config: dict) -> None:
