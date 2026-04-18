@@ -513,8 +513,8 @@
     max-width: 320px;
     opacity: 1;
     transition: opacity 0.3s;
-    backdrop-filter: blur(8px);
 }
+
 .toast-info    { background: #0369a1; color: #fff; }
 .toast-success { background: #15803d; color: #fff; }
 .toast-error   { background: #dc2626; color: #fff; }

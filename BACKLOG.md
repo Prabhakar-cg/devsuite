@@ -29,7 +29,7 @@
 | D-2 | **JS Modularization**: Split `app.js` into smaller, tool-specific modules (e.g., `diff-engine.js`, `tree-view.js`). | M | `[ ]` |
 | D-3 | **Hot Reload Sidecar**: Add a `watchdog`-based reloader that automatically refreshes the browser window on file edits. | S | `[ ]` |
 | D-4 | **Lazy Loading**: Only load Monaco Editor and heavy libraries when the user navigates to a relevant tool. | M | `[ ]` |
-| D-5 | **Accessibility (a11y)**: Complete ARIA/Role audit and ensure keyboard-only navigation for all tools. Folder Diff picker buttons converted to `<label>` elements in v0.1.1 (partial). | M | `[/]` |
+| D-5 | **Accessibility (a11y)**: Complete ARIA/Role audit and ensure keyboard-only navigation for all tools. Folder Diff picker buttons converted to `<label>` elements in v0.1.1; `json.html`, `yaml.html`, `base64.html`, and `regex.html` received full ARIA annotations in v0.1.2 (partial). | M | `[/]` |
 | D-6 | **File Converter — more formats**: Add image format conversion (PNG ↔ JPG ↔ WebP) and XML ↔ JSON client-side. | M | `[ ]` |
 
 ---

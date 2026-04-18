@@ -7,7 +7,11 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ## [Unreleased]
 
-Code quality and refactoring pass — no behaviour changes. All changes address SonarQube rule violations to reduce cognitive complexity, improve code clarity, and align with modern JS/Python idioms.
+---
+
+## [0.1.2] — 2026-04-18
+
+Code quality and security hardening pass — no behaviour changes. All changes address SonarQube static-analysis rule violations to reduce cognitive complexity, close security-tool findings, improve code clarity, and align with modern JS/Python idioms.
 
 ### Internal / Code Quality
 
@@ -75,6 +79,8 @@ Code quality and refactoring pass — no behaviour changes. All changes address 
 
 #### `static/regex.html` (D-5 a11y progress)
 - Flag toggle buttons now sync `aria-pressed="true"/"false"` on every click, enabling screen readers to announce the pressed state correctly.
+
+---
 
 ---
 

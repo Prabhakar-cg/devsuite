@@ -13,7 +13,6 @@ echo "Starting setup for Local dev suite..."
 command_exists () {
     local cmd="$1"
     command -v "$cmd" >/dev/null 2>&1
-    return
 }
 
 # Helper to run commands as root when needed
@@ -24,7 +23,7 @@ run_as_root () {
         return
     fi
 
-    if [[ "$(id -u)" -eq 0 ]] || [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
         "$@"
     else
         if command_exists sudo; then
@@ -34,7 +33,6 @@ run_as_root () {
             exit 1
         fi
     fi
-    return
 }
 
 # Function to ask for user permission

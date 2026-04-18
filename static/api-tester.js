@@ -56,12 +56,8 @@ function showToast(msg, type = 'info') {
 require.config({ paths: { 'vs': '/static/libs/vs' } });
 require(['vs/editor/editor.main'], function() {
     const savedTheme = localStorage.getItem('devsuite-theme') || 'vs-dark';
-    let monacoTheme;
-    if (savedTheme === 'ios-glass' || savedTheme === 'vs-dark') monacoTheme = 'vs-dark';
-    else if (savedTheme === 'hc-black') monacoTheme = 'hc-black';
-    else if (savedTheme === 'vs') monacoTheme = 'vs';
-    else monacoTheme = savedTheme;
-    
+    const monacoTheme = resolveMonacoTheme(savedTheme);
+
     reqEditor = monaco.editor.create(document.getElementById('req-body-editor'), {
         value: `{\n\t"key": "value"\n}`,
         language: 'json',
@@ -297,7 +293,7 @@ async function saveCollections() {
 function renderCollections() {
     els.collectionsList.innerHTML = '';
     collections.forEach((item, idx) => {
-        const d = document.createElement('div');
+        const d = document.createElement('li');
         d.className = 'collection-item';
         
         const badge = document.createElement('span');
@@ -369,32 +365,9 @@ function loadCollectionItem(item) {
 }
 
 els.saveBtn.addEventListener('click', () => {
-    let name = prompt("Name this request:");
+    const name = prompt("Name this request:");
     if (!name) return;
-    
-    let config = {
-        name: name,
-        url: els.url.value.trim(),
-        method: els.method.value,
-        queryParams: paramsListObj.get(),
-        headers: headersListObj.get(),
-        auth: { type: els.authType.value }
-    };
-    
-    if (config.auth.type === 'bearer') config.auth.token = els.authToken.value;
-    if (config.auth.type === 'basic') {
-        config.auth.username = els.authUsername.value;
-        config.auth.password = els.authPassword.value;
-    }
-
-    const selectedBody = document.querySelector('input[name="bodyType"]:checked').value;
-    config.bodyType = selectedBody;
-    if (selectedBody === 'json' && reqEditor) {
-        config.body = reqEditor.getValue();
-    } else if (selectedBody === 'form-data') {
-        config.body = formDataListObj.get();
-    }
-    
+    const config = { ...buildRequestConfig(), name };
     collections.push(config);
     saveCollections();
     renderCollections();

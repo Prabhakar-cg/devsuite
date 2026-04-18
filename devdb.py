@@ -325,8 +325,8 @@ class DevDB:
         return payload_bytes
 
     @staticmethod
-    def _load_db_obj(payload_bytes: bytes) -> dict:
-        """Decode JSON payload and validate top-level structure."""
+    def _load_db_obj(payload_bytes: bytes) -> tuple:
+        """Decode JSON payload, validate top-level structure, and return (db_obj, meta, stores)."""
         try:
             db_obj = json.loads(payload_bytes.decode("utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
@@ -342,7 +342,7 @@ class DevDB:
             raise ValueError(
                 f"DevDB: 'stores' must be a mapping, got {type(_stores).__name__!r}"
             )
-        return db_obj
+        return db_obj, _meta, _stores
 
     def _parse(self, raw: bytes) -> None:
         """Parse raw .dsb bytes (shared by _load and from_bytes)."""
@@ -371,9 +371,9 @@ class DevDB:
             # Plain mode: body = BLAKE2b(32) ‖ JSON
             payload_bytes = self._verify_plain_body(body)
 
-        db_obj = self._load_db_obj(payload_bytes)
-        self._meta   = dict(db_obj.get("meta", {}))
-        self._stores = dict(db_obj.get("stores", {}))
+        _db_obj, _meta, _stores = self._load_db_obj(payload_bytes)
+        self._meta   = dict(_meta)
+        self._stores = dict(_stores)
 
     def _build_file_bytes(self) -> bytes:
         """Serialise current state to raw .dsb bytes (called inside lock)."""

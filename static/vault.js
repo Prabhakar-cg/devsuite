@@ -163,11 +163,15 @@ async function _resolveVaultSalt(data) {
     // New vault — generate a salt and persist an empty placeholder.
     const salt = CryptoJS.lib.WordArray.random(16);
     vaultSaltHex = salt.toString();
-    await fetch('/api/vault', {
+    const persistRes = await fetch('/api/vault', {
         method: 'POST',
         headers: _authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
     });
+    if (!persistRes.ok) {
+        vaultSaltHex = null;
+        throw new Error('Failed to persist vault salt');
+    }
     return salt;
 }
 
@@ -188,15 +192,17 @@ async function _registerSetupChallenge(key, salt) {
                 verify_iv:   verifyIv.toString(),
             }),
         });
-        if (setupRes.ok) {
-            await _acquireServerSession(key.toString());
-            if (isNewVault) {
-                await fetch('/api/vault', {
-                    method: 'POST',
-                    headers: _authHeaders({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
-                });
-            }
+        if (!setupRes.ok) {
+            console.warn('Failed to register master password challenge: server returned', setupRes.status);
+            return;
+        }
+        await _acquireServerSession(key.toString());
+        if (isNewVault) {
+            await fetch('/api/vault', {
+                method: 'POST',
+                headers: _authHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
+            });
         }
         isSetupMode = false;
         document.getElementById('lock-setup-desc').textContent =

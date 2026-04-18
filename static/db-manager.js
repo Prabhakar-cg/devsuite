@@ -223,12 +223,12 @@ function renderStores(data) {
         const m        = STORE_META[name];
         const storeInfo = sizes[name];
         const kb       = storeInfo ? fmtBytes(storeInfo.bytes) : null;
-        const hasData  = !!storeInfo;
+        const hasData  = Boolean(storeInfo);
 
         const card = document.createElement('div');
         card.className = 'store-card' + (hasData ? '' : ' empty');
         const entryCount = storeEntryCount(name, storeInfo?.count ?? null);
-        const entryDisplay = entryCount !== null ? entryCount : '—';
+        const entryDisplay = entryCount ?? '—';
         const entriesHtml = hasData
             ? `<div class="store-card-entries">${entryDisplay}</div>`
             : '<div class="store-card-entries" style="font-size:16px;color:var(--text-muted)">Empty</div>';

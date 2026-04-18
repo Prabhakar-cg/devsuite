@@ -45,10 +45,10 @@
      ACTION TOOLBAR
      ==================================================== -->
 <div class="action-toolbar" role="toolbar" aria-label="JSON actions">
-    <div id="status-pill" class="status-pill idle" role="status" aria-live="polite" aria-atomic="true">
+    <output id="status-pill" class="status-pill idle" aria-live="polite" aria-atomic="true">
         <span class="status-dot" aria-hidden="true"></span>
         <span id="status-text">Ready</span>
-    </div>
+    </output>
     <div class="toolbar-sep" aria-hidden="true"></div>
     <button id="btn-validate" class="btn btn-primary" title="Validate JSON (Ctrl+Enter)" aria-label="Validate JSON (Ctrl+Enter)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
@@ -62,16 +62,16 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 8 2 5 5 2"/><line x1="2" y1="5" x2="12" y2="5"/><polyline points="19 16 22 19 19 22"/><line x1="22" y1="19" x2="12" y2="19"/></svg>
         Minify
     </button>
-    <button id="btn-sort-keys" class="btn btn-ghost" title="Sort all object keys alphabetically" aria-label="Sort JSON keys alphabetically">
+    <button id="btn-sort-keys" class="btn btn-ghost" title="Sort all object keys alphabetically" aria-label="Sort Keys — sort JSON keys alphabetically">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         Sort Keys
     </button>
     <div class="toolbar-sep" aria-hidden="true"></div>
-    <button id="btn-to-yaml" class="btn btn-ghost" title="Convert JSON to YAML" aria-label="Convert JSON to YAML">
+    <button id="btn-to-yaml" class="btn btn-ghost" title="Convert JSON to YAML" aria-label="→ YAML — convert JSON to YAML">
         → YAML
     </button>
     <div class="toolbar-sep" aria-hidden="true"></div>
-    <button id="btn-clear" class="btn btn-ghost" title="Clear editor" aria-label="Clear editor">
+    <button id="btn-clear" class="btn btn-ghost" title="Clear editor" aria-label="Clear — clear editor">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
         Clear
     </button>
@@ -94,10 +94,10 @@
                 <span class="pane-label" id="input-editor-label">Input JSON</span>
                 <div class="pane-actions">
                     <span id="line-count" class="line-badge" aria-live="polite" aria-atomic="true">0 lines</span>
-                    <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="Paste from clipboard">📋 Paste</button>
+                    <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="📋 Paste from clipboard">📋 Paste</button>
                 </div>
             </div>
-            <div id="input-editor" class="monaco-host" role="textbox" aria-label="JSON input editor" aria-multiline="true"></div>
+            <div id="input-editor" class="monaco-host" aria-label="JSON input editor"></div>
             <!-- Error panel sits at bottom of input pane -->
             <div id="error-panel" class="error-panel" role="alert" aria-live="assertive" aria-atomic="true">
                 <span class="error-icon" aria-hidden="true">⚠️</span>
@@ -120,7 +120,7 @@
                 <span class="output-empty-icon" aria-hidden="true">{ }</span>
                 <span>Run Validate, Format or Minify to see output</span>
             </div>
-            <div id="output-editor" class="output-monaco-host" style="display:none;" role="region" aria-label="JSON output" aria-live="polite"></div>
+            <section id="output-editor" class="output-monaco-host" style="display:none;" aria-label="JSON output" aria-live="polite"></section>
         </div>
 
     </div>

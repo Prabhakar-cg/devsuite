@@ -87,7 +87,7 @@ async def _lifespan(_application: FastAPI):
     # (cleanup goes here if needed in future)
 
 
-APP_VERSION = "2.2.0"
+APP_VERSION = "0.1.2"
 
 app = FastAPI(
     title="DevSuite",
@@ -1258,8 +1258,7 @@ def auth_session(data: dict):  # pylint: disable=too-many-locals
 def _create_known_hosts(path: str) -> None:
     """Create an empty known_hosts file with mode 600."""
     with open(path, "w", encoding="utf-8") as _fh:
-        # Intentionally empty: creates the file with no initial content
-        _ = _fh
+        pass  # intentionally empty: creates the file with no initial content
     os.chmod(path, 0o600)
 
 
@@ -1483,14 +1482,15 @@ async def _ws_wait_for_host_key_response(websocket: WebSocket, timeout: float) -
         if remaining <= 0:
             return False
         try:
-            raw = await asyncio.wait_for(websocket.receive_text(), timeout=remaining)
+            async with asyncio.timeout(remaining):
+                raw = await websocket.receive_text()
         except asyncio.TimeoutError:
             return False
         try:
             msg = json.loads(raw)
             if msg.get("type") == "host_key_response":
                 return bool(msg.get("approve", False))
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except (json.JSONDecodeError, AttributeError) as exc:
             logger.debug(
                 "Ignored non-JSON message while waiting for"
                 " host_key_response (len=%d) — %s",
@@ -1623,7 +1623,7 @@ async def sftp_list(req: SFTPRequest):
     except HTTPException:
         raise
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("SFTP list error for %s: %s", req.host[:50], e)
+        logger.error("SFTP list error: %s", e)
         raise HTTPException(status_code=500, detail=_ERR_SFTP_FAILED) from e
 
 
@@ -1912,8 +1912,14 @@ async def _ssh_dashboard_connect(websocket: WebSocket, config: dict) -> None:
         return
 
     connect_kwargs = _build_ssh_connect_kwargs(ssh_host, port, username, password, private_key, known_hosts_path)
-    async with asyncssh.connect(**connect_kwargs) as conn:
-        await _run_metrics_loop(websocket, conn)
+    try:
+        async with asyncssh.connect(**connect_kwargs) as conn:
+            await _run_metrics_loop(websocket, conn)
+    except WebSocketDisconnect:
+        raise
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        await websocket.send_json({"error": f"SSH connection error: {e}"})
+        await websocket.close()
 
 
 @app.websocket("/api/ssh/dashboard")

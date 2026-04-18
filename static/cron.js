@@ -216,7 +216,14 @@ class CronParser {
   }
 
   _parseWeekdayW(resolved, token, range, fieldName) {
-    const num = Number.parseInt(resolved, 10);
+    if (fieldName !== 'dom') {
+      return { valid: false, token, fieldName, error: `'W' modifier is only valid for day-of-month` };
+    }
+    const numStr = resolved.slice(0, -1); // strip trailing 'W'
+    if (!/^\d+$/.test(numStr)) {
+      return { valid: false, token, fieldName, error: `'W' requires a pure integer day number` };
+    }
+    const num = Number.parseInt(numStr, 10);
     if (Number.isNaN(num) || num < range.min || num > range.max) {
       return { valid: false, token, fieldName, error: `'W' requires a valid day number (${range.min}–${range.max})` };
     }
@@ -556,7 +563,10 @@ class CronSchedule {
     for (let i = 0; i < MAX_ITER && results.length < n; i++) {
       const month = cursor.getMonth() + 1; // 1-based
       const dom = cursor.getDate();
-      const dow = cursor.getDay(); // 0=Sun
+      const rawDow = cursor.getDay(); // 0=Sun..6=Sat (JS)
+      const dow = (this.dialect.id === 'quartz' || this.dialect.id === 'aws')
+        ? (rawDow === 0 ? 7 : rawDow) // map to 1=Sun..7=Sat for Quartz/AWS
+        : rawDow;
       const hour = cursor.getHours();
       const min = cursor.getMinutes();
 

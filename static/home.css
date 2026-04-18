@@ -1446,27 +1446,6 @@ html, body {
    TOOLS PAGE — feat-cards, tool-cards, filters (dark theme)
    ============================================================ */
 
-/* ── Featured cards (tools.html) ── */
-.feat-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.5rem;
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-    position: relative;
-    min-height: 180px;
-    box-shadow: var(--glow-card);
-}
-.feat-card:hover {
-    border-color: var(--border-accent);
-    transform: translateY(-3px);
-    box-shadow: var(--glow-card), 0 8px 32px rgba(59,130,246,0.12);
-}
-
 /* Hero variant — full-width, aurora border */
 .feat-card--hero {
     grid-column: 1 / -1;
@@ -1637,7 +1616,12 @@ html, body {
 .tool-card:nth-child(6) { animation-delay: 0.24s; }
 .tool-card:nth-child(7) { animation-delay: 0.28s; }
 .tool-card:nth-child(8) { animation-delay: 0.32s; }
+.tool-card:nth-child(n+9) { animation-delay: 0.36s; }
 .tool-card:active { transform: translateY(-1px) scale(0.99); }
+@media (prefers-reduced-motion: reduce) {
+    .tool-card { animation: none !important; transition: none !important; }
+    .tool-card:hover { transform: none; box-shadow: inherit; }
+}
 .tool-card.coming-soon {
     opacity: 0.45;
     cursor: default;

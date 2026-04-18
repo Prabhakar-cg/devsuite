@@ -117,7 +117,9 @@ export class ApiClient {
      */
     private static _bodyToString(body: BodyInit | null): string | null {
         if (body === null) return null;
-        return body.toString();
+        if (typeof body === 'string') return body;
+        if (body instanceof URLSearchParams) return body.toString();
+        return null;
     }
 
     /**
@@ -199,7 +201,7 @@ export class ApiClient {
         const responseHeaders: Record<string, string> = {};
         response.headers.forEach((v, k) => { responseHeaders[k] = v; });
 
-        if (isProxied && response.ok && responseHeaders['content-type'] === 'application/json') {
+        if (isProxied && response.ok && responseHeaders['content-type']?.startsWith('application/json')) {
             const decoded = this._decodeProxyResponse(bodyText, timeMs);
             if (decoded) return decoded;
         }

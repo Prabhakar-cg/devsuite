@@ -1064,9 +1064,10 @@ async function dashConnectTo(profile) {
         
         const ws = new WebSocket(wsUrl);
         dashConn.ws = ws;
+        const expectedWs = ws;
 
         ws.onopen = () => {
-            ws.send(JSON.stringify({ 
+            ws.send(JSON.stringify({
                 host: profile.host,
                 port: Number.parseInt(profile.port || 22),
                 username: profile.user,
@@ -1074,11 +1075,12 @@ async function dashConnectTo(profile) {
                 private_key: profile.key
             }));
         };
-        
+
         ws.onmessage = evt => {
+            if (dashConn?.ws !== expectedWs) return;
             try {
                 const msg = JSON.parse(evt.data);
-                
+
                 if (msg.type === 'host_key_approval') {
                     const fp = msg.fingerprint || '(unknown)';
                     const approved = confirm(
@@ -1087,26 +1089,26 @@ async function dashConnectTo(profile) {
                     ws.send(JSON.stringify({ type: 'host_key_response', approve: approved }));
                     return;
                 }
-                
+
                 if (msg.error) {
                     throw new Error(msg.error);
                 }
-                
+
                 if (msg.status === 'connected') {
                     document.getElementById('dashboard-status-dot').style.background = '#22c55e';
                     document.getElementById('dashboard-status-dot').style.boxShadow  = '0 0 6px rgba(34,197,94,0.6)';
                     document.getElementById('dashboard-conn-label').textContent = `${profile.user}@${profile.host}:${profile.port || 22}`;
-                    
+
                     document.getElementById('dashboard-loading').style.display = 'none';
                     document.getElementById('dashboard-metrics').style.display = 'flex';
                     document.getElementById('dash-host-title').textContent = profile.name || profile.host;
                     return;
                 }
-                
+
                 if (msg.type === 'metrics') {
                     updateDashboardGauges(msg);
                 }
-                
+
             } catch (e) {
                 document.getElementById('dashboard-loading').style.display = 'none';
                 document.getElementById('dashboard-metrics').style.display = 'none';
@@ -1116,9 +1118,9 @@ async function dashConnectTo(profile) {
                 ws.close();
             }
         };
-        
+
         ws.onclose = () => {
-            if (!dashConn) return; 
+            if (!dashConn || dashConn.ws !== expectedWs) return;
             document.getElementById('dashboard-status-dot').style.background = '#ef4444';
             document.getElementById('dashboard-status-dot').style.boxShadow  = 'none';
             document.getElementById('dashboard-conn-label').textContent = 'Disconnected';

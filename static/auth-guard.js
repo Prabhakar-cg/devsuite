@@ -241,7 +241,7 @@ const AuthGuard = (() => {
         if (!isSetup) {
             document.getElementById('ag-not-setup').style.display = 'flex';
             // Resolve with null — caller decides whether to allow unauthenticated access
-            return Promise.resolve(null);
+            return null;
         }
 
         document.getElementById('ag-form').style.display = 'flex';

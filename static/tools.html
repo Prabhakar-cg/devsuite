@@ -238,18 +238,18 @@
             </div>
 
             <div class="filter-tabs" role="radiogroup" aria-label="Filter tools by category">
-                <input type="radio" name="tool-filter" id="filter-all"      class="filter-radio" value="all"      checked>
-                <label  class="filter-tab active" for="filter-all"      data-filter="all"      tabindex="0">All      <span class="filter-count">13</span></label>
-                <input type="radio" name="tool-filter" id="filter-dev"      class="filter-radio" value="dev">
-                <label  class="filter-tab"        for="filter-dev"      data-filter="dev"      tabindex="-1">Dev      <span class="filter-count">5</span></label>
-                <input type="radio" name="tool-filter" id="filter-data"     class="filter-radio" value="data">
-                <label  class="filter-tab"        for="filter-data"     data-filter="data"     tabindex="-1">Data     <span class="filter-count">4</span></label>
-                <input type="radio" name="tool-filter" id="filter-security" class="filter-radio" value="security">
-                <label  class="filter-tab"        for="filter-security" data-filter="security" tabindex="-1">Security <span class="filter-count">3</span></label>
-                <input type="radio" name="tool-filter" id="filter-network"  class="filter-radio" value="network">
-                <label  class="filter-tab"        for="filter-network"  data-filter="network"  tabindex="-1">Network  <span class="filter-count">2</span></label>
-                <input type="radio" name="tool-filter" id="filter-time"     class="filter-radio" value="time">
-                <label  class="filter-tab"        for="filter-time"     data-filter="time"     tabindex="-1">Schedule <span class="filter-count">1</span></label>
+                <input type="radio" name="tool-filter" id="filter-all"      class="filter-radio" value="all"      checked tabindex="0">
+                <label  class="filter-tab active" for="filter-all"      data-filter="all"     >All      <span class="filter-count">13</span></label>
+                <input type="radio" name="tool-filter" id="filter-dev"      class="filter-radio" value="dev"      tabindex="-1">
+                <label  class="filter-tab"        for="filter-dev"      data-filter="dev"     >Dev      <span class="filter-count">5</span></label>
+                <input type="radio" name="tool-filter" id="filter-data"     class="filter-radio" value="data"     tabindex="-1">
+                <label  class="filter-tab"        for="filter-data"     data-filter="data"    >Data     <span class="filter-count">4</span></label>
+                <input type="radio" name="tool-filter" id="filter-security" class="filter-radio" value="security" tabindex="-1">
+                <label  class="filter-tab"        for="filter-security" data-filter="security">Security <span class="filter-count">3</span></label>
+                <input type="radio" name="tool-filter" id="filter-network"  class="filter-radio" value="network"  tabindex="-1">
+                <label  class="filter-tab"        for="filter-network"  data-filter="network" >Network  <span class="filter-count">2</span></label>
+                <input type="radio" name="tool-filter" id="filter-time"     class="filter-radio" value="time"     tabindex="-1">
+                <label  class="filter-tab"        for="filter-time"     data-filter="time"    >Schedule <span class="filter-count">1</span></label>
             </div>
 
             <div class="tools-grid" id="tool-grid">
@@ -744,7 +744,9 @@
                         next = tabList.length - 1;
                     } else if (e.key === ' ' || e.key === 'Enter') {
                         e.preventDefault();
-                        if (activeRadio) { activeRadio.click(); }
+                        const radioId = tab.getAttribute('for');
+                        const radio = radioId ? document.getElementById(radioId) : null;
+                        if (radio) { radio.checked = true; applyFilter(radio.value); }
                     }
                     if (next !== -1) {
                         e.preventDefault();
@@ -756,6 +758,7 @@
             });
 
             updateFilterCounts();
+            applyFilter('all');
         })();
     </script>
 

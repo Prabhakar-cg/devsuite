@@ -205,40 +205,40 @@
             </button>
         </div>
 
-        <div id="result-box" role="region" aria-label="Generated short link result" aria-live="polite">
+        <section id="result-box" aria-label="Generated short link result" aria-live="polite">
             <div class="result-label">Success! Your local short link:</div>
             <div id="short-url-val" class="short-url-val" aria-live="polite"></div>
-            <button id="btn-copy-main" class="btn-copy" style="margin-bottom: 1rem;" aria-label="Copy short link to clipboard">
+            <button id="btn-copy-main" class="btn-copy" style="margin-bottom: 1rem;" aria-label="Copy Link to clipboard">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 Copy Link
             </button>
             <div class="barcode-section">
                 <div class="barcode-card">
                     <div class="barcode-title" id="qr-label">QR Code</div>
-                    <div class="canvas-bg"><canvas id="qr-canvas" aria-labelledby="qr-label" role="img"></canvas></div>
-                    <button class="btn-dl" onclick="downloadCanvas('qr-canvas', 'qr_code.png')" aria-label="Download QR Code as PNG">
+                    <div class="canvas-bg"><canvas id="qr-canvas" aria-labelledby="qr-label"></canvas></div>
+                    <button class="btn-dl" onclick="downloadCanvas('qr-canvas', 'qr_code.png')" aria-label="Download PNG — QR Code">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Download PNG
                     </button>
                 </div>
                 <div class="barcode-card">
                     <div class="barcode-title" id="barcode-label">Barcode (Code128)</div>
-                    <div class="canvas-bg"><canvas id="barcode-canvas" aria-labelledby="barcode-label" role="img"></canvas></div>
-                    <button class="btn-dl" onclick="downloadCanvas('barcode-canvas', 'barcode.png')" aria-label="Download Barcode as PNG">
+                    <div class="canvas-bg"><canvas id="barcode-canvas" aria-labelledby="barcode-label"></canvas></div>
+                    <button class="btn-dl" onclick="downloadCanvas('barcode-canvas', 'barcode.png')" aria-label="Download PNG — Barcode (Code128)">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Download PNG
                     </button>
                 </div>
             </div>
-        </div>
+        </section>
     </div>
 
-    <div class="recent-links" id="recent-links-section" role="region" aria-label="Recent links">
+    <section class="recent-links" id="recent-links-section" aria-label="Recent links">
         <div class="recent-header">Recent Links (Session)</div>
         <div class="link-list" id="link-list">
             <!-- Dynamically populated -->
         </div>
-    </div>
+    </section>
 </main>
 
 <script>
@@ -271,7 +271,7 @@
         try {
             const raw = localStorage.getItem(RECENTS_KEY);
             if (raw) recents = JSON.parse(raw);
-        } catch(e) {}
+        } catch(e) { console.warn('Failed to parse stored recents', e); }
         renderRecents();
     }
 
@@ -323,7 +323,7 @@
                 try {
                     await navigator.clipboard.writeText(r.shortUrl);
                     toast('Copied short URL', 'success', 2000);
-                } catch(e) { }
+                } catch(e) { console.warn('Clipboard copy failed', e); }
             };
 
             shortWrap.appendChild(anchor);

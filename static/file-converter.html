@@ -959,21 +959,17 @@ function handleCanvasBlob(blob, url, to, resolve, reject) {
 }
 
 function drawImageToCanvas(img, to, url, resolve, reject) {
+    const canvas = document.createElement('canvas');
+    canvas.width  = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
     if (to === 'base64') {
-        const canvas = document.createElement('canvas');
-        canvas.width  = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
         showTextResult(canvas.toDataURL('image/png'), 'base64', 'txt');
         URL.revokeObjectURL(url);
         resolve();
         return;
     }
-    const canvas = document.createElement('canvas');
-    canvas.width  = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext('2d');
     if (to === 'jpg' || to === 'jpeg') {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1141,7 +1137,7 @@ function htmlTableToMarkdown(node, walkFn) {
     if (!rows.length) return Array.from(node.childNodes).map(walkFn).join('');
     const heads = Array.from(rows[0].querySelectorAll('th,td')).map(c => walkFn(c).trim());
     const sep = heads.map(() => '---');
-    const body = rows.slice(1).map(r => Array.from(r.querySelectorAll('td')).map(c => walkFn(c).trim()).join(' | '));
+    const body = rows.slice(1).map(r => Array.from(r.querySelectorAll('th,td')).map(c => walkFn(c).trim()).join(' | '));
     return [heads.join(' | '), sep.join(' | '), ...body].join('\n') + '\n\n';
 }
 

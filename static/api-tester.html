@@ -24,7 +24,7 @@
     <!-- Header -->
     <header class="app-header" aria-label="API Tester toolbar">
         <div style="display:flex; align-items:center; gap:0.75rem;">
-            <a href="/tools" class="back-link" aria-label="Back to DevSuite tools">← DevSuite</a>
+            <a href="/tools" class="back-link" aria-label="← DevSuite — back to tools">← DevSuite</a>
             <div class="tool-identity" id="tool-identity">
                 <!-- We use Violet accent for API Tester per design -->
                 <div class="tool-icon tool-icon-violet" id="tool-header-icon" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);color:#fff;" aria-hidden="true">
@@ -53,9 +53,9 @@
                 <span>Collections</span>
                 <button id="refresh-collections-btn" class="btn-small" style="border:none; background:transparent;" aria-label="Refresh collections">↺</button>
             </div>
-            <div class="sidebar-content" id="collections-list" role="list">
+            <ul class="sidebar-content" id="collections-list">
                 <!-- Injected natively via JS -->
-            </div>
+            </ul>
         </nav>
 
         <!-- Request/Response Column -->
@@ -88,12 +88,12 @@
 
                     <div id="tab-params" class="tab-content active req-tab-content" role="tabpanel" aria-label="Query parameters">
                         <div id="params-list"></div>
-                        <button class="btn-small" id="btn-add-param" style="margin-top:0.5rem;" aria-label="Add query parameter">+ Add Param</button>
+                        <button class="btn-small" id="btn-add-param" style="margin-top:0.5rem;" aria-label="+ Add Param">+ Add Param</button>
                     </div>
 
                     <div id="tab-headers" class="tab-content req-tab-content" role="tabpanel" aria-label="Request headers">
                         <div id="headers-list"></div>
-                        <button class="btn-small" id="btn-add-header" style="margin-top:0.5rem;" aria-label="Add request header">+ Add Header</button>
+                        <button class="btn-small" id="btn-add-header" style="margin-top:0.5rem;" aria-label="+ Add Header">+ Add Header</button>
                     </div>
 
                     <div id="tab-auth" class="tab-content req-tab-content" role="tabpanel" aria-label="Authentication">
@@ -125,13 +125,13 @@
 
                         <!-- JSON Body Editor (Monaco) -->
                         <div id="req-body-editor-wrap" class="editor-container" style="display:none; flex:1;">
-                            <div id="req-body-editor" style="width:100%; height:100%;" role="textbox" aria-label="JSON request body" aria-multiline="true"></div>
+                            <div id="req-body-editor" style="width:100%; height:100%;" aria-label="JSON request body"></div>
                         </div>
 
                         <!-- Form Data UI -->
                         <div id="req-form-data-wrap" style="display:none; padding:1rem; flex:1; overflow-y:auto;">
                             <div id="form-data-list"></div>
-                            <button class="btn-small" id="btn-add-form-data" style="margin-top:0.5rem;" aria-label="Add form data field">+ Add Field</button>
+                            <button class="btn-small" id="btn-add-form-data" style="margin-top:0.5rem;" aria-label="+ Add Field">+ Add Field</button>
                         </div>
                     </div>
                 </section>
@@ -151,7 +151,7 @@
                     </div>
 
                     <div id="resp-body" class="tab-content active resp-tab-content" role="tabpanel" aria-label="Response body" style="padding:0; display:flex; flex-direction:column; position:relative; flex:1;">
-                        <div id="resp-editor" style="width:100%; height:100%; position:absolute; top:0; left:0;" role="region" aria-label="Response body editor" aria-live="polite"></div>
+                        <section id="resp-editor" style="width:100%; height:100%; position:absolute; top:0; left:0;" aria-label="Response body editor" aria-live="polite"></section>
                         <div id="resp-placeholder" style="display:flex; align-items:center; justify-content:center; flex:1; color:var(--text-muted); font-size:0.9rem;" aria-label="Empty response">
                             Enter a URL and click Send to see the response.
                         </div>

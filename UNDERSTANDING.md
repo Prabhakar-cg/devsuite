@@ -1,6 +1,6 @@
 # DevSuite Component & Architecture Reference
 
-> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (v2.2.0). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
+> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (app v0.1.2, doc v2.3.0). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
 
 ## 1. System Tenets & Boundaries
 - **Strict Privacy**: 100% locally-hosted. No cloud telemetry, no analytics, no external services for core functionality.
@@ -12,7 +12,8 @@
   - `innerHTML` is **strictly forbidden** when handling untrusted data. Use `document.createElement()` and `elem.textContent`.
   - Content Security Policy (CSP) and HTTP Security Headers are rigidly enforced in `main.py` middleware.
   - Client-side encryption (vault, SSH profiles) uses CryptoJS AES-256 in-browser. The backend **never** decrypts these blobs.
-- **Dependency Sourcing**: Third-party JS libraries (e.g., `crypto-js.min.js`, `bwip-js-min.js`) must be self-hosted in `/static/`. (Exceptions: Google Fonts and Monaco Editor via RequireJS CDN.)
+- **Dependency Sourcing**: Third-party JS libraries (e.g., `crypto-js.min.js`, `bwip-js-min.js`) must be self-hosted in `/static/`. (Exception: Monaco Editor via RequireJS CDN only.)
+- **Fonts**: Inter and JetBrains Mono are **self-hosted** in `/static/libs/fonts/` (woff2 files). Always load via `@import '/static/libs/fonts.css'` at the top of any CSS file that needs these fonts. **Never** use Google Fonts CDN (`fonts.googleapis.com`) — this tool is offline-first.
 
 ## 2. Directory Layout
 - **Root (`${WORKSPACE}/devsuite/`)**:
@@ -84,3 +85,4 @@
 3. **Monaco Dependency**: Generic Monaco Editor functionality is tightly coupled with `static/app.js`. When working with Diff or Linter tools, focus analysis there.
 4. **Auth Flow**: When modifying tools that persist to DevDB, always ensure `auth-guard.js` is loaded before the tool script. Vault and DB Manager use their own always-ask lock screens.
 5. **DevDB Stores**: All stores are arbitrary JSON dicts. Vault and SSH profiles contain *already-encrypted* ciphertext — never attempt to parse them server-side.
+6. **Font Loading**: When creating or editing any CSS file, use `@import '/static/libs/fonts.css';` as the very first line. Never introduce `fonts.googleapis.com` imports — fonts are served locally for full offline support.

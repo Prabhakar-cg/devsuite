@@ -117,7 +117,7 @@
         </div>
     </div>
     <div class="header-right">
-        <div id="status-pill" class="status-pill idle" role="status" aria-live="polite" aria-atomic="true"><span class="status-dot" aria-hidden="true"></span><span id="status-text">Ready</span></div>
+        <output id="status-pill" class="status-pill idle" aria-live="polite" aria-atomic="true"><span class="status-dot" aria-hidden="true"></span><span id="status-text">Ready</span></output>
     </div>
 </header>
 
@@ -127,12 +127,13 @@
     <input id="regex-pattern" type="text" placeholder="([A-Za-z]+)\s+(\d+)" spellcheck="false" autocomplete="off"
         aria-label="Regular expression pattern" aria-describedby="status-text">
     <span class="regex-slash" aria-hidden="true">/</span>
-    <div class="flags-wrap" role="group" aria-label="Regex flags">
+    <fieldset class="flags-wrap">
+        <legend class="sr-only">Regex flags</legend>
         <button class="flag-btn active" data-flag="g" title="Global — find all matches" aria-pressed="true" aria-label="Global flag — find all matches">g</button>
         <button class="flag-btn" data-flag="i" title="Case-insensitive" aria-pressed="false" aria-label="Case-insensitive flag">i</button>
         <button class="flag-btn" data-flag="m" title="Multiline — ^ and $ match line boundaries" aria-pressed="false" aria-label="Multiline flag">m</button>
         <button class="flag-btn" data-flag="s" title="Dotall — . matches newlines" aria-pressed="false" aria-label="Dotall flag — dot matches newlines">s</button>
-    </div>
+    </fieldset>
     <button id="btn-clear" class="btn btn-ghost" style="margin-left:0.5rem;" aria-label="Clear pattern and test string">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
         Clear
@@ -149,7 +150,7 @@
                 <span class="pane-label">Test String</span>
                 <span id="line-count" class="line-badge" aria-live="polite" aria-atomic="true">0 lines</span>
             </div>
-            <div id="input-editor" class="monaco-host" role="textbox" aria-label="Test string input editor" aria-multiline="true"></div>
+            <div id="input-editor" class="monaco-host" aria-label="Test string input editor"></div>
         </div>
 
         <!-- Match Results -->
@@ -161,12 +162,12 @@
                     <button id="btn-copy-matches" class="btn btn-ghost" disabled style="padding:2px 8px;font-size:0.7rem;" aria-label="Copy all matches to clipboard">Copy</button>
                 </div>
             </div>
-            <div class="match-pane" id="match-pane" role="region" aria-label="Match results" aria-live="polite">
+            <section class="match-pane" id="match-pane" aria-label="Match results" aria-live="polite">
                 <div class="match-empty" id="match-empty">
                     <span class="match-empty-icon" aria-hidden="true">🔎</span>
                     <span>Enter a pattern and test string to see matches</span>
                 </div>
-            </div>
+            </section>
         </div>
 
     </div>
@@ -238,8 +239,7 @@
         function getFlags() { return [...activeFlags].join(''); }
 
         function buildGroupChip(g, gi, namedGroups) {
-            const name = Object.keys(namedGroups).find(k => namedGroups[k] === g);
-            const label = name ? `$${name}` : `$${gi + 1}`;
+            const label = `$${gi + 1}`;
             const chip = document.createElement('span');
             chip.className = 'group-chip';
             const lblSpan = document.createElement('span');

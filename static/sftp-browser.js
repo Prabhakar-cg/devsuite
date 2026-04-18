@@ -258,7 +258,7 @@ async function loadDirectory(path) {
     try {
         const payload = {
             host:        currentConn.profile.host,
-            port:        Number.parseInt(currentConn.profile.port || 22),
+            port:        Number.isInteger(currentConn.profile.port) ? currentConn.profile.port : (Number.parseInt(currentConn.profile.port, 10) || 22),
             username:    currentConn.profile.user,
             password:    currentConn.profile.pass  || null,
             private_key: currentConn.profile.key   || null,

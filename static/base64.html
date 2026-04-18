@@ -78,7 +78,7 @@
 
 <!-- ACTION TOOLBAR -->
 <div class="action-toolbar" role="toolbar" aria-label="Base64 actions">
-    <div id="status-pill" class="status-pill idle" role="status" aria-live="polite" aria-atomic="true"><span class="status-dot" aria-hidden="true"></span><span id="status-text">Ready</span></div>
+    <output id="status-pill" class="status-pill idle" aria-live="polite" aria-atomic="true"><span class="status-dot" aria-hidden="true"></span><span id="status-text">Ready</span></output>
     <div class="toolbar-sep" aria-hidden="true"></div>
 
     <button id="btn-encode" class="btn btn-primary" aria-label="Encode to Base64">
@@ -92,12 +92,13 @@
 
     <div class="toolbar-sep" aria-hidden="true"></div>
 
-    <div class="toggle-group" role="group" aria-label="Base64 encoding mode">
+    <fieldset class="toggle-group">
+        <legend class="sr-only">Base64 encoding mode</legend>
         <button class="toggle-opt active" id="mode-std" title="Standard Base64" aria-pressed="true">Standard</button>
         <button class="toggle-opt" id="mode-url" title="URL-safe Base64 (replaces +/ with -_)" aria-pressed="false">URL-safe</button>
-    </div>
+    </fieldset>
 
-    <button id="btn-decode-jwt" class="btn btn-ghost" title="Decode as JWT — splits header.payload.signature" aria-label="Decode as JWT token">
+    <button id="btn-decode-jwt" class="btn btn-ghost" title="Decode as JWT — splits header.payload.signature" aria-label="🔐 JWT — Decode as JWT token">
         🔐 JWT
     </button>
 
@@ -137,10 +138,10 @@
                     <span class="pane-label">Input</span>
                     <div class="pane-actions">
                         <span id="char-count-2" class="line-badge" aria-live="polite" aria-atomic="true">0 chars</span>
-                        <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="Paste from clipboard">📋 Paste</button>
+                        <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="📋 Paste from clipboard">📋 Paste</button>
                     </div>
                 </div>
-                <div id="input-editor" class="monaco-host" role="textbox" aria-label="Base64 input editor" aria-multiline="true"></div>
+                <div id="input-editor" class="monaco-host" aria-label="Base64 input editor"></div>
             </div>
 
             <!-- Output -->
@@ -153,7 +154,7 @@
                     <span class="output-empty-icon" aria-hidden="true">🔀</span>
                     <span>Click Encode or Decode to see output</span>
                 </div>
-                <div id="output-editor" class="output-monaco-host" style="display:none;" role="region" aria-label="Encoded/decoded output" aria-live="polite"></div>
+                <section id="output-editor" class="output-monaco-host" style="display:none;" aria-label="Encoded/decoded output" aria-live="polite"></section>
 
                 <!-- Error panel inside output pane -->
                 <div id="error-panel" class="error-panel" role="alert" aria-live="assertive" aria-atomic="true">
@@ -167,7 +168,7 @@
         </div>
 
         <!-- JWT breakdown section -->
-        <div class="jwt-section" id="jwt-section" role="region" aria-label="JWT decoded breakdown" aria-live="polite">
+        <section class="jwt-section" id="jwt-section" aria-label="JWT decoded breakdown" aria-live="polite">
             <div class="jwt-header-bar">
                 <span>JWT Decoded</span>
                 <button onclick="document.getElementById('jwt-section').classList.remove('visible')" class="btn btn-ghost" style="padding:1px 6px;font-size:0.7rem;" aria-label="Close JWT panel">✕</button>
@@ -186,7 +187,7 @@
                     <div id="jwt-sig" class="jwt-sig-color" style="word-break:break-all;font-size:0.65rem;color:var(--text-muted)" aria-label="JWT signature"></div>
                 </div>
             </div>
-        </div>
+        </section>
     </div>
 </main>
 

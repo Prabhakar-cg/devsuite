@@ -18,6 +18,24 @@
 
 // ── Module-level helpers (S7721: hoisted out of DOMContentLoaded) ──
 
+async function _hasFileContentChanged(o, m, path) {
+    if (o.size !== m.size) return true;
+    if (o.size >= 5 * 1024 * 1024) return null; // too large to hash — skip comparison
+    try {
+        const [bufO, bufM] = await Promise.all([o.arrayBuffer(), m.arrayBuffer()]);
+        const [hashO, hashM] = await Promise.all([
+            crypto.subtle.digest('SHA-256', bufO),
+            crypto.subtle.digest('SHA-256', bufM)
+        ]);
+        const strO = Array.from(new Uint8Array(hashO)).join(',');
+        const strM = Array.from(new Uint8Array(hashM)).join(',');
+        return strO !== strM;
+    } catch (e) {
+        console.warn("Failed to hash " + path, e);
+        return true; // conservatively treat hash failures as modified
+    }
+}
+
 function countLines(text) {
     if (!text) return 0;
     return text.split('\n').length;
@@ -1016,23 +1034,6 @@ document.addEventListener('DOMContentLoaded', () => {
         await rerunComparison();
     });
 
-    async function _hasFileContentChanged(o, m, path) {
-        if (o.size !== m.size) return true;
-        if (o.size >= 5 * 1024 * 1024) return true; // too large to hash — treat as modified
-        try {
-            const [bufO, bufM] = await Promise.all([o.arrayBuffer(), m.arrayBuffer()]);
-            const [hashO, hashM] = await Promise.all([
-                crypto.subtle.digest('SHA-256', bufO),
-                crypto.subtle.digest('SHA-256', bufM)
-            ]);
-            const strO = Array.from(new Uint8Array(hashO)).join(',');
-            const strM = Array.from(new Uint8Array(hashM)).join(',');
-            return strO !== strM;
-        } catch (e) {
-            console.warn("Failed to hash " + path, e);
-            return true; // conservatively treat hash failures as modified
-        }
-    }
 
     /**
      * (Re-)compute fileDiffStatusMap from the current originalFiles / modifiedFiles
@@ -1057,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const o = originalFiles.get(path), m = modifiedFiles.get(path);
                 const changed = await _hasFileContentChanged(o, m, path);
-                fileDiffStatusMap.set(path, { status: changed ? 'modified' : 'unchanged' });
+                fileDiffStatusMap.set(path, { status: changed === null ? 'unchanged' : changed ? 'modified' : 'unchanged' });
             }
         }
         renderFileTree();
