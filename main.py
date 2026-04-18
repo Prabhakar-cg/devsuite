@@ -87,7 +87,7 @@ async def _lifespan(_application: FastAPI):
     # (cleanup goes here if needed in future)
 
 
-APP_VERSION = "2.2.0"
+APP_VERSION = "0.1.2"
 
 app = FastAPI(
     title="DevSuite",
@@ -569,7 +569,11 @@ async def convert_file(
     )
 
 
-@app.get("/api/vault", summary="Get encrypted vault blob")
+@app.get(
+    "/api/vault",
+    summary="Get encrypted vault blob",
+    responses={401: {"description": "Session token missing or expired"}},
+)
 def get_vault(request: Request):
     """Return the raw encrypted vault blob from the DevDB 'vault' store.
     Backward-compatible shim — the server never decrypts vault contents.
@@ -579,7 +583,14 @@ def get_vault(request: Request):
     return store if store else {"encrypted_blob": ""}
 
 
-@app.post("/api/vault", summary="Save encrypted vault blob")
+@app.post(
+    "/api/vault",
+    summary="Save encrypted vault blob",
+    responses={
+        401: {"description": "Session token missing or expired"},
+        500: {"description": "Failed to save vault"},
+    },
+)
 def save_vault(data: dict, request: Request):
     """Persist the encrypted vault blob into the DevDB 'vault' store.
     Backward-compatible shim — the server never decrypts vault contents.
@@ -597,7 +608,10 @@ def save_vault(data: dict, request: Request):
 @app.post(
     "/api/shorten",
     summary="Create a short URL",
-    responses={400: {"description": "Invalid or empty URL"}},
+    responses={
+        400: {"description": "Invalid or empty URL"},
+        500: {"description": "Failed to generate unique short ID"},
+    },
 )
 def shorten_url(req: ShortenRequest, request: Request):
     """
@@ -652,7 +666,11 @@ def shorten_url(req: ShortenRequest, request: Request):
     return {"short_id": short_id, "short_url": short_url, "original_url": url}
 
 
-@app.get("/r/{short_id}", summary="Redirect to original URL")
+@app.get(
+    "/r/{short_id}",
+    summary="Redirect to original URL",
+    responses={404: {"description": "Short URL not found"}},
+)
 def redirect_short_url(short_id: str):
     """
     Redirects a short identifier to the stored original URL.
@@ -668,7 +686,15 @@ def redirect_short_url(short_id: str):
     raise HTTPException(status_code=404, detail="Short URL not found.")
 
 
-@app.post("/upload", summary="Upload a text file for diffing")
+@app.post(
+    "/upload",
+    summary="Upload a text file for diffing",
+    responses={
+        400: {"description": "Binary file or invalid content type"},
+        413: {"description": "File too large (50 MB limit)"},
+        500: {"description": "Server error processing file"},
+    },
+)
 async def upload_file(file: Annotated[UploadFile, File(...)]):
     """
     Accepts an uploaded text file, validates it is not binary and within size limits,
@@ -727,7 +753,11 @@ async def upload_file(file: Annotated[UploadFile, File(...)]):
         raise HTTPException(status_code=500, detail="Server error processing file") from e
 
 
-@app.get("/api/collections", summary="Get API Tester Collections")
+@app.get(
+    "/api/collections",
+    summary="Get API Tester Collections",
+    responses={500: {"description": "Failed to read collections"}},
+)
 def get_collections():
     """Read saved collections from the DevDB 'collections' store.
     Backward-compatible shim for api-tester.js.
@@ -736,7 +766,11 @@ def get_collections():
     return store if store else {"items": []}
 
 
-@app.post("/api/collections", summary="Save API Tester Collections")
+@app.post(
+    "/api/collections",
+    summary="Save API Tester Collections",
+    responses={500: {"description": "Failed to save collections"}},
+)
 def save_collections(data: dict):
     """Persist collections into the DevDB 'collections' store.
     Backward-compatible shim for api-tester.js.
@@ -772,7 +806,7 @@ def _check_ip_not_private(ip_str: str) -> None:
         if ip_str.startswith("169.254."):
             raise HTTPException(status_code=403, detail="Access to cloud metadata endpoints is forbidden")
     except ValueError:
-        pass
+        pass  # intentionally ignored: non-IP strings (hostnames) are not checked
 
 
 _HOP_BY_HOP_HEADERS = frozenset(("host", "connection", "origin", "referer", "accept-encoding"))
@@ -806,6 +840,7 @@ def _execute_proxy_request(request_obj) -> dict:
     responses={
         400: {"description": "Invalid URL or DNS failure"},
         403: {"description": "Target IP is private or reserved"},
+        500: {"description": "Proxy request failed"},
     },
 )
 async def proxy_request(req: ProxyRequest):  # pylint: disable=too-many-locals,too-many-branches
@@ -858,7 +893,11 @@ async def proxy_request(req: ProxyRequest):  # pylint: disable=too-many-locals,t
         raise HTTPException(status_code=500, detail="Proxy request failed") from e
 
 
-@app.get("/api/ssh/profiles", summary="Get SSH Profiles")
+@app.get(
+    "/api/ssh/profiles",
+    summary="Get SSH Profiles",
+    responses={401: {"description": "Session token missing or expired"}},
+)
 def get_ssh_profiles(request: Request):
     """Return the encrypted SSH profiles blob from the DevDB 'ssh_profiles' store.
     Backward-compatible shim — server never decrypts profile contents.
@@ -868,7 +907,14 @@ def get_ssh_profiles(request: Request):
     return store if store else {"encrypted_blob": ""}
 
 
-@app.post("/api/ssh/profiles", summary="Save SSH Profiles")
+@app.post(
+    "/api/ssh/profiles",
+    summary="Save SSH Profiles",
+    responses={
+        401: {"description": "Session token missing or expired"},
+        500: {"description": "Failed to save SSH profiles"},
+    },
+)
 def save_ssh_profiles(data: dict, request: Request):
     """Persist the encrypted SSH profiles blob into the DevDB 'ssh_profiles' store.
     Backward-compatible shim — server never decrypts profile contents.
@@ -914,7 +960,11 @@ _ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "url_db", "app_prefs"
 _DISTRO_NAME_RE = re.compile(r'^[A-Za-z0-9_.\-]+$')
 
 
-@app.get("/api/db/meta", summary="Get DevDB metadata")
+@app.get(
+    "/api/db/meta",
+    summary="Get DevDB metadata",
+    responses={401: {"description": "Session token missing or expired"}},
+)
 def db_meta(request: Request):
     """Return database metadata: path, file size, stores list, encryption status."""
     require_unlocked(request)
@@ -928,7 +978,14 @@ def db_meta(request: Request):
     }
 
 
-@app.get("/api/db/store/{name}", summary="Read a named DevDB store")
+@app.get(
+    "/api/db/store/{name}",
+    summary="Read a named DevDB store",
+    responses={
+        400: {"description": "Unknown store name"},
+        401: {"description": "Session token missing or expired"},
+    },
+)
 def db_get_store(name: str, request: Request):
     """Return the raw contents of the named store.  Restricted to known store names."""
     require_unlocked(request)
@@ -937,7 +994,15 @@ def db_get_store(name: str, request: Request):
     return _db.get_store(name)
 
 
-@app.post("/api/db/store/{name}", summary="Write a named DevDB store")
+@app.post(
+    "/api/db/store/{name}",
+    summary="Write a named DevDB store",
+    responses={
+        400: {"description": "Unknown store name"},
+        401: {"description": "Session token missing or expired"},
+        500: {"description": "Failed to write store"},
+    },
+)
 def db_set_store(name: str, data: dict, request: Request):
     """Replace the named store with the supplied data and flush to disk."""
     require_unlocked(request)
@@ -955,7 +1020,14 @@ def db_set_store(name: str, data: dict, request: Request):
         raise HTTPException(status_code=500, detail="Failed to write store") from e
 
 
-@app.get("/api/db/export", summary="Export full DevDB as a .dsb file")
+@app.get(
+    "/api/db/export",
+    summary="Export full DevDB as a .dsb file",
+    responses={
+        401: {"description": "Session token missing or expired"},
+        500: {"description": "Failed to export database"},
+    },
+)
 def db_export(request: Request):
     """Stream the raw .dsb binary as a file download."""
     require_unlocked(request)
@@ -971,7 +1043,16 @@ def db_export(request: Request):
         raise HTTPException(status_code=500, detail="Failed to export database") from e
 
 
-@app.post("/api/db/import", summary="Import a .dsb file into DevDB")
+@app.post(
+    "/api/db/import",
+    summary="Import a .dsb file into DevDB",
+    responses={
+        400: {"description": "Invalid .dsb format"},
+        401: {"description": "Session token missing or expired"},
+        413: {"description": "Import file too large (50 MB limit)"},
+        500: {"description": "Failed to import database"},
+    },
+)
 async def db_import(request: Request, file: Annotated[UploadFile, File(...)]):
     """Accept a .dsb upload and merge its stores into the running DevDB."""
     require_unlocked(request)
@@ -1004,7 +1085,11 @@ async def db_import(request: Request, file: Annotated[UploadFile, File(...)]):
 # known plaintext).  The plaintext password never leaves the browser.
 
 
-@app.get("/api/auth/status", summary="Check if master password is configured")
+@app.get(
+    "/api/auth/status",
+    summary="Check if master password is configured",
+    responses={},
+)
 def auth_status():
     """Return whether the master encryption password has been set up."""
     prefs = _db.get_store("app_prefs") or {}
@@ -1015,7 +1100,11 @@ def auth_status():
     }
 
 
-@app.get("/api/auth/challenge", summary="Get password verification challenge")
+@app.get(
+    "/api/auth/challenge",
+    summary="Get password verification challenge",
+    responses={404: {"description": "Master password not configured"}},
+)
 def auth_challenge():
     """Return the stored salt + encrypted-verify-blob for client-side password checking."""
     prefs = _db.get_store("app_prefs") or {}
@@ -1069,7 +1158,11 @@ def auth_setup(data: dict):
 @app.post(
     "/api/auth/update-challenge",
     summary="Update master password challenge after password change",
-    responses={400: {"description": "Missing required fields"}},
+    responses={
+        400: {"description": "Missing required fields"},
+        401: {"description": "Session token missing or expired"},
+        404: {"description": "Master password not yet configured"},
+    },
 )
 def auth_update_challenge(data: dict, request: Request):
     """Replace the verification challenge when the master password is changed.
@@ -1109,6 +1202,7 @@ def auth_update_challenge(data: dict, request: Request):
     responses={
         400: {"description": "Missing key_hex"},
         401: {"description": "Invalid master key or key verification failed"},
+        404: {"description": "Master password not configured"},
     },
 )
 def auth_session(data: dict):  # pylint: disable=too-many-locals
@@ -1163,8 +1257,8 @@ def auth_session(data: dict):  # pylint: disable=too-many-locals
 
 def _create_known_hosts(path: str) -> None:
     """Create an empty known_hosts file with mode 600."""
-    with open(path, "w", encoding="utf-8"):
-        pass
+    with open(path, "w", encoding="utf-8") as _fh:
+        pass  # intentionally empty: creates the file with no initial content
     os.chmod(path, 0o600)
 
 
@@ -1377,6 +1471,46 @@ async def _run_ssh_terminal_session(websocket: WebSocket, conn) -> None:
         await asyncio.gather(read_from_ssh(), write_to_ssh())
 
 
+async def _ws_wait_for_host_key_response(websocket: WebSocket) -> bool:
+    """Wait for a host_key_response message over *websocket*.
+
+    Returns True if the user approved, False on timeout or rejection.
+    """
+    while True:
+        try:
+            raw = await websocket.receive_text()
+        except asyncio.TimeoutError:
+            return False
+        try:
+            msg = json.loads(raw)
+            if msg.get("type") == "host_key_response":
+                return bool(msg.get("approve", False))
+        except (json.JSONDecodeError, AttributeError) as exc:
+            logger.debug(
+                "Ignored non-JSON message while waiting for"
+                " host_key_response (len=%d) — %s",
+                len(raw), exc,
+            )
+
+
+async def _terminal_ws_approve_host(
+    websocket: WebSocket,
+    h: str,
+    p: int,
+    fingerprint: str,
+    _key_line: bytes,
+) -> bool:
+    """Send a host-key approval request over *websocket* and await the browser reply."""
+    await websocket.send_json({
+        "type": "host_key_approval",
+        "host": h,
+        "port": p,
+        "fingerprint": fingerprint,
+    })
+    async with asyncio.timeout(60):
+    return await _ws_wait_for_host_key_response(websocket)
+
+
 @app.websocket("/api/ssh/terminal")
 async def ssh_terminal(websocket: WebSocket):
     """WebSocket endpoint: interactive SSH terminal session."""
@@ -1398,36 +1532,7 @@ async def ssh_terminal(websocket: WebSocket):
         await websocket.send_text(f"Verifying host key for {ssh_host}:{port}...\r\n")
 
         async def _ws_approve_host(h: str, p: int, fingerprint: str, _key_line: bytes) -> bool:
-            """Send a JSON approval request over the WebSocket and wait for the browser reply.
-
-            This is called before asyncssh.connect(), so write_to_ssh is not yet
-            running.  We receive the reply directly here with a 60-second timeout.
-            """
-            await websocket.send_json({
-                "type": "host_key_approval",
-                "host": h,
-                "port": p,
-                "fingerprint": fingerprint,
-            })
-            deadline = asyncio.get_event_loop().time() + 60
-            while True:
-                remaining = deadline - asyncio.get_event_loop().time()
-                if remaining <= 0:
-                    return False
-                try:
-                    raw = await asyncio.wait_for(websocket.receive_text(), timeout=remaining)
-                except asyncio.TimeoutError:
-                    return False
-                try:
-                    msg = json.loads(raw)
-                    if msg.get("type") == "host_key_response":
-                        return bool(msg.get("approve", False))
-                except Exception as exc:  # pylint: disable=broad-exception-caught
-                    logger.debug(
-                        "Ignored non-JSON message while waiting for"
-                        " host_key_response (len=%d) — %s",
-                        len(raw), exc,
-                    )
+            return await _terminal_ws_approve_host(websocket, h, p, fingerprint, _key_line)
 
         try:
             known_hosts_path = await _ensure_host_key(ssh_host, port, approve_host=_ws_approve_host)
@@ -1462,7 +1567,10 @@ class SFTPRequest(BaseModel):
 @app.post(
     "/api/sftp/list",
     summary="List files via SFTP",
-    responses={500: {"description": "SFTP operation failed"}},
+    responses={
+        409: {"description": "Host key approval required"},
+        500: {"description": "SFTP operation failed"},
+    },
 )
 async def sftp_list(req: SFTPRequest):
     """List files in a directory on a remote host via SFTP."""
@@ -1511,7 +1619,7 @@ async def sftp_list(req: SFTPRequest):
     except HTTPException:
         raise
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("SFTP list error for %s: %s", req.host, e)
+        logger.error("SFTP list error: %s", e)
         raise HTTPException(status_code=500, detail=_ERR_SFTP_FAILED) from e
 
 
@@ -1530,7 +1638,10 @@ class SFTPDownloadRequest(BaseModel):
 @app.post(
     "/api/sftp/download",
     summary="Download a file via SFTP",
-    responses={500: {"description": "SFTP operation failed"}},
+    responses={
+        409: {"description": "Host key approval required"},
+        500: {"description": "SFTP operation failed"},
+    },
 )
 async def sftp_download(req: SFTPDownloadRequest):
     """Stream a file download from a remote host via SFTP."""
@@ -1580,14 +1691,17 @@ async def sftp_download(req: SFTPDownloadRequest):
     except HTTPException:
         raise
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("SFTP download error for %s: %s", req.host, e)
+        logger.error("SFTP download error for %s: %s", req.host[:50], e)
         raise HTTPException(status_code=500, detail=_ERR_SFTP_FAILED) from e
 
 
 @app.post(
     "/api/sftp/upload",
     summary="Upload a file via SFTP",
-    responses={500: {"description": "SFTP operation failed"}},
+    responses={
+        409: {"description": "Host key approval required"},
+        500: {"description": "SFTP operation failed"},
+    },
 )
 async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     host: Annotated[str, Form(...)],
@@ -1636,7 +1750,7 @@ async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional
     except HTTPException:
         raise
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("SFTP upload error for %s: %s", host, e)
+        logger.error("SFTP upload error for %s: %s", host[:50], e)
         raise HTTPException(status_code=500, detail=_ERR_SFTP_FAILED) from e
 
 
@@ -1750,6 +1864,61 @@ def _parse_ssh_metrics(parts: list, prev_idle: int, prev_total: int) -> tuple:
     return payload, prev_idle, prev_total
 
 
+async def _dashboard_ws_approve_host(
+    websocket: WebSocket,
+    approved_fingerprint: str | None,
+    h: str,
+    p: int,
+    fingerprint: str,
+    _key: bytes,
+) -> bool:
+    """Approve a dashboard host key: auto-approve known fingerprint or prompt the browser."""
+    if approved_fingerprint and approved_fingerprint == fingerprint:
+        return True
+    await websocket.send_json({
+        "type": "host_key_approval",
+        "host": h,
+        "port": p,
+        "fingerprint": fingerprint,
+    })
+    async with asyncio.timeout(60):
+         return await _ws_wait_for_host_key_response(websocket)
+
+
+async def _ssh_dashboard_connect(websocket: WebSocket, config: dict) -> None:
+    """Parse config, verify host key, connect and start the metrics loop."""
+    ssh_host = config.get("host")
+    port = int(config.get("port", 22))
+    username = config.get("username")
+    password = config.get("password")
+    private_key = config.get("private_key")
+    approved_fingerprint = config.get("approved_fingerprint")
+
+    async def _ws_approve_host(h: str, p: int, fingerprint: str, _key: bytes) -> bool:
+        return await _dashboard_ws_approve_host(websocket, approved_fingerprint, h, p, fingerprint, _key)
+
+    try:
+        known_hosts_path = await _ensure_host_key(ssh_host, port, approve_host=_ws_approve_host)
+    except RuntimeError as exc:
+        await websocket.send_json({"error": str(exc)})
+        await websocket.close()
+        return
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        await websocket.send_json({"error": f"Host verification failed: {e}"})
+        await websocket.close()
+        return
+
+    connect_kwargs = _build_ssh_connect_kwargs(ssh_host, port, username, password, private_key, known_hosts_path)
+    try:
+        async with asyncssh.connect(**connect_kwargs) as conn:
+            await _run_metrics_loop(websocket, conn)
+    except WebSocketDisconnect:
+        raise
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        await websocket.send_json({"error": f"SSH connection error: {e}"})
+        await websocket.close()
+
+
 @app.websocket("/api/ssh/dashboard")
 async def ssh_dashboard(websocket: WebSocket):
     """WebSocket endpoint: real-time SSH server metrics dashboard."""
@@ -1760,52 +1929,7 @@ async def ssh_dashboard(websocket: WebSocket):
     try:
         data = await websocket.receive_text()
         config = json.loads(data)
-        ssh_host = config.get("host")
-        port = int(config.get("port", 22))
-        username = config.get("username")
-        password = config.get("password")
-        private_key = config.get("private_key")
-        approved_fingerprint = config.get("approved_fingerprint")
-
-        async def _ws_approve_host(h: str, p: int, fingerprint: str, _key: bytes) -> bool:
-            if approved_fingerprint and approved_fingerprint == fingerprint:
-                return True
-            await websocket.send_json({
-                "type": "host_key_approval",
-                "host": h,
-                "port": p,
-                "fingerprint": fingerprint,
-            })
-            deadline = asyncio.get_event_loop().time() + 60
-            while True:
-                remaining = deadline - asyncio.get_event_loop().time()
-                if remaining <= 0:
-                    return False
-                try:
-                    raw = await asyncio.wait_for(websocket.receive_text(), timeout=remaining)
-                except asyncio.TimeoutError:
-                    return False
-                try:
-                    msg = json.loads(raw)
-                    if msg.get("type") == "host_key_response":
-                        return bool(msg.get("approve", False))
-                except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
-                    pass
-
-        try:
-            known_hosts_path = await _ensure_host_key(ssh_host, port, approve_host=_ws_approve_host)
-        except RuntimeError as exc:
-            await websocket.send_json({"error": str(exc)})
-            await websocket.close()
-            return
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            await websocket.send_json({"error": f"Host verification failed: {e}"})
-            await websocket.close()
-            return
-
-        connect_kwargs = _build_ssh_connect_kwargs(ssh_host, port, username, password, private_key, known_hosts_path)
-        async with asyncssh.connect(**connect_kwargs) as conn:
-            await _run_metrics_loop(websocket, conn)
+        await _ssh_dashboard_connect(websocket, config)
     except WebSocketDisconnect:
         pass
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -1847,46 +1971,37 @@ def _apply_terminal_resize(fd: int, data: str, resize_pattern) -> bool:
     return True
 
 
-@app.websocket("/api/local/terminal")
-async def local_terminal(websocket: WebSocket):
-    """WebSocket endpoint: local PTY terminal (Linux/macOS only)."""
-    if not await _ws_check_origin(websocket):
-        return
-
-    if not _pty_available:
-        await websocket.close(code=1008, reason="Local terminal is not supported on this platform")
-        return
-
-    await websocket.accept()
-
-    config_raw = await websocket.receive_text()
+def _parse_distro_from_config(config_raw: str) -> str | None:
+    """Parse and validate the distro name from a JSON config string."""
     try:
         config = json.loads(config_raw)
         distro = config.get("distro")
-        # Reject distro names containing shell metacharacters or path separators.
         if distro and not _DISTRO_NAME_RE.match(distro):
             logger.warning("local_terminal: rejected invalid distro name %r", distro)
-            distro = None
+            return None
+        return distro
     except Exception:  # pylint: disable=broad-exception-caught
         logger.debug("local_terminal: failed to parse config JSON, proceeding with distro=None")
-        distro = None
+        return None
 
-    pid, fd = pty.fork()
-    if pid == 0:
-        current_distro = os.environ.get("WSL_DISTRO_NAME", "")
-        if distro and distro != current_distro:
-            # Note: wsl.exe across PTY interop might hang in certain builds,
-            # but we allow it for cross-distro attempts.
-            os.execvp(_WSL_EXE, [_WSL_EXE, "-d", distro])  # nosec B606
-        else:
-            shell = os.environ.get("SHELL", "/bin/bash")
-            os.execvp(shell, [shell])  # nosec B606
 
+def _exec_pty_child(distro: str | None) -> None:  # pragma: no cover — runs in forked child
+    """Replace the child process image with the appropriate shell or WSL distro."""
+    current_distro = os.environ.get("WSL_DISTRO_NAME", "")
+    if distro and distro != current_distro:
+        # Note: wsl.exe across PTY interop might hang in certain builds,
+        # but we allow it for cross-distro attempts.
+        os.execvp(_WSL_EXE, [_WSL_EXE, "-d", distro])  # nosec B606
+    else:
+        shell = os.environ.get("SHELL", "/bin/bash")
+        os.execvp(shell, [shell])  # nosec B606
+
+
+async def _run_local_pty_loop(websocket: WebSocket, fd: int) -> None:
+    """Run the PTY read/write loop until the WebSocket disconnects."""
     loop = asyncio.get_running_loop()
     loop.add_reader(fd, _make_pty_read_handler(fd, loop, websocket))
-
     resize_pattern = re.compile(r"^\x1b\[resize;(\d+);(\d+)m$")
-
     try:
         while True:
             data = await websocket.receive_text()
@@ -1902,6 +2017,28 @@ async def local_terminal(websocket: WebSocket):
             os.close(fd)
         except Exception:  # pylint: disable=broad-exception-caught
             logger.debug("local_terminal: error during cleanup", exc_info=True)
+
+
+@app.websocket("/api/local/terminal")
+async def local_terminal(websocket: WebSocket):
+    """WebSocket endpoint: local PTY terminal (Linux/macOS only)."""
+    if not await _ws_check_origin(websocket):
+        return
+
+    if not _pty_available:
+        await websocket.close(code=1008, reason="Local terminal is not supported on this platform")
+        return
+
+    await websocket.accept()
+
+    config_raw = await websocket.receive_text()
+    distro = _parse_distro_from_config(config_raw)
+
+    pid, fd = pty.fork()
+    if pid == 0:
+        _exec_pty_child(distro)
+
+    await _run_local_pty_loop(websocket, fd)
 
 
 if __name__ == "__main__":

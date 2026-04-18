@@ -55,13 +55,9 @@ function showToast(msg, type = 'info') {
 // Initialize Monaco Editors
 require.config({ paths: { 'vs': '/static/libs/vs' } });
 require(['vs/editor/editor.main'], function() {
-    let savedTheme = localStorage.getItem('devsuite-theme') || 'vs-dark';
-    let monacoTheme = 'vs-dark';
-    if (savedTheme === 'ios-glass') monacoTheme = 'vs-dark';
-    else if (savedTheme === 'hc-black') monacoTheme = 'hc-black';
-    else if (savedTheme === 'vs') monacoTheme = 'vs';
-    else monacoTheme = savedTheme;
-    
+    const savedTheme = localStorage.getItem('devsuite-theme') || 'vs-dark';
+    const monacoTheme = resolveMonacoTheme(savedTheme);
+
     reqEditor = monaco.editor.create(document.getElementById('req-body-editor'), {
         value: `{\n\t"key": "value"\n}`,
         language: 'json',
@@ -80,11 +76,15 @@ require(['vs/editor/editor.main'], function() {
     });
 });
 
-window.addEventListener('devsuite-theme-changed', (e) => {
+function resolveMonacoTheme(ts) {
+    if (ts === 'ios-glass' || ts === 'vs-dark') return 'vs-dark';
+    if (ts === 'hc-black') return 'hc-black';
+    return 'vs';
+}
+
+globalThis.addEventListener('devsuite-theme-changed', (e) => {
     if (reqEditor && respEditor) {
-        let ts = e.detail.theme;
-        let monacoTheme = (ts === 'ios-glass' || ts === 'vs-dark') ? 'vs-dark' : (ts === 'hc-black' ? 'hc-black' : 'vs');
-        monaco.editor.setTheme(monacoTheme);
+        monaco.editor.setTheme(resolveMonacoTheme(e.detail.theme));
     }
 });
 
@@ -97,10 +97,13 @@ function setupTabs(btnSelector, contentSelector) {
         btn.addEventListener('click', () => {
             btns.forEach(b => b.classList.remove('active'));
             contents.forEach(c => c.style.display = 'none');
-            
+
             btn.classList.add('active');
-            let t = document.getElementById(btn.getAttribute('data-target'));
-            if(t) t.style.display = t.classList.contains('resp-tab-content') && btn.getAttribute('data-target')==='resp-body' ? 'flex' : 'block';
+            const target = btn.dataset.target;
+            const t = document.getElementById(target);
+            if (t) {
+                t.style.display = (t.classList.contains('resp-tab-content') && target === 'resp-body') ? 'flex' : 'block';
+            }
         });
     });
 }
@@ -171,23 +174,17 @@ Array.from(els.bodyRadios).forEach(r => {
     });
 });
 
-// Execute Request
-els.btnSend.addEventListener('click', async () => {
+// Build the request config from current UI state
+function buildRequestConfig() {
     const url = els.url.value.trim();
-    if (!url) return showToast('URL is required', 'error');
-
-    els.btnSend.textContent = 'Sending...';
-    els.btnSend.disabled = true;
-
-    // Build Config
-    let config = {
-        url: url,
+    const config = {
+        url,
         method: els.method.value,
         queryParams: paramsListObj.get(),
         headers: headersListObj.get(),
         auth: { type: els.authType.value }
     };
-    
+
     if (config.auth.type === 'bearer') config.auth.token = els.authToken.value;
     if (config.auth.type === 'basic') {
         config.auth.username = els.authUsername.value;
@@ -202,48 +199,62 @@ els.btnSend.addEventListener('click', async () => {
         config.body = formDataListObj.get();
     }
 
+    return config;
+}
+
+// Render the response into the UI
+function renderResponse(response) {
+    els.respMeta.style.display = 'flex';
+    els.respStatus.textContent = `${response.status} ${response.statusText}`;
+    els.respStatus.className = `meta-value ${response.status >= 200 && response.status < 300 ? 'status-ok' : 'status-err'}`;
+    els.respTime.textContent = `${response.timeMs} ms`;
+    els.respSize.textContent = `${(response.sizeBytes / 1024).toFixed(2)} KB`;
+
+    els.respPlaceholder.style.display = 'none';
+
+    if (respEditor) {
+        const outVal = response.body ? JSON.stringify(response.body, null, 2) : response.bodyText;
+        respEditor.setValue(outVal);
+    }
+
+    const hContainer = document.getElementById('resp-headers');
+    hContainer.innerHTML = '';
+    for (const [k, v] of Object.entries(response.headers)) {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.borderBottom = '1px solid var(--border)';
+        row.style.padding = '0.5rem 0';
+        const kspan = document.createElement('span');
+        kspan.style.fontWeight = '600'; kspan.style.width = '30%'; kspan.textContent = k;
+        const vspan = document.createElement('span');
+        vspan.style.fontFamily = 'var(--font-mono)'; vspan.textContent = v;
+        vspan.style.flex = '1'; vspan.style.wordBreak = 'break-all';
+        row.appendChild(kspan);
+        row.appendChild(vspan);
+        hContainer.appendChild(row);
+    }
+
+    if (response.error || response.status === 0) {
+        showToast('Network Error - Check console for details', 'error');
+    } else if (response.wasProxied) {
+        showToast(`Completed in ${response.timeMs}ms (Auto CORS Bypass)`, 'info');
+    } else {
+        showToast(`Completed in ${response.timeMs}ms`, 'success');
+    }
+}
+
+// Execute Request
+els.btnSend.addEventListener('click', async () => {
+    const url = els.url.value.trim();
+    if (!url) return showToast('URL is required', 'error');
+
+    els.btnSend.textContent = 'Sending...';
+    els.btnSend.disabled = true;
+
     try {
-        const response = await window.ApiClient.execute(config);
-        
-        // Update UI
-        els.respMeta.style.display = 'flex';
-        els.respStatus.textContent = `${response.status} ${response.statusText}`;
-        els.respStatus.className = `meta-value ${response.status >= 200 && response.status < 300 ? 'status-ok' : 'status-err'}`;
-        els.respTime.textContent = `${response.timeMs} ms`;
-        els.respSize.textContent = `${(response.sizeBytes/1024).toFixed(2)} KB`;
-        
-        els.respPlaceholder.style.display = 'none';
-        
-        if (respEditor) {
-            let outVal = response.bodyText;
-            if (response.body) {
-                outVal = JSON.stringify(response.body, null, 2);
-            }
-            respEditor.setValue(outVal);
-        }
-        
-        // Render headers
-        const hContainer = document.getElementById('resp-headers');
-        hContainer.innerHTML = '';
-        for (const [k, v] of Object.entries(response.headers)) {
-            const row = document.createElement('div');
-            row.style.display = 'flex'; row.style.borderBottom = '1px solid var(--border)'; row.style.padding = '0.5rem 0';
-            const kspan = document.createElement('span'); kspan.style.fontWeight = '600'; kspan.style.width = '30%'; kspan.textContent = k;
-            const vspan = document.createElement('span'); vspan.style.fontFamily = 'var(--font-mono)'; vspan.textContent = v; vspan.style.flex = '1'; vspan.style.wordBreak = 'break-all';
-            row.appendChild(kspan); row.appendChild(vspan);
-            hContainer.appendChild(row);
-        }
-        
-        if (response.error || response.status === 0) {
-            showToast('Network Error - Check console for details', 'error');
-        } else {
-            if (response.wasProxied) {
-                showToast(`Completed in ${response.timeMs}ms (Auto CORS Bypass)`, 'info');
-            } else {
-                showToast(`Completed in ${response.timeMs}ms`, 'success');
-            }
-        }
-        
+        const config = buildRequestConfig();
+        const response = await globalThis.ApiClient.execute(config);
+        renderResponse(response);
     } catch (e) {
         showToast(e.message, 'error');
     } finally {
@@ -274,6 +285,7 @@ async function saveCollections() {
         });
         showToast('Saved to ~/.devsuite/collections.json', 'success');
     } catch (e) {
+        console.error('Failed to save collections:', e);
         showToast('Failed to save collection to disk', 'error');
     }
 }
@@ -281,7 +293,7 @@ async function saveCollections() {
 function renderCollections() {
     els.collectionsList.innerHTML = '';
     collections.forEach((item, idx) => {
-        const d = document.createElement('div');
+        const d = document.createElement('li');
         d.className = 'collection-item';
         
         const badge = document.createElement('span');
@@ -315,71 +327,47 @@ function renderCollections() {
     });
 }
 
+function restoreAuth(auth) {
+    els.authType.value = auth.type;
+    els.authType.dispatchEvent(new Event('change'));
+    if (auth.type === 'bearer') els.authToken.value = auth.token || '';
+    if (auth.type === 'basic') {
+        els.authUsername.value = auth.username || '';
+        els.authPassword.value = auth.password || '';
+    }
+}
+
+function restoreBody(bodyType, body) {
+    const rb = document.querySelector(`input[name="bodyType"][value="${bodyType}"]`);
+    if (rb) { rb.checked = true; rb.dispatchEvent(new Event('change')); }
+    if (!body) return;
+    if (bodyType === 'json' && reqEditor) {
+        reqEditor.setValue(typeof body === 'string' ? body : JSON.stringify(body, null, 2));
+    } else if (bodyType === 'form-data') {
+        Object.entries(body).forEach(([k, v]) => formDataListObj.add(k, v));
+    }
+}
+
 function loadCollectionItem(item) {
     els.method.value = item.method || 'GET';
     els.url.value = item.url || '';
-    
-    // reset UI
+
     paramsListObj.clear();
     headersListObj.clear();
     formDataListObj.clear();
     els.authType.value = 'none';
     els.authType.dispatchEvent(new Event('change'));
-    
-    if (item.queryParams) Object.entries(item.queryParams).forEach(([k,v]) => paramsListObj.add(k,v));
-    if (item.headers) Object.entries(item.headers).forEach(([k,v]) => headersListObj.add(k,v));
-    
-    if (item.auth) {
-        els.authType.value = item.auth.type;
-        els.authType.dispatchEvent(new Event('change'));
-        if (item.auth.type === 'bearer') els.authToken.value = item.auth.token || '';
-        if (item.auth.type === 'basic') {
-            els.authUsername.value = item.auth.username || '';
-            els.authPassword.value = item.auth.password || '';
-        }
-    }
-    
-    if (item.bodyType) {
-        const rb = document.querySelector(`input[name="bodyType"][value="${item.bodyType}"]`);
-        if (rb) { rb.checked = true; rb.dispatchEvent(new Event('change')); }
-    }
-    
-    if (item.body) {
-        if (item.bodyType === 'json' && reqEditor) {
-            reqEditor.setValue(typeof item.body === 'string' ? item.body : JSON.stringify(item.body, null, 2));
-        } else if (item.bodyType === 'form-data') {
-            Object.entries(item.body).forEach(([k,v]) => formDataListObj.add(k,v));
-        }
-    }
+
+    if (item.queryParams) Object.entries(item.queryParams).forEach(([k, v]) => paramsListObj.add(k, v));
+    if (item.headers) Object.entries(item.headers).forEach(([k, v]) => headersListObj.add(k, v));
+    if (item.auth) restoreAuth(item.auth);
+    if (item.bodyType) restoreBody(item.bodyType, item.body);
 }
 
 els.saveBtn.addEventListener('click', () => {
-    let name = prompt("Name this request:");
+    const name = prompt("Name this request:");
     if (!name) return;
-    
-    let config = {
-        name: name,
-        url: els.url.value.trim(),
-        method: els.method.value,
-        queryParams: paramsListObj.get(),
-        headers: headersListObj.get(),
-        auth: { type: els.authType.value }
-    };
-    
-    if (config.auth.type === 'bearer') config.auth.token = els.authToken.value;
-    if (config.auth.type === 'basic') {
-        config.auth.username = els.authUsername.value;
-        config.auth.password = els.authPassword.value;
-    }
-
-    const selectedBody = document.querySelector('input[name="bodyType"]:checked').value;
-    config.bodyType = selectedBody;
-    if (selectedBody === 'json' && reqEditor) {
-        config.body = reqEditor.getValue();
-    } else if (selectedBody === 'form-data') {
-        config.body = formDataListObj.get();
-    }
-    
+    const config = { ...buildRequestConfig(), name };
     collections.push(config);
     saveCollections();
     renderCollections();

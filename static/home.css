@@ -259,8 +259,6 @@ html, body {
     padding: 0 2rem;
 }
 
-.hero-content { }
-
 .hero-badge {
     display: inline-flex;
     align-items: center;
@@ -796,7 +794,6 @@ html, body {
     pointer-events: none;
 }
 
-.trust-eyebrow { }
 .trust-title {
     font-family: var(--font-mono);
     font-size: clamp(1.8rem, 4vw, 3rem);
@@ -1155,13 +1152,16 @@ html, body {
     border-radius: 10px;
     padding: 1.5rem;
     text-decoration: none;
+    color: inherit;
     transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    min-height: 180px;
     box-shadow: var(--glow-card);
 }
 .feat-card:hover {
     border-color: var(--border-accent);
     transform: translateY(-3px);
-    box-shadow: var(--glow-card), 0 8px 32px rgba(59,130,246,0.1);
+    box-shadow: var(--glow-card), 0 8px 32px rgba(59,130,246,0.12);
 }
 
 .feat-card-icon {
@@ -1204,24 +1204,30 @@ html, body {
 /* All Tools grid */
 .tools-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(256px, 1fr));
+    gap: 0.6rem;
 }
 
 .tool-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
     background: var(--surface-2);
     border: 1px solid var(--border);
-    border-radius: 9px;
-    padding: 1.1rem 1.25rem;
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
     text-decoration: none;
-    transition: border-color 0.2s, transform 0.2s;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    animation: fade-up 0.4s ease-out both;
+    position: relative;
+    box-shadow: var(--glow-card);
 }
 .tool-card:hover {
-    border-color: var(--border-bright);
-    transform: translateX(3px);
+    border-color: var(--card-border-hover, var(--border-accent));
+    transform: translateY(-3px);
+    box-shadow: var(--glow-card), 0 0 24px var(--card-glow, var(--electric-glow));
 }
 .tool-card-icon {
     width: 36px; height: 36px;
@@ -1388,6 +1394,17 @@ html, body {
 .nav-active {
     color: var(--text-primary) !important;
     font-weight: 500 !important;
+    position: relative;
+}
+.nav-active::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0; right: 0;
+    height: 2px;
+    background: var(--electric);
+    border-radius: 1px;
+    opacity: 0.7;
 }
 
 /* ============================================================
@@ -1428,27 +1445,6 @@ html, body {
 /* ============================================================
    TOOLS PAGE — feat-cards, tool-cards, filters (dark theme)
    ============================================================ */
-
-/* ── Featured cards (tools.html) ── */
-.feat-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.5rem;
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-    position: relative;
-    min-height: 180px;
-    box-shadow: var(--glow-card);
-}
-.feat-card:hover {
-    border-color: var(--border-accent);
-    transform: translateY(-3px);
-    box-shadow: var(--glow-card), 0 8px 32px rgba(59,130,246,0.12);
-}
 
 /* Hero variant — full-width, aurora border */
 .feat-card--hero {
@@ -1612,35 +1608,6 @@ html, body {
 }
 .filter-tab.active .filter-count { background: rgba(255,255,255,0.2); }
 
-/* ── Tool card grid ── */
-.tools-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(256px, 1fr));
-    gap: 0.6rem;
-}
-
-/* ── Individual tool card ── */
-.tool-card {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 0.9rem 1rem;
-    text-decoration: none;
-    color: inherit;
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-    cursor: pointer;
-    animation: fade-up 0.4s ease-out both;
-    position: relative;
-    box-shadow: var(--glow-card);
-}
-.tool-card:hover {
-    border-color: var(--card-border-hover, var(--border-accent));
-    transform: translateY(-3px);
-    box-shadow: var(--glow-card), 0 0 24px var(--card-glow, var(--electric-glow));
-}
 .tool-card:nth-child(1) { animation-delay: 0.04s; }
 .tool-card:nth-child(2) { animation-delay: 0.08s; }
 .tool-card:nth-child(3) { animation-delay: 0.12s; }
@@ -1649,7 +1616,12 @@ html, body {
 .tool-card:nth-child(6) { animation-delay: 0.24s; }
 .tool-card:nth-child(7) { animation-delay: 0.28s; }
 .tool-card:nth-child(8) { animation-delay: 0.32s; }
+.tool-card:nth-child(n+9) { animation-delay: 0.36s; }
 .tool-card:active { transform: translateY(-1px) scale(0.99); }
+@media (prefers-reduced-motion: reduce) {
+    .tool-card { animation: none !important; transition: none !important; }
+    .tool-card:hover { transform: none; box-shadow: inherit; }
+}
 .tool-card.coming-soon {
     opacity: 0.45;
     cursor: default;
@@ -1923,7 +1895,7 @@ html[data-theme="vs"] .header-cta {
 html[data-theme="vs"] .tag-chip {
     background: #eef0f5;
     border-color: rgba(0,0,0,0.1);
-    color: #4b5280;
+    color: #374151;
 }
 html[data-theme="vs"] .badge-live {
     background: rgba(22,163,74,0.1);
@@ -1965,28 +1937,11 @@ html[data-theme="high-contrast"] .site-header {
     border-bottom-color: rgba(255,255,255,0.35);
 }
 
-/* ── Consistent nav active indicator ── */
-.nav-active {
-    position: relative;
-}
-.nav-active::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    left: 0; right: 0;
-    height: 2px;
-    background: var(--electric);
-    border-radius: 1px;
-    opacity: 0.7;
-}
-
 /* ── Consistent card arrow on all card types ── */
 .feat-card .feat-cta svg,
 .tool-card .card-arrow {
     transition: transform 0.2s, opacity 0.2s;
 }
-.feat-card:hover .feat-cta { gap: 0.55rem; color: var(--electric); }
-.tool-card:hover .card-arrow { opacity: 1; transform: translateX(0); }
 
 /* ── Light theme: theme panel shadow ── */
 html[data-theme="vs"] .theme-panel {

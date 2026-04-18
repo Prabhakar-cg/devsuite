@@ -294,6 +294,56 @@ class DevDB:
         raw = self._path.read_bytes()
         self._parse(raw)
 
+    # ── Parse helpers ────────────────────────────────────────────────────────────
+
+    def _decrypt_body(self, body: bytes, salt: bytes, nonce: bytes, iterations: int) -> bytes:
+        """Decrypt an AES-GCM body and return the plaintext payload bytes."""
+        if not self._password:
+            raise ValueError(
+                "DevDB: database is encrypted but no password was supplied"
+            )
+        key = _derive_key(self._password, salt, iterations)
+        aes = AESGCM(key)
+        try:
+            return aes.decrypt(nonce, body, None)
+        except InvalidTag:
+            raise ValueError(
+                "DevDB: decryption failed — wrong password or tampered file"
+            ) from None
+
+    @staticmethod
+    def _verify_plain_body(body: bytes) -> bytes:
+        """Verify the BLAKE2b checksum of a plain-mode body and return payload bytes."""
+        if len(body) < BLAKE2_SIZE:
+            raise ValueError("DevDB: plaintext body too short for checksum")
+        stored_checksum = body[:BLAKE2_SIZE]
+        payload_bytes   = body[BLAKE2_SIZE:]
+        if _blake2b(payload_bytes) != stored_checksum:
+            raise ValueError(
+                "DevDB: integrity check failed — file may be corrupted or tampered"
+            )
+        return payload_bytes
+
+    @staticmethod
+    def _load_db_obj(payload_bytes: bytes) -> tuple:
+        """Decode JSON payload, validate top-level structure, and return (db_obj, meta, stores)."""
+        try:
+            db_obj = json.loads(payload_bytes.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise ValueError(f"DevDB: payload is not valid JSON: {exc}") from exc
+
+        _meta = db_obj.get("meta", {})
+        if not isinstance(_meta, collections.abc.Mapping):
+            raise ValueError(
+                f"DevDB: 'meta' must be a mapping, got {type(_meta).__name__!r}"
+            )
+        _stores = db_obj.get("stores", {})
+        if not isinstance(_stores, collections.abc.Mapping):
+            raise ValueError(
+                f"DevDB: 'stores' must be a mapping, got {type(_stores).__name__!r}"
+            )
+        return db_obj, _meta, _stores
+
     def _parse(self, raw: bytes) -> None:
         """Parse raw .dsb bytes (shared by _load and from_bytes)."""
         if len(raw) < HEADER_SIZE:
@@ -313,52 +363,16 @@ class DevDB:
                 f"(this build supports up to {VERSION})"
             )
 
-        body      = raw[HEADER_SIZE:]
-        encrypted = bool(flags & FLAG_ENCRYPTED)
-
-        if encrypted:
+        body = raw[HEADER_SIZE:]
+        if flags & FLAG_ENCRYPTED:
             # AESGCM.encrypt output = ciphertext ‖ tag (tag is last 16 bytes)
-            # AESGCM.decrypt expects the same layout
-            if not self._password:
-                raise ValueError(
-                    "DevDB: database is encrypted but no password was supplied"
-                )
-            key = _derive_key(self._password, salt, iterations)
-            aes = AESGCM(key)
-            try:
-                payload_bytes = aes.decrypt(nonce, body, None)
-            except InvalidTag:
-                raise ValueError(
-                    "DevDB: decryption failed — wrong password or tampered file"
-                ) from None
+            payload_bytes = self._decrypt_body(body, salt, nonce, iterations)
         else:
             # Plain mode: body = BLAKE2b(32) ‖ JSON
-            if len(body) < BLAKE2_SIZE:
-                raise ValueError("DevDB: plaintext body too short for checksum")
-            stored_checksum = body[:BLAKE2_SIZE]
-            payload_bytes   = body[BLAKE2_SIZE:]
-            if _blake2b(payload_bytes) != stored_checksum:
-                raise ValueError(
-                    "DevDB: integrity check failed — file may be corrupted or tampered"
-                )
+            payload_bytes = self._verify_plain_body(body)
 
-        try:
-            db_obj = json.loads(payload_bytes.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise ValueError(f"DevDB: payload is not valid JSON: {exc}") from exc
-
-        _meta = db_obj.get("meta", {})
-        if not isinstance(_meta, collections.abc.Mapping):
-            raise ValueError(
-                f"DevDB: 'meta' must be a mapping, got {type(_meta).__name__!r}"
-            )
-        self._meta = dict(_meta)
-
-        _stores = db_obj.get("stores", {})
-        if not isinstance(_stores, collections.abc.Mapping):
-            raise ValueError(
-                f"DevDB: 'stores' must be a mapping, got {type(_stores).__name__!r}"
-            )
+        _db_obj, _meta, _stores = self._load_db_obj(payload_bytes)
+        self._meta   = dict(_meta)
         self._stores = dict(_stores)
 
     def _build_file_bytes(self) -> bytes:

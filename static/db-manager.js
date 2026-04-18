@@ -92,7 +92,7 @@ async function initLockScreen() {
             updateEncryptionBadge(meta.encrypted);
             _meta = meta;
         }
-    } catch (_) { /* non-fatal */ }
+    } catch (e) { console.error(e); }
 
     // Check whether master password has been configured
     let isSetup = false;
@@ -103,13 +103,13 @@ async function initLockScreen() {
         toast('Could not check auth status: ' + e.message, 'error');
     }
 
-    if (!isSetup) {
-        document.getElementById('not-setup-notice').style.display = 'flex';
-        document.getElementById('lock-form').style.display = 'none';
-    } else {
+    if (isSetup) {
         document.getElementById('lock-form').style.display = 'block';
         // Focus password field after a tick
         setTimeout(() => document.getElementById('lock-pw-input').focus(), 80);
+    } else {
+        document.getElementById('not-setup-notice').style.display = 'flex';
+        document.getElementById('lock-form').style.display = 'none';
     }
 
     overlay.style.display = 'flex';
@@ -171,6 +171,7 @@ async function attemptUnlock() {
         loadMeta();
         toast('✅ Access granted', 'success');
     } catch (e) {
+        console.error(e);
         errEl.textContent = '❌ Incorrect master password.';
         errEl.style.display = 'block';
     } finally {
@@ -222,16 +223,20 @@ function renderStores(data) {
         const m        = STORE_META[name];
         const storeInfo = sizes[name];
         const kb       = storeInfo ? fmtBytes(storeInfo.bytes) : null;
-        const hasData  = !!storeInfo;
+        const hasData  = Boolean(storeInfo);
 
         const card = document.createElement('div');
         card.className = 'store-card' + (hasData ? '' : ' empty');
         const entryCount = storeEntryCount(name, storeInfo?.count ?? null);
+        const entryDisplay = entryCount ?? '—';
+        const entriesHtml = hasData
+            ? `<div class="store-card-entries">${entryDisplay}</div>`
+            : '<div class="store-card-entries" style="font-size:16px;color:var(--text-muted)">Empty</div>';
         card.innerHTML = `
             <div class="store-card-icon">${m.icon}</div>
             <div class="store-card-name">${m.label}</div>
             <div class="store-card-size">${kb ? kb + ' used' : 'No data'}</div>
-            ${hasData ? `<div class="store-card-entries">${entryCount !== null ? entryCount : '—'}</div>` : '<div class="store-card-entries" style="font-size:16px;color:var(--text-muted)">Empty</div>'}
+            ${entriesHtml}
             ${m.locked ? '<div class="store-card-lock" title="Client-side encrypted">🔒</div>' : ''}
         `;
         grid.appendChild(card);

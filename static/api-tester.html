@@ -22,12 +22,12 @@
 <body>
     
     <!-- Header -->
-    <header class="app-header">
+    <header class="app-header" aria-label="API Tester toolbar">
         <div style="display:flex; align-items:center; gap:0.75rem;">
-            <a href="/tools" class="back-link">← DevSuite</a>
+            <a href="/tools" class="back-link" aria-label="← DevSuite — back to tools">← DevSuite</a>
             <div class="tool-identity" id="tool-identity">
                 <!-- We use Violet accent for API Tester per design -->
-                <div class="tool-icon tool-icon-violet" id="tool-header-icon" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);color:#fff;">
+                <div class="tool-icon tool-icon-violet" id="tool-header-icon" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);color:#fff;" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
@@ -48,113 +48,120 @@
     <div class="api-tester-container">
         
         <!-- Sidebar: History & Collections -->
-        <div class="sidebar">
+        <nav class="sidebar" aria-label="Collections">
             <div class="sidebar-header">
                 <span>Collections</span>
-                <button id="refresh-collections-btn" class="btn-small" style="border:none; background:transparent;">↺</button>
+                <button id="refresh-collections-btn" class="btn-small" style="border:none; background:transparent;" aria-label="Refresh collections">↺</button>
             </div>
-            <div class="sidebar-content" id="collections-list">
+            <ul class="sidebar-content" id="collections-list">
                 <!-- Injected natively via JS -->
-            </div>
-        </div>
+            </ul>
+        </nav>
 
         <!-- Request/Response Column -->
         <div class="main-area">
-            
-            <div class="request-bar">
-                <select id="req-method" class="method-select">
+
+            <div class="request-bar" role="search" aria-label="HTTP request">
+                <label for="req-method" class="sr-only">HTTP method</label>
+                <select id="req-method" class="method-select" aria-label="HTTP method">
                     <option value="GET">GET</option>
                     <option value="POST">POST</option>
                     <option value="PUT">PUT</option>
                     <option value="DELETE">DELETE</option>
                     <option value="PATCH">PATCH</option>
                 </select>
-                <input type="text" id="req-url" class="url-input" placeholder="https://api.example.com/v1/users">
-                <button id="btn-send" class="send-btn">Send</button>
+                <label for="req-url" class="sr-only">Request URL</label>
+                <input type="text" id="req-url" class="url-input" placeholder="https://api.example.com/v1/users" aria-label="Request URL">
+                <button id="btn-send" class="send-btn" aria-label="Send HTTP request">Send</button>
             </div>
 
             <div class="panes">
-                
+
                 <!-- Request Configuration Pane -->
-                <div class="request-pane">
-                    <div class="tabs-header" id="req-tabs">
-                        <button class="tab-btn active" data-target="tab-params">Params</button>
-                        <button class="tab-btn" data-target="tab-headers">Headers</button>
-                        <button class="tab-btn" data-target="tab-auth">Auth</button>
-                        <button class="tab-btn" data-target="tab-body">Body</button>
+                <section class="request-pane" aria-label="Request configuration">
+                    <div class="tabs-header" id="req-tabs" role="tablist" aria-label="Request sections">
+                        <button class="tab-btn active" data-target="tab-params" role="tab" aria-selected="true" aria-controls="tab-params">Params</button>
+                        <button class="tab-btn" data-target="tab-headers" role="tab" aria-selected="false" aria-controls="tab-headers">Headers</button>
+                        <button class="tab-btn" data-target="tab-auth" role="tab" aria-selected="false" aria-controls="tab-auth">Auth</button>
+                        <button class="tab-btn" data-target="tab-body" role="tab" aria-selected="false" aria-controls="tab-body">Body</button>
                     </div>
 
-                    <div id="tab-params" class="tab-content active req-tab-content">
+                    <div id="tab-params" class="tab-content active req-tab-content" role="tabpanel" aria-label="Query parameters">
                         <div id="params-list"></div>
-                        <button class="btn-small" id="btn-add-param" style="margin-top:0.5rem;">+ Add Param</button>
+                        <button class="btn-small" id="btn-add-param" style="margin-top:0.5rem;" aria-label="+ Add Param">+ Add Param</button>
                     </div>
 
-                    <div id="tab-headers" class="tab-content req-tab-content">
+                    <div id="tab-headers" class="tab-content req-tab-content" role="tabpanel" aria-label="Request headers">
                         <div id="headers-list"></div>
-                        <button class="btn-small" id="btn-add-header" style="margin-top:0.5rem;">+ Add Header</button>
+                        <button class="btn-small" id="btn-add-header" style="margin-top:0.5rem;" aria-label="+ Add Header">+ Add Header</button>
                     </div>
 
-                    <div id="tab-auth" class="tab-content req-tab-content">
-                        <select id="auth-type" class="method-select" style="margin-bottom:1rem; width:100%;">
+                    <div id="tab-auth" class="tab-content req-tab-content" role="tabpanel" aria-label="Authentication">
+                        <label for="auth-type" class="sr-only">Authentication type</label>
+                        <select id="auth-type" class="method-select" style="margin-bottom:1rem; width:100%;" aria-label="Authentication type">
                             <option value="none">No Auth</option>
                             <option value="bearer">Bearer Token</option>
                             <option value="basic">Basic Auth</option>
                         </select>
                         <div id="auth-bearer-config" style="display:none;">
-                            <input type="text" id="auth-token" class="url-input" style="width:100%;" placeholder="Token">
+                            <label for="auth-token" class="sr-only">Bearer token</label>
+                            <input type="text" id="auth-token" class="url-input" style="width:100%;" placeholder="Token" aria-label="Bearer token">
                         </div>
                         <div id="auth-basic-config" style="display:none;">
-                            <input type="text" id="auth-username" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="Username">
-                            <input type="password" id="auth-password" class="url-input" style="width:100%;" placeholder="Password">
+                            <label for="auth-username" class="sr-only">Username</label>
+                            <input type="text" id="auth-username" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="Username" aria-label="Username">
+                            <label for="auth-password" class="sr-only">Password</label>
+                            <input type="password" id="auth-password" class="url-input" style="width:100%;" placeholder="Password" aria-label="Password">
                         </div>
                     </div>
 
-                    <div id="tab-body" class="tab-content req-tab-content" style="display:flex; flex-direction:column; padding:0;">
-                        <div style="padding:0.5rem 1rem; border-bottom:1px solid var(--border);">
+                    <div id="tab-body" class="tab-content req-tab-content" role="tabpanel" aria-label="Request body" style="display:flex; flex-direction:column; padding:0;">
+                        <fieldset style="padding:0.5rem 1rem; border-bottom:1px solid var(--border); border:none; margin:0;">
+                            <legend class="sr-only">Body type</legend>
                             <label><input type="radio" name="bodyType" value="none" checked> None</label>
                             <label style="margin-left:1rem;"><input type="radio" name="bodyType" value="json"> JSON</label>
                             <label style="margin-left:1rem;"><input type="radio" name="bodyType" value="form-data"> Form Data</label>
-                        </div>
-                        
+                        </fieldset>
+
                         <!-- JSON Body Editor (Monaco) -->
                         <div id="req-body-editor-wrap" class="editor-container" style="display:none; flex:1;">
-                            <div id="req-body-editor" style="width:100%; height:100%;"></div>
+                            <div id="req-body-editor" style="width:100%; height:100%;" aria-label="JSON request body"></div>
                         </div>
 
                         <!-- Form Data UI -->
                         <div id="req-form-data-wrap" style="display:none; padding:1rem; flex:1; overflow-y:auto;">
                             <div id="form-data-list"></div>
-                            <button class="btn-small" id="btn-add-form-data" style="margin-top:0.5rem;">+ Add Field</button>
+                            <button class="btn-small" id="btn-add-form-data" style="margin-top:0.5rem;" aria-label="+ Add Field">+ Add Field</button>
                         </div>
                     </div>
-                </div>
+                </section>
 
                 <!-- Response Pane -->
-                <div class="response-pane">
-                    
-                    <div class="response-meta" id="resp-meta" style="display:none;">
+                <section class="response-pane" aria-label="Response">
+
+                    <output class="response-meta" id="resp-meta" style="display:none;" aria-live="polite" aria-atomic="true">
                         <div>Status: <span id="resp-status" class="meta-value"></span></div>
                         <div>Time: <span id="resp-time" class="meta-value"></span></div>
                         <div>Size: <span id="resp-size" class="meta-value"></span></div>
+                    </output>
+
+                    <div class="tabs-header" id="resp-tabs" role="tablist" aria-label="Response sections">
+                        <button class="tab-btn active" data-target="resp-body" role="tab" aria-selected="true" aria-controls="resp-body">Response Body</button>
+                        <button class="tab-btn" data-target="resp-headers" role="tab" aria-selected="false" aria-controls="resp-headers">Headers</button>
                     </div>
 
-                    <div class="tabs-header" id="resp-tabs">
-                        <button class="tab-btn active" data-target="resp-body">Response Body</button>
-                        <button class="tab-btn" data-target="resp-headers">Headers</button>
-                    </div>
-
-                    <div id="resp-body" class="tab-content active resp-tab-content" style="padding:0; display:flex; flex-direction:column; position:relative; flex:1;">
-                        <div id="resp-editor" style="width:100%; height:100%; position:absolute; top:0; left:0;"></div>
-                        <div id="resp-placeholder" style="display:flex; align-items:center; justify-content:center; flex:1; color:var(--text-muted); font-size:0.9rem;">
+                    <div id="resp-body" class="tab-content active resp-tab-content" role="tabpanel" aria-label="Response body" style="padding:0; display:flex; flex-direction:column; position:relative; flex:1;">
+                        <section id="resp-editor" style="width:100%; height:100%; position:absolute; top:0; left:0;" aria-label="Response body editor" aria-live="polite"></section>
+                        <div id="resp-placeholder" style="display:flex; align-items:center; justify-content:center; flex:1; color:var(--text-muted); font-size:0.9rem;" aria-label="Empty response">
                             Enter a URL and click Send to see the response.
                         </div>
                     </div>
 
-                    <div id="resp-headers" class="tab-content resp-tab-content">
+                    <div id="resp-headers" class="tab-content resp-tab-content" role="tabpanel" aria-label="Response headers">
                         <!-- Natively injected as key=value -->
                     </div>
 
-                </div>
+                </section>
 
             </div>
 

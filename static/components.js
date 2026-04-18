@@ -9,7 +9,7 @@
  *   DevSuite.initMonaco(callback)            — configure and load Monaco Editor
  */
 
-window.DevSuite = window.DevSuite || {};
+globalThis.DevSuite = globalThis.DevSuite || {};
 
 /* ─── Toast notification ──────────────────────────────────────────────────── */
 DevSuite.toast = function toast(msg, type = 'info', ms = 3000) {
@@ -49,7 +49,7 @@ DevSuite.initMonaco = function initMonaco(callback) {
         `self.MonacoEnvironment = { baseUrl: '${_MONACO_CDN_BASE}/' };` +
         `importScripts('${_MONACO_VS}/base/worker/workerMain.js');`
     ], { type: 'text/javascript' }));
-    window.MonacoEnvironment = { getWorkerUrl: () => proxy };
+    globalThis.MonacoEnvironment = { getWorkerUrl: () => proxy };
     require(
         ['vs/editor/editor.main'],
         function () {

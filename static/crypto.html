@@ -494,7 +494,7 @@
                 Decode
             </button>
 
-            <label class="cs-label" style="margin-left:0.25rem;">Mode:</label>
+            <label class="cs-label" for="b64-mode-select" style="margin-left:0.25rem;">Mode:</label>
             <select class="cs-select" id="b64-mode-select" title="Standard uses +/= chars. URL-safe replaces them with - and _ for embedding in URLs.">
                 <option value="standard">Standard</option>
                 <option value="url">URL-safe (JWT-friendly)</option>
@@ -590,8 +590,8 @@ document.querySelectorAll('.crypto-tab').forEach(btn => {
 
 // ── Theme select ──
 document.querySelectorAll('.global-theme-select').forEach(sel => {
-    if (window.__themeManager) { sel.value = window.__themeManager.current; }
-    sel.addEventListener('change', () => window.__themeManager?.set(sel.value));
+    if (globalThis.__themeManager) { sel.value = globalThis.__themeManager.current; }
+    sel.addEventListener('change', () => globalThis.__themeManager?.set(sel.value));
 });
 
 // ════════════════════════════════════════════════
@@ -803,13 +803,13 @@ const rsaInput      = document.getElementById('rsa-input');
 const rsaOutput     = document.getElementById('rsa-output');
 
 function arrayBufferToPem(buffer, type) {
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const b64 = btoa(String.fromCodePoint(...new Uint8Array(buffer)));
     const lines = b64.match(/.{1,64}/g).join('\n');
     return `-----BEGIN ${type}-----\n${lines}\n-----END ${type}-----`;
 }
 
 document.getElementById('rsa-gen-btn').addEventListener('click', async () => {
-    const bits = parseInt(document.getElementById('rsa-keysize').value);
+    const bits = Number.parseInt(document.getElementById('rsa-keysize').value);
     rsaGenStatus.textContent = `Generating ${bits}-bit keypair…`;
     rsaPublicKey.value = '';
     rsaPrivateKey.value = '';
@@ -864,7 +864,7 @@ document.getElementById('rsa-encrypt-btn').addEventListener('click', async () =>
     try {
         const encoded = new TextEncoder().encode(text);
         const cipher  = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, rsaKeyPair.publicKey, encoded);
-        rsaOutput.value = btoa(String.fromCharCode(...new Uint8Array(cipher)));
+        rsaOutput.value = btoa(String.fromCodePoint(...new Uint8Array(cipher)));
         toast('Encrypted with public key!', 'success');
     } catch(e) {
         console.error('Encrypt error:', e);
@@ -877,7 +877,7 @@ document.getElementById('rsa-decrypt-btn').addEventListener('click', async () =>
     const b64 = rsaInput.value.trim();
     if (!b64) { toast('Enter base64 ciphertext to decrypt', 'warning'); return; }
     try {
-        const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        const buf = Uint8Array.from(atob(b64), c => c.codePointAt(0));
         const plain = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, rsaKeyPair.privateKey, buf);
         rsaOutput.value = new TextDecoder().decode(plain);
         toast('Decrypted with private key!', 'success');
@@ -933,7 +933,7 @@ document.getElementById('hmac-verify-btn').addEventListener('click', async () =>
     if (!sigHex) { toast('Enter a signature to verify', 'warning'); return; }
 
     try {
-        const sigBytes = Uint8Array.from(sigHex.match(/.{1,2}/g), h => parseInt(h, 16));
+        const sigBytes = Uint8Array.from(sigHex.match(/.{1,2}/g), h => Number.parseInt(h, 16));
         const key = await hmacKey(secret, algo);
         const ok  = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(msg));
         hmacBanner.className = `verify-banner ${ok ? 'ok' : 'err'}`;
@@ -978,20 +978,20 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
     function encodeB64(str) {
         const bytes = new TextEncoder().encode(str);
         let bin = '';
-        bytes.forEach(b => bin += String.fromCharCode(b));
+        bytes.forEach(b => bin += String.fromCodePoint(b));
         let b64 = btoa(bin);
-        if (isUrlSafe()) b64 = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        if (isUrlSafe()) b64 = b64.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
         return b64;
     }
 
     function decodeB64(str) {
         let s = str.trim();
         if (isUrlSafe() || /[-_]/.test(s)) {
-            s = s.replace(/-/g, '+').replace(/_/g, '/');
+            s = s.replaceAll('-', '+').replaceAll('_', '/');
             while (s.length % 4) s += '=';
         }
         const bin   = atob(s);
-        const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+        const bytes = Uint8Array.from(bin, c => c.codePointAt(0));
         return new TextDecoder().decode(bytes);
     }
 
@@ -1021,7 +1021,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
         if (parts.length !== 3) { toast('Not a valid JWT (need 3 dot-separated parts)', 'error'); return; }
         try {
             function jwtDecode(p) {
-                let s = p.replace(/-/g, '+').replace(/_/g, '/');
+                let s = p.replaceAll('-', '+').replaceAll('_', '/');
                 while (s.length % 4) s += '=';
                 return JSON.parse(decodeB64(s));
             }

@@ -7,7 +7,80 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ## [Unreleased]
 
-_No changes yet._
+---
+
+## [0.1.2] — 2026-04-18
+
+Code quality and security hardening pass — no behaviour changes. All changes address SonarQube static-analysis rule violations to reduce cognitive complexity, close security-tool findings, improve code clarity, and align with modern JS/Python idioms.
+
+### Internal / Code Quality
+
+#### `main.py`
+- **Cognitive complexity (S3776)**: Extracted `_dashboard_ws_approve_host`, `_ssh_dashboard_connect`, `_parse_distro_from_config`, `_exec_pty_child`, and `_run_local_pty_loop` helpers from `ssh_dashboard` and `local_terminal` WebSocket handlers to bring each function within the complexity budget.
+- **OpenAPI response codes**: Added `responses={...}` annotations to all API endpoints that were missing documented error codes (401, 400, 404, 413, 500).
+- **`_ws_wait_for_host_key_response`**: Extracted the host-key approval polling loop from the inline closure into a named top-level coroutine.
+
+#### `devdb.py`
+- **Cognitive complexity (S3776)**: Extracted `_decrypt_body`, `_verify_plain_body`, and `_load_db_obj` as private helpers from `_parse`; each helper has a single responsibility and a clear docstring.
+
+#### `static/app.js`
+- **Module-level hoisting (S7721)**: Hoisted `countLines`, `isBinaryFile`, `formatFileDate`, `formatSize`, `getLanguageFromPath`, `allFileStatuses`, `collectFilePaths`, and `propagateFolderStatuses` out of `DOMContentLoaded` to module scope.
+- **Merge-arrow helpers**: Extracted `_mergeToRightPureDeletion`, `_mergeToRightPureInsertion`, `_mergeToLeftPureDeletion`, `_mergeToLeftPureInsertion`, and `handleMergeClick` from the inline merge-click handler to reduce cognitive complexity.
+- Removed unused local variable assignments (`statsBar`, `fileTreeEl`, `changedFilesCount`, `activeFilePath`).
+
+#### `static/api-client.js` / `api-client.ts`
+- Extracted `_bodyToString`, `_decodeProxyResponse`, `_buildProxyOptions`, and `_parseResponse` helpers from `execute`; the main `execute` method is now a thin coordinator.
+- `String.fromCharCode` → `String.fromCodePoint`; `charCodeAt` → `codePointAt` (S2302 / safer Unicode handling).
+
+#### `static/api-tester.js`
+- Extracted `buildRequestConfig` and `renderResponse` from the `btnSend` click handler.
+- Extracted `resolveMonacoTheme` helper to eliminate duplicated theme-resolution logic.
+- `window.*` → `globalThis.*`; `btn.getAttribute('data-target')` → `btn.dataset.target`.
+
+#### `static/cron.js`
+- Extracted `_parseSpecialTokens`, `_parseResolvedToken`, `_parseWeekdayW`, and `_parseSingleNumber` from the monolithic `_parseToken` method.
+- `parseInt` → `Number.parseInt`; `isNaN` → `Number.isNaN`; `replace(regex, …)` → `replaceAll(string, …)` throughout.
+
+#### `static/ssh-manager.js`
+- `window.location` → `globalThis.location`; `parseInt` → `Number.parseInt`; `keys[keys.length - 1]` → `keys.at(-1)`; null-safe `ws?.readyState` checks.
+- Inline comment cleaned up for `sftpConn` / `dashConn` state variables.
+
+#### `static/regex.html`
+- Extracted `buildGroupChip` helper; hoisted `buildRegex` to module scope.
+- `window.MonacoEnvironment` → `globalThis.MonacoEnvironment`.
+- Removed unused `matchEmpty` variable reference.
+- Fixed group-chip text colour for light themes (`#6ee7b7` → `#059669` for WCAG contrast compliance).
+
+#### `static/base64.html`
+- `window.MonacoEnvironment` → `globalThis.MonacoEnvironment`.
+- `String.fromCharCode` → `String.fromCodePoint`; `charCodeAt` → `codePointAt`.
+- `replace(regex, …)` → `replaceAll(string, …)` for URL-safe Base64 substitutions.
+- Removed unused `outputEditor` variable.
+
+#### `start.sh`
+- Extracted repeated string literals (`'python'`, `'unknown'`, `'Windows'`) into `readonly` constants (S1192).
+- `[ … ]` → `[[ … ]]` for all conditionals; `[ -eq ]` → `[[ -eq ]]`.
+- Added `>&2` redirect on the error message in `run_as_root`.
+
+#### `static/json.html` / `static/yaml.html` (D-5 a11y progress)
+- Added `aria-label` to `<header>`, back-link `<a>`, and every toolbar `<button>`.
+- `aria-hidden="true"` on all decorative SVG icons and separator `<div>`s.
+- `role="toolbar"` + `aria-label` on action toolbars.
+- `role="status"` + `aria-live="polite"` + `aria-atomic="true"` on status pills.
+- `aria-live="polite"` / `aria-atomic="true"` on live character and line-count badges.
+- `role="alert"` + `aria-live="assertive"` on error panels.
+- `role="textbox"` + `aria-label` + `aria-multiline="true"` on Monaco editor host divs.
+- `role="region"` + `aria-label` + `aria-live="polite"` on output editor containers.
+- `id="input-editor-label"` anchor added to JSON input pane header for future `aria-labelledby` wiring.
+
+#### `static/base64.html` (D-5 a11y progress)
+- Added `aria-label` to `<header>` and back-link `<a>`; `aria-hidden="true"` on decorative SVG icons.
+- `aria-live="polite"` + `aria-atomic="true"` on the char-count badge.
+
+#### `static/regex.html` (D-5 a11y progress)
+- Flag toggle buttons now sync `aria-pressed="true"/"false"` on every click, enabling screen readers to announce the pressed state correctly.
+
+---
 
 ---
 

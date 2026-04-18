@@ -107,7 +107,7 @@ const AuthGuard = (() => {
     // ── Session helpers ───────────────────────────────────────────
     function _sessionValid() {
         const exp = localStorage.getItem(LS_EXPIRY_KEY);
-        return !!(exp && Date.now() < parseInt(exp, 10));
+        return !!(exp && Date.now() < Number.parseInt(exp, 10));
     }
 
     function _cachedPwd() {
@@ -115,7 +115,7 @@ const AuthGuard = (() => {
     }
 
     function _sessionExpiresIn() {
-        const exp = parseInt(localStorage.getItem(LS_EXPIRY_KEY) || '0', 10);
+        const exp = Number.parseInt(localStorage.getItem(LS_EXPIRY_KEY) || '0', 10);
         const ms  = exp - Date.now();
         if (ms <= 0) return null;
         const h = Math.floor(ms / 3_600_000);
@@ -241,10 +241,7 @@ const AuthGuard = (() => {
         if (!isSetup) {
             document.getElementById('ag-not-setup').style.display = 'flex';
             // Resolve with null — caller decides whether to allow unauthenticated access
-            return new Promise(resolve => {
-                // Clicking the vault link navigates away; no other action to take
-                resolve(null);
-            });
+            return null;
         }
 
         document.getElementById('ag-form').style.display = 'flex';

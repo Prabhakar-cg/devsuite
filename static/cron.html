@@ -49,7 +49,8 @@
                 </svg>
                 Cron Dialect
             </div>
-            <div class="dialect-tabs" role="group" aria-label="Cron dialect selector">
+            <fieldset class="dialect-tabs">
+                <legend class="dialect-legend">Cron dialect selector</legend>
                 <button class="dialect-btn active" data-dialect="unix" id="dialect-unix" aria-pressed="true">
                     Unix / Linux
                     <span class="dialect-badge">5-field</span>
@@ -66,7 +67,7 @@
                     GitHub Actions
                     <span class="dialect-badge">POSIX</span>
                 </button>
-            </div>
+            </fieldset>
         </section>
 
         <!-- ── § 2. Expression Input ── -->
@@ -180,20 +181,20 @@
                 Export
             </div>
             <div class="export-row">
-                <button class="export-btn export-btn-primary" id="copy-expr-btn" aria-label="Copy cron expression to clipboard">
+                <button class="export-btn export-btn-primary" id="copy-expr-btn" aria-label="Copy Expression to clipboard">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                     </svg>
                     Copy Expression
                 </button>
-                <button class="export-btn" id="copy-yaml-btn" aria-label="Copy as YAML snippet">
+                <button class="export-btn" id="copy-yaml-btn" aria-label="Copy as YAML (K8s / GitHub Actions snippet)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
                     </svg>
                     Copy as YAML
                     <span style="font-size:0.65rem;opacity:0.6;">(K8s / GH Actions)</span>
                 </button>
-                <button class="export-btn" id="copy-json-btn" aria-label="Copy as JSON for AWS EventBridge">
+                <button class="export-btn" id="copy-json-btn" aria-label="Copy as JSON (AWS EventBridge)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>
                     </svg>

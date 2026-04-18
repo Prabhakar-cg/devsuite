@@ -2,7 +2,7 @@
    DevSuite — Cron Visualizer (Apple.com Design System)
    ============================================================ */
 
-@import 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap';
+@import '/static/libs/fonts.css';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -114,7 +114,8 @@ body {
 .section-heading svg { width: 13px; height: 13px; stroke: var(--teal); }
 
 /* ── Dialect Tabs ── */
-.dialect-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.dialect-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; border: 0; padding: 0; min-inline-size: 0; }
+.dialect-legend { position: absolute; width: 1px; height: 1px; overflow: hidden; white-space: nowrap; clip-path: inset(50%); }
 .dialect-btn {
     display: flex; align-items: center; gap: 0.5rem;
     padding: 0.45rem 1rem; border-radius: 980px;

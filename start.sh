@@ -2,28 +2,34 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
+# ─── String constants (S1192: avoid repeated literals) ────────────────────────
+readonly PYTHON='python'
+readonly UNKNOWN='unknown'
+readonly WINDOWS='Windows'
+
 echo "Starting setup for Local dev suite..."
 
 # Function to check if a command exists
 command_exists () {
-    command -v "$1" >/dev/null 2>&1
+    local cmd="$1"
+    command -v "$cmd" >/dev/null 2>&1
 }
 
 # Helper to run commands as root when needed
 run_as_root () {
     # Skip sudo for Windows package managers
-    if [ "$OS" = "Windows" ] || [ "$PKG_MGR" = "choco" ] || [ "$PKG_MGR" = "winget" ] || [ "$PKG_MGR" = "scoop" ]; then
+    if [[ "$OS" = "$WINDOWS" ]] || [[ "$PKG_MGR" = "choco" ]] || [[ "$PKG_MGR" = "winget" ]] || [[ "$PKG_MGR" = "scoop" ]]; then
         "$@"
         return
     fi
 
-    if [ "$(id -u)" -eq 0 ] || [ "${EUID:-$(id -u)}" -eq 0 ]; then
+    if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
         "$@"
     else
         if command_exists sudo; then
             sudo "$@"
         else
-            echo "Error: This script requires root privileges but sudo is not available."
+            echo "Error: This script requires root privileges but sudo is not available." >&2
             exit 1
         fi
     fi
@@ -54,7 +60,7 @@ case "$OS_TYPE" in
     elif command_exists pacman; then
        PKG_MGR="pacman"
     else
-       PKG_MGR="unknown"
+       PKG_MGR="$UNKNOWN"
     fi
     ;;
   Darwin*)
@@ -62,11 +68,11 @@ case "$OS_TYPE" in
     if command_exists brew; then
        PKG_MGR="brew"
     else
-       PKG_MGR="unknown"
+       PKG_MGR="$UNKNOWN"
     fi
     ;;
   CYGWIN*|MINGW*|MSYS*)
-    OS="Windows"
+    OS="$WINDOWS"
     if command_exists choco; then
        PKG_MGR="choco"
     elif command_exists winget; then
@@ -74,23 +80,23 @@ case "$OS_TYPE" in
     elif command_exists scoop; then
        PKG_MGR="scoop"
     else
-       PKG_MGR="unknown"
+       PKG_MGR="$UNKNOWN"
     fi
     ;;
   *)
-    OS="unknown"
-    PKG_MGR="unknown"
+    OS="$UNKNOWN"
+    PKG_MGR="$UNKNOWN"
     ;;
 esac
 
 echo "Detected OS: $OS"
-if [ "$PKG_MGR" != "unknown" ]; then
+if [[ "$PKG_MGR" != "$UNKNOWN" ]]; then
     echo "Detected Package Manager: $PKG_MGR"
 fi
 
 # Detect expected python command
-if [ "$OS" = "Windows" ]; then
-    PYTHON_CMD="python"
+if [[ "$OS" = "$WINDOWS" ]]; then
+    PYTHON_CMD="$PYTHON"
     VENV_ACTIVATE=".venv/Scripts/activate"
 else
     # On macOS / Linux normally it's python3
@@ -98,7 +104,7 @@ else
         PYTHON_CMD="python3"
     elif command_exists python; then
         if python -c "import sys; sys.exit(0 if sys.version_info.major >= 3 else 1)" 2>/dev/null; then
-            PYTHON_CMD="python"
+            PYTHON_CMD="$PYTHON"
         else
             PYTHON_CMD="python3"
         fi
@@ -139,13 +145,13 @@ echo -n "Checking core system prerequisites... "
 
 # Check Python and venv
 if ! command_exists "$PYTHON_CMD"; then
-    queue_installation "Python 3" "python3 python3-venv python3-pip" "python" "python3 python3-pip" "python python-pip" "python" "Python.Python"
+    queue_installation "Python 3" "python3 python3-venv python3-pip" "$PYTHON" "python3 python3-pip" "python python-pip" "$PYTHON" "Python.Python"
 else
     # Check venv specifically
     if ! "$PYTHON_CMD" -m venv --help >/dev/null 2>&1; then
-        if [ "$PKG_MGR" = "apt-get" ]; then
+        if [[ "$PKG_MGR" = "apt-get" ]]; then
             queue_installation "Python 3 venv & pip" "python3-venv python3-pip" "" "" "" "" ""
-        elif [ "$PKG_MGR" = "unknown" ]; then
+        elif [[ "$PKG_MGR" = "$UNKNOWN" ]]; then
             MISSING_SOFTWARE="$MISSING_SOFTWARE- Python 3 venv module\n"
         fi
     fi
@@ -159,11 +165,11 @@ fi
 # Trim leading space from packages list if present
 MISSING_PKGS=$(echo "$MISSING_PKGS" | xargs)
 
-if [ -n "$MISSING_PKGS" ]; then
+if [[ -n "$MISSING_PKGS" ]]; then
     echo -e "Missing dependencies detected.\n\nThe following system dependencies are missing and need to be installed:"
     echo -e "$MISSING_SOFTWARE"
-    
-    if [ "$PKG_MGR" = "unknown" ]; then
+
+    if [[ "$PKG_MGR" = "$UNKNOWN" ]]; then
         echo "Could not detect a supported package manager ($OS). Please install the above software manually."
         exit 1
     fi
@@ -186,9 +192,9 @@ if [ -n "$MISSING_PKGS" ]; then
                 ;;
             choco)
                 run_as_root choco install -y $MISSING_PKGS; ret=$?
-                if [ $ret -ne 0 ]; then
+                if [[ $ret -ne 0 ]]; then
                     echo ""
-                    echo "Error: Chocolatey installation failed (exit code $ret)."
+                    echo "Error: Chocolatey installation failed (exit code $ret)." >&2
                     echo "Chocolatey usually requires an elevated (Administrator) PowerShell session."
                     echo "To retry, open PowerShell as Administrator and run:"
                     echo "  Start-Process powershell -Verb RunAs -ArgumentList '-File .\\start.sh'"
@@ -213,7 +219,7 @@ if [ -n "$MISSING_PKGS" ]; then
         echo "Installation aborted by the user. Please install them manually and re-run this script."
         exit 1
     fi
-elif [ -n "$MISSING_SOFTWARE" ] && [ "$PKG_MGR" = "unknown" ]; then
+elif [[ -n "$MISSING_SOFTWARE" ]] && [[ "$PKG_MGR" = "$UNKNOWN" ]]; then
     echo -e "Missing dependencies detected.\n\nThe following system dependencies are missing:"
     echo -e "$MISSING_SOFTWARE"
     echo "Could not detect a supported package manager ($OS). Please install the above software manually."
@@ -228,7 +234,7 @@ if command_exists npm; then
         echo -e "\nTypeScript compiler (tsc) is missing."
         if ask_permission "Do you want to run 'npm install -g typescript'?"; then
             echo "Installing typescript globally..."
-            if [ "$OS" = "Windows" ] || [ "$OS" = "macOS" ]; then
+            if [[ "$OS" = "$WINDOWS" ]] || [[ "$OS" = "macOS" ]]; then
                 npm install -g typescript
             else
                 run_as_root npm install -g typescript
@@ -240,17 +246,17 @@ if command_exists npm; then
 fi
 
 # Create virtual environment if it doesn't exist
-if [ ! -d ".venv" ]; then
+if [[ ! -d ".venv" ]]; then
     echo -e "\nCreating virtual environment in .venv..."
     "$PYTHON_CMD" -m venv .venv
 fi
 
 # Activate virtual environment
-if [ -f "$VENV_ACTIVATE" ]; then
+if [[ -f "$VENV_ACTIVATE" ]]; then
     # shellcheck source=/dev/null
     source "$VENV_ACTIVATE"
 else
-    echo "Error: Virtual environment activation script not found at $VENV_ACTIVATE"
+    echo "Error: Virtual environment activation script not found at $VENV_ACTIVATE" >&2
     exit 1
 fi
 
@@ -262,6 +268,7 @@ pip_run() {
     else
         "$PYTHON_CMD" -m pip "$@"
     fi
+    return
 }
 
 # Install dependencies explicitly to avoid caching issues across environments

@@ -307,7 +307,7 @@
 
         .format-chip.server {
             background: rgba(234,179,8,0.12);
-            color: #ca8a04;
+            color: #fbbf24;
             border-color: rgba(234,179,8,0.25);
         }
 
@@ -533,7 +533,7 @@
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/>
                     <line x1="12" y1="8" x2="12.01" y2="8"/>
                 </svg>
-                <span style="color:#ca8a04;">Yellow</span> = requires server
+                <span style="color:#fbbf24;">Yellow</span> = requires server
             </span>
         </div>
         <div class="formats-grid">
@@ -697,7 +697,7 @@ const MIME = {
 
 /* ── State ── */
 let currentFile = null;
-let resultData  = null;   // { blob, text, mimeType, ext }
+let resultData  = null;
 
 /* ── DOM refs ── */
 const dropZone     = document.getElementById('drop-zone');
@@ -839,6 +839,64 @@ btnConvert.addEventListener('click', async () => {
     }
 });
 
+/* ── Browser conversion helpers (one per source format) ── */
+function convertJsonText(text, to) {
+    const data = JSON.parse(text);
+    if (to === 'csv')  return { output: jsonToCsv(data) };
+    if (to === 'tsv')  return { output: jsonToCsv(data, '\t') };
+    if (to === 'yaml') return { output: jsyaml.dump(data, { indent: 2, lineWidth: 120 }) };
+    if (to === 'xml')  return { output: jsonToXml(data, 'root') };
+    return null;
+}
+
+function convertCsvText(text, to) {
+    const parsed = Papa.parse(text.trim(), { header: true, dynamicTyping: true, skipEmptyLines: true });
+    if (parsed.errors.length) throw new Error(parsed.errors[0].message);
+    const rows = parsed.data;
+    if (to === 'json') return { output: JSON.stringify(rows, null, 2) };
+    if (to === 'tsv')  return { output: jsonToCsv(rows, '\t') };
+    if (to === 'yaml') return { output: jsyaml.dump(rows, { indent: 2 }) };
+    return null;
+}
+
+function convertTsvText(text, to) {
+    const parsed = Papa.parse(text.trim(), { header: true, delimiter: '\t', dynamicTyping: true, skipEmptyLines: true });
+    if (parsed.errors.length) throw new Error(parsed.errors[0].message);
+    const rows = parsed.data;
+    if (to === 'csv')  return { output: jsonToCsv(rows, ',') };
+    if (to === 'json') return { output: JSON.stringify(rows, null, 2) };
+    if (to === 'yaml') return { output: jsyaml.dump(rows, { indent: 2 }) };
+    return null;
+}
+
+function convertYamlText(text, to) {
+    const data = jsyaml.load(text);
+    if (to === 'json') return { output: JSON.stringify(data, null, 2) };
+    if (to === 'csv')  return { output: jsonToCsv(Array.isArray(data) ? data : [data]) };
+    return null;
+}
+
+function convertXmlText(text) {
+    const doc = new DOMParser().parseFromString(text, 'text/xml');
+    const parserErr = doc.querySelector('parsererror');
+    if (parserErr) throw new Error('Invalid XML: ' + parserErr.textContent);
+    return { output: JSON.stringify(xmlToJson(doc.documentElement), null, 2) };
+}
+
+function convertMarkdownText(text, to) {
+    if (to !== 'html') return null;
+    return { output: `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"><title>Converted</title></head>\n<body>\n${marked.parse(text)}\n</body>\n</html>` };
+}
+
+function convertHtmlText(text, to) {
+    if (to === 'md') return { output: htmlToMarkdown(text) };
+    if (to === 'txt') {
+        const doc = new DOMParser().parseFromString(text, 'text/html');
+        return { output: doc.body.innerText };
+    }
+    return null;
+}
+
 /* ── Browser conversions ── */
 async function convertInBrowser(from, to) {
     const text = await currentFile.text();
@@ -849,85 +907,23 @@ async function convertInBrowser(from, to) {
         return;
     }
 
-    let output = '';
-    let outputMime = MIME[to] || 'text/plain';
-    let outputExt  = to;
-    let conversionPerformed = false;
+    let result = null;
+    let outputExt = to;
 
-    /* ── JSON → * ── */
-    if (from === 'json') {
-        const data = JSON.parse(text);
+    if (from === 'json')                    result = convertJsonText(text, to);
+    else if (from === 'csv')                result = convertCsvText(text, to);
+    else if (from === 'tsv')                result = convertTsvText(text, to);
+    else if (from === 'yaml')               result = convertYamlText(text, to);
+    else if (from === 'xml')                result = convertXmlText(text);
+    else if (from === 'md' || from === 'markdown') result = convertMarkdownText(text, to);
+    else if (from === 'html')               result = convertHtmlText(text, to);
+    else if (from === 'txt')                { result = { output: text }; outputExt = 'md'; }
 
-        if (to === 'csv') { output = jsonToCsv(data); conversionPerformed = true; }
-        else if (to === 'tsv') { output = jsonToCsv(data, '\t'); conversionPerformed = true; }
-        else if (to === 'yaml') { output = jsyaml.dump(data, { indent: 2, lineWidth: 120 }); conversionPerformed = true; }
-        else if (to === 'xml') { output = jsonToXml(data, 'root'); conversionPerformed = true; }
-    }
-    /* ── CSV → * ── */
-    else if (from === 'csv') {
-        const parsed = Papa.parse(text.trim(), { header: true, dynamicTyping: true, skipEmptyLines: true });
-        if (parsed.errors.length) throw new Error(parsed.errors[0].message);
-        const rows = parsed.data;
-
-        if (to === 'json') { output = JSON.stringify(rows, null, 2); conversionPerformed = true; }
-        else if (to === 'tsv') { output = jsonToCsv(rows, '\t'); conversionPerformed = true; }
-        else if (to === 'yaml') { output = jsyaml.dump(rows, { indent: 2 }); conversionPerformed = true; }
-    }
-    /* ── TSV → * ── */
-    else if (from === 'tsv') {
-        const parsed = Papa.parse(text.trim(), { header: true, delimiter: '\t', dynamicTyping: true, skipEmptyLines: true });
-        if (parsed.errors.length) throw new Error(parsed.errors[0].message);
-        const rows = parsed.data;
-
-        if (to === 'csv') { output = jsonToCsv(rows, ','); conversionPerformed = true; }
-        else if (to === 'json') { output = JSON.stringify(rows, null, 2); conversionPerformed = true; }
-        else if (to === 'yaml') { output = jsyaml.dump(rows, { indent: 2 }); conversionPerformed = true; }
-    }
-    /* ── YAML → * ── */
-    else if (from === 'yaml') {
-        const data = jsyaml.load(text);
-
-        if (to === 'json') { output = JSON.stringify(data, null, 2); conversionPerformed = true; }
-        else if (to === 'csv') { output = jsonToCsv(Array.isArray(data) ? data : [data]); conversionPerformed = true; }
-    }
-    /* ── XML → JSON ── */
-    else if (from === 'xml') {
-        const doc = new DOMParser().parseFromString(text, 'text/xml');
-        const parserErr = doc.querySelector('parsererror');
-        if (parserErr) throw new Error('Invalid XML: ' + parserErr.textContent);
-        output = JSON.stringify(xmlToJson(doc.documentElement), null, 2);
-        conversionPerformed = true;
-    }
-    /* ── Markdown → HTML ── */
-    else if (from === 'md' || from === 'markdown') {
-        if (to === 'html') {
-            output = `<!DOCTYPE html>\n<html>\n<head><meta charset="UTF-8"><title>Converted</title></head>\n<body>\n${marked.parse(text)}\n</body>\n</html>`;
-            conversionPerformed = true;
-        }
-    }
-    /* ── HTML → * ── */
-    else if (from === 'html') {
-        if (to === 'md') {
-            output = htmlToMarkdown(text);
-            conversionPerformed = true;
-        } else if (to === 'txt') {
-            const doc = new DOMParser().parseFromString(text, 'text/html');
-            output = doc.body.innerText;
-            conversionPerformed = true;
-        }
-    }
-    /* ── TXT → MD (trivially, just rename) ── */
-    else if (from === 'txt') {
-        output = text;
-        outputExt = 'md';
-        conversionPerformed = true;
-    }
-
-    if (!conversionPerformed) {
+    if (!result) {
         throw new Error(`Conversion from ${from} → ${to} is not supported in-browser.`);
     }
 
-    showTextResult(output, to, outputExt);
+    showTextResult(result.output, to, outputExt);
 }
 
 /* ── Server conversions ── */
@@ -955,57 +951,45 @@ async function convertViaServer(from, to) {
 }
 
 /* ── Image conversion via Canvas ── */
+function handleCanvasBlob(blob, url, to, resolve, reject) {
+    URL.revokeObjectURL(url);
+    if (!blob) { reject(new Error('Canvas conversion failed')); return; }
+    showBinaryResult(blob, to);
+    resolve();
+}
+
+function drawImageToCanvas(img, to, url, resolve, reject) {
+    const canvas = document.createElement('canvas');
+    canvas.width  = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    if (to === 'base64') {
+        ctx.drawImage(img, 0, 0);
+        showTextResult(canvas.toDataURL('image/png'), 'base64', 'txt');
+        URL.revokeObjectURL(url);
+        resolve();
+        return;
+    }
+    if (to === 'jpg' || to === 'jpeg') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(img, 0, 0);
+    const mimeTarget = to === 'jpg' ? 'image/jpeg' : `image/${to}`;
+    const quality = (to === 'jpg' || to === 'webp') ? 0.92 : undefined;
+    canvas.toBlob(blob => handleCanvasBlob(blob, url, to, resolve, reject), mimeTarget, quality);
+}
+
 async function convertImage(from, to) {
     return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(currentFile);
         const img = new Image();
-        img.onload = () => {
-            if (to === 'base64') {
-                // Return as data URL
-                const canvas = document.createElement('canvas');
-                canvas.width  = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                const dataUrl = canvas.toDataURL('image/png');
-                showTextResult(dataUrl, 'base64', 'txt');
-                URL.revokeObjectURL(url);
-                resolve();
-                return;
-            }
-
-            const canvas = document.createElement('canvas');
-            canvas.width  = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-
-            // White background for JPG (no transparency)
-            if (to === 'jpg' || to === 'jpeg') {
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-
-            ctx.drawImage(img, 0, 0);
-
-            const mimeTarget = to === 'jpg' ? 'image/jpeg' : `image/${to}`;
-            const quality = (to === 'jpg' || to === 'webp') ? 0.92 : undefined;
-
-            canvas.toBlob(blob => {
-                URL.revokeObjectURL(url);
-                if (!blob) { reject(new Error('Canvas conversion failed')); return; }
-                showBinaryResult(blob, to);
-                resolve();
-            }, mimeTarget, quality);
-        };
+        img.onload = () => drawImageToCanvas(img, to, url, resolve, reject);
         img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
-
-        // SVG needs special handling
         if (from === 'svg') {
-            const reader = new FileReader();
-            reader.onload = e => {
-                img.src = 'data:image/svg+xml;base64,' + btoa(e.target.result);
-            };
-            reader.readAsText(currentFile);
+            currentFile.text().then(svgText => {
+                img.src = 'data:image/svg+xml;base64,' + btoa(svgText);
+            });
         } else {
             img.src = url;
         }
@@ -1095,7 +1079,7 @@ function jsonToCsv(rows, sep = ',') {
     const escape  = v => {
         const s = v == null ? '' : String(v);
         if (s.includes(sep) || s.includes('"') || s.includes('\n'))
-            return '"' + s.replace(/"/g, '""') + '"';
+            return '"' + s.replaceAll('"', '""') + '"';
         return s;
     };
     const lines = [headers.map(escape).join(sep)];
@@ -1104,7 +1088,7 @@ function jsonToCsv(rows, sep = ',') {
 }
 
 function jsonToXml(obj, tag) {
-    const clean = t => t.replace(/[^a-zA-Z0-9_\-:.]/g, '_');
+    const clean = t => t.replaceAll(/[^a-zA-Z0-9_\-:.]/g, '_');
     if (Array.isArray(obj)) {
         return obj.map(item => jsonToXml(item, 'item')).join('\n');
     }
@@ -1137,15 +1121,24 @@ function xmlToJson(node) {
         }
         if (child.nodeType === Node.ELEMENT_NODE) {
             const val = xmlToJson(child);
-            if (obj[child.nodeName] !== undefined) {
+            if (obj[child.nodeName] === undefined) {
+                obj[child.nodeName] = val;
+            } else {
                 if (!Array.isArray(obj[child.nodeName])) obj[child.nodeName] = [obj[child.nodeName]];
                 obj[child.nodeName].push(val);
-            } else {
-                obj[child.nodeName] = val;
             }
         }
     }
     return obj;
+}
+
+function htmlTableToMarkdown(node, walkFn) {
+    const rows = Array.from(node.querySelectorAll('tr'));
+    if (!rows.length) return Array.from(node.childNodes).map(walkFn).join('');
+    const heads = Array.from(rows[0].querySelectorAll('th,td')).map(c => walkFn(c).trim());
+    const sep = heads.map(() => '---');
+    const body = rows.slice(1).map(r => Array.from(r.querySelectorAll('th,td')).map(c => walkFn(c).trim()).join(' | '));
+    return [heads.join(' | '), sep.join(' | '), ...body].join('\n') + '\n\n';
 }
 
 function htmlToMarkdown(html) {
@@ -1176,15 +1169,7 @@ function htmlToMarkdown(html) {
             case 'li': return inner.trim();
             case 'blockquote': return inner.split('\n').map(l => `> ${l}`).join('\n') + '\n\n';
             case 'hr': return '---\n\n';
-            case 'table': {
-                const rows = Array.from(node.querySelectorAll('tr'));
-                if (!rows.length) return inner;
-                const hdRow = rows[0];
-                const heads = Array.from(hdRow.querySelectorAll('th,td')).map(c => walk(c).trim());
-                const sep = heads.map(() => '---');
-                const body = rows.slice(1).map(r => Array.from(r.querySelectorAll('td')).map(c => walk(c).trim()).join(' | '));
-                return [heads.join(' | '), sep.join(' | '), ...body].join('\n') + '\n\n';
-            }
+            case 'table': return htmlTableToMarkdown(node, walk);
             default: return inner;
         }
     }
@@ -1192,7 +1177,7 @@ function htmlToMarkdown(html) {
 }
 
 function escHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 }
 
 })();
