@@ -21,6 +21,9 @@ ROOT = Path(__file__).parent.parent
 REQUIREMENTS = ROOT / "requirements.txt"
 VERSIONS_FILE = Path(__file__).parent / "versions.json"
 MONACO_DIR = ROOT / "static/libs/vs"
+MONACO_MANIFEST_KEY = "static/libs/vs"
+SEMVER_PATTERN = r"\b([0-9]+\.[0-9]+\.[0-9]+)\b"
+STATUS_UNTRACKED = "[untracked]"
 
 # (relative path, npm package name, path inside npm tarball, cdn_url_override or None)
 # cdn_url_override: use {version} as placeholder; used when jsDelivr npm path doesn't work.
@@ -46,8 +49,8 @@ _SNIFF_PATTERNS: dict[str, list[str]] = {
     "highlight.min.js": [r"highlight\.js v?([0-9]+\.[0-9]+\.[0-9]+)"],
     "marked.min.js":    [r"marked v?([0-9]+\.[0-9]+\.[0-9]+)"],
     "papaparse.min.js": [r"v([0-9]+\.[0-9]+\.[0-9]+)"],
-    "js-yaml.min.js":   [r"js-yaml ([0-9]+\.[0-9]+\.[0-9]+)", r"\b([0-9]+\.[0-9]+\.[0-9]+)\b"],
-    "require.min.js":   [r'version="([0-9]+\.[0-9]+\.[0-9]+)"', r"\b([0-9]+\.[0-9]+\.[0-9]+)\b"],
+    "js-yaml.min.js":   [r"js-yaml ([0-9]+\.[0-9]+\.[0-9]+)", SEMVER_PATTERN],
+    "require.min.js":   [r'version="([0-9]+\.[0-9]+\.[0-9]+)"', SEMVER_PATTERN],
 }
 
 # ── Python environment detection ──────────────────────────────────────────────
@@ -86,7 +89,7 @@ def _sniff_version(filepath: Path) -> str | None:
         content = filepath.read_text(encoding="utf-8", errors="ignore")[:16384]
     except Exception:
         return None
-    patterns = _SNIFF_PATTERNS.get(filepath.name, [r"\b([0-9]+\.[0-9]+\.[0-9]+)\b"])
+    patterns = _SNIFF_PATTERNS.get(filepath.name, [SEMVER_PATTERN])
     for pat in patterns:
         m = re.search(pat, content, re.IGNORECASE)
         if m:
@@ -101,7 +104,7 @@ def _load_manifest() -> dict[str, str | None]:
 
 
 def _save_manifest(data: dict) -> None:
-    VERSIONS_FILE.write_text(json.dumps(data, indent=2) + "\n")
+    VERSIONS_FILE.write_text(json.dumps(data, indent=2) + "\n")  # NOSONAR — path is hardcoded, data values are version strings only
 
 
 def _confirm(prompt: str) -> bool:
@@ -238,65 +241,68 @@ def _bump_requirements(name: str, new_version: str) -> None:
 
 # ── Vendored JavaScript ───────────────────────────────────────────────────────
 
+def _version_status(current: str | None, latest: str) -> str:
+    if current is None:
+        return STATUS_UNTRACKED
+    if latest == "unavailable":
+        return "[unavailable]"
+    if current == latest:
+        return "[ok]        "
+    return "[OUTDATED]  "
+
+
+def _check_one_js_lib(
+    entry: tuple, manifest: dict, outdated_libs: list, rows: list
+) -> None:
+    rel_path, npm_name, tarball_path, cdn_override = entry
+    filepath = ROOT / rel_path
+    current = manifest.get(rel_path)
+    if current is None:
+        current = _sniff_version(filepath) if filepath.exists() else None
+        if current:
+            manifest[rel_path] = current
+
+    latest = _npm_latest(npm_name)
+    status = _version_status(current, latest)
+    if status == "[OUTDATED]  ":
+        outdated_libs.append((rel_path, npm_name, tarball_path, cdn_override, current, latest))
+    rows.append((status, rel_path, npm_name, current or "—", latest))
+
+
+def _check_monaco(manifest: dict, outdated_libs: list) -> str:
+    current = manifest.get(MONACO_MANIFEST_KEY)
+    if current is None:
+        pkg_json = MONACO_DIR / "package.json"
+        if pkg_json.exists():
+            current = json.loads(pkg_json.read_text()).get("version")
+        if current:
+            manifest[MONACO_MANIFEST_KEY] = current
+
+    latest = _npm_latest("monaco-editor")
+    status = _version_status(current, latest)
+    if status == "[OUTDATED]  ":
+        outdated_libs.append((MONACO_MANIFEST_KEY, "monaco-editor", "__monaco__", None, current, latest))
+    return f"  {status} {'Monaco Editor (vs/)':<32} {current or '—':<12} →  {latest}  (monaco-editor)"
+
+
 def check_vendored_js(update: bool = False) -> list[tuple]:
     print("\n=== Vendored JavaScript ===\n")
 
     manifest = _load_manifest()
     outdated_libs: list[tuple] = []
-    rows = []
+    rows: list[tuple] = []
 
-    for rel_path, npm_name, tarball_path, cdn_override in VENDORED_JS:
-        filepath = ROOT / rel_path
+    for entry in VENDORED_JS:
+        _check_one_js_lib(entry, manifest, outdated_libs, rows)
 
-        # Source of truth: manifest → sniff → None (untracked)
-        current = manifest.get(rel_path)
-        if current is None:
-            current = _sniff_version(filepath) if filepath.exists() else None
-            if current:
-                manifest[rel_path] = current  # promote sniffed version into manifest
-
-        latest = _npm_latest(npm_name)
-
-        if current is None:
-            status = "[untracked]"
-        elif latest == "unavailable":
-            status = "[unavailable]"
-        elif current == latest:
-            status = "[ok]        "
-        else:
-            status = "[OUTDATED]  "
-            outdated_libs.append((rel_path, npm_name, tarball_path, cdn_override, current, latest))
-
-        rows.append((status, rel_path, npm_name, current or "—", latest))
-
-    # Monaco Editor
-    monaco_current = manifest.get("static/libs/vs")
-    if monaco_current is None:
-        pkg_json = MONACO_DIR / "package.json"
-        if pkg_json.exists():
-            monaco_current = json.loads(pkg_json.read_text()).get("version")
-        if monaco_current:
-            manifest["static/libs/vs"] = monaco_current
-
-    monaco_latest = _npm_latest("monaco-editor")
-    if monaco_current is None:
-        monaco_status = "[untracked]"
-    elif monaco_latest == "unavailable":
-        monaco_status = "[unavailable]"
-    elif monaco_current == monaco_latest:
-        monaco_status = "[ok]        "
-    else:
-        monaco_status = "[OUTDATED]  "
-        outdated_libs.append(("static/libs/vs", "monaco-editor", "__monaco__", None, monaco_current, monaco_latest))
-
+    monaco_line = _check_monaco(manifest, outdated_libs)
     _save_manifest(manifest)
 
     for status, path, pkg, current, latest in rows:
         print(f"  {status} {Path(path).name:<32} {current:<12} →  {latest}  ({pkg})")
-    print(f"  {monaco_status} {'Monaco Editor (vs/)':<32} {monaco_current or '—':<12} →  {monaco_latest}  (monaco-editor)")
+    print(monaco_line)
 
-    untracked = [r for r in rows if r[0] == "[untracked]"]
-    if untracked:
+    if any(r[0] == STATUS_UNTRACKED for r in rows):
         print()
         print("  [untracked] libs have no recorded version — edit scripts/versions.json")
         print("  to add their current version before this script can update them.")
@@ -349,11 +355,19 @@ def _try_cdn_sources(
     return False
 
 
+def _is_safe_member(name: str) -> bool:
+    parts = name.split("/")
+    return not name.startswith("/") and ".." not in parts
+
+
 def _extract_member_from_tarball(tgz_path: Path, tarball_path: str, dest: Path) -> bool:
     """Open a tgz archive and write the best-matching member to dest."""
     target_name = Path(tarball_path).name
     with tarfile.open(tgz_path) as tf:
-        candidates = [m for m in tf.getmembers() if m.name.endswith(target_name)]
+        candidates = [
+            m for m in tf.getmembers()
+            if m.name.endswith(target_name) and _is_safe_member(m.name)
+        ]
         if not candidates:
             print(f"    {target_name} not found in tarball — update manually.")
             return False
@@ -419,7 +433,10 @@ def _update_monaco(version: str) -> bool:
         extract_dir.mkdir()
 
         with tarfile.open(tgz_path) as tf:
-            members = [m for m in tf.getmembers() if "package/min/vs/" in m.name]
+            members = [
+                m for m in tf.getmembers()
+                if "package/min/vs/" in m.name and _is_safe_member(m.name)
+            ]
             if not members:
                 print("FAILED — min/vs/ not found in tarball")
                 return False
