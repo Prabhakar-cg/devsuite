@@ -9,6 +9,30 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.1.3] — 2026-04-19
+
+Code quality hardening pass — no behaviour changes. All changes reduce SonarCloud cognitive complexity violations and remove static-analysis warnings.
+
+### Internal / Code Quality
+
+#### `main.py`
+- **Cognitive complexity (S3776)**: Extracted `_ssh_keyscan(host, port)` and `_ssh_key_fingerprint(key_data, host, port)` from `_ensure_host_key`, reducing its complexity from 71 to ~5.
+- **SFTP deduplication**: Added `_make_sftp_approve(fingerprint)` factory to replace three identical inline `_sftp_approve` closures in `sftp_list`, `sftp_download`, and `sftp_upload`.
+- **Cognitive complexity (S3776)**: Extracted `_source_to_html(src_ext, content)` from `_conv_any_to_pdf`; `_read_upload_stream(file, max_size)` from `upload_file`; `_resolve_target_ips(hostname, port, scheme)` from `proxy_request`.
+- **Empty except blocks (S108)**: Replaced silent `pass` in `_try_resize_ssh_process` and `ssh_dashboard` with `logger.debug()` calls.
+- **IndentationError fix**: Corrected indentation of `return await _ws_wait_for_host_key_response(websocket)` to sit inside the `async with asyncio.timeout(60):` block.
+
+#### `devdb.py`
+- **Cognitive complexity (S3776)**: Extracted `_cleanup_temp_file(fd, tmp_path)` module-level helper from the `_write` method's `BaseException` cleanup block.
+
+#### `scripts/check_updates.py`
+- **Cognitive complexity (S3776)**: Refactored `_update_js_file` (complexity was 30, limit 15) by extracting five helpers — `_discard_bak`, `_restore_bak`, `_try_cdn_sources`, `_extract_member_from_tarball`, and `_try_tarball_download` — leaving `_update_js_file` as a thin orchestrator (~5 complexity).
+
+#### `static/style.css`
+- **Duplicate selector (S4666)**: Removed redundant `.editor-host { flex: 1; }` at line 769; the full rule at line 400 already covers this.
+
+---
+
 ## [0.1.2] — 2026-04-18
 
 Code quality and security hardening pass — no behaviour changes. All changes address SonarQube static-analysis rule violations to reduce cognitive complexity, close security-tool findings, improve code clarity, and align with modern JS/Python idioms.

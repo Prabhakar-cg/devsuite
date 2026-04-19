@@ -1,0 +1,12 @@
+{
+  "static/xterm.js": null,
+  "static/xterm-addon-fit.js": null,
+  "static/crypto-js.min.js": null,
+  "static/bwip-js-min.js": null,
+  "static/libs/highlight.min.js": "11.11.1",
+  "static/libs/marked.min.js": "18.0.2",
+  "static/libs/papaparse.min.js": "5.5.3",
+  "static/libs/js-yaml.min.js": "4.1.1",
+  "static/libs/require.min.js": "2.3.8",
+  "static/libs/vs": "0.55.1"
+}

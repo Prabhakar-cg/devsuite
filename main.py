@@ -87,7 +87,7 @@ async def _lifespan(_application: FastAPI):
     # (cleanup goes here if needed in future)
 
 
-APP_VERSION = "0.1.2"
+APP_VERSION = "0.1.3"
 
 app = FastAPI(
     title="DevSuite",
@@ -418,39 +418,36 @@ def _conv_docx_to_txt(content: bytes) -> Response:
                     headers={"Content-Disposition": 'attachment; filename="converted.txt"'})
 
 
-def _conv_any_to_pdf(src_ext: str, content: bytes) -> Response:
-    """Convert DOCX/DOC/HTML/MD/Markdown bytes to PDF using weasyprint."""
+def _source_to_html(src_ext: str, content: bytes) -> str:
+    """Convert document bytes to a raw HTML string for PDF rendering."""
     import io  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
-    try:
-        import weasyprint  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
-    except ImportError as e:
-        raise HTTPException(status_code=503, detail="weasyprint is not installed. Run: pip install weasyprint") from e
-
-    # Step 1: Get HTML content
     if src_ext in ("docx", "doc"):
         try:
             import mammoth  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
         except ImportError as e:
             raise HTTPException(status_code=503, detail="mammoth is not installed. Run: pip install mammoth") from e
-        result = mammoth.convert_to_html(io.BytesIO(content))
-        raw_html = result.value
-    elif src_ext in ("md", "markdown"):
+        return mammoth.convert_to_html(io.BytesIO(content)).value
+    if src_ext in ("md", "markdown"):
         import html as _html_mod  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
         try:
             import markdown as md_lib  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
-            raw_html = md_lib.markdown(
+            return md_lib.markdown(
                 content.decode("utf-8", errors="replace"),
                 extensions=["tables", "fenced_code"],
             )
         except ImportError:
-            # Fallback: wrap text in <pre>
-            raw_html = (
-                "<pre>"
-                + _html_mod.escape(content.decode("utf-8", errors="replace"))
-                + "</pre>"
-            )
-    else:  # html / htm
-        raw_html = content.decode("utf-8", errors="replace")
+            return "<pre>" + _html_mod.escape(content.decode("utf-8", errors="replace")) + "</pre>"
+    return content.decode("utf-8", errors="replace")  # html / htm
+
+
+def _conv_any_to_pdf(src_ext: str, content: bytes) -> Response:
+    """Convert DOCX/DOC/HTML/MD/Markdown bytes to PDF using weasyprint."""
+    try:
+        import weasyprint  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail="weasyprint is not installed. Run: pip install weasyprint") from e
+
+    raw_html = _source_to_html(src_ext, content)
 
     # Step 2: Wrap in a full HTML document with print-friendly CSS
     full_html = f"""<!DOCTYPE html>
@@ -686,6 +683,20 @@ def redirect_short_url(short_id: str):
     raise HTTPException(status_code=404, detail="Short URL not found.")
 
 
+async def _read_upload_stream(file: UploadFile, max_size: int) -> tuple[bytearray, bool]:
+    """Read file in 1 MB chunks; detect null bytes in the first chunk; enforce size limit."""
+    raw_bytes = bytearray()
+    null_detected = False
+    chunk_size = 1024 * 1024
+    while chunk := await file.read(chunk_size):
+        if not null_detected and not raw_bytes and b"\x00" in chunk[:512]:
+            null_detected = True
+        raw_bytes.extend(chunk)
+        if len(raw_bytes) > max_size:
+            raise HTTPException(status_code=413, detail="File too large. Exceeds 50MB limit.")
+    return raw_bytes, null_detected
+
+
 @app.post(
     "/upload",
     summary="Upload a text file for diffing",
@@ -696,27 +707,10 @@ def redirect_short_url(short_id: str):
     },
 )
 async def upload_file(file: Annotated[UploadFile, File(...)]):
+    """Accept an uploaded text file and return its content and metadata.
+
+    Raises 400 for binary files, 413 if over 50 MB, 500 on unexpected errors.
     """
-    Accepts an uploaded text file, validates it is not binary and within size limits,
-    and returns its decoded text and metadata.
-
-    Parameters:
-        file (UploadFile): The uploaded file to inspect and decode.
-
-    Returns:
-        dict: A mapping with keys:
-            - "filename": the original filename.
-            - "content": the file decoded as a UTF-8 string (invalid bytes replaced).
-            - "size_bytes": the raw byte length of the uploaded file.
-
-    Raises:
-        HTTPException: Raised with status code 400 if the Content-Type indicates a binary media type
-            or if a null byte is detected in the initial chunk (file appears binary).
-        HTTPException: Raised with status code 413 if the uploaded file exceeds 50MB.
-        HTTPException: Raised with status code 500 for unexpected server-side errors
-            while processing the file.
-    """
-    # Reject obviously binary MIME types immediately
     binary_mimes = ("image/", "video/", "audio/", "application/pdf",
                     "application/zip", _MIME_OCTET_STREAM)
     if file.content_type and any(file.content_type.startswith(b) for b in binary_mimes):
@@ -724,27 +718,13 @@ async def upload_file(file: Annotated[UploadFile, File(...)]):
             status_code=400,
             detail=f"Only text-based files are supported. Received: {file.content_type}"
         )
-
     try:
-        max_upload_size_bytes = 50 * 1024 * 1024
-        chunk_size = 1024 * 1024
-        raw_bytes = bytearray()
-        null_byte_detected = False
-
-        while chunk := await file.read(chunk_size):
-            if not null_byte_detected and not raw_bytes and len(chunk) > 0:
-                if b"\x00" in chunk[:512]:
-                    null_byte_detected = True
-            raw_bytes.extend(chunk)
-            if len(raw_bytes) > max_upload_size_bytes:
-                raise HTTPException(status_code=413, detail="File too large. Exceeds 50MB limit.")
-
-        if null_byte_detected:
+        raw_bytes, null_detected = await _read_upload_stream(file, 50 * 1024 * 1024)
+        if null_detected:
             raise HTTPException(
                 status_code=400,
                 detail=f'"{file.filename}" appears to be a binary file and cannot be diffed.'
             )
-
         content = raw_bytes.decode("utf-8", errors="replace")
         return {"filename": file.filename, "content": content, "size_bytes": len(raw_bytes)}
     except HTTPException:
@@ -834,6 +814,21 @@ def _execute_proxy_request(request_obj) -> dict:
         return {"proxy_response": True, "status": e.code, "headers": dict(e.headers), "body": body}
 
 
+def _resolve_target_ips(hostname: str, port: int | None, scheme: str) -> None:
+    """Resolve hostname to IP addresses and reject any private/reserved ones."""
+    try:
+        addr_info = socket.getaddrinfo(
+            hostname,
+            port or (443 if scheme == 'https' else 80),
+            socket.AF_UNSPEC,
+            socket.SOCK_STREAM,
+        )
+    except (socket.gaierror, socket.herror) as e:
+        raise HTTPException(status_code=400, detail=f"DNS resolution failed: {e}") from e
+    for _, _, _, _, sockaddr in addr_info:
+        _check_ip_not_private(sockaddr[0])
+
+
 @app.post(
     "/api/proxy",
     summary="Bypass CORS for API Tester",
@@ -843,35 +838,18 @@ def _execute_proxy_request(request_obj) -> dict:
         500: {"description": "Proxy request failed"},
     },
 )
-async def proxy_request(req: ProxyRequest):  # pylint: disable=too-many-locals,too-many-branches
+async def proxy_request(req: ProxyRequest):
     """Provides a local CORS bypass proxy using urllib for the API tester tool."""
     try:
-        # Parse and validate the URL scheme
         parsed = urllib.parse.urlparse(req.url)
         if parsed.scheme not in ('http', 'https'):
             raise HTTPException(status_code=400, detail="Only HTTP and HTTPS schemes are allowed")
-
         if not parsed.hostname:
             raise HTTPException(status_code=400, detail="Invalid URL: no hostname")
-
-        # Enforce hostname allowlist to prevent full SSRF to arbitrary targets.
         if parsed.hostname not in ALLOWED_PROXY_HOSTS:
             raise HTTPException(status_code=400, detail="Target host is not allowed")
 
-        # Resolve hostname and check for private/reserved IP addresses
-        try:
-            addr_info = socket.getaddrinfo(
-                parsed.hostname,
-                parsed.port or (443 if parsed.scheme == 'https' else 80),
-                socket.AF_UNSPEC,
-                socket.SOCK_STREAM,
-            )
-        except (socket.gaierror, socket.herror) as e:
-            raise HTTPException(status_code=400, detail=f"DNS resolution failed: {e}") from e
-
-        for _, _, _, _, sockaddr in addr_info:
-            ip_str = sockaddr[0]
-            _check_ip_not_private(ip_str)
+        _resolve_target_ips(parsed.hostname, parsed.port, parsed.scheme)
 
         req_body = req.body.encode('utf-8') if req.body else None
         # Reconstruct the URL using the validated components to clear CodeQL dataflow taint.
@@ -1268,52 +1246,8 @@ def _append_known_hosts(path: str, data: bytes) -> None:
         fh.write(data)
 
 
-async def _ensure_host_key(  # pylint: disable=too-many-locals
-    host: str,
-    port: int,
-    approve_host=None,
-) -> str:
-    """
-    Ensures ~/.ssh/known_hosts exists and contains an entry for host:port.
-
-    For a previously unseen host the function:
-      1. Runs ssh-keyscan to fetch the server's public key.
-      2. Computes its SHA-256 fingerprint via ``ssh-keygen -l -f -``.
-      3. Calls ``await approve_host(host, port, fingerprint, key_line)`` if
-         provided.  The callback must return True to accept the key.
-      4. Appends the key to known_hosts only when approved.
-
-    If *approve_host* is None the function raises HostKeyApprovalRequired so
-    callers that do not supply a callback can convert it to an appropriate
-    HTTP/WS response.
-
-    Changed host keys are still rejected by asyncssh after this function
-    returns the known_hosts path — that protection layer is unchanged.
-
-    Returns the path to the known_hosts file.
-    """
-    known_hosts_path = os.path.expanduser("~/.ssh/known_hosts")
-    ssh_dir = os.path.dirname(known_hosts_path)
-
-    # Create ~/.ssh (mode 700) and known_hosts (mode 600) if absent
-    os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
-    if not os.path.exists(known_hosts_path):
-        await asyncio.to_thread(_create_known_hosts, known_hosts_path)
-
-    # ssh-keygen -F checks whether host:port already has an entry
-    lookup = f"[{host}]:{port}" if port != 22 else host
-    check = await asyncio.create_subprocess_exec(
-        "ssh-keygen", "-F", lookup, "-f", known_hosts_path,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
-    await check.wait()
-
-    if check.returncode == 0:
-        # Host already pinned — nothing to do
-        return known_hosts_path
-
-    # Host not yet known — fetch its public key
+async def _ssh_keyscan(host: str, port: int) -> bytes:
+    """Fetch the public key blob for host:port via ssh-keyscan."""
     proc = await asyncio.create_subprocess_exec(
         "ssh-keyscan", "-p", str(port), "-H", host,
         stdout=asyncio.subprocess.PIPE,
@@ -1323,14 +1257,15 @@ async def _ensure_host_key(  # pylint: disable=too-many-locals
         stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
     except asyncio.TimeoutError as exc:
         raise RuntimeError(f"ssh-keyscan timed out for {host}:{port}") from exc
-
     if proc.returncode != 0 or not stdout.strip():
         raise RuntimeError(
-            f"Could not retrieve host key for {host}:{port}. "
-            "Is the host reachable?"
+            f"Could not retrieve host key for {host}:{port}. Is the host reachable?"
         )
+    return stdout
 
-    # Compute the SHA-256 fingerprint using ssh-keygen -l
+
+async def _ssh_key_fingerprint(key_data: bytes, host: str, port: int) -> str:
+    """Return the SHA-256 (or MD5) fingerprint string for a raw ssh-keyscan blob."""
     keygen = await asyncio.create_subprocess_exec(
         "ssh-keygen", "-l", "-f", "-",
         stdin=asyncio.subprocess.PIPE,
@@ -1338,30 +1273,57 @@ async def _ensure_host_key(  # pylint: disable=too-many-locals
         stderr=asyncio.subprocess.DEVNULL,
     )
     try:
-        kg_out, _ = await asyncio.wait_for(keygen.communicate(input=stdout), timeout=10)
+        kg_out, _ = await asyncio.wait_for(keygen.communicate(input=key_data), timeout=10)
     except asyncio.TimeoutError as exc:
         raise RuntimeError(f"ssh-keygen fingerprint timed out for {host}:{port}") from exc
-
-    # ssh-keygen -l output: "2048 SHA256:xxxx user@host (RSA)"
-    # extract the "SHA256:xxxx" token
-    fingerprint = ""
     for token in kg_out.decode(errors="replace").split():
         if token.startswith("SHA256:") or token.startswith("MD5:"):
-            fingerprint = token
-            break
+            return token
+    return ""
+
+
+async def _ensure_host_key(
+    host: str,
+    port: int,
+    approve_host=None,
+) -> str:
+    """Ensure ~/.ssh/known_hosts exists and contains a pinned entry for host:port.
+
+    For an unknown host: fetches the key via ssh-keyscan, computes its fingerprint,
+    then calls ``await approve_host(host, port, fingerprint, key_line)`` if provided.
+    Raises HostKeyApprovalRequired when no callback is supplied.
+    Returns the path to the known_hosts file.
+    """
+    known_hosts_path = os.path.expanduser("~/.ssh/known_hosts")
+    ssh_dir = os.path.dirname(known_hosts_path)
+
+    os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+    if not os.path.exists(known_hosts_path):
+        await asyncio.to_thread(_create_known_hosts, known_hosts_path)
+
+    lookup = f"[{host}]:{port}" if port != 22 else host
+    check = await asyncio.create_subprocess_exec(
+        "ssh-keygen", "-F", lookup, "-f", known_hosts_path,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    await check.wait()
+    if check.returncode == 0:
+        return known_hosts_path
+
+    key_data = await _ssh_keyscan(host, port)
+    fingerprint = await _ssh_key_fingerprint(key_data, host, port)
 
     if approve_host is None:
-        # No callback supplied — callers must handle HostKeyApprovalRequired
         raise HostKeyApprovalRequired(host, port, fingerprint)
 
-    approved = await approve_host(host, port, fingerprint, stdout)
+    approved = await approve_host(host, port, fingerprint, key_data)
     if not approved:
         raise RuntimeError(
             f"Host key for {host}:{port} (fingerprint {fingerprint}) was rejected by the user."
         )
 
-    await asyncio.to_thread(_append_known_hosts, known_hosts_path, stdout)
-
+    await asyncio.to_thread(_append_known_hosts, known_hosts_path, key_data)
     return known_hosts_path
 
 
@@ -1440,8 +1402,8 @@ def _try_resize_ssh_process(process, data: str) -> bool:
         try:
             cols, rows = int(parts[1]), int(parts[2].strip("m"))
             process.change_terminal_size(cols, rows, 0, 0)
-        except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
-            pass
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.debug("Terminal resize failed (ignored)", exc_info=True)
     return True
 
 
@@ -1508,7 +1470,7 @@ async def _terminal_ws_approve_host(
         "fingerprint": fingerprint,
     })
     async with asyncio.timeout(60):
-    return await _ws_wait_for_host_key_response(websocket)
+        return await _ws_wait_for_host_key_response(websocket)
 
 
 @app.websocket("/api/ssh/terminal")
@@ -1564,41 +1526,50 @@ class SFTPRequest(BaseModel):
     approved_fingerprint: str | None = None
 
 
+class SFTPDownloadRequest(BaseModel):
+    """Request body for the /api/sftp/download endpoint."""
+
+    host: str
+    port: int = 22
+    username: str
+    password: str | None = None
+    private_key: str | None = None
+    path: str  # full remote file path
+    approved_fingerprint: str | None = None
+
+
+def _make_sftp_approve(approved_fingerprint: str | None):
+    """Return an SFTP host-key approval callback that auto-approves a known fingerprint."""
+    async def _approve(h: str, p: int, fingerprint: str, _key: bytes) -> bool:  # NOSONAR — asyncssh requires an awaitable callback
+        if approved_fingerprint and approved_fingerprint == fingerprint:
+            return True
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "host_key_approval_required",
+                "host": h, "port": p, "fingerprint": fingerprint,
+            },
+        )
+    return _approve
+
+
 @app.post(
     "/api/sftp/list",
     summary="List files via SFTP",
     responses={
         409: {"description": "Host key approval required"},
-        500: {"description": "SFTP operation failed"},
+        500: {"description": _ERR_SFTP_FAILED},
     },
 )
 async def sftp_list(req: SFTPRequest):
     """List files in a directory on a remote host via SFTP."""
     try:
-        async def _sftp_approve(h: str, p: int, fingerprint: str, _key: bytes) -> bool:
-            if req.approved_fingerprint and req.approved_fingerprint == fingerprint:
-                return True
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "error": "host_key_approval_required",
-                    "host": h, "port": p, "fingerprint": fingerprint,
-                },
-            )
-
-        known_hosts_path = await _ensure_host_key(req.host, req.port, approve_host=_sftp_approve)
-
-        connect_kwargs = {
-            "host": req.host,
-            "port": req.port,
-            "username": req.username,
-            "known_hosts": known_hosts_path
-        }
-        if req.password:
-            connect_kwargs["password"] = req.password
-        if req.private_key:
-            connect_kwargs["client_keys"] = [asyncssh.import_private_key(req.private_key)]
-
+        known_hosts_path = await _ensure_host_key(
+            req.host, req.port, approve_host=_make_sftp_approve(req.approved_fingerprint)
+        )
+        connect_kwargs = _build_ssh_connect_kwargs(
+            req.host, req.port, req.username, req.password, req.private_key, known_hosts_path
+        )
         async with asyncssh.connect(**connect_kwargs) as conn:
             sftp = await conn.start_sftp_client()
             async with sftp:
@@ -1623,52 +1594,23 @@ async def sftp_list(req: SFTPRequest):
         raise HTTPException(status_code=500, detail=_ERR_SFTP_FAILED) from e
 
 
-class SFTPDownloadRequest(BaseModel):
-    """Request body for the /api/sftp/download endpoint."""
-
-    host: str
-    port: int = 22
-    username: str
-    password: str | None = None
-    private_key: str | None = None
-    path: str  # full remote file path
-    approved_fingerprint: str | None = None
-
-
 @app.post(
     "/api/sftp/download",
     summary="Download a file via SFTP",
     responses={
         409: {"description": "Host key approval required"},
-        500: {"description": "SFTP operation failed"},
+        500: {"description": _ERR_SFTP_FAILED},
     },
 )
 async def sftp_download(req: SFTPDownloadRequest):
     """Stream a file download from a remote host via SFTP."""
     try:
-        async def _sftp_approve(h: str, p: int, fingerprint: str, _key: bytes) -> bool:
-            if req.approved_fingerprint and req.approved_fingerprint == fingerprint:
-                return True
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "error": "host_key_approval_required",
-                    "host": h, "port": p, "fingerprint": fingerprint,
-                },
-            )
-
-        known_hosts_path = await _ensure_host_key(req.host, req.port, approve_host=_sftp_approve)
-        connect_kwargs = {
-            "host": req.host,
-            "port": req.port,
-            "username": req.username,
-            "known_hosts": known_hosts_path
-        }
-        if req.password:
-            connect_kwargs["password"] = req.password
-        if req.private_key:
-            connect_kwargs["client_keys"] = [asyncssh.import_private_key(req.private_key)]
-
+        known_hosts_path = await _ensure_host_key(
+            req.host, req.port, approve_host=_make_sftp_approve(req.approved_fingerprint)
+        )
+        connect_kwargs = _build_ssh_connect_kwargs(
+            req.host, req.port, req.username, req.password, req.private_key, known_hosts_path
+        )
         chunk_size = 65536  # 64 KB
 
         async def _stream_file():
@@ -1700,10 +1642,10 @@ async def sftp_download(req: SFTPDownloadRequest):
     summary="Upload a file via SFTP",
     responses={
         409: {"description": "Host key approval required"},
-        500: {"description": "SFTP operation failed"},
+        500: {"description": _ERR_SFTP_FAILED},
     },
 )
-async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     host: Annotated[str, Form(...)],
     username: Annotated[str, Form(...)],
     remote_path: Annotated[str, Form(...)],
@@ -1715,29 +1657,12 @@ async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional
 ):
     """Upload a file to a remote host via SFTP."""
     try:
-        async def _sftp_approve(h: str, p: int, fingerprint: str, _key: bytes) -> bool:
-            if approved_fingerprint and approved_fingerprint == fingerprint:
-                return True
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "error": "host_key_approval_required",
-                    "host": h, "port": p, "fingerprint": fingerprint,
-                },
-            )
-
-        known_hosts_path = await _ensure_host_key(host, port, approve_host=_sftp_approve)
-        connect_kwargs = {
-            "host": host,
-            "port": port,
-            "username": username,
-            "known_hosts": known_hosts_path
-        }
-        if password:
-            connect_kwargs["password"] = password
-        if private_key:
-            connect_kwargs["client_keys"] = [asyncssh.import_private_key(private_key)]
-
+        known_hosts_path = await _ensure_host_key(
+            host, port, approve_host=_make_sftp_approve(approved_fingerprint)
+        )
+        connect_kwargs = _build_ssh_connect_kwargs(
+            host, port, username, password, private_key, known_hosts_path
+        )
         file_content = await file.read()
         remote_file_path = remote_path.rstrip('/') + '/' + file.filename
 
@@ -1936,8 +1861,8 @@ async def ssh_dashboard(websocket: WebSocket):
         try:
             await websocket.send_json({"error": f"Connection lost: {e}"})
             await websocket.close()
-        except Exception:  # pylint: disable=broad-exception-caught  # nosec B110
-            pass
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.debug("ssh_dashboard: failed to close websocket after error", exc_info=True)
 
 
 def _make_pty_read_handler(fd: int, loop, websocket: WebSocket):

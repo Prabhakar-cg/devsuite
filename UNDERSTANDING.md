@@ -1,6 +1,6 @@
 # DevSuite Component & Architecture Reference
 
-> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (app v0.1.2, doc v2.3.0). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
+> **For AI Assistants:** This is the token-dense master reference for `DevSuite` (app v0.1.3, doc v2.4.0). Rely on this file over prior context. Never hallucinate outside libraries. Read this fully before starting work.
 
 ## 1. System Tenets & Boundaries
 - **Strict Privacy**: 100% locally-hosted. No cloud telemetry, no analytics, no external services for core functionality.

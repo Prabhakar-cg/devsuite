@@ -1,23 +1,47 @@
 # DevSuite — Backlog
 
-> This is a prioritized list of features and improvements to make DevSuite a "best-in-class" locally-hosted developer suite.
+> Structured by type: Security, Feature, Bugfix, DX, and Roadmap.
+> Promote items from GitHub issues into the Bugfix table as they're triaged.
 
-**Status legend**: `[ ]` Open · `[/]` In Progress · `[x]` Done · `[-]` Rejected
+**Status legend**: `[ ]` Open · `[/]` In Progress · `[x]` Done · `[-]` Rejected  
+**Effort scale**: `XS` < 1 hr · `S` 1–3 hrs · `M` 3–8 hrs · `L` 1–2 days · `XL` 2+ days
 
 ---
 
-## 🔒 Security (Hardening)
+## 🔒 Security
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| S-1 | **Audit & CVE Scanning**: Integrate `pip-audit` into the development workflow to scan dependencies before every release. | XS | `[ ]` |
-| S-2 | **CORS Hardening**: Explicitly configure `CORSMiddleware` in `main.py` to only allow `localhost` and `127.0.0.1`. | XS | `[ ]` |
-| S-3 | **Rate Limiting**: Add `slowapi` to the backend to protect `/api/shorten` and `/upload` from local automated abuse. | S | `[ ]` |
-| S-4 | **Subresource Integrity (SRI)**: Add hash checks to CDN-loaded scripts (RequireJS, js-yaml, papaparse, marked). | XS | `[ ]` |
-| S-5 | **CSP Audit**: Tighten Content Security Policy in `main.py` where possible (e.g., removing `unsafe-eval` if Monaco allows). | M | `[ ]` |
-| S-6 | **JS Sandboxing**: Explore using Web Workers for heavy JS logic (like diffing) to keep the UI thread responsive and isolated. | L | `[ ]` |
-| S-7 | **Vault Password Change**: Add a "Change Master Password" flow in the Vault that re-encrypts all secrets with the new key. | M | `[ ]` |
-| S-8 | **Vault Export / Backup**: Allow exporting vault entries as an encrypted backup file for disaster recovery. | S | `[ ]` |
+| SEC-1 | **pip-audit CVE Scanning**: Integrate `pip-audit` into the dev workflow to scan Python dependencies before every release. | XS | `[ ]` |
+| SEC-2 | **JS Dependency CVE Visibility**: Add a `package.json` listing all vendored JS libs (xterm, crypto-js, marked, highlight.js, papaparse, js-yaml, requirejs, monaco-editor) so `npm audit` catches CVEs in CI and Dependabot auto-raises alerts. Currently `check_updates.py` only detects newer versions — known vulnerabilities in `static/libs` are a blind spot when open-sourcing. Wire `npm audit --audit-level=high` into GitHub Actions alongside `pip-audit`. | S | `[ ]` |
+| SEC-3 | **CORS Hardening**: Explicitly configure `CORSMiddleware` in `main.py` to only allow `localhost` and `127.0.0.1`. | XS | `[ ]` |
+| SEC-4 | **Rate Limiting**: Add `slowapi` to the backend to protect `/api/shorten` and `/upload` from local automated abuse. | S | `[ ]` |
+| SEC-5 | **Subresource Integrity (SRI)**: Add hash checks to CDN-loaded scripts (RequireJS, js-yaml, papaparse, marked). | XS | `[ ]` |
+| SEC-6 | **CSP Audit**: Tighten Content Security Policy in `main.py` where possible (e.g., removing `unsafe-eval` if Monaco allows). | M | `[ ]` |
+| SEC-7 | **JS Sandboxing**: Use Web Workers for heavy JS logic (diffing, crypto) to isolate the UI thread. | L | `[ ]` |
+| SEC-8 | **Vault Password Change**: Add a "Change Master Password" flow that re-encrypts all secrets with the new key. | M | `[ ]` |
+| SEC-9 | **Vault Export / Backup**: Export vault entries as an encrypted backup file for disaster recovery. | S | `[ ]` |
+
+---
+
+## ✨ Feature
+
+| # | Item | Effort | Status |
+|---|---|---|---|
+| FEAT-1 | **Color Studio**: Gradient generator, contrast checker, and palette exporter (HEX/HSL/RGB). | M | `[ ]` |
+| FEAT-2 | **ID Generator**: Bulk generate UUIDs, ULIDs, and CUIDs with entropy inspection. | S | `[ ]` |
+| FEAT-3 | **Markdown Lab**: Real-time Monaco → rendered HTML preview for README testing. | M | `[ ]` |
+| FEAT-4 | **JWT Debugger**: Full JWT decode and verify tool (HS256/RS256) with signature validation. | M | `[ ]` |
+| FEAT-5 | **HTTP Mock Server**: Define mock endpoints locally; replay canned JSON responses for frontend testing. | XL | `[ ]` |
+| FEAT-6 | **File Converter — more formats**: Image format conversion (PNG ↔ JPG ↔ WebP) and XML ↔ JSON client-side. | M | `[ ]` |
+
+---
+
+## 🐛 Bugfix
+
+| # | Item | Effort | Status |
+|---|---|---|---|
+| — | No open bugs tracked. Triage GitHub issues and promote here as needed. | — | — |
 
 ---
 
@@ -25,62 +49,44 @@
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| D-1 | **Automated Linting**: Set up `ruff` (Python) and `eslint` (JS) with a `pre-commit` hook to enforce highest standards. | S | `[ ]` |
-| D-2 | **JS Modularization**: Split `app.js` into smaller, tool-specific modules (e.g., `diff-engine.js`, `tree-view.js`). | M | `[ ]` |
-| D-3 | **Hot Reload Sidecar**: Add a `watchdog`-based reloader that automatically refreshes the browser window on file edits. | S | `[ ]` |
-| D-4 | **Lazy Loading**: Only load Monaco Editor and heavy libraries when the user navigates to a relevant tool. | M | `[ ]` |
-| D-5 | **Accessibility (a11y)**: Complete ARIA/Role audit and ensure keyboard-only navigation for all tools. Folder Diff picker buttons converted to `<label>` elements in v0.1.1; `json.html`, `yaml.html`, `base64.html`, and `regex.html` received full ARIA annotations in v0.1.2 (partial). | M | `[/]` |
-| D-6 | **File Converter — more formats**: Add image format conversion (PNG ↔ JPG ↔ WebP) and XML ↔ JSON client-side. | M | `[ ]` |
+| DX-1 | **Automated Linting**: Set up `ruff` (Python) and `eslint` (JS) with a `pre-commit` hook. | S | `[ ]` |
+| DX-2 | **JS Modularization**: Split `app.js` into tool-specific modules (e.g., `diff-engine.js`, `tree-view.js`). | M | `[ ]` |
+| DX-3 | **Hot Reload Sidecar**: `watchdog`-based reloader that refreshes the browser on file edits. | S | `[ ]` |
+| DX-4 | **Lazy Loading**: Load Monaco Editor and heavy libs only when the user navigates to a relevant tool. | M | `[ ]` |
+| DX-5 | **Accessibility (a11y)**: Complete ARIA/role audit; keyboard-only navigation for all tools. Folder Diff, json/yaml/base64/regex pages partially done in v0.1.1–v0.1.2. | M | `[/]` |
+| DX-6 | **Playwright e2e Tests**: Happy-path browser tests for every tool in the suite. | L | `[ ]` |
+| DX-7 | **Visual Regression**: Playwright screenshots across all themes to catch CSS regressions. | M | `[ ]` |
+| DX-8 | **Large-File Benchmarking**: Stress tests for diffing files > 10,000 lines. | S | `[ ]` |
 
 ---
 
-## 🧪 Testing & Reliability
+## 🗺️ Roadmap
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| T-1 | **Playwright e2e tests**: Implement happy-path browser tests for every tool in the suite. | L | `[ ]` |
-| T-2 | **Visual Regression**: Use Playwright to capture screenshots across all 6 themes to detect CSS regressions. | M | `[ ]` |
-| T-3 | **CI/CD Pipeline**: Add GitHub Actions to run linters, security audits, and tests on every pull request. | S | `[ ]` |
-| T-4 | **Large-File Benchmarking**: Add stress tests for diffing files > 10,000 lines to optimize performance. | S | `[ ]` |
-| T-5 | **SonarQube CI Integration**: Wire `sonar-project.properties` (added in v0.1.1) into a GitHub Actions workflow for automated quality gate analysis on every PR. | S | `[ ]` |
+| ROAD-1 | **CI/CD Pipeline**: GitHub Actions running linters, `pip-audit`, `npm audit`, and tests on every PR. Prerequisite for SEC-1, SEC-2, DX-6. | S | `[ ]` |
+| ROAD-2 | **SonarQube CI Integration**: Wire `sonar-project.properties` into GitHub Actions for automated quality gate on every PR. v0.1.3 closed multiple S3776/S4666/S108 findings. | S | `[/]` |
+| ROAD-3 | **Dockerization**: Multi-stage `Dockerfile` and `docker-compose.yml` for zero-setup deployment. | S | `[ ]` |
+| ROAD-4 | **PyPI Packaging**: `pyproject.toml` to allow `pip install devsuite` with a CLI entry point. | M | `[ ]` |
+| ROAD-5 | **GitHub Release Automation**: Auto-generate zip releases and update version tags on every release. | M | `[ ]` |
+| ROAD-6 | **Homebrew Formula**: One-liner formula for macOS/Linux `brew` users. | L | `[ ]` |
+| ROAD-7 | **Native App Wrapper**: Evaluate Tauri for packaging DevSuite as a native OS app (`.app`, `.exe`). | XL | `[ ]` |
 
 ---
 
-## 📦 Distribution & Portability
+## ✅ Completed
 
-| # | Item | Effort | Status |
-|---|---|---|---|
-| P-1 | **Dockerization**: Create a multi-stage `Dockerfile` and `docker-compose.yml` for zero-setup deployment. | S | `[ ]` |
-| P-2 | **PyPI Packaging**: Add `pyproject.toml` to allow installation via `pip install devsuite` with a CLI entry point. | M | `[ ]` |
-| P-3 | **GitHub Release Automation**: Script to auto-generate zip releases and update version tags on every release. | M | `[ ]` |
-| P-4 | **Homebrew Formula**: Create a one-liner formula for macOS/Linux `brew` users. | L | `[ ]` |
-| P-5 | **Native App Wrapper**: Evaluate Tauri for packaging DevSuite as a native OS app (`.app`, `.exe`). | XL | `[ ]` |
-
----
-
-## ✨ New Tool Ideas
-
-| # | Item | Effort | Status |
-|---|---|---|---|
-| N-1 | **Color Studio**: Gradient generator, contrast checker, and palette exporter (HEX/HSL/RGB). | M | `[ ]` |
-| N-2 | **ID Generator**: Bulk generate UUIDs, ULIDs, and CUIDs with entropy inspection. | S | `[ ]` |
-| N-3 | **Markdown Lab**: Real-time Monaco → Rendered HTML preview for README testing. | M | `[ ]` |
-| N-4 | **JWT Debugger**: Full JWT decode and verify tool (HS256/RS256) — standalone page with signature validation. | M | `[ ]` |
-| N-5 | **HTTP Mock Server**: Define mock endpoints locally; replay canned JSON responses for frontend testing. | XL | `[ ]` |
-| N-6 | **Diff Checker** | — | `[x]` Done |
-| N-7 | **JSON Linter** | — | `[x]` Done |
-| N-8 | **YAML Linter** | — | `[x]` Done |
-| N-9 | **Regex Tester** | — | `[x]` Done |
-| N-10 | **Crypto Suite** | — | `[x]` Done |
-| N-11 | **Link & QR Studio** | — | `[x]` Done |
-| N-12 | **Local API Tester (HTTP Request Builder)** | — | `[x]` Done |
-| N-13 | **Secure Terminal & SFTP** | — | `[x]` Done |
-| N-14 | **Cron Visualizer** | — | `[x]` Done |
-| N-15 | **Secret Vault** | — | `[x]` Done |
-| N-16 | **DevDB Manager** | — | `[x]` Done |
-| N-17 | **File Format Converter** | — | `[x]` Done |
-
----
-
-## Effort Scale
-`XS` < 1 hr · `S` 1–3 hrs · `M` 3–8 hrs · `L` 1–2 days · `XL` 2+ days
+| Item | Notes |
+|---|---|
+| Diff Checker | |
+| JSON Linter | |
+| YAML Linter | |
+| Regex Tester | |
+| Crypto Suite | |
+| Link & QR Studio | |
+| Local API Tester (HTTP Request Builder) | |
+| Secure Terminal & SFTP | |
+| Cron Visualizer | |
+| Secret Vault | |
+| DevDB Manager | |
+| File Format Converter | |

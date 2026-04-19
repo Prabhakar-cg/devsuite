@@ -1,12 +1,12 @@
 # DevSuite — Developer Tools from Hell
 
-![Version](https://img.shields.io/badge/version-0.1.2-blue)
+![Version](https://img.shields.io/badge/version-0.1.3-blue)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=bugs)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
-[![Known Vulnerabilities](https://snyk.io/test/github/Prabhakar-cg/devsuite/badge.svg)](https://snyk.io/test/github/Prabhakar-cg/devsuite)
+[![Known Vulnerabilities](https://snyk.io/test/github/Prabhakar-cg/devsuite/badge.svg?targetFile=requirements.txt)](https://snyk.io/test/github/Prabhakar-cg/devsuite)
 
 A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the **Monaco Editor**. 100% private — all file reading and data processing is done locally. No data ever leaves your machine.
 
