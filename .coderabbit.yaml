@@ -35,6 +35,9 @@ reviews:
   enable_prompt_for_ai_agents: true
   path_filters:
     - '!static/libs/**'
+    - '!**/node_modules/**'
+    - '!**/*.min.js'
+    - '!**/*.min.css'
   path_instructions: []
   abort_on_close: true
   disable_cache: false

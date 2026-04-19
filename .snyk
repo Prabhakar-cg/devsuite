@@ -1,0 +1,9 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+ignore: {}
+exclude:
+  global:
+    - static/libs
+    - static/vendor
+    - "**/*.min.js"
+    - "**/*.min.css"

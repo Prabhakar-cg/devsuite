@@ -114,6 +114,8 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **DOM XSS hardened** — all dynamic content is inserted using `textContent` / `createElement` APIs; no untrusted strings ever reach `innerHTML`.
 - **Self-hosted libraries** — `crypto-js` and `bwip-js` are served from `/static/` rather than an external CDN.
 - **HTTP Security headers** — `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, and `Referrer-Policy` on every response.
+
+> **Security scan coverage note:** Static analysis (SonarCloud, CodeRabbit & Snyk) excludes `static/libs/**` and all `*.min.js` / `*.min.css` files. These are third-party vendored bundles (Monaco Editor, xterm.js, crypto-js, bwip-js) and are not covered by automated security scanning. Keep them updated to their latest stable releases to manage upstream CVEs.
 - **URL validation** — the shortener backend validates scheme and host before storing any link.
 - **8-hour session tokens** — tools using DevDB (API Tester, SSH Manager) cache the master password in `sessionStorage` for 8 hours via `auth-guard.js`.
 
