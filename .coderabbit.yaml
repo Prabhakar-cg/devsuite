@@ -33,7 +33,8 @@ reviews:
   in_progress_fortune: true
   poem: true
   enable_prompt_for_ai_agents: true
-  path_filters: []
+  path_filters:
+    - '!static/libs/**'
   path_instructions: []
   abort_on_close: true
   disable_cache: false
