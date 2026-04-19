@@ -99,6 +99,20 @@ def _blake2b(data: bytes) -> bytes:
     return hashlib.blake2b(data, digest_size=BLAKE2_SIZE).digest()
 
 
+def _cleanup_temp_file(fd: int, tmp_path: str | None) -> None:
+    """Close fd and delete tmp_path if they are still open/present."""
+    if fd != -1:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+    if tmp_path is not None:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+
 # ─── DevDB Class ────────────────────────────────────────────────────────────────
 
 class DevDB:
@@ -428,16 +442,7 @@ class DevDB:
             fd = -1
             os.replace(tmp_path, self._path)
             tmp_path = None  # ownership transferred; do not remove
-        except BaseException:  # NOSONAR — intentional cleanup-and-reraise; catches KeyboardInterrupt/SystemExit to ensure temp file removal
-            if fd != -1:
-                try:
-                    os.close(fd)
-                except OSError:
-                    pass
-            if tmp_path is not None:
-                try:
-                    os.remove(tmp_path)
-                except OSError:
-                    pass
+        except BaseException:  # NOSONAR — catches KeyboardInterrupt/SystemExit to ensure temp file removal
+            _cleanup_temp_file(fd, tmp_path)
             raise
         logger.debug("DevDB: saved %d bytes to %s", len(file_bytes), self._path)

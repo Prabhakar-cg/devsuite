@@ -42,7 +42,7 @@
 | T-2 | **Visual Regression**: Use Playwright to capture screenshots across all 6 themes to detect CSS regressions. | M | `[ ]` |
 | T-3 | **CI/CD Pipeline**: Add GitHub Actions to run linters, security audits, and tests on every pull request. | S | `[ ]` |
 | T-4 | **Large-File Benchmarking**: Add stress tests for diffing files > 10,000 lines to optimize performance. | S | `[ ]` |
-| T-5 | **SonarQube CI Integration**: Wire `sonar-project.properties` (added in v0.1.1) into a GitHub Actions workflow for automated quality gate analysis on every PR. | S | `[ ]` |
+| T-5 | **SonarQube CI Integration**: Wire `sonar-project.properties` (added in v0.1.1) into a GitHub Actions workflow for automated quality gate analysis on every PR. SonarCloud quality gate actively tracked; v0.1.3 closed multiple S3776/S4666/S108 findings. | S | `[/]` |
 
 ---
 

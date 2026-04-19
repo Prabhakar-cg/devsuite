@@ -325,6 +325,61 @@ def _update_vendored_js(outdated_libs: list[tuple], manifest: dict) -> None:
             print(f"    versions.json updated  ({rel_path} → {latest})")
 
 
+def _discard_bak(bak: Path | None) -> None:
+    if bak:
+        bak.unlink()
+
+
+def _restore_bak(bak: Path | None, dest: Path) -> None:
+    if bak:
+        shutil.copy2(bak, dest)
+        bak.unlink()
+
+
+def _try_cdn_sources(
+    npm_name: str, tarball_path: str | None, cdn_override: str | None,
+    version: str, dest: Path,
+) -> bool:
+    """Try CDN override then jsDelivr in order; return True on first success."""
+    if cdn_override:
+        return _download(cdn_override.replace("{version}", version), dest)
+    if tarball_path:
+        cdn_url = f"https://cdn.jsdelivr.net/npm/{npm_name}@{version}/{tarball_path}"
+        return _download(cdn_url, dest)
+    return False
+
+
+def _extract_member_from_tarball(tgz_path: Path, tarball_path: str, dest: Path) -> bool:
+    """Open a tgz archive and write the best-matching member to dest."""
+    target_name = Path(tarball_path).name
+    with tarfile.open(tgz_path) as tf:
+        candidates = [m for m in tf.getmembers() if m.name.endswith(target_name)]
+        if not candidates:
+            print(f"    {target_name} not found in tarball — update manually.")
+            return False
+        best = min(candidates, key=lambda m: len(m.name))
+        extracted = tf.extractfile(best)
+        if not extracted:
+            return False
+        dest.write_bytes(extracted.read())
+        print(f"    Extracted {best.name} → {dest.relative_to(ROOT)}")
+        return True
+
+
+def _try_tarball_download(
+    npm_name: str, tarball_path: str, version: str, dest: Path,
+) -> bool:
+    """Download npm tarball and extract target file; return True on success."""
+    print("    Falling back to npm tarball ...")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tgz_path = Path(tmpdir) / "pkg.tgz"
+        if not _download(_tarball_url(npm_name, version), tgz_path):
+            print(f"    Cannot download {npm_name}@{version} — update manually:")
+            print(f"      https://www.npmjs.com/package/{npm_name}")
+            return False
+        return _extract_member_from_tarball(tgz_path, tarball_path, dest)
+
+
 def _update_js_file(
     rel_path: str, npm_name: str, tarball_path: str | None,
     cdn_override: str | None, version: str,
@@ -332,59 +387,19 @@ def _update_js_file(
     dest = ROOT / rel_path
     bak = _backup(dest) if dest.exists() else None
 
-    # 1. CDN override (e.g. cdnjs for highlight.js)
-    if cdn_override:
-        url = cdn_override.replace("{version}", version)
-        if _download(url, dest):
-            if bak:
-                bak.unlink()
-            return True
+    if _try_cdn_sources(npm_name, tarball_path, cdn_override, version, dest):
+        _discard_bak(bak)
+        return True
 
-    # 2. jsDelivr npm CDN (only when a tarball path is known)
-    elif tarball_path:
-        cdn_url = f"https://cdn.jsdelivr.net/npm/{npm_name}@{version}/{tarball_path}"
-        if _download(cdn_url, dest):
-            if bak:
-                bak.unlink()
-            return True
-
-    # 3. Extract from npm tarball
     if tarball_path:
-        print("    Falling back to npm tarball ...")
-        tgz_url = _tarball_url(npm_name, version)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tgz_path = Path(tmpdir) / "pkg.tgz"
-            if not _download(tgz_url, tgz_path):
-                print(f"    Cannot download {npm_name}@{version} — update manually:")
-                print(f"      https://www.npmjs.com/package/{npm_name}")
-                if bak:
-                    shutil.copy2(bak, dest)
-                    bak.unlink()
-                return False
+        if _try_tarball_download(npm_name, tarball_path, version, dest):
+            _discard_bak(bak)
+            return True
+        _restore_bak(bak, dest)
+        return False
 
-            target_name = Path(tarball_path).name
-            with tarfile.open(tgz_path) as tf:
-                candidates = [m for m in tf.getmembers() if m.name.endswith(target_name)]
-                if not candidates:
-                    print(f"    {target_name} not found in tarball — update manually.")
-                    if bak:
-                        shutil.copy2(bak, dest)
-                        bak.unlink()
-                    return False
-                best = min(candidates, key=lambda m: len(m.name))
-                extracted = tf.extractfile(best)
-                if extracted:
-                    dest.write_bytes(extracted.read())
-                    print(f"    Extracted {best.name} → {dest.relative_to(ROOT)}")
-                    if bak:
-                        bak.unlink()
-                    return True
-
-    # Nothing worked
     print(f"    No download source available for {npm_name}@{version} — update manually.")
-    if bak:
-        shutil.copy2(bak, dest)
-        bak.unlink()
+    _restore_bak(bak, dest)
     return False
 
 
