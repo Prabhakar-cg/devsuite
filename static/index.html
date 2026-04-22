@@ -401,6 +401,16 @@
                             <button class="tree-expand-btn" id="expand-all-btn" title="Expand all folders">Expand All</button>
                             <button class="tree-expand-btn" id="collapse-all-btn" title="Collapse all folders">Collapse All</button>
                         </div>
+                        <div class="folder-download-controls">
+                            <button class="btn btn-ghost folder-dl-btn" id="download-left-btn" title="Download left folder as zip">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Download Left
+                            </button>
+                            <button class="btn btn-ghost folder-dl-btn" id="download-right-btn" title="Download right folder as zip">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Download Right
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -504,6 +514,29 @@
                                 <button id="folder-merge-all-left-btn" class="btn btn-ghost" title="Copy all changes to Folder 1">Copy to Left ←</button>
                             </div>
                             <button id="folder-toggle-inline-btn" class="btn btn-ghost" aria-pressed="false">Inline View</button>
+                            <!-- Folder Export Menu -->
+                            <div class="export-menu-wrap">
+                                <button id="folder-export-btn" class="btn btn-ghost" aria-haspopup="true" aria-expanded="false">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                        <polyline points="7 10 12 15 17 10" />
+                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                    </svg>
+                                    Export
+                                </button>
+                                <div class="export-menu hidden" id="folder-export-menu" role="menu">
+                                    <button class="export-menu-item" id="folder-export-right-btn" role="menuitem">
+                                        📄 Download right file
+                                    </button>
+                                    <button class="export-menu-item" id="folder-export-left-btn" role="menuitem">
+                                        📄 Download left file
+                                    </button>
+                                    <button class="export-menu-item" id="folder-export-patch-btn" role="menuitem">
+                                        📋 Copy unified diff
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </output>
 
@@ -515,6 +548,9 @@
 
     </main>
 
+    <!-- JSZip must load before RequireJS — RequireJS sets define.amd which causes JSZip to
+         register as AMD module instead of setting window.JSZip -->
+    <script src="/static/libs/jszip.min.js"></script>
     <!-- RequireJS for Monaco Editor loader -->
     <script src="/static/libs/require.min.js"></script>
     <!-- Highlight.js for Language Auto-Detection -->

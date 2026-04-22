@@ -303,6 +303,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const countUnchangedEl = document.getElementById('count-unchanged');
     const expandAllBtn = document.getElementById('expand-all-btn');
     const collapseAllBtn = document.getElementById('collapse-all-btn');
+    const downloadLeftBtn = document.getElementById('download-left-btn');
+    const downloadRightBtn = document.getElementById('download-right-btn');
 
     // Folder Stats Bar
     const folderStatsBar = document.getElementById('folder-stats-bar');
@@ -312,6 +314,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderMergeAllRightBtn = document.getElementById('folder-merge-all-right-btn');
     const folderMergeAllLeftBtn = document.getElementById('folder-merge-all-left-btn');
     const folderToggleInlineBtn = document.getElementById('folder-toggle-inline-btn');
+    const folderExportBtn = document.getElementById('folder-export-btn');
+    const folderExportMenu = document.getElementById('folder-export-menu');
+    const folderExportRightBtn = document.getElementById('folder-export-right-btn');
+    const folderExportLeftBtn = document.getElementById('folder-export-left-btn');
+    const folderExportPatchBtn = document.getElementById('folder-export-patch-btn');
 
     // Header dynamic elements
     const toolHeaderIcon = document.getElementById('tool-header-icon');
@@ -379,6 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let origFolderTotalSize = 0;
     let modFolderTotalSize = 0;
     let collapsedFolderPaths = new Set(); // tracks which folder paths are collapsed
+    let currentFolderFileName = '';
 
 
     // ==========================================
@@ -897,6 +905,134 @@ document.addEventListener('DOMContentLoaded', () => {
     if (folderMergeAllRightBtn) folderMergeAllRightBtn.addEventListener('click', () => applyMergeAll('to-right'));
     if (folderMergeAllLeftBtn) folderMergeAllLeftBtn.addEventListener('click', () => applyMergeAll('to-left'));
 
+    // ==========================================
+    // FOLDER DOWNLOAD (zip)
+    // ==========================================
+    const _ZIP_FILE_SIZE_LIMIT  = 512 * 1024 * 1024; // 512 MB per file
+    const _ZIP_TOTAL_WARN_LIMIT = 400 * 1024 * 1024; // warn above 400 MB total
+
+    async function downloadFolderAsZip(side) {
+        const fileMap = side === 'left' ? originalFiles : modifiedFiles;
+        const folderName = side === 'left' ? origFolderRootName : modFolderRootName;
+        if (fileMap.size === 0) { showToast('No files to download.', 'warning'); return; }
+        if (!window.JSZip) { showToast('JSZip not loaded — cannot create zip.', 'error'); return; }
+
+        // Block if any single file exceeds the per-file limit
+        const oversized = [...fileMap.entries()]
+            .filter(([, f]) => f.size > _ZIP_FILE_SIZE_LIMIT)
+            .map(([p]) => `"${p.split('/').pop()}" (${(fileMap.get(p).size / (1024 * 1024)).toFixed(0)} MB)`);
+
+        if (oversized.length > 0) {
+            showToast(
+                `Cannot create zip — ${oversized.length} file(s) exceed the 512 MB browser limit: ` +
+                `${oversized.join(', ')}. ` +
+                `Streaming zip support for large files is on the backlog (FEAT-7).`,
+                'error', 9000
+            );
+            return;
+        }
+
+        // Warn (but allow) if total size is high
+        const totalSize = [...fileMap.values()].reduce((s, f) => s + f.size, 0);
+        if (totalSize > _ZIP_TOTAL_WARN_LIMIT) {
+            const totalMB = (totalSize / (1024 * 1024)).toFixed(0);
+            const ok = window.confirm(
+                `The selected files total ${totalMB} MB.\n\n` +
+                `Zipping large amounts of data in the browser requires holding everything in RAM. ` +
+                `This may be slow or cause the tab to crash above ~400 MB.\n\n` +
+                `Continue anyway?`
+            );
+            if (!ok) return;
+        }
+
+        const btn = side === 'left' ? downloadLeftBtn : downloadRightBtn;
+        const origLabel = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span> Zipping…`;
+
+        try {
+            const zip = new JSZip();
+            for (const [path, file] of fileMap.entries()) {
+                // Pass File (Blob) directly — avoids Chrome's permission-revocation
+                // error that occurs when manually calling arrayBuffer() on webkitdirectory files.
+                zip.file(path, file);
+            }
+            const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${folderName}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`Downloaded "${folderName}.zip" (${fileMap.size} files).`, 'success');
+        } catch (e) {
+            showToast('Failed to create zip: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origLabel;
+        }
+    }
+
+    if (downloadLeftBtn) downloadLeftBtn.addEventListener('click', () => downloadFolderAsZip('left'));
+    if (downloadRightBtn) downloadRightBtn.addEventListener('click', () => downloadFolderAsZip('right'));
+
+    // ==========================================
+    // FOLDER EXPORT (file diff view)
+    // ==========================================
+    function _downloadText(content, filename) {
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function _closeFolderExportMenu() {
+        if (folderExportMenu) folderExportMenu.classList.add('hidden');
+        if (folderExportBtn) folderExportBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    if (folderExportBtn) {
+        folderExportBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = !folderExportMenu.classList.contains('hidden');
+            folderExportMenu.classList.toggle('hidden');
+            folderExportBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        });
+    }
+
+    if (folderExportRightBtn) {
+        folderExportRightBtn.addEventListener('click', () => {
+            if (!folderModifiedModel) { showToast('Open a file diff first.', 'warning'); return; }
+            _downloadText(folderModifiedModel.getValue(), currentFolderFileName || 'right-file.txt');
+            showToast('Right file downloaded.', 'success');
+            _closeFolderExportMenu();
+        });
+    }
+
+    if (folderExportLeftBtn) {
+        folderExportLeftBtn.addEventListener('click', () => {
+            if (!folderOriginalModel) { showToast('Open a file diff first.', 'warning'); return; }
+            _downloadText(folderOriginalModel.getValue(), currentFolderFileName || 'left-file.txt');
+            showToast('Left file downloaded.', 'success');
+            _closeFolderExportMenu();
+        });
+    }
+
+    if (folderExportPatchBtn) {
+        folderExportPatchBtn.addEventListener('click', async () => {
+            if (!folderOriginalModel || !folderModifiedModel) { showToast('Open a file diff first.', 'warning'); return; }
+            const patch = buildUnifiedDiff(folderOriginalModel.getValue(), folderModifiedModel.getValue());
+            try {
+                await navigator.clipboard.writeText(patch);
+                showToast('Unified diff copied to clipboard!', 'success');
+            } catch {
+                showToast('Failed to copy to clipboard.', 'error');
+            }
+            _closeFolderExportMenu();
+        });
+    }
+
 
     // ==========================================
     // EXPORT PATCH
@@ -911,6 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => {
         exportMenu.classList.add('hidden');
         exportBtn.setAttribute('aria-expanded', 'false');
+        _closeFolderExportMenu();
     });
 
     function buildUnifiedDiff(origText, modText) {
@@ -1329,6 +1466,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             wrap.appendChild(btn);
         }
+
         return wrap;
     }
 
@@ -1384,7 +1522,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (folderStatsBar) folderStatsBar.classList.remove('hidden');
         if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
 
-        if (activeDiffFileName) activeDiffFileName.textContent = fileName || path.split('/').pop();
+        currentFolderFileName = fileName || path.split('/').pop();
+        if (activeDiffFileName) activeDiffFileName.textContent = currentFolderFileName;
 
         let origTxt = '', modTxt = '';
         try {
