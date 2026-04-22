@@ -159,41 +159,35 @@ function _mergeToLeftPureInsertion(change, origModel, modModel) {
     return { text: '\n' + srcText, range: new monaco.Range(oStart, endCol, oStart, endCol) };
 }
 
+function _computeToRightEdit(change, origModel, modModel) {
+    const { originalEndLineNumber: oEnd, modifiedStartLineNumber: mStart,
+            modifiedEndLineNumber: mEnd } = change;
+    if (oEnd === 0) return _mergeToRightPureDeletion(change, modModel);
+    if (mEnd === 0) return _mergeToRightPureInsertion(change, origModel, modModel);
+    const { originalStartLineNumber: oStart } = change;
+    const text = origModel.getValueInRange(
+        new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
+    return { text, range: new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)) };
+}
+
+function _computeToLeftEdit(change, origModel, modModel) {
+    const { modifiedEndLineNumber: mEnd, originalStartLineNumber: oStart,
+            originalEndLineNumber: oEnd } = change;
+    if (mEnd === 0) return _mergeToLeftPureDeletion(change, origModel);
+    if (oEnd === 0) return _mergeToLeftPureInsertion(change, origModel, modModel);
+    const { modifiedStartLineNumber: mStart } = change;
+    const text = modModel.getValueInRange(
+        new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
+    return { text, range: new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)) };
+}
+
 function handleMergeClick(diffEditor, change, direction) {
     if (!change) return;
-    const origModel = diffEditor.getModel().original;
-    const modModel = diffEditor.getModel().modified;
-
+    const { original: origModel, modified: modModel } = diffEditor.getModel();
     if (direction === 'to-right') {
-        const { originalEndLineNumber: oEnd, modifiedStartLineNumber: mStart,
-                modifiedEndLineNumber: mEnd } = change;
-        let edit;
-        if (oEnd === 0) {
-            edit = _mergeToRightPureDeletion(change, modModel);
-        } else if (mEnd === 0) {
-            edit = _mergeToRightPureInsertion(change, origModel, modModel);
-        } else {
-            const { originalStartLineNumber: oStart } = change;
-            const text = origModel.getValueInRange(
-                new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
-            edit = { text, range: new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)) };
-        }
-        modModel.pushEditOperations([], [edit], () => null);
-    } else { // to-left
-        const { modifiedEndLineNumber: mEnd, originalStartLineNumber: oStart,
-                originalEndLineNumber: oEnd } = change;
-        let edit;
-        if (mEnd === 0) {
-            edit = _mergeToLeftPureDeletion(change, origModel);
-        } else if (oEnd === 0) {
-            edit = _mergeToLeftPureInsertion(change, origModel, modModel);
-        } else {
-            const { modifiedStartLineNumber: mStart } = change;
-            const text = modModel.getValueInRange(
-                new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
-            edit = { text, range: new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)) };
-        }
-        origModel.pushEditOperations([], [edit], () => null);
+        modModel.pushEditOperations([], [_computeToRightEdit(change, origModel, modModel)], () => null);
+    } else {
+        origModel.pushEditOperations([], [_computeToLeftEdit(change, origModel, modModel)], () => null);
     }
 }
 

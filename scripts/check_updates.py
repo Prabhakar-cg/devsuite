@@ -22,8 +22,8 @@ REQUIREMENTS = ROOT / "requirements.txt"
 VERSIONS_FILE = Path(__file__).parent / "versions.json"
 MONACO_DIR = ROOT / "static/libs/vs"
 MONACO_MANIFEST_KEY = "static/libs/vs"
-SEMVER_PATTERN = r"\b([0-9]+\.[0-9]+\.[0-9]+)\b"
-_SAFE_VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
+SEMVER_PATTERN = r"\b(\d+\.\d+\.\d+)\b"
+_SAFE_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 STATUS_UNTRACKED = "[untracked]"
 STATUS_OUTDATED  = "[OUTDATED]  "
 
@@ -48,11 +48,11 @@ VENDORED_JS = [
 # Library-specific regex patterns for sniffing the version from file content.
 # Checked in order; first match wins.
 _SNIFF_PATTERNS: dict[str, list[str]] = {
-    "highlight.min.js": [r"highlight\.js v?([0-9]+\.[0-9]+\.[0-9]+)"],
-    "marked.min.js":    [r"marked v?([0-9]+\.[0-9]+\.[0-9]+)"],
-    "papaparse.min.js": [r"v([0-9]+\.[0-9]+\.[0-9]+)"],
-    "js-yaml.min.js":   [r"js-yaml ([0-9]+\.[0-9]+\.[0-9]+)", SEMVER_PATTERN],
-    "require.min.js":   [r'version="([0-9]+\.[0-9]+\.[0-9]+)"', SEMVER_PATTERN],
+    "highlight.min.js": [r"highlight\.js v?(\d+\.\d+\.\d+)"],
+    "marked.min.js":    [r"marked v?(\d+\.\d+\.\d+)"],
+    "papaparse.min.js": [r"v(\d+\.\d+\.\d+)"],
+    "js-yaml.min.js":   [r"js-yaml (\d+\.\d+\.\d+)", SEMVER_PATTERN],
+    "require.min.js":   [r'version="(\d+\.\d+\.\d+)"', SEMVER_PATTERN],
 }
 
 # ── Python environment detection ──────────────────────────────────────────────
