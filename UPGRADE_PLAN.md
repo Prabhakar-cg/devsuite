@@ -33,6 +33,7 @@
 | mammoth | `>=1.12.0` | DOCX → HTML conversion |
 | weasyprint | `>=68.1` | HTML → PDF rendering |
 | markdown | `>=3.10.2` | Markdown parsing |
+| slowapi | `>=0.1.9` | Auth endpoint rate limiting — security-sensitive; prioritize patches |
 
 ### Vendored JavaScript — `static/`
 

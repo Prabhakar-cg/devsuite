@@ -37,8 +37,9 @@ function decryptData(cipher, pwd)  {
 // Shared profile blob (same endpoint as SSH manager)
 // ──────────────────────────────────────────
 function _sessionHeaders(extra = {}) {
-    const token = sessionStorage.getItem('devsuite_server_token') || '';
-    return token ? { 'X-Session-Token': token, ...extra } : { ...extra };
+    const m    = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+    const csrf = m ? decodeURIComponent(m[1]) : '';
+    return csrf ? { 'X-CSRF-Token': csrf, ...extra } : { ...extra };
 }
 
 async function loadBlob() {

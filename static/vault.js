@@ -66,18 +66,20 @@ function genId() {
     return Date.now().toString(36) + rnd.slice(-5);
 }
 
-// ── Session token helpers ─────────────────────────────────────────
-function _serverToken() {
-    return sessionStorage.getItem('devsuite_server_token') || '';
+// ── CSRF token helpers ────────────────────────────────────────────
+function _csrfToken() {
+    const m = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
 }
 
 function _authHeaders(extra) {
-    const token = _serverToken();
+    const csrf = _csrfToken();
     const h = { ...extra };
-    if (token) h['X-Session-Token'] = token;
+    if (csrf) h['X-CSRF-Token'] = csrf;
     return h;
 }
 
+// Server sets HttpOnly ds_session + readable ds_csrf cookie on success.
 async function _acquireServerSession(keyHex) {
     try {
         const r = await fetch('/api/auth/session', {
@@ -86,8 +88,7 @@ async function _acquireServerSession(keyHex) {
             body: JSON.stringify({ key_hex: keyHex }),
         });
         if (!r.ok) return;
-        const { session_token } = await r.json();
-        if (session_token) sessionStorage.setItem('devsuite_server_token', session_token);
+        // Cookies are set by the server; no token stored in JS.
     } catch { /* non-fatal */ }
 }
 

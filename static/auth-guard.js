@@ -144,7 +144,9 @@ const AuthGuard = (() => {
         return { ok, keyHex: ok ? key.toString() : null };
     }
 
-    // ── Acquire server-side session token ─────────────────────────
+    // ── Acquire server-side session cookie ────────────────────────
+    // The server responds by setting an HttpOnly ds_session cookie and a
+    // readable ds_csrf cookie.  No token is stored in JS storage.
     async function _acquireServerSession(keyHex) {
         try {
             const r = await fetch('/api/auth/session', {
@@ -152,12 +154,7 @@ const AuthGuard = (() => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key_hex: keyHex }),
             });
-            if (!r.ok) return;
-            const { session_token } = await r.json();
-            if (session_token) {
-                sessionStorage.setItem('devsuite_server_token', session_token);
-                sessionStorage.setItem('devsuite_key_hex', keyHex);
-            }
+            if (r.ok) sessionStorage.setItem('devsuite_key_hex', keyHex);
         } catch { /* non-fatal — DB API falls back gracefully */ }
     }
 

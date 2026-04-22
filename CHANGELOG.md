@@ -9,6 +9,62 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.2.0] — 2026-04-22
+
+Security hardening release. No new user-facing features — all changes harden the authentication, session, and transport layers as planned in the v0.2.0 milestone.
+
+### Security
+
+#### Session Token Hashing (`main.py`)
+- **BLAKE2b digest storage**: Raw session tokens are no longer stored in the server-side `_sessions` dict. Only a BLAKE2b-32 hex digest is stored as the key. A process-memory dump or heap snapshot no longer yields usable tokens.
+- New `_hash_token(token: str) -> str` helper centralises the hashing.
+
+#### HttpOnly Cookie for Session Token (`main.py`)
+- `POST /api/auth/session` no longer returns `session_token` in the response body.
+- The server now sets a `ds_session` cookie (`HttpOnly; SameSite=Strict; max_age=28800`). JavaScript cannot read or exfiltrate it; DOM-based XSS on any tool page cannot steal it.
+- `require_unlocked()` reads from `ds_session` cookie first, with a `X-Session-Token` header fallback for backward compatibility.
+
+#### CSRF Protection Middleware (`main.py`)
+- New `csrf_middleware` rejects all `POST / PUT / DELETE / PATCH` requests that lack a matching `X-CSRF-Token` header.
+- The header value is compared against the `ds_csrf` cookie using `secrets.compare_digest` (constant-time, timing-safe).
+- Exempt paths: `/api/auth/session` and `/api/auth/setup` (bootstrap endpoints that predate any session).
+- A non-HttpOnly `ds_csrf` cookie (same TTL as `ds_session`) is issued alongside it; frontend JavaScript reads and forwards it.
+
+#### Rate Limiting (`main.py`, `requirements.txt`)
+- Added `slowapi>=0.1.9` dependency.
+- `GET /api/auth/challenge` and `POST /api/auth/session` capped at **5 requests / 60 s per IP** via `SlowAPIMiddleware` (registered as the outermost ASGI layer). A 6th attempt within the window returns HTTP 429.
+
+#### Audit Logging (`main.py`)
+- New append-only `~/.devsuite/audit.log` written by `_audit_log(event, **details)`.
+- Format: `<ISO-8601-UTC>  <EVENT>  key=value ...` — human-readable, grep-friendly.
+- Events: `AUTH_SESSION` (client IP on every successful unlock), `VAULT_ACCESS` (client IP on vault read), `SSH_CONNECT` (host, port, username on terminal connect).
+- Secret values are never written to the log.
+
+#### Developer-Mode Swagger UI (`main.py`)
+- `/docs` (Swagger UI) and `/redoc` are **disabled by default** to avoid exposing the API schema in production.
+- Set `DEVSUITE_DEV=1` in the environment to enable them.
+
+### Frontend
+
+Six session-management modules migrated from `X-Session-Token` header / `devsuite_server_token` sessionStorage to the cookie-based CSRF pattern:
+
+| File | Change |
+|---|---|
+| `auth-guard.js` | `_acquireServerSession` no longer reads or stores a token from the response body; the session is fully cookie-managed. |
+| `devdb-client.js` | `_sessionToken()` removed; `_csrfToken()` reads `ds_csrf` from `document.cookie`; all fetch calls send `X-CSRF-Token`. |
+| `vault.js` | `_serverToken()` → `_csrfToken()`; `_authHeaders()` emits `X-CSRF-Token` instead of `X-Session-Token`. |
+| `sftp-browser.js` | `_sessionHeaders()` rewritten to read `ds_csrf` cookie. |
+| `ssh-manager.js` | `_sessionHeaders()` rewritten to read `ds_csrf` cookie. |
+| `db-manager.js` | `_authHeaders()` rewritten; lock-screen no longer reads `session_token` from response body; `_serverToken` state removed. |
+
+### Dependencies
+
+| Package | Change |
+|---|---|
+| `slowapi` | Added `>=0.1.9` |
+
+---
+
 ## [0.1.3] — 2026-04-19
 
 Code quality hardening pass — no behaviour changes. All changes reduce SonarCloud cognitive complexity violations and remove static-analysis warnings.
