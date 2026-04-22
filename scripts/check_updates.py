@@ -360,18 +360,40 @@ def _try_cdn_sources(
     return False
 
 
-def _is_safe_member(member: tarfile.TarInfo) -> bool:
-    """Reject path-traversal, symlinks, and non-regular-file members (S5042)."""
+def _is_within_directory(directory: Path, target: Path) -> bool:
+    """Check that target path resolves within directory (prevents zip-slip)."""
+    try:
+        resolved = (directory / target).resolve()
+        return resolved.is_relative_to(directory.resolve())
+    except (OSError, RuntimeError):
+        return False
+
+
+def _is_safe_member(member: tarfile.TarInfo, base_dir: Path | None = None) -> bool:
+    """Reject path-traversal, symlinks, and non-regular-file members (S5042).
+    
+    If base_dir is provided, also check that the resolved path stays within it.
+    """
     parts = member.name.split("/")
-    return (
+    if not (
         not member.name.startswith("/")
         and ".." not in parts
         and member.isfile()
-    )
+    ):
+        return False
+    
+    if base_dir is not None:
+        return _is_within_directory(base_dir, Path(member.name))
+    return True
 
 
 def _extract_member_from_tarball(tgz_path: Path, tarball_path: str, dest: Path) -> bool:
     """Open a tgz archive and write the best-matching member to dest."""
+    # Validate dest is within ROOT (prevents path traversal through symlinks)
+    if not _is_within_directory(ROOT, dest.relative_to(ROOT)):
+        print(f"    Destination {dest} escapes project root — aborting.")
+        return False
+    
     target_name = Path(tarball_path).name
     with tarfile.open(tgz_path) as tf:
         candidates = [
@@ -445,7 +467,7 @@ def _update_monaco(version: str) -> bool:
         with tarfile.open(tgz_path) as tf:
             members = [
                 m for m in tf.getmembers()
-                if "package/min/vs/" in m.name and _is_safe_member(m)
+                if "package/min/vs/" in m.name and _is_safe_member(m, extract_dir)
             ]
             if not members:
                 print("FAILED — min/vs/ not found in tarball")
