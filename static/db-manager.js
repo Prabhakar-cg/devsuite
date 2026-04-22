@@ -17,10 +17,15 @@ const STORE_META = {
 // ── State ─────────────────────────────────────────────────────────────────────
 let _meta = null;
 let _authenticated = false;
-let _serverToken = '';
+
+function _csrfToken() {
+    const m = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+}
 
 function _authHeaders() {
-    return _serverToken ? { 'X-Session-Token': _serverToken } : {};
+    const csrf = _csrfToken();
+    return csrf ? { 'X-CSRF-Token': csrf } : {};
 }
 
 async function _authFetch(url, opts = {}) {
@@ -145,7 +150,7 @@ async function attemptUnlock() {
             return;
         }
 
-        // Acquire server-side session token — required to access DB endpoints
+        // Exchange verified key for session cookies (HttpOnly ds_session + readable ds_csrf).
         const sr = await fetch('/api/auth/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -156,13 +161,6 @@ async function attemptUnlock() {
             errEl.style.display = 'block';
             return;
         }
-        const { session_token } = await sr.json();
-        if (!session_token) {
-            errEl.textContent = '❌ No session token returned. Please try again.';
-            errEl.style.display = 'block';
-            return;
-        }
-        _serverToken = session_token;
 
         // Success — show the manager
         document.getElementById('lock-overlay').style.display = 'none';

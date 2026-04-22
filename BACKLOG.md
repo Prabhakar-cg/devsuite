@@ -15,12 +15,16 @@
 | SEC-1 | **pip-audit CVE Scanning**: Integrate `pip-audit` into the dev workflow to scan Python dependencies before every release. | XS | `[ ]` |
 | SEC-2 | **JS Dependency CVE Visibility**: Add a `package.json` listing all vendored JS libs (xterm, crypto-js, marked, highlight.js, papaparse, js-yaml, requirejs, monaco-editor) so `npm audit` catches CVEs in CI and Dependabot auto-raises alerts. Currently `check_updates.py` only detects newer versions — known vulnerabilities in `static/libs` are a blind spot when open-sourcing. Wire `npm audit --audit-level=high` into GitHub Actions alongside `pip-audit`. | S | `[ ]` |
 | SEC-3 | **CORS Hardening**: Explicitly configure `CORSMiddleware` in `main.py` to only allow `localhost` and `127.0.0.1`. | XS | `[ ]` |
-| SEC-4 | **Rate Limiting**: Add `slowapi` to the backend to protect `/api/shorten` and `/upload` from local automated abuse. | S | `[ ]` |
+| SEC-4 | **Rate Limiting**: `slowapi>=0.1.9` added (v0.2.0). Auth endpoints (`/api/auth/challenge`, `/api/auth/session`) capped at 5 req/min per IP. `/api/shorten` and `/api/upload` rate limits are a follow-up (SEC-10). | S | `[x]` |
 | SEC-5 | **Subresource Integrity (SRI)**: Add hash checks to CDN-loaded scripts (RequireJS, js-yaml, papaparse, marked). | XS | `[ ]` |
 | SEC-6 | **CSP Audit**: Tighten Content Security Policy in `main.py` where possible (e.g., removing `unsafe-eval` if Monaco allows). | M | `[ ]` |
 | SEC-7 | **JS Sandboxing**: Use Web Workers for heavy JS logic (diffing, crypto) to isolate the UI thread. | L | `[ ]` |
 | SEC-8 | **Vault Password Change**: Add a "Change Master Password" flow that re-encrypts all secrets with the new key. | M | `[ ]` |
 | SEC-9 | **Vault Export / Backup**: Export vault entries as an encrypted backup file for disaster recovery. | S | `[ ]` |
+| SEC-10 | **Rate Limit `/api/shorten` and `/api/upload`**: `slowapi` infrastructure is in place (v0.2.0); apply `@limiter.limit` to shorten and upload endpoints to prevent local automated abuse. | XS | `[ ]` |
+| SEC-11 | **CSP Nonces (replace `unsafe-inline`)**: Generate a per-response nonce in `_serve_html()` and inject it into all `<script>` and `<style>` tags; update CSP accordingly. Requires moving remaining inline scripts to external `.js` files first. | M | `[ ]` |
+| SEC-12 | **Localhost HTTPS**: On first run, auto-generate a self-signed cert (`trustme` or `cryptography`) and start uvicorn with `ssl_keyfile` / `ssl_certfile`. Eliminates plaintext token transit over the loopback. | M | `[ ]` |
+| SEC-13 | **Argon2id KDF**: Replace PBKDF2-HMAC-SHA256 with Argon2id (`argon2-cffi`) for the vault password. Keep PBKDF2 read path for backward compatibility via the existing header version field. Target v0.3.0+ to avoid a breaking migration. | M | `[ ]` |
 
 ---
 

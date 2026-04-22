@@ -14,18 +14,19 @@
 
 const DevDB = (() => {
 
-    // ── Session token (set by auth-guard.js after successful unlock) ──────────
-    function _sessionToken() {
-        return sessionStorage.getItem('devsuite_server_token') || '';
+    // ── CSRF token (readable ds_csrf cookie set by server after unlock) ───────
+    function _csrfToken() {
+        const m = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
     }
 
     // ── Internal fetch helper ────────────────────────────────────────────────
     async function _apiFetch(url, opts = {}) {
-        const token = _sessionToken();
+        const csrf = _csrfToken();
         const res = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
-                ...(token ? { 'X-Session-Token': token } : {}),
+                ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
                 ...opts.headers,
             },
             ...opts,
@@ -74,9 +75,9 @@ const DevDB = (() => {
      * Trigger a .dsb file download (browser saves the export).
      */
     async function exportDatabase() {
-        const token = _sessionToken();
+        const csrf = _csrfToken();
         const res = await fetch('/api/db/export', {
-            headers: token ? { 'X-Session-Token': token } : {},
+            headers: csrf ? { 'X-CSRF-Token': csrf } : {},
         });
         if (!res.ok) {
             let detail = `HTTP ${res.status}`;
@@ -100,11 +101,11 @@ const DevDB = (() => {
     async function importDatabase(file) {
         const form = new FormData();
         form.append('file', file);
-        const token = _sessionToken();
+        const csrf = _csrfToken();
         const res = await fetch('/api/db/import', {
             method: 'POST',
             body: form,
-            headers: token ? { 'X-Session-Token': token } : {},
+            headers: csrf ? { 'X-CSRF-Token': csrf } : {},
         });
         if (!res.ok) {
             let detail = `HTTP ${res.status}`;

@@ -1,6 +1,6 @@
 # DevSuite — Developer Tools from Hell
 
-![Version](https://img.shields.io/badge/version-0.1.3-blue)
+![Version](https://img.shields.io/badge/version-0.2.0-blue)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
@@ -114,10 +114,14 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **DOM XSS hardened** — all dynamic content is inserted using `textContent` / `createElement` APIs; no untrusted strings ever reach `innerHTML`.
 - **Self-hosted libraries** — `crypto-js` and `bwip-js` are served from `/static/` rather than an external CDN.
 - **HTTP Security headers** — `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, and `Referrer-Policy` on every response.
+- **HttpOnly session cookie** — the server-side session token is delivered as an `HttpOnly; SameSite=Strict` cookie (`ds_session`). JavaScript cannot read or exfiltrate it.
+- **CSRF protection** — every mutating request (`POST/PUT/DELETE/PATCH`) must carry an `X-CSRF-Token` header matching the `ds_csrf` cookie, verified with a constant-time comparison.
+- **BLAKE2b session-token hashing** — only the BLAKE2b-32 digest of each session token is kept in server memory; a process-memory snapshot does not yield usable tokens.
+- **Auth endpoint rate limiting** — `/api/auth/challenge` and `/api/auth/session` accept at most 5 requests per minute per IP (HTTP 429 beyond that), preventing brute-force and timing attacks.
+- **Audit log** — sensitive operations (vault unlock, vault access, SSH connect) are recorded in an append-only `~/.devsuite/audit.log`. Secret values are never logged.
+- **URL validation** — the shortener backend validates scheme and host before storing any link.
 
 > **Security scan coverage note:** Static analysis (SonarCloud, CodeRabbit & Snyk) excludes `static/libs/**` and all `*.min.js` / `*.min.css` files. These are third-party vendored bundles (Monaco Editor, xterm.js, crypto-js, bwip-js) and are not covered by automated security scanning. Keep them updated to their latest stable releases to manage upstream CVEs.
-- **URL validation** — the shortener backend validates scheme and host before storing any link.
-- **8-hour session tokens** — tools using DevDB (API Tester, SSH Manager) cache the master password in `sessionStorage` for 8 hours via `auth-guard.js`.
 
 ---
 

@@ -10,6 +10,7 @@ binary file at ~/.devsuite/devdb.dsb.  The server never decrypts the
 client-side AES-encrypted blobs inside the vault/ssh_profiles stores."""
 
 import asyncio
+import hashlib
 import ipaddress
 import json
 import logging
@@ -40,7 +41,11 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -88,13 +93,20 @@ async def _lifespan(_application: FastAPI):
 
 
 APP_VERSION = "0.1.3"
+_DEV_MODE = os.getenv("DEVSUITE_DEV", "0") == "1"
 
 app = FastAPI(
     title="DevSuite",
     description="A private, locally-hosted developer suite with encrypted unified storage.",
     version=APP_VERSION,
     lifespan=_lifespan,
+    docs_url="/docs" if _DEV_MODE else None,
+    redoc_url="/redoc" if _DEV_MODE else None,
 )
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Allowlist of hostnames that the /api/proxy endpoint is permitted to contact.
 # Adjust this set to match the APIs you intend to test via the proxy.
@@ -188,6 +200,25 @@ async def add_security_headers(request, call_next):
     )
     response.headers["Content-Security-Policy"] = csp
     return response
+
+
+# Auth endpoints that predate any session/CSRF token (exempt from CSRF check).
+_CSRF_EXEMPT_PATHS = {"/api/auth/session", "/api/auth/setup"}
+
+
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        if request.url.path not in _CSRF_EXEMPT_PATHS:
+            csrf_header = request.headers.get("X-CSRF-Token", "")
+            expected    = request.cookies.get("ds_csrf", "")
+            if not csrf_header or not expected or not secrets.compare_digest(csrf_header, expected):
+                return JSONResponse({"error": "CSRF validation failed"}, status_code=403)
+    return await call_next(request)
+
+
+# SlowAPIMiddleware is the outermost layer — rate-limits before CSRF or route processing.
+app.add_middleware(SlowAPIMiddleware)
 
 
 _STATIC_ASSET_RE = re.compile(r'(/static/[^"\'?]+\.(?:css|js))(?:\?v=[^"\']*)?')
@@ -576,6 +607,7 @@ def get_vault(request: Request):
     Backward-compatible shim — the server never decrypts vault contents.
     """
     require_unlocked(request)
+    _audit_log("VAULT_ACCESS", ip=request.client.host if request.client else "unknown")
     store = _db.get_store("vault")
     return store if store else {"encrypted_blob": ""}
 
@@ -907,24 +939,48 @@ def save_ssh_profiles(data: dict, request: Request):
         raise HTTPException(status_code=500, detail="Failed to save SSH profiles") from e
 
 
+# ─── Audit log ────────────────────────────────────────────────────────────────
+_AUDIT_LOG_PATH = _DEVSUITE_DIR / "audit.log"
+
+
+def _audit_log(event: str, **details) -> None:
+    """Append a structured line to ~/.devsuite/audit.log. Never logs secret values."""
+    try:
+        ts    = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        parts = [ts, event] + [f"{k}={v}" for k, v in details.items()]
+        _DEVSUITE_DIR.mkdir(parents=True, exist_ok=True)
+        with open(_AUDIT_LOG_PATH, "a", encoding="utf-8") as fh:
+            fh.write("  ".join(parts) + "\n")
+    except OSError:
+        logger.warning("audit: failed to write log entry for %s", event)
+
+
 # ─── Server-side session store ───────────────────────────────────────────────
 # Tokens are issued by /api/auth/session after the client verifies the
 # master key, and are required by all DevDB endpoints.
-_sessions: dict[str, float] = {}   # token → unix expiry
+_sessions: dict[str, float] = {}   # BLAKE2b(token) hex → unix expiry
 _SESSION_TTL = 8 * 3600            # 8 hours (matches auth-guard.js SESSION_MS)
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.blake2b(token.encode(), digest_size=32).hexdigest()
 
 
 def require_unlocked(request: Request) -> None:
     """Raise 401 if the request does not carry a valid server-side session token."""
-    token = request.headers.get("X-Session-Token", "").strip()
+    # Prefer HttpOnly ds_session cookie; fall back to X-Session-Token header.
+    token = request.cookies.get("ds_session", "").strip()
+    if not token:
+        token = request.headers.get("X-Session-Token", "").strip()
     if not token:
         raise HTTPException(
             status_code=401,
             detail="Session token required. Call POST /api/auth/session first.",
         )
-    expiry = _sessions.get(token)
+    token_hash = _hash_token(token)
+    expiry = _sessions.get(token_hash)
     if expiry is None or time.time() > expiry:
-        _sessions.pop(token, None)
+        _sessions.pop(token_hash, None)
         raise HTTPException(status_code=401, detail="Session expired or invalid.")
 
 
@@ -1083,7 +1139,8 @@ def auth_status():
     summary="Get password verification challenge",
     responses={404: {"description": "Master password not configured"}},
 )
-def auth_challenge():
+@limiter.limit("5/minute")
+def auth_challenge(request: Request):
     """Return the stored salt + encrypted-verify-blob for client-side password checking."""
     prefs = _db.get_store("app_prefs") or {}
     if not prefs.get("master_setup_done"):
@@ -1181,15 +1238,18 @@ def auth_update_challenge(data: dict, request: Request):
         400: {"description": "Missing key_hex"},
         401: {"description": "Invalid master key or key verification failed"},
         404: {"description": "Master password not configured"},
+        429: {"description": "Too many attempts — try again in 60 seconds"},
     },
 )
-def auth_session(data: dict):  # pylint: disable=too-many-locals
+@limiter.limit("5/minute")
+def auth_session(request: Request, data: dict):  # pylint: disable=too-many-locals
     """Verify the PBKDF2-derived key (hex) against the stored challenge and issue a session token.
 
     The client sends {key_hex: <hex>} where key_hex is the AES key derived from
     the master password using PBKDF2-SHA1(50 000 iter, 32-byte output).  The server
     decrypts the stored verify_blob to confirm key correctness without ever seeing
-    the plaintext password.  On success a session token valid for 8 hours is returned.
+    the plaintext password.  On success a BLAKE2b-hashed token is stored server-side
+    and the raw token is written to an HttpOnly SameSite=Strict cookie.
     """
     prefs = _db.get_store("app_prefs") or {}
     if not prefs.get("master_setup_done"):
@@ -1229,8 +1289,22 @@ def auth_session(data: dict):  # pylint: disable=too-many-locals
         raise HTTPException(status_code=401, detail="Key verification failed") from exc
 
     token = secrets.token_urlsafe(32)
-    _sessions[token] = time.time() + _SESSION_TTL
-    return {"session_token": token, "expires_in": _SESSION_TTL}
+    _sessions[_hash_token(token)] = time.time() + _SESSION_TTL
+    csrf_token = secrets.token_hex(32)
+    client_ip = request.client.host if request.client else "unknown"
+    _audit_log("AUTH_SESSION", ip=client_ip)
+
+    response = JSONResponse({"status": "ok", "expires_in": _SESSION_TTL})
+    response.set_cookie(
+        key="ds_session", value=token,
+        httponly=True, samesite="strict", max_age=_SESSION_TTL, secure=False,
+    )
+    # ds_csrf is readable by JS so the frontend can send it as X-CSRF-Token header.
+    response.set_cookie(
+        key="ds_csrf", value=csrf_token,
+        httponly=False, samesite="strict", max_age=_SESSION_TTL, secure=False,
+    )
+    return response
 
 
 def _create_known_hosts(path: str) -> None:
@@ -1505,6 +1579,7 @@ async def ssh_terminal(websocket: WebSocket):
 
         connect_kwargs = _build_ssh_connect_kwargs(ssh_host, port, username, password, private_key, known_hosts_path)
         async with asyncssh.connect(**connect_kwargs) as conn:
+            _audit_log("SSH_CONNECT", host=ssh_host, port=port, user=username or "unknown")
             await _run_ssh_terminal_session(websocket, conn)
     except Exception as e:  # pylint: disable=broad-exception-caught
         try:
