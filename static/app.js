@@ -159,41 +159,35 @@ function _mergeToLeftPureInsertion(change, origModel, modModel) {
     return { text: '\n' + srcText, range: new monaco.Range(oStart, endCol, oStart, endCol) };
 }
 
+function _computeToRightEdit(change, origModel, modModel) {
+    const { originalEndLineNumber: oEnd, modifiedStartLineNumber: mStart,
+            modifiedEndLineNumber: mEnd } = change;
+    if (oEnd === 0) return _mergeToRightPureDeletion(change, modModel);
+    if (mEnd === 0) return _mergeToRightPureInsertion(change, origModel, modModel);
+    const { originalStartLineNumber: oStart } = change;
+    const text = origModel.getValueInRange(
+        new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
+    return { text, range: new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)) };
+}
+
+function _computeToLeftEdit(change, origModel, modModel) {
+    const { modifiedEndLineNumber: mEnd, originalStartLineNumber: oStart,
+            originalEndLineNumber: oEnd } = change;
+    if (mEnd === 0) return _mergeToLeftPureDeletion(change, origModel);
+    if (oEnd === 0) return _mergeToLeftPureInsertion(change, origModel, modModel);
+    const { modifiedStartLineNumber: mStart } = change;
+    const text = modModel.getValueInRange(
+        new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
+    return { text, range: new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)) };
+}
+
 function handleMergeClick(diffEditor, change, direction) {
     if (!change) return;
-    const origModel = diffEditor.getModel().original;
-    const modModel = diffEditor.getModel().modified;
-
+    const { original: origModel, modified: modModel } = diffEditor.getModel();
     if (direction === 'to-right') {
-        const { originalEndLineNumber: oEnd, modifiedStartLineNumber: mStart,
-                modifiedEndLineNumber: mEnd } = change;
-        let edit;
-        if (oEnd === 0) {
-            edit = _mergeToRightPureDeletion(change, modModel);
-        } else if (mEnd === 0) {
-            edit = _mergeToRightPureInsertion(change, origModel, modModel);
-        } else {
-            const { originalStartLineNumber: oStart } = change;
-            const text = origModel.getValueInRange(
-                new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)));
-            edit = { text, range: new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)) };
-        }
-        modModel.pushEditOperations([], [edit], () => null);
-    } else { // to-left
-        const { modifiedEndLineNumber: mEnd, originalStartLineNumber: oStart,
-                originalEndLineNumber: oEnd } = change;
-        let edit;
-        if (mEnd === 0) {
-            edit = _mergeToLeftPureDeletion(change, origModel);
-        } else if (oEnd === 0) {
-            edit = _mergeToLeftPureInsertion(change, origModel, modModel);
-        } else {
-            const { modifiedStartLineNumber: mStart } = change;
-            const text = modModel.getValueInRange(
-                new monaco.Range(mStart, 1, mEnd, modModel.getLineMaxColumn(mEnd)));
-            edit = { text, range: new monaco.Range(oStart, 1, oEnd, origModel.getLineMaxColumn(oEnd)) };
-        }
-        origModel.pushEditOperations([], [edit], () => null);
+        modModel.pushEditOperations([], [_computeToRightEdit(change, origModel, modModel)], () => null);
+    } else {
+        origModel.pushEditOperations([], [_computeToLeftEdit(change, origModel, modModel)], () => null);
     }
 }
 
@@ -303,6 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const countUnchangedEl = document.getElementById('count-unchanged');
     const expandAllBtn = document.getElementById('expand-all-btn');
     const collapseAllBtn = document.getElementById('collapse-all-btn');
+    const downloadLeftBtn = document.getElementById('download-left-btn');
+    const downloadRightBtn = document.getElementById('download-right-btn');
 
     // Folder Stats Bar
     const folderStatsBar = document.getElementById('folder-stats-bar');
@@ -312,6 +308,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderMergeAllRightBtn = document.getElementById('folder-merge-all-right-btn');
     const folderMergeAllLeftBtn = document.getElementById('folder-merge-all-left-btn');
     const folderToggleInlineBtn = document.getElementById('folder-toggle-inline-btn');
+    const folderExportBtn = document.getElementById('folder-export-btn');
+    const folderExportMenu = document.getElementById('folder-export-menu');
+    const folderExportRightBtn = document.getElementById('folder-export-right-btn');
+    const folderExportLeftBtn = document.getElementById('folder-export-left-btn');
+    const folderExportPatchBtn = document.getElementById('folder-export-patch-btn');
 
     // Header dynamic elements
     const toolHeaderIcon = document.getElementById('tool-header-icon');
@@ -379,6 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let origFolderTotalSize = 0;
     let modFolderTotalSize = 0;
     let collapsedFolderPaths = new Set(); // tracks which folder paths are collapsed
+    let currentFolderFileName = '';
 
 
     // ==========================================
@@ -478,15 +480,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // MONACO INITIALIZATION
     // ==========================================
     require.config({ paths: { 'vs': '/static/libs/vs' } });
-    globalThis.MonacoEnvironment = { getWorkerUrl: () => proxy };
-    let proxy = URL.createObjectURL(new Blob([`
+    const _monacoWorkerBlob = `
         self.MonacoEnvironment = { baseUrl: '/static/libs/' };
         importScripts('/static/libs/vs/base/worker/workerMain.js');
-    `], { type: 'text/javascript' }));
+    `;
+    globalThis.MonacoEnvironment = {
+        getWorkerUrl: () => URL.createObjectURL(new Blob([_monacoWorkerBlob], { type: 'text/javascript' }))
+    };
 
     require(['vs/editor/editor.main'], () => {
         console.log('[DevSuite] Monaco loaded.');
-        URL.revokeObjectURL(proxy);
     }, (err) => {
         console.error('[DevSuite] Monaco failed to load from CDN', err);
         showError('Warning: Failed to load Monaco Editor from CDN. Check your connection or disable tracking blockers.');
@@ -564,7 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     copyPanelBtns.forEach(btn => {
         btn.addEventListener('click', async () => {
-            const targetId = btn.getAttribute('data-target');
+            const targetId = btn.dataset.target;
             const target = document.getElementById(targetId);
             if (!target || !target.value) {
                 showToast('Nothing to copy — panel is empty.', 'warning', 2500);
@@ -585,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     clearBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            const target = document.getElementById(btn.getAttribute('data-target'));
+            const target = document.getElementById(btn.dataset.target);
             if (target) { target.value = ''; updateLineCounts(); }
         });
     });
@@ -697,23 +700,21 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => textDiffEditor.layout(), 50);
     });
 
-    if (backToFoldersBtn) {
-        backToFoldersBtn.addEventListener('click', () => {
-            folderEditorWrapper.classList.add('hidden');
-            if (dualTreeLayer) dualTreeLayer.classList.remove('hidden');
-        });
-    }
+    backToFoldersBtn?.addEventListener('click', () => {
+        folderEditorWrapper.classList.add('hidden');
+        if (dualTreeLayer) dualTreeLayer.classList.remove('hidden');
+    });
 
     // Reselect buttons — re-open OS folder picker for each side
-    if (reselectLeftBtn) reselectLeftBtn.addEventListener('click', () => origFolderInput.click());
-    if (reselectRightBtn) reselectRightBtn.addEventListener('click', () => modFolderInput.click());
+    reselectLeftBtn?.addEventListener('click', () => origFolderInput.click());
+    reselectRightBtn?.addEventListener('click', () => modFolderInput.click());
 
     // Expand All / Collapse All
-    if (expandAllBtn) expandAllBtn.addEventListener('click', () => {
+    expandAllBtn?.addEventListener('click', () => {
         collapsedFolderPaths.clear();
         renderFileTree();
     });
-    if (collapseAllBtn) collapseAllBtn.addEventListener('click', () => {
+    collapseAllBtn?.addEventListener('click', () => {
         const allPaths = new Set([...originalFiles.keys(), ...modifiedFiles.keys()]);
         allPaths.forEach(filePath => {
             const parts = filePath.split('/');
@@ -726,17 +727,15 @@ document.addEventListener('DOMContentLoaded', () => {
         renderFileTree();
     });
 
-    if (folderToggleInlineBtn) {
-        folderToggleInlineBtn.addEventListener('click', () => {
-            if (!folderDiffEditor) return;
-            const nowInline = folderToggleInlineBtn.classList.contains('active');
-            folderDiffEditor.updateOptions({ renderSideBySide: nowInline });
-            folderToggleInlineBtn.classList.toggle('active', !nowInline);
-            folderToggleInlineBtn.setAttribute('aria-pressed', nowInline ? 'false' : 'true');
-            folderToggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
-            setTimeout(() => folderDiffEditor.layout(), 50);
-        });
-    }
+    folderToggleInlineBtn?.addEventListener('click', () => {
+        if (!folderDiffEditor) return;
+        const nowInline = folderToggleInlineBtn.classList.contains('active');
+        folderDiffEditor.updateOptions({ renderSideBySide: nowInline });
+        folderToggleInlineBtn.classList.toggle('active', !nowInline);
+        folderToggleInlineBtn.setAttribute('aria-pressed', nowInline ? 'false' : 'true');
+        folderToggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
+        setTimeout(() => folderDiffEditor.layout(), 50);
+    });
 
     /**
      * Initialize the text diff Monaco editor and its models, set the editor language, wire merge controls, and start diff statistics updates.
@@ -891,11 +890,130 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (mergeAllRightBtn) mergeAllRightBtn.addEventListener('click', () => applyMergeAll('to-right'));
-    if (mergeAllLeftBtn) mergeAllLeftBtn.addEventListener('click', () => applyMergeAll('to-left'));
-    
-    if (folderMergeAllRightBtn) folderMergeAllRightBtn.addEventListener('click', () => applyMergeAll('to-right'));
-    if (folderMergeAllLeftBtn) folderMergeAllLeftBtn.addEventListener('click', () => applyMergeAll('to-left'));
+    mergeAllRightBtn?.addEventListener('click', () => applyMergeAll('to-right'));
+    mergeAllLeftBtn?.addEventListener('click', () => applyMergeAll('to-left'));
+    folderMergeAllRightBtn?.addEventListener('click', () => applyMergeAll('to-right'));
+    folderMergeAllLeftBtn?.addEventListener('click', () => applyMergeAll('to-left'));
+
+    // ==========================================
+    // FOLDER DOWNLOAD (zip)
+    // ==========================================
+    const _ZIP_FILE_SIZE_LIMIT  = 512 * 1024 * 1024; // 512 MB per file
+    const _ZIP_TOTAL_WARN_LIMIT = 400 * 1024 * 1024; // warn above 400 MB total
+
+    async function downloadFolderAsZip(side) {
+        const fileMap = side === 'left' ? originalFiles : modifiedFiles;
+        const folderName = side === 'left' ? origFolderRootName : modFolderRootName;
+        if (fileMap.size === 0) { showToast('No files to download.', 'warning'); return; }
+        if (!globalThis.JSZip) { showToast('JSZip not loaded — cannot create zip.', 'error'); return; }
+
+        // Block if any single file exceeds the per-file limit
+        const oversized = [...fileMap.entries()]
+            .filter(([, f]) => f.size > _ZIP_FILE_SIZE_LIMIT)
+            .map(([p, f]) => `"${p.split('/').pop()}" (${(f.size / (1024 * 1024)).toFixed(0)} MB)`);
+
+        if (oversized.length > 0) {
+            showToast(
+                `Cannot create zip — ${oversized.length} file(s) exceed the 512 MB browser limit: ` +
+                `${oversized.join(', ')}. ` +
+                `Streaming zip support for large files is on the backlog (FEAT-7).`,
+                'error', 9000
+            );
+            return;
+        }
+
+        // Warn (but allow) if total size is high
+        const totalSize = [...fileMap.values()].reduce((s, f) => s + f.size, 0);
+        if (totalSize > _ZIP_TOTAL_WARN_LIMIT) {
+            const totalMB = (totalSize / (1024 * 1024)).toFixed(0);
+            const ok = globalThis.confirm(
+                `The selected files total ${totalMB} MB.\n\n` +
+                `Zipping large amounts of data in the browser requires holding everything in RAM. ` +
+                `This may be slow or cause the tab to crash above ~400 MB.\n\n` +
+                `Continue anyway?`
+            );
+            if (!ok) return;
+        }
+
+        const btn = side === 'left' ? downloadLeftBtn : downloadRightBtn;
+        const origLabel = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span> Zipping…`;
+
+        try {
+            const zip = new JSZip();
+            for (const [path, file] of fileMap.entries()) {
+                // Pass File (Blob) directly — avoids Chrome's permission-revocation
+                // error that occurs when manually calling arrayBuffer() on webkitdirectory files.
+                zip.file(path, file);
+            }
+            const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${folderName}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`Downloaded "${folderName}.zip" (${fileMap.size} files).`, 'success');
+        } catch (e) {
+            showToast('Failed to create zip: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origLabel;
+        }
+    }
+
+    downloadLeftBtn?.addEventListener('click', () => downloadFolderAsZip('left'));
+    downloadRightBtn?.addEventListener('click', () => downloadFolderAsZip('right'));
+
+    // ==========================================
+    // FOLDER EXPORT (file diff view)
+    // ==========================================
+    function _downloadText(content, filename) {
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function _closeFolderExportMenu() {
+        if (folderExportMenu) folderExportMenu.classList.add('hidden');
+        if (folderExportBtn) folderExportBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    folderExportBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = !folderExportMenu.classList.contains('hidden');
+        folderExportMenu.classList.toggle('hidden');
+        folderExportBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+    });
+
+    folderExportRightBtn?.addEventListener('click', () => {
+        if (!folderModifiedModel) { showToast('Open a file diff first.', 'warning'); return; }
+        _downloadText(folderModifiedModel.getValue(), currentFolderFileName || 'right-file.txt');
+        showToast('Right file downloaded.', 'success');
+        _closeFolderExportMenu();
+    });
+
+    folderExportLeftBtn?.addEventListener('click', () => {
+        if (!folderOriginalModel) { showToast('Open a file diff first.', 'warning'); return; }
+        _downloadText(folderOriginalModel.getValue(), currentFolderFileName || 'left-file.txt');
+        showToast('Left file downloaded.', 'success');
+        _closeFolderExportMenu();
+    });
+
+    folderExportPatchBtn?.addEventListener('click', async () => {
+        if (!folderOriginalModel || !folderModifiedModel) { showToast('Open a file diff first.', 'warning'); return; }
+        const patch = buildUnifiedDiff(folderOriginalModel.getValue(), folderModifiedModel.getValue());
+        try {
+            await navigator.clipboard.writeText(patch);
+            showToast('Unified diff copied to clipboard!', 'success');
+        } catch {
+            showToast('Failed to copy to clipboard.', 'error');
+        }
+        _closeFolderExportMenu();
+    });
 
 
     // ==========================================
@@ -911,6 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', () => {
         exportMenu.classList.add('hidden');
         exportBtn.setAttribute('aria-expanded', 'false');
+        _closeFolderExportMenu();
     });
 
     function buildUnifiedDiff(origText, modText) {
@@ -1329,6 +1448,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             wrap.appendChild(btn);
         }
+
         return wrap;
     }
 
@@ -1384,7 +1504,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (folderStatsBar) folderStatsBar.classList.remove('hidden');
         if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
 
-        if (activeDiffFileName) activeDiffFileName.textContent = fileName || path.split('/').pop();
+        currentFolderFileName = fileName || path.split('/').pop();
+        if (activeDiffFileName) activeDiffFileName.textContent = currentFolderFileName;
 
         let origTxt = '', modTxt = '';
         try {
@@ -1471,7 +1592,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function detectLanguage(text) {
-        if (!text || !window.hljs) return null;
+        if (!text || !globalThis.hljs) return null;
         try {
             const result = hljs.highlightAuto(text.substring(0, 1200));
             let detected = result.language || (result.secondBest && result.secondBest.language);
@@ -1508,7 +1629,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // WINDOW RESIZE
     // ==========================================
-    window.addEventListener('resize', () => {
+    globalThis.addEventListener('resize', () => {
         if (textDiffEditor) textDiffEditor.layout();
         if (folderDiffEditor) folderDiffEditor.layout();
     });
@@ -1519,7 +1640,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * element matching `.tab-btn[data-tab="<value>"]`, and triggers a click on it to switch tabs.
      */
     function applyTabFromUrl() {
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(globalThis.location.search);
         const tab = params.get('tab');
         if (tab) {
             const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);

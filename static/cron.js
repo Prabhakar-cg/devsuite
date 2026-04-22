@@ -1004,7 +1004,8 @@ class CronVisualizer {
       for (let v = def.min; v <= def.max; v++) {
         const btn = document.createElement('button');
         btn.className = 'builder-cell' + (activeSet.has(v) ? ' builder-cell-active' : '');
-        btn.textContent = def.names ? def.names[v - def.min] : String(v).padStart(def.max > 9 ? 2 : 1, '0');
+        const padLen = def.max > 9 ? 2 : 1;
+        btn.textContent = def.names ? def.names[v - def.min] : String(v).padStart(padLen, '0');
         btn.dataset.value = v;
         btn.dataset.fieldIdx = def.idx;
         btn.addEventListener('click', () => this._onBuilderCellClick(def, v, btn));
@@ -1112,7 +1113,7 @@ class CronVisualizer {
   }
 
   _copyRuns() {
-    if (!this._lastRuns || !this._lastRuns.length) return;
+    if (!this._lastRuns?.length) return;
     const text = this._lastRuns.map(t => t.toLocaleString()).join('\n');
     this._copyToClipboard(text, 'Run times copied!');
   }
@@ -1129,7 +1130,7 @@ class CronVisualizer {
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
-      document.body.removeChild(ta);
+      ta.remove();
       this._showGlobalToast(successMsg, 'success');
     });
   }
@@ -1161,5 +1162,5 @@ class CronVisualizer {
 // ─────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  window._cronViz = new CronVisualizer();
+  globalThis._cronViz = new CronVisualizer();
 });

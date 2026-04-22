@@ -12,10 +12,10 @@
         /* Apply home.css CSS variables synchronously to prevent FOUC */
         (function() {
             var t = localStorage.getItem('devsuite-theme') || 'vs-dark';
-            if (window.applyHomeCSSVars) window.applyHomeCSSVars(t);
+            if (globalThis.applyHomeCSSVars) globalThis.applyHomeCSSVars(t);
         })();
-        window.addEventListener('devsuite-theme-changed', function(e) {
-            if (window.applyHomeCSSVars) window.applyHomeCSSVars(e.detail.theme);
+        globalThis.addEventListener('devsuite-theme-changed', function(e) {
+            if (globalThis.applyHomeCSSVars) globalThis.applyHomeCSSVars(e.detail.theme);
         });
     </script>
 </head>
@@ -472,8 +472,8 @@
     <script>
         // Header scroll effect
         const header = document.getElementById('site-header');
-        window.addEventListener('scroll', () => {
-            header.classList.toggle('scrolled', window.scrollY > 20);
+        globalThis.addEventListener('scroll', () => {
+            header.classList.toggle('scrolled', globalThis.scrollY > 20);
         }, { passive: true });
 
         // Scroll-reveal for sections
@@ -525,14 +525,14 @@
             options.forEach(function (opt) {
                 opt.addEventListener('click', function () {
                     const theme = opt.dataset.theme;
-                    if (window.setDevSuiteTheme) window.setDevSuiteTheme(theme);
+                    if (globalThis.setDevSuiteTheme) globalThis.setDevSuiteTheme(theme);
                     setActive(theme);
                     panel.classList.remove('open');
                 });
             });
 
             setActive(localStorage.getItem('devsuite-theme') || 'vs-dark');
-            window.addEventListener('devsuite-theme-changed', function (e) {
+            globalThis.addEventListener('devsuite-theme-changed', function (e) {
                 setActive(e.detail.theme);
             });
         })();

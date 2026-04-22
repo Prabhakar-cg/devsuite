@@ -13,6 +13,7 @@ echo "Starting setup for Local dev suite..."
 command_exists () {
     local cmd="$1"
     command -v "$cmd" >/dev/null 2>&1
+    return $?
 }
 
 # Helper to run commands as root when needed
@@ -139,6 +140,7 @@ queue_installation () {
         winget)  MISSING_PKGS="$MISSING_PKGS $winget_pkg" ;;
         *)       ;;
     esac
+    return 0
 }
 
 echo -n "Checking core system prerequisites... "
@@ -228,21 +230,24 @@ else
     echo "All prerequisites met."
 fi
 
-# TypeScript global check
-if command_exists npm; then
-    if ! command_exists tsc; then
-        echo -e "\nTypeScript compiler (tsc) is missing."
-        if ask_permission "Do you want to run 'npm install -g typescript'?"; then
-            echo "Installing typescript globally..."
-            if [[ "$OS" = "$WINDOWS" ]] || [[ "$OS" = "macOS" ]]; then
-                npm install -g typescript
-            else
-                run_as_root npm install -g typescript
-            fi
+_install_typescript () {
+    if ask_permission "Do you want to run 'npm install -g typescript'?"; then
+        echo "Installing typescript globally..."
+        if [[ "$OS" = "$WINDOWS" ]] || [[ "$OS" = "macOS" ]]; then
+            npm install -g typescript
         else
-            echo "Installation aborted. You may need tsc for compiling frontend assets."
+            run_as_root npm install -g typescript
         fi
+    else
+        echo "Installation aborted. You may need tsc for compiling frontend assets."
     fi
+    return 0
+}
+
+# TypeScript global check
+if command_exists npm && ! command_exists tsc; then
+    echo -e "\nTypeScript compiler (tsc) is missing."
+    _install_typescript
 fi
 
 # Create virtual environment if it doesn't exist

@@ -387,6 +387,7 @@
                 toast(data.detail || 'Failed to shorten URL', 'error');
             }
         } catch (e) {
+            console.error('Network error saving URL:', e);
             toast('Network error saving URL', 'error');
         }
     });
@@ -398,6 +399,7 @@
             await navigator.clipboard.writeText(txt);
             toast('Copied to clipboard!', 'success');
         } catch(e) {
+            console.error('Clipboard copy failed:', e);
             toast('Copy failed', 'error');
         }
     });

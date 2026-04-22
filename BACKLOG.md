@@ -34,6 +34,7 @@
 | FEAT-4 | **JWT Debugger**: Full JWT decode and verify tool (HS256/RS256) with signature validation. | M | `[ ]` |
 | FEAT-5 | **HTTP Mock Server**: Define mock endpoints locally; replay canned JSON responses for frontend testing. | XL | `[ ]` |
 | FEAT-6 | **File Converter — more formats**: Image format conversion (PNG ↔ JPG ↔ WebP) and XML ↔ JSON client-side. | M | `[ ]` |
+| FEAT-7 | **Folder Diff — Streaming Zip Download**: Current in-browser zip (JSZip) buffers the entire output in RAM, making it unusable for files > 512 MB. Research streaming zip generation using `fflate` (streaming mode) + the File System Access API (`showSaveFilePicker`) to write chunks directly to disk with no RAM ceiling. Blocked on Chrome/Edge-only `showSaveFilePicker` availability; needs a graceful fallback for Firefox. | L | `[ ]` |
 
 ---
 

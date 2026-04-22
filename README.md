@@ -166,10 +166,6 @@ devsuite/
 ├── requirements.txt         # fastapi, uvicorn, asyncssh, cryptography, openpyxl, pypdf, etc.
 ├── start.sh                 # One-shot virtual environment setup & run script
 ├── start.ps1                # PowerShell equivalent for Windows
-├── sonar-project.properties # SonarQube / SonarCloud analysis configuration
-├── tests/
-│   ├── python/              # pytest test suite (test_main.py, test_devdb.py, test_sftp.py, …)
-│   └── javascript/          # JS unit tests (test_devdb_client.js, test_cron_logic.js, …)
 └── static/
     ├── home.html            # DevSuite dashboard / homepage
     ├── home.css             # Homepage-specific styles (hero, tool cards, roadmap)

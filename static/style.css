@@ -653,8 +653,16 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
     cursor: pointer; font-size: 0.75rem; color: var(--text-muted);
     transition: var(--transition); flex-shrink: 0; line-height: 1;
 }
-.tree-move-btn.move-right:hover { background: var(--green-subtle); border-color: var(--green-mid); color: var(--green-mid); }
-.tree-move-btn.move-left:hover  { background: var(--amber-subtle); border-color: var(--amber-mid); color: var(--amber-mid); }
+.tree-move-btn.move-right:hover   { background: var(--green-subtle); border-color: var(--green-mid); color: var(--green-mid); }
+.tree-move-btn.move-left:hover    { background: var(--amber-subtle); border-color: var(--amber-mid); color: var(--amber-mid); }
+
+.folder-download-controls {
+    display: flex; gap: 6px; align-items: center; flex-shrink: 0;
+}
+.folder-dl-btn {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.72rem; padding: 3px 10px; height: 26px;
+}
 
 .folder-diff-titles {
     display: flex;

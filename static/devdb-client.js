@@ -32,7 +32,7 @@ const DevDB = (() => {
         });
         if (!res.ok) {
             let detail = `HTTP ${res.status}`;
-            try { const j = await res.json(); detail = j.detail || detail; } catch (_) {}
+            try { const j = await res.json(); detail = j.detail || detail; } catch (_) {} // NOSONAR — intentional: JSON body is optional, HTTP status is the authoritative error
             throw new Error(`DevDB: ${detail}`);
         }
         return res.json();
@@ -108,7 +108,7 @@ const DevDB = (() => {
         });
         if (!res.ok) {
             let detail = `HTTP ${res.status}`;
-            try { const j = await res.json(); detail = j.detail || detail; } catch (_) {}
+            try { const j = await res.json(); detail = j.detail || detail; } catch (_) {} // NOSONAR — intentional: JSON body is optional, HTTP status is the authoritative error
             throw new Error(`DevDB import: ${detail}`);
         }
         return res.json();
