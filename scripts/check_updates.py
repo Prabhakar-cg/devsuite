@@ -24,8 +24,8 @@ MONACO_DIR = ROOT / "static/libs/vs"
 MONACO_MANIFEST_KEY = "static/libs/vs"
 SEMVER_PATTERN = r"\b(\d+\.\d+\.\d+)\b"
 _SAFE_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
-STATUS_UNTRACKED = "[untracked]"
-STATUS_OUTDATED  = "[OUTDATED]  "
+STATUS_UNTRACKED = "[untracked]  "
+STATUS_OUTDATED  = "[OUTDATED]   "
 
 # (relative path, npm package name, path inside npm tarball, cdn_url_override or None)
 # cdn_url_override: use {version} as placeholder; used when jsDelivr npm path doesn't work.
@@ -252,7 +252,7 @@ def _version_status(current: str | None, latest: str) -> str:
     if latest == "unavailable":
         return "[unavailable]"
     if current == latest:
-        return "[ok]        "
+        return "[ok]         "
     return STATUS_OUTDATED
 
 
@@ -450,8 +450,8 @@ def _update_monaco(version: str) -> bool:
             if not members:
                 print("FAILED — min/vs/ not found in tarball")
                 return False
-            # filter='data' (Python 3.12+) strips dangerous tar attributes (S5042).
-            extract_kwargs = {"filter": "data"} if sys.version_info >= (3, 12) else {}
+            # filter='data' strips dangerous tar attributes (S5042); available on 3.12+ and backports.
+            extract_kwargs = {"filter": "data"} if hasattr(tarfile, "data_filter") else {}
             tf.extractall(extract_dir, members=members, **extract_kwargs)
         print("done")
 

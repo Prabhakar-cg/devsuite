@@ -480,15 +480,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // MONACO INITIALIZATION
     // ==========================================
     require.config({ paths: { 'vs': '/static/libs/vs' } });
-    globalThis.MonacoEnvironment = { getWorkerUrl: () => proxy };
-    let proxy = URL.createObjectURL(new Blob([`
+    const _monacoWorkerBlob = `
         self.MonacoEnvironment = { baseUrl: '/static/libs/' };
         importScripts('/static/libs/vs/base/worker/workerMain.js');
-    `], { type: 'text/javascript' }));
+    `;
+    globalThis.MonacoEnvironment = {
+        getWorkerUrl: () => URL.createObjectURL(new Blob([_monacoWorkerBlob], { type: 'text/javascript' }))
+    };
 
     require(['vs/editor/editor.main'], () => {
         console.log('[DevSuite] Monaco loaded.');
-        URL.revokeObjectURL(proxy);
     }, (err) => {
         console.error('[DevSuite] Monaco failed to load from CDN', err);
         showError('Warning: Failed to load Monaco Editor from CDN. Check your connection or disable tracking blockers.');
@@ -699,23 +700,21 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => textDiffEditor.layout(), 50);
     });
 
-    if (backToFoldersBtn) {
-        backToFoldersBtn.addEventListener('click', () => {
-            folderEditorWrapper.classList.add('hidden');
-            if (dualTreeLayer) dualTreeLayer.classList.remove('hidden');
-        });
-    }
+    backToFoldersBtn?.addEventListener('click', () => {
+        folderEditorWrapper.classList.add('hidden');
+        if (dualTreeLayer) dualTreeLayer.classList.remove('hidden');
+    });
 
     // Reselect buttons — re-open OS folder picker for each side
-    if (reselectLeftBtn) reselectLeftBtn.addEventListener('click', () => origFolderInput.click());
-    if (reselectRightBtn) reselectRightBtn.addEventListener('click', () => modFolderInput.click());
+    reselectLeftBtn?.addEventListener('click', () => origFolderInput.click());
+    reselectRightBtn?.addEventListener('click', () => modFolderInput.click());
 
     // Expand All / Collapse All
-    if (expandAllBtn) expandAllBtn.addEventListener('click', () => {
+    expandAllBtn?.addEventListener('click', () => {
         collapsedFolderPaths.clear();
         renderFileTree();
     });
-    if (collapseAllBtn) collapseAllBtn.addEventListener('click', () => {
+    collapseAllBtn?.addEventListener('click', () => {
         const allPaths = new Set([...originalFiles.keys(), ...modifiedFiles.keys()]);
         allPaths.forEach(filePath => {
             const parts = filePath.split('/');
@@ -728,17 +727,15 @@ document.addEventListener('DOMContentLoaded', () => {
         renderFileTree();
     });
 
-    if (folderToggleInlineBtn) {
-        folderToggleInlineBtn.addEventListener('click', () => {
-            if (!folderDiffEditor) return;
-            const nowInline = folderToggleInlineBtn.classList.contains('active');
-            folderDiffEditor.updateOptions({ renderSideBySide: nowInline });
-            folderToggleInlineBtn.classList.toggle('active', !nowInline);
-            folderToggleInlineBtn.setAttribute('aria-pressed', nowInline ? 'false' : 'true');
-            folderToggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
-            setTimeout(() => folderDiffEditor.layout(), 50);
-        });
-    }
+    folderToggleInlineBtn?.addEventListener('click', () => {
+        if (!folderDiffEditor) return;
+        const nowInline = folderToggleInlineBtn.classList.contains('active');
+        folderDiffEditor.updateOptions({ renderSideBySide: nowInline });
+        folderToggleInlineBtn.classList.toggle('active', !nowInline);
+        folderToggleInlineBtn.setAttribute('aria-pressed', nowInline ? 'false' : 'true');
+        folderToggleInlineBtn.textContent = nowInline ? 'Inline View' : 'Side‑by‑Side';
+        setTimeout(() => folderDiffEditor.layout(), 50);
+    });
 
     /**
      * Initialize the text diff Monaco editor and its models, set the editor language, wire merge controls, and start diff statistics updates.
@@ -893,11 +890,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (mergeAllRightBtn) mergeAllRightBtn.addEventListener('click', () => applyMergeAll('to-right'));
-    if (mergeAllLeftBtn) mergeAllLeftBtn.addEventListener('click', () => applyMergeAll('to-left'));
-    
-    if (folderMergeAllRightBtn) folderMergeAllRightBtn.addEventListener('click', () => applyMergeAll('to-right'));
-    if (folderMergeAllLeftBtn) folderMergeAllLeftBtn.addEventListener('click', () => applyMergeAll('to-left'));
+    mergeAllRightBtn?.addEventListener('click', () => applyMergeAll('to-right'));
+    mergeAllLeftBtn?.addEventListener('click', () => applyMergeAll('to-left'));
+    folderMergeAllRightBtn?.addEventListener('click', () => applyMergeAll('to-right'));
+    folderMergeAllLeftBtn?.addEventListener('click', () => applyMergeAll('to-left'));
 
     // ==========================================
     // FOLDER DOWNLOAD (zip)
@@ -914,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Block if any single file exceeds the per-file limit
         const oversized = [...fileMap.entries()]
             .filter(([, f]) => f.size > _ZIP_FILE_SIZE_LIMIT)
-            .map(([p]) => `"${p.split('/').pop()}" (${(fileMap.get(p).size / (1024 * 1024)).toFixed(0)} MB)`);
+            .map(([p, f]) => `"${p.split('/').pop()}" (${(f.size / (1024 * 1024)).toFixed(0)} MB)`);
 
         if (oversized.length > 0) {
             showToast(
@@ -967,8 +963,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (downloadLeftBtn) downloadLeftBtn.addEventListener('click', () => downloadFolderAsZip('left'));
-    if (downloadRightBtn) downloadRightBtn.addEventListener('click', () => downloadFolderAsZip('right'));
+    downloadLeftBtn?.addEventListener('click', () => downloadFolderAsZip('left'));
+    downloadRightBtn?.addEventListener('click', () => downloadFolderAsZip('right'));
 
     // ==========================================
     // FOLDER EXPORT (file diff view)
@@ -986,46 +982,38 @@ document.addEventListener('DOMContentLoaded', () => {
         if (folderExportBtn) folderExportBtn.setAttribute('aria-expanded', 'false');
     }
 
-    if (folderExportBtn) {
-        folderExportBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isOpen = !folderExportMenu.classList.contains('hidden');
-            folderExportMenu.classList.toggle('hidden');
-            folderExportBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-        });
-    }
+    folderExportBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = !folderExportMenu.classList.contains('hidden');
+        folderExportMenu.classList.toggle('hidden');
+        folderExportBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+    });
 
-    if (folderExportRightBtn) {
-        folderExportRightBtn.addEventListener('click', () => {
-            if (!folderModifiedModel) { showToast('Open a file diff first.', 'warning'); return; }
-            _downloadText(folderModifiedModel.getValue(), currentFolderFileName || 'right-file.txt');
-            showToast('Right file downloaded.', 'success');
-            _closeFolderExportMenu();
-        });
-    }
+    folderExportRightBtn?.addEventListener('click', () => {
+        if (!folderModifiedModel) { showToast('Open a file diff first.', 'warning'); return; }
+        _downloadText(folderModifiedModel.getValue(), currentFolderFileName || 'right-file.txt');
+        showToast('Right file downloaded.', 'success');
+        _closeFolderExportMenu();
+    });
 
-    if (folderExportLeftBtn) {
-        folderExportLeftBtn.addEventListener('click', () => {
-            if (!folderOriginalModel) { showToast('Open a file diff first.', 'warning'); return; }
-            _downloadText(folderOriginalModel.getValue(), currentFolderFileName || 'left-file.txt');
-            showToast('Left file downloaded.', 'success');
-            _closeFolderExportMenu();
-        });
-    }
+    folderExportLeftBtn?.addEventListener('click', () => {
+        if (!folderOriginalModel) { showToast('Open a file diff first.', 'warning'); return; }
+        _downloadText(folderOriginalModel.getValue(), currentFolderFileName || 'left-file.txt');
+        showToast('Left file downloaded.', 'success');
+        _closeFolderExportMenu();
+    });
 
-    if (folderExportPatchBtn) {
-        folderExportPatchBtn.addEventListener('click', async () => {
-            if (!folderOriginalModel || !folderModifiedModel) { showToast('Open a file diff first.', 'warning'); return; }
-            const patch = buildUnifiedDiff(folderOriginalModel.getValue(), folderModifiedModel.getValue());
-            try {
-                await navigator.clipboard.writeText(patch);
-                showToast('Unified diff copied to clipboard!', 'success');
-            } catch {
-                showToast('Failed to copy to clipboard.', 'error');
-            }
-            _closeFolderExportMenu();
-        });
-    }
+    folderExportPatchBtn?.addEventListener('click', async () => {
+        if (!folderOriginalModel || !folderModifiedModel) { showToast('Open a file diff first.', 'warning'); return; }
+        const patch = buildUnifiedDiff(folderOriginalModel.getValue(), folderModifiedModel.getValue());
+        try {
+            await navigator.clipboard.writeText(patch);
+            showToast('Unified diff copied to clipboard!', 'success');
+        } catch {
+            showToast('Failed to copy to clipboard.', 'error');
+        }
+        _closeFolderExportMenu();
+    });
 
 
     // ==========================================

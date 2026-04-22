@@ -377,8 +377,8 @@ document.getElementById('refresh-collections-btn').addEventListener('click', loa
 
 // Init — gate behind master-password auth (8-hour session)
 async function initApp() {
-    await AuthGuard.init('API Tester', '📡');
-    loadCollections();
+    const guard = await AuthGuard.init('API Tester', '📡');
+    if (guard !== null) loadCollections();
 }
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
