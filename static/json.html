@@ -134,9 +134,27 @@
 
     const toast = DevSuite.toast;
 
+    function parseJson(raw) {
+        try {
+            return { ok: true, data: JSON.parse(raw) };
+        } catch (e) {
+            return { ok: false, error: e };
+        }
+    }
+
+    function sortKeysDeep(obj) {
+        if (Array.isArray(obj)) return obj.map(sortKeysDeep);
+        if (obj !== null && typeof obj === 'object') {
+            return Object.fromEntries(
+                Object.keys(obj).sort().map(k => [k, sortKeysDeep(obj[k])])
+            );
+        }
+        return obj;
+    }
+
     DevSuite.initMonaco(() => {
 
-        let inputEditor, outputEditor;
+        let inputEditor;
         let outputModel;
         let lastOutput = '';
 
@@ -154,7 +172,7 @@
 
         /* ── Create output editor (read-only) ── */
         outputModel = monaco.editor.createModel('', 'json');
-        outputEditor = monaco.editor.create(document.getElementById('output-editor'), {
+        monaco.editor.create(document.getElementById('output-editor'), {
             model: outputModel,
             theme: 'vs-dark',
             readOnly: true,
@@ -213,24 +231,6 @@
             outputLabel.textContent = label;
             lastOutput = text;
             copyBtn.disabled = false;
-        }
-
-        function parseJson(raw) {
-            try {
-                return { ok: true, data: JSON.parse(raw) };
-            } catch (e) {
-                return { ok: false, error: e };
-            }
-        }
-
-        function sortKeysDeep(obj) {
-            if (Array.isArray(obj)) return obj.map(sortKeysDeep);
-            if (obj !== null && typeof obj === 'object') {
-                return Object.fromEntries(
-                    Object.keys(obj).sort().map(k => [k, sortKeysDeep(obj[k])])
-                );
-            }
-            return obj;
         }
 
         /* ── Input changes → live validation ── */

@@ -596,7 +596,7 @@ function openTerminalTab(p) {
         // Intercept host-key approval requests (JSON control messages)
         try {
             const msg = JSON.parse(evt.data);
-            if (msg && msg.type === 'host_key_approval') {
+            if (msg?.type === 'host_key_approval') {
                 const fp = msg.fingerprint || '(unknown)';
                 const approved = confirm(
                     `New SSH host detected:\n\n${msg.host}:${msg.port}\nFingerprint: ${fp}\n\nTrust this host key?`
@@ -770,7 +770,7 @@ async function sftpLoadDir(path) {
         }
 
         // Check if this request is still active
-        if (!sftpConn || sftpConn.activeLoad !== loadToken) return;
+        if (sftpConn?.activeLoad !== loadToken) return;
 
         if (!r.ok) {
             const e = await r.json();
@@ -779,13 +779,13 @@ async function sftpLoadDir(path) {
         const data = await r.json();
 
         // Check again after parsing
-        if (!sftpConn || sftpConn.activeLoad !== loadToken) return;
+        if (sftpConn?.activeLoad !== loadToken) return;
 
         document.getElementById('sftp-loading').style.display = 'none';
         renderSftpGrid(data.files || []);
     } catch (e) {
         // Check if this request is still active
-        if (!sftpConn || sftpConn.activeLoad !== loadToken) return;
+        if (sftpConn?.activeLoad !== loadToken) return;
 
         document.getElementById('sftp-loading').style.display  = 'none';
         const errEl = document.getElementById('sftp-error-msg');
@@ -1160,7 +1160,11 @@ function updateDashboardGauges(metrics) {
     dashCharts.cpu_history.push({ t: now, y: cpuPct });
     if (dashCharts.cpu_history.length > 30) dashCharts.cpu_history.shift();
     
-    if (!dashCharts.instances.cpu) {
+    if (dashCharts.instances.cpu) {
+        dashCharts.instances.cpu.data.labels = dashCharts.cpu_history.map(d=>d.t);
+        dashCharts.instances.cpu.data.datasets[0].data = dashCharts.cpu_history.map(d=>d.y);
+        dashCharts.instances.cpu.update('none');
+    } else {
         const ctx = document.getElementById('dash-cpu-canvas')?.getContext('2d');
         if (ctx) {
             dashCharts.instances.cpu = new Chart(ctx, {
@@ -1169,10 +1173,6 @@ function updateDashboardGauges(metrics) {
                 options: { responsive: true, maintainAspectRatio: false, animation: {duration: 0}, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, border: {display: false}, grid: {color: 'rgba(255,255,255,0.05)'} }, x: { border: {display: false}, grid: {color: 'transparent'}, ticks: {maxTicksLimit: 5} } } }
             });
         }
-    } else {
-        dashCharts.instances.cpu.data.labels = dashCharts.cpu_history.map(d=>d.t);
-        dashCharts.instances.cpu.data.datasets[0].data = dashCharts.cpu_history.map(d=>d.y);
-        dashCharts.instances.cpu.update('none');
     }
     
     // RAM
@@ -1182,7 +1182,11 @@ function updateDashboardGauges(metrics) {
     dashCharts.ram_history.push({ t: now, y: ramPct });
     if (dashCharts.ram_history.length > 30) dashCharts.ram_history.shift();
     
-    if (!dashCharts.instances.ram) {
+    if (dashCharts.instances.ram) {
+        dashCharts.instances.ram.data.labels = dashCharts.ram_history.map(d=>d.t);
+        dashCharts.instances.ram.data.datasets[0].data = dashCharts.ram_history.map(d=>d.y);
+        dashCharts.instances.ram.update('none');
+    } else {
         const ctx = document.getElementById('dash-ram-canvas')?.getContext('2d');
         if (ctx) {
             dashCharts.instances.ram = new Chart(ctx, {
@@ -1191,17 +1195,16 @@ function updateDashboardGauges(metrics) {
                 options: { responsive: true, maintainAspectRatio: false, animation: {duration: 0}, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, border: {display: false}, grid: {color: 'rgba(255,255,255,0.05)'} }, x: { border: {display: false}, grid: {color: 'transparent'}, ticks: {maxTicksLimit: 5} } } }
             });
         }
-    } else {
-        dashCharts.instances.ram.data.labels = dashCharts.ram_history.map(d=>d.t);
-        dashCharts.instances.ram.data.datasets[0].data = dashCharts.ram_history.map(d=>d.y);
-        dashCharts.instances.ram.update('none');
     }
     
     // Swap
     const swapPct = Math.round(metrics.swap_pct || 0);
     document.getElementById('dash-swap-sub').textContent = `${(metrics.swap_used_mb || 0).toFixed(0)} / ${(metrics.swap_total_mb || 0).toFixed(0)} MB`;
     
-    if (!dashCharts.instances.swap) {
+    if (dashCharts.instances.swap) {
+        dashCharts.instances.swap.data.datasets[0].data = [swapPct, 100 - swapPct];
+        dashCharts.instances.swap.update('none');
+    } else {
         const ctx = document.getElementById('dash-swap-canvas')?.getContext('2d');
         if (ctx) {
             dashCharts.instances.swap = new Chart(ctx, {
@@ -1210,9 +1213,6 @@ function updateDashboardGauges(metrics) {
                 options: { responsive: true, maintainAspectRatio: false, animation: {animateRotate: false}, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
             });
         }
-    } else {
-        dashCharts.instances.swap.data.datasets[0].data = [swapPct, 100 - swapPct];
-        dashCharts.instances.swap.update('none');
     }
     
     // Disks
@@ -1261,7 +1261,11 @@ function updateDashboardGauges(metrics) {
             const totalGb = (disk.total_mb || 0) / 1024;
             document.getElementById(`${diskId}-sub`).textContent = `${usedGb.toFixed(1)} / ${totalGb.toFixed(1)} GB`;
             
-            if (!dashCharts.instances[diskId]) {
+            if (dashCharts.instances[diskId]) {
+                 dashCharts.instances[diskId].data.datasets[0].data = [dpct, 100 - dpct];
+                 dashCharts.instances[diskId].data.datasets[0].backgroundColor[0] = color;
+                 dashCharts.instances[diskId].update('none');
+            } else {
                  const ctx = document.getElementById(`${diskId}-canvas`)?.getContext('2d');
                  if (ctx) {
                      dashCharts.instances[diskId] = new Chart(ctx, {
@@ -1270,10 +1274,6 @@ function updateDashboardGauges(metrics) {
                          options: { responsive: true, maintainAspectRatio: false, animation: {animateRotate: false}, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
                      });
                  }
-            } else {
-                 dashCharts.instances[diskId].data.datasets[0].data = [dpct, 100 - dpct];
-                 dashCharts.instances[diskId].data.datasets[0].backgroundColor[0] = color;
-                 dashCharts.instances[diskId].update('none');
             }
         });
     }

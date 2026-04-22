@@ -572,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     copyPanelBtns.forEach(btn => {
         btn.addEventListener('click', async () => {
-            const targetId = btn.getAttribute('data-target');
+            const targetId = btn.dataset.target;
             const target = document.getElementById(targetId);
             if (!target || !target.value) {
                 showToast('Nothing to copy — panel is empty.', 'warning', 2500);
@@ -593,7 +593,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     clearBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            const target = document.getElementById(btn.getAttribute('data-target'));
+            const target = document.getElementById(btn.dataset.target);
             if (target) { target.value = ''; updateLineCounts(); }
         });
     });
@@ -915,7 +915,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fileMap = side === 'left' ? originalFiles : modifiedFiles;
         const folderName = side === 'left' ? origFolderRootName : modFolderRootName;
         if (fileMap.size === 0) { showToast('No files to download.', 'warning'); return; }
-        if (!window.JSZip) { showToast('JSZip not loaded — cannot create zip.', 'error'); return; }
+        if (!globalThis.JSZip) { showToast('JSZip not loaded — cannot create zip.', 'error'); return; }
 
         // Block if any single file exceeds the per-file limit
         const oversized = [...fileMap.entries()]
@@ -936,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalSize = [...fileMap.values()].reduce((s, f) => s + f.size, 0);
         if (totalSize > _ZIP_TOTAL_WARN_LIMIT) {
             const totalMB = (totalSize / (1024 * 1024)).toFixed(0);
-            const ok = window.confirm(
+            const ok = globalThis.confirm(
                 `The selected files total ${totalMB} MB.\n\n` +
                 `Zipping large amounts of data in the browser requires holding everything in RAM. ` +
                 `This may be slow or cause the tab to crash above ~400 MB.\n\n` +
@@ -1610,7 +1610,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function detectLanguage(text) {
-        if (!text || !window.hljs) return null;
+        if (!text || !globalThis.hljs) return null;
         try {
             const result = hljs.highlightAuto(text.substring(0, 1200));
             let detected = result.language || (result.secondBest && result.secondBest.language);
@@ -1647,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // WINDOW RESIZE
     // ==========================================
-    window.addEventListener('resize', () => {
+    globalThis.addEventListener('resize', () => {
         if (textDiffEditor) textDiffEditor.layout();
         if (folderDiffEditor) folderDiffEditor.layout();
     });
@@ -1658,7 +1658,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * element matching `.tab-btn[data-tab="<value>"]`, and triggers a click on it to switch tabs.
      */
     function applyTabFromUrl() {
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(globalThis.location.search);
         const tab = params.get('tab');
         if (tab) {
             const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);

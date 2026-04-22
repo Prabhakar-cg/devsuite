@@ -204,7 +204,7 @@ def _serve_html(filename: str) -> str:
         with open(html_path, "r", encoding="utf-8") as f:
             html = f.read()
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"{filename} not found.") from None
+        raise HTTPException(status_code=404, detail=f"{filename} not found.") from None  # NOSONAR — helper raises documented at call-site routes
     # Inject favicon into <head> if not already present
     if 'favicon' not in html:
         html = html.replace('<head>', f'<head>\n    {_FAVICON_TAG}', 1)

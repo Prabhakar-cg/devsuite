@@ -23,7 +23,9 @@ VERSIONS_FILE = Path(__file__).parent / "versions.json"
 MONACO_DIR = ROOT / "static/libs/vs"
 MONACO_MANIFEST_KEY = "static/libs/vs"
 SEMVER_PATTERN = r"\b([0-9]+\.[0-9]+\.[0-9]+)\b"
+_SAFE_VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 STATUS_UNTRACKED = "[untracked]"
+STATUS_OUTDATED  = "[OUTDATED]  "
 
 # (relative path, npm package name, path inside npm tarball, cdn_url_override or None)
 # cdn_url_override: use {version} as placeholder; used when jsDelivr npm path doesn't work.
@@ -73,7 +75,10 @@ def _npm_latest(package: str) -> str:
     url = f"https://registry.npmjs.org/{package}/latest"
     try:
         with urllib.request.urlopen(url, timeout=8) as r:
-            return json.loads(r.read()).get("version", "unavailable")
+            version = json.loads(r.read()).get("version", "")
+        # Reject any value that isn't a plain semver — prevents path/URL injection
+        # from a compromised or malformed registry response (S2083).
+        return version if _SAFE_VERSION_RE.fullmatch(version) else "unavailable"
     except Exception:
         return "unavailable"
 
@@ -248,7 +253,7 @@ def _version_status(current: str | None, latest: str) -> str:
         return "[unavailable]"
     if current == latest:
         return "[ok]        "
-    return "[OUTDATED]  "
+    return STATUS_OUTDATED
 
 
 def _check_one_js_lib(
@@ -264,7 +269,7 @@ def _check_one_js_lib(
 
     latest = _npm_latest(npm_name)
     status = _version_status(current, latest)
-    if status == "[OUTDATED]  ":
+    if status == STATUS_OUTDATED:
         outdated_libs.append((rel_path, npm_name, tarball_path, cdn_override, current, latest))
     rows.append((status, rel_path, npm_name, current or "—", latest))
 
@@ -280,7 +285,7 @@ def _check_monaco(manifest: dict, outdated_libs: list) -> str:
 
     latest = _npm_latest("monaco-editor")
     status = _version_status(current, latest)
-    if status == "[OUTDATED]  ":
+    if status == STATUS_OUTDATED:
         outdated_libs.append((MONACO_MANIFEST_KEY, "monaco-editor", "__monaco__", None, current, latest))
     return f"  {status} {'Monaco Editor (vs/)':<32} {current or '—':<12} →  {latest}  (monaco-editor)"
 
@@ -355,9 +360,14 @@ def _try_cdn_sources(
     return False
 
 
-def _is_safe_member(name: str) -> bool:
-    parts = name.split("/")
-    return not name.startswith("/") and ".." not in parts
+def _is_safe_member(member: tarfile.TarInfo) -> bool:
+    """Reject path-traversal, symlinks, and non-regular-file members (S5042)."""
+    parts = member.name.split("/")
+    return (
+        not member.name.startswith("/")
+        and ".." not in parts
+        and member.isfile()
+    )
 
 
 def _extract_member_from_tarball(tgz_path: Path, tarball_path: str, dest: Path) -> bool:
@@ -366,7 +376,7 @@ def _extract_member_from_tarball(tgz_path: Path, tarball_path: str, dest: Path) 
     with tarfile.open(tgz_path) as tf:
         candidates = [
             m for m in tf.getmembers()
-            if m.name.endswith(target_name) and _is_safe_member(m.name)
+            if m.name.endswith(target_name) and _is_safe_member(m)
         ]
         if not candidates:
             print(f"    {target_name} not found in tarball — update manually.")
@@ -435,12 +445,14 @@ def _update_monaco(version: str) -> bool:
         with tarfile.open(tgz_path) as tf:
             members = [
                 m for m in tf.getmembers()
-                if "package/min/vs/" in m.name and _is_safe_member(m.name)
+                if "package/min/vs/" in m.name and _is_safe_member(m)
             ]
             if not members:
                 print("FAILED — min/vs/ not found in tarball")
                 return False
-            tf.extractall(extract_dir, members=members)
+            # filter='data' (Python 3.12+) strips dangerous tar attributes (S5042).
+            extract_kwargs = {"filter": "data"} if sys.version_info >= (3, 12) else {}
+            tf.extractall(extract_dir, members=members, **extract_kwargs)
         print("done")
 
         src_vs = extract_dir / "package" / "min" / "vs"

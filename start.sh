@@ -230,9 +230,7 @@ else
     echo "All prerequisites met."
 fi
 
-# TypeScript global check
-if command_exists npm && ! command_exists tsc; then
-    echo -e "\nTypeScript compiler (tsc) is missing."
+_install_typescript () {
     if ask_permission "Do you want to run 'npm install -g typescript'?"; then
         echo "Installing typescript globally..."
         if [[ "$OS" = "$WINDOWS" ]] || [[ "$OS" = "macOS" ]]; then
@@ -243,6 +241,13 @@ if command_exists npm && ! command_exists tsc; then
     else
         echo "Installation aborted. You may need tsc for compiling frontend assets."
     fi
+    return 0
+}
+
+# TypeScript global check
+if command_exists npm && ! command_exists tsc; then
+    echo -e "\nTypeScript compiler (tsc) is missing."
+    _install_typescript
 fi
 
 # Create virtual environment if it doesn't exist
