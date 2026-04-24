@@ -1099,6 +1099,22 @@ function jsonToXml(obj, tag) {
     return `<${clean(tag)}>${escHtml(String(obj ?? ''))}</${clean(tag)}>`;
 }
 
+function processXmlChild(obj, child) {
+    if (child.nodeType === Node.TEXT_NODE) {
+        const t = child.textContent.trim();
+        if (t) obj['#text'] = t;
+        return;
+    }
+    if (child.nodeType !== Node.ELEMENT_NODE) return;
+    const val = xmlToJson(child);
+    if (obj[child.nodeName] === undefined) {
+        obj[child.nodeName] = val;
+    } else {
+        if (!Array.isArray(obj[child.nodeName])) obj[child.nodeName] = [obj[child.nodeName]];
+        obj[child.nodeName].push(val);
+    }
+}
+
 function xmlToJson(node) {
     if (node.nodeType === Node.TEXT_NODE) {
         const t = node.textContent.trim();
@@ -1107,28 +1123,11 @@ function xmlToJson(node) {
     if (node.nodeType !== Node.ELEMENT_NODE) return null;
 
     const obj = {};
-    // Attributes
     if (node.attributes.length) {
         obj['@attributes'] = {};
         for (const attr of node.attributes) obj['@attributes'][attr.name] = attr.value;
     }
-
-    for (const child of node.childNodes) {
-        if (child.nodeType === Node.TEXT_NODE) {
-            const t = child.textContent.trim();
-            if (t) obj['#text'] = t;
-            continue;
-        }
-        if (child.nodeType === Node.ELEMENT_NODE) {
-            const val = xmlToJson(child);
-            if (obj[child.nodeName] === undefined) {
-                obj[child.nodeName] = val;
-            } else {
-                if (!Array.isArray(obj[child.nodeName])) obj[child.nodeName] = [obj[child.nodeName]];
-                obj[child.nodeName].push(val);
-            }
-        }
-    }
+    for (const child of node.childNodes) processXmlChild(obj, child);
     return obj;
 }
 

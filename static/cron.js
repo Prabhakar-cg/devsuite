@@ -521,6 +521,39 @@ class CronSchedule {
     this.dialect = DIALECTS[dialectId];
   }
 
+  _buildMatchSets(fields, fieldNames, fieldRanges) {
+    const expand = (idx) => idx >= 0 ? this.parser.expandField(fields[idx], fieldRanges[idx]) : null;
+    return {
+      min:     expand(fieldNames.indexOf('minute')),
+      hour:    expand(fieldNames.indexOf('hour')),
+      dom:     expand(fieldNames.indexOf('dom')),
+      mon:     expand(fieldNames.indexOf('month')),
+      dow:     expand(fieldNames.indexOf('dow')),
+      minIdx:  fieldNames.indexOf('minute'),
+      hourIdx: fieldNames.indexOf('hour'),
+    };
+  }
+
+  _normalizeDow(rawDow) {
+    if (this.dialect.id === 'quartz' || this.dialect.id === 'aws') {
+      return rawDow === 0 ? 7 : rawDow; // map to 1=Sun..7=Sat for Quartz/AWS
+    }
+    return rawDow;
+  }
+
+  _cursorMatches(cursor, sets) {
+    const month = cursor.getMonth() + 1;
+    const dom   = cursor.getDate();
+    const dow   = this._normalizeDow(cursor.getDay());
+    const hour  = cursor.getHours();
+    const min   = cursor.getMinutes();
+    return (!sets.mon  || sets.mon.has(month))
+        && (!sets.dom  || sets.dom.has(dom))
+        && (!sets.dow  || sets.dow.has(dow))
+        && (!sets.hour || sets.hour.has(hour))
+        && (!sets.min  || sets.min.has(min));
+  }
+
   /**
    * Compute next N run times from `fromDate`.
    * Uses brute-force minute iteration (max 1 year ahead = 525960 iterations).
@@ -528,61 +561,17 @@ class CronSchedule {
   nextN(n = 10, fromDate = new Date()) {
     if (!this.parsed.valid) return [];
     const d = this.dialect;
-    const fields = this.parsed.fields;
-
-    // Determine field indexes
-    let minIdx, hourIdx, domIdx, monIdx, dowIdx;
-    const fieldNames = d.fields;
-    minIdx = fieldNames.indexOf('minute');
-    hourIdx = fieldNames.indexOf('hour');
-    domIdx = fieldNames.indexOf('dom');
-    monIdx = fieldNames.indexOf('month');
-    dowIdx = fieldNames.indexOf('dow');
-
-    if (minIdx === -1 || hourIdx === -1) return [];
-
-    const minRange = d.fieldRanges[minIdx];
-    const hourRange = d.fieldRanges[hourIdx];
-    const domRange = d.fieldRanges[domIdx];
-    const monRange = d.fieldRanges[monIdx];
-    const dowRange = d.fieldRanges[dowIdx];
-
-    const matchMin = minIdx >= 0 ? this.parser.expandField(fields[minIdx], minRange) : null;
-    const matchHour = hourIdx >= 0 ? this.parser.expandField(fields[hourIdx], hourRange) : null;
-    const matchDom = domIdx >= 0 ? this.parser.expandField(fields[domIdx], domRange) : null;
-    const matchMon = monIdx >= 0 ? this.parser.expandField(fields[monIdx], monRange) : null;
-    const matchDow = dowIdx >= 0 ? this.parser.expandField(fields[dowIdx], dowRange) : null;
+    const sets = this._buildMatchSets(this.parsed.fields, d.fields, d.fieldRanges);
+    if (sets.minIdx === -1 || sets.hourIdx === -1) return [];
 
     const results = [];
-    // Start from next minute
     const cursor = new Date(fromDate);
     cursor.setSeconds(0, 0);
     cursor.setMinutes(cursor.getMinutes() + 1);
 
     const MAX_ITER = 60 * 24 * 366; // 1 year of minutes
     for (let i = 0; i < MAX_ITER && results.length < n; i++) {
-      const month = cursor.getMonth() + 1; // 1-based
-      const dom = cursor.getDate();
-      const rawDow = cursor.getDay(); // 0=Sun..6=Sat (JS)
-      let dow;
-      if (this.dialect.id === 'quartz' || this.dialect.id === 'aws') {
-        dow = rawDow === 0 ? 7 : rawDow; // map to 1=Sun..7=Sat for Quartz/AWS
-      } else {
-        dow = rawDow;
-      }
-      const hour = cursor.getHours();
-      const min = cursor.getMinutes();
-
-      if (
-        (!matchMon || matchMon.has(month)) &&
-        (!matchDom || matchDom.has(dom)) &&
-        (!matchDow || matchDow.has(dow)) &&
-        (!matchHour || matchHour.has(hour)) &&
-        (!matchMin || matchMin.has(min))
-      ) {
-        results.push(new Date(cursor));
-      }
-
+      if (this._cursorMatches(cursor, sets)) results.push(new Date(cursor));
       cursor.setMinutes(cursor.getMinutes() + 1);
     }
 
@@ -1119,20 +1108,9 @@ class CronVisualizer {
   }
 
   _copyToClipboard(text, successMsg) {
-    navigator.clipboard.writeText(text).then(() => {
-      this._showGlobalToast(successMsg, 'success');
-    }).catch(() => {
-      // Fallback for older browsers
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      ta.remove();
-      this._showGlobalToast(successMsg, 'success');
-    });
+    navigator.clipboard.writeText(text)
+      .then(() => this._showGlobalToast(successMsg, 'success'))
+      .catch(() => this._showGlobalToast('Copy failed — use Ctrl+C.', 'error'));
   }
 
   _showGlobalToast(msg, type = 'info') {

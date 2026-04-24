@@ -594,7 +594,7 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
 .folder-status-removed .tree-folder-badge { background: var(--red-subtle); color: var(--red-mid); }
 .folder-status-added   .tree-folder-badge { background: var(--green-subtle); color: var(--green-mid); }
 .folder-status-modified .tree-folder-badge { background: var(--amber-subtle); color: var(--amber-mid); }
-.folder-status-mixed   .tree-folder-badge { background: rgba(113,0,200,0.08); color: #6e00c0; }
+.folder-status-mixed   .tree-folder-badge { background: rgba(113,0,200,0.08); color: #d8b4fe; }
 .tree-folder-badge:empty { display: none; }
 
 /* Folder row status highlights — left border accent + tinted bg */
@@ -616,7 +616,7 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
 .tree-folder-row.folder-status-mixed    {
     background: rgba(113,0,200,0.07);
     border-left: 3px solid #9b30e8;
-    color: #6e00c0;
+    color: #d8b4fe;
 }
 /* Icon color follows status */
 .tree-folder-row.folder-status-removed  .tree-icon { color: var(--red-mid);   opacity: 0.85; }

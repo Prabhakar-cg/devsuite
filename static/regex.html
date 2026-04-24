@@ -238,6 +238,16 @@
 
         function getFlags() { return [...activeFlags].join(''); }
 
+        function appendMatchGroups(item, match) {
+            if (!match.groups.length) return;
+            const groupsDiv = document.createElement('div');
+            groupsDiv.className = 'match-groups';
+            match.groups.forEach((g, gi) => {
+                groupsDiv.appendChild(buildGroupChip(g, gi, match.namedGroups));
+            });
+            item.appendChild(groupsDiv);
+        }
+
         function buildGroupChip(g, gi, namedGroups) {
             const label = `$${gi + 1}`;
             const chip = document.createElement('span');
@@ -392,14 +402,7 @@
                 }
                 item.appendChild(valDiv);
 
-                if (match.groups.length) {
-                    const groupsDiv = document.createElement('div');
-                    groupsDiv.className = 'match-groups';
-                    match.groups.forEach((g, gi) => {
-                        groupsDiv.appendChild(buildGroupChip(g, gi, match.namedGroups));
-                    });
-                    item.appendChild(groupsDiv);
-                }
+                appendMatchGroups(item, match);
                 matchPane.appendChild(item);
             });
         }

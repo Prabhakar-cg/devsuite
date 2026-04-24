@@ -297,6 +297,19 @@ function getGroupedProfiles() {
     return groups;
 }
 
+function makeDeleteHandler(p) {
+    return async e => {
+        e.stopPropagation();
+        if (!confirm(`Delete session "${p.name || p.host}"?`)) return;
+        profiles = profiles.filter(x => x.id !== p.id);
+        const serialized = JSON.stringify(profiles);
+        const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
+        await saveProfilesBlob(blob);
+        renderSidebar();
+        renderSftpSidebar();
+    };
+}
+
 function renderSidebar() {
     const list = document.getElementById('server-list');
     list.innerHTML = '';
@@ -347,16 +360,7 @@ function renderSidebar() {
             d.querySelector('.server-name-lbl').addEventListener('click', () => openTerminalTab(p));
             if (!p.isWsl) {
                 d.querySelector('.edit-srv-icon').addEventListener('click', e => { e.stopPropagation(); openServerModal(p); });
-                d.querySelector('.del-srv-icon').addEventListener('click', async e => {
-                    e.stopPropagation();
-                    if (!confirm(`Delete session "${p.name || p.host}"?`)) return;
-                    profiles = profiles.filter(x => x.id !== p.id);
-                    const serialized = JSON.stringify(profiles);
-                    const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
-                    await saveProfilesBlob(blob);
-                    renderSidebar();
-                    renderSftpSidebar();
-                });
+                d.querySelector('.del-srv-icon').addEventListener('click', makeDeleteHandler(p));
             }
             childrenDiv.appendChild(d);
         });
@@ -921,10 +925,56 @@ document.getElementById('sftp-upload-input').addEventListener('change', async (e
     }
 });
 
+function sftpRetryUpload(fd, file, fp, resolve) {
+    fd.append('approved_fingerprint', fp);
+    const retryXhr = new XMLHttpRequest();
+    retryXhr.open('POST', '/api/sftp/upload');
+    retryXhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable) {
+            const pct = Math.round((evt.loaded / evt.total) * 100);
+            showToast(`Uploading ${file.name}… ${pct}%`, 'info');
+        }
+    };
+    retryXhr.onload = async () => {
+        if (retryXhr.status >= 200 && retryXhr.status < 300) {
+            showToast(`Uploaded ${file.name}`, 'success');
+            await sftpLoadDir(sftpConn.path);
+        } else {
+            let d = `Server error ${retryXhr.status}`;
+            try { d = JSON.parse(retryXhr.response).detail || d; } catch {}
+            showToast(`Upload failed: ${d}`, 'error');
+        }
+        resolve();
+    };
+    retryXhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
+    retryXhr.send(fd);
+}
+
+async function sftpHandle409(xhr, fd, file, resolve) {
+    let errBody = {};
+    try { errBody = JSON.parse(xhr.response); } catch {}
+    const det = errBody.detail || {};
+    if (det.error !== 'host_key_approval_required') {
+        const msg = det.error || (typeof det === 'string' ? det : `Server error ${xhr.status}`);
+        showToast(`Upload failed: ${msg}`, 'error');
+        resolve();
+        return;
+    }
+    const fp = det.fingerprint || '(unknown)';
+    const approved = confirm(
+        `New SFTP host detected:\n\n${det.host}:${det.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+    );
+    if (approved) {
+        sftpRetryUpload(fd, file, fp, resolve); // resolve() called by retryXhr
+    } else {
+        showToast(`Upload cancelled: host key rejected.`, 'warn');
+        resolve();
+    }
+}
+
 async function sftpUploadFile(file) {
     if (!sftpConn) return;
-    const toastMsg = `Uploading ${file.name}… 0%`;
-    showToast(toastMsg, 'info');
+    showToast(`Uploading ${file.name}… 0%`, 'info');
 
     const fd = new FormData();
     fd.append('host',        sftpConn.profile.host);
@@ -948,48 +998,9 @@ async function sftpUploadFile(file) {
             if (xhr.status >= 200 && xhr.status < 300) {
                 showToast(`Uploaded ${file.name}`, 'success');
                 await sftpLoadDir(sftpConn.path);
-            } else if (xhr.status === 409) {
-                let errBody = {};
-                try { errBody = JSON.parse(xhr.response); } catch {}
-                const det = errBody.detail || {};
-                if (det.error === 'host_key_approval_required') {
-                    const fp = det.fingerprint || '(unknown)';
-                    const approved = confirm(
-                        `New SFTP host detected:\n\n${det.host}:${det.port}\nFingerprint: ${fp}\n\nTrust this host key?`
-                    );
-                    if (approved) {
-                        // Retry with approved fingerprint
-                        fd.append('approved_fingerprint', fp);
-                        const retryXhr = new XMLHttpRequest();
-                        retryXhr.open('POST', '/api/sftp/upload');
-                        retryXhr.upload.onprogress = (evt) => {
-                            if (evt.lengthComputable) {
-                                const pct = Math.round((evt.loaded / evt.total) * 100);
-                                showToast(`Uploading ${file.name}… ${pct}%`, 'info');
-                            }
-                        };
-                        retryXhr.onload = async () => {
-                            if (retryXhr.status >= 200 && retryXhr.status < 300) {
-                                showToast(`Uploaded ${file.name}`, 'success');
-                                await sftpLoadDir(sftpConn.path);
-                            } else {
-                                let d = `Server error ${retryXhr.status}`;
-                                try { d = JSON.parse(retryXhr.response).detail || d; } catch {}
-                                showToast(`Upload failed: ${d}`, 'error');
-                            }
-                            resolve();
-                        };
-                        retryXhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
-                        retryXhr.send(fd);
-                        return; // resolve() will be called by retryXhr
-                    } else {
-                        showToast(`Upload cancelled: host key rejected.`, 'warn');
-                    }
-                } else {
-                    const msg = det.error || (typeof det === 'string' ? det : `Server error ${xhr.status}`);
-                    showToast(`Upload failed: ${msg}`, 'error');
-                }
                 resolve();
+            } else if (xhr.status === 409) {
+                await sftpHandle409(xhr, fd, file, resolve);
             } else {
                 let detail = `Server error ${xhr.status}`;
                 try { detail = JSON.parse(xhr.response).detail || detail; } catch {}

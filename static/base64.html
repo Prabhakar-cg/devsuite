@@ -392,17 +392,20 @@
         });
 
         /* FILE INPUT */
-        document.getElementById('file-input').addEventListener('change', e => {
+        document.getElementById('file-input').addEventListener('change', async e => {
             const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = ev => { inputEditor.setValue(ev.target.result); toast('File loaded', 'success', 1800); };
-            // For binary files, read as base64 immediately
-            if (file.type.startsWith('text') || file.size < 500_000) {
-                reader.readAsText(file);
-            } else {
-                reader.readAsDataURL(file); // gives data:...;base64,xxxx
-            }
             e.target.value = '';
+            if (file.type.startsWith('text') || file.size < 500_000) {
+                try {
+                    inputEditor.setValue(await file.text());
+                    toast('File loaded', 'success', 1800);
+                } catch { toast('Failed to read file', 'error'); }
+            } else {
+                // For binary files, read as base64 data URL
+                const reader = new FileReader();
+                reader.onload = ev => { inputEditor.setValue(ev.target.result); toast('File loaded', 'success', 1800); };
+                reader.readAsDataURL(file);
+            }
         });
 
         /* COPY OUTPUT */

@@ -233,69 +233,70 @@ function lockVault() {
     renderAll();
 }
 
-async function unlockVault(password) {
-    const errEl = document.getElementById('lock-error');
-    errEl.style.display = 'none';
+/**
+ * Attempts to decrypt data.encrypted_blob with key.
+ * Sets vaultEntries on success. Shows errEl and returns false on wrong password.
+ */
+async function _tryDecryptBlob(data, key, errEl) {
+    if (!data.encrypted_blob) { vaultEntries = []; return true; }
+    try {
+        vaultEntries = decryptVault(data.encrypted_blob, data.iv, key);
+        return true;
+    } catch {
+        errEl.textContent = '❌ Incorrect password — cannot decrypt vault.';
+        errEl.style.display = 'block';
+        return false;
+    }
+}
 
-    // ── First-time setup: no challenge or session exists yet ────────
-    // Generate salt/key locally, register the challenge (CSRF-exempt),
-    // acquire a session, then persist the empty vault — all without
-    // trying to hit /api/vault before cookies are established.
-    if (isSetupMode && isNewVault) {
-        const validationError = _validateSetupPassword(password);
-        if (validationError) {
-            errEl.textContent = validationError;
-            errEl.style.display = 'block';
-            return;
-        }
-        const salt = CryptoJS.lib.WordArray.random(16);
-        vaultSaltHex = salt.toString();
-        const key = deriveKey(password, salt);
-        await _registerSetupChallenge(key, salt);
-        masterKey = key;
-        vaultEntries = [];
-        document.getElementById('lock-overlay').style.display = 'none';
-        renderAll();
-        toast('Vault created and unlocked ✓', 'success');
-        startAutoLock();
+function _finalizeUnlock(key, successMsg) {
+    masterKey = key;
+    document.getElementById('lock-overlay').style.display = 'none';
+    renderAll();
+    toast(successMsg, 'success');
+    startAutoLock();
+}
+
+// ── First-time setup: no challenge or session exists yet ────────
+// Generate salt/key locally, register the challenge (CSRF-exempt),
+// acquire a session, then persist the empty vault — all without
+// trying to hit /api/vault before cookies are established.
+async function _unlockSetupNewVault(password, errEl) {
+    const validationError = _validateSetupPassword(password);
+    if (validationError) {
+        errEl.textContent = validationError;
+        errEl.style.display = 'block';
         return;
     }
+    const salt = CryptoJS.lib.WordArray.random(16);
+    vaultSaltHex = salt.toString();
+    const key = deriveKey(password, salt);
+    await _registerSetupChallenge(key, salt);
+    vaultEntries = [];
+    _finalizeUnlock(key, 'Vault created and unlocked ✓');
+}
 
-    // ── Migration: vault exists but no challenge registered yet ────
-    // Read the encrypted blob via the session-free migration endpoint,
-    // verify the password by attempting to decrypt, then register the
-    // challenge and acquire a session before proceeding.
-    if (isSetupMode && !isNewVault) {
-        const migRes = await fetch('/api/vault/migrate');
-        if (!migRes.ok) throw new Error(`Migration read failed (HTTP ${migRes.status}).`);
-        const migData = await migRes.json();
+// ── Migration: vault exists but no challenge registered yet ────
+// Read the encrypted blob via the session-free migration endpoint,
+// verify the password by attempting to decrypt, then register the
+// challenge and acquire a session before proceeding.
+async function _unlockSetupMigration(password, errEl) {
+    const migRes = await fetch('/api/vault/migrate');
+    if (!migRes.ok) throw new Error(`Migration read failed (HTTP ${migRes.status}).`);
+    const migData = await migRes.json();
 
-        const salt = CryptoJS.enc.Hex.parse(migData.salt);
-        vaultSaltHex = migData.salt;
-        const key = deriveKey(password, salt);
+    const salt = CryptoJS.enc.Hex.parse(migData.salt);
+    vaultSaltHex = migData.salt;
+    const key = deriveKey(password, salt);
 
-        if (migData.encrypted_blob) {
-            try {
-                vaultEntries = decryptVault(migData.encrypted_blob, migData.iv, key);
-            } catch {
-                errEl.textContent = '❌ Incorrect password — cannot decrypt vault.';
-                errEl.style.display = 'block';
-                return;
-            }
-        } else {
-            vaultEntries = [];
-        }
+    if (!await _tryDecryptBlob(migData, key, errEl)) return;
 
-        await _registerSetupChallenge(key, salt);
-        masterKey = key;
-        document.getElementById('lock-overlay').style.display = 'none';
-        renderAll();
-        toast('Vault unlocked and master password registered ✓', 'success');
-        startAutoLock();
-        return;
-    }
+    await _registerSetupChallenge(key, salt);
+    _finalizeUnlock(key, 'Vault unlocked and master password registered ✓');
+}
 
-    // ── Normal unlock: acquire session then load vault ───────────────
+// ── Normal unlock: acquire session then load vault ───────────────
+async function _unlockVaultNormal(password, errEl) {
     await _acquireChallengeSession(password);
 
     const res = await fetch('/api/vault', { headers: _authHeaders() });
@@ -307,27 +308,21 @@ async function unlockVault(password) {
         return;
     }
     const data = await res.json();
-
     const salt = await _resolveVaultSalt(data);
     const key  = deriveKey(password, salt);
 
-    if (data.encrypted_blob) {
-        try {
-            vaultEntries = decryptVault(data.encrypted_blob, data.iv, key);
-        } catch {
-            errEl.textContent = '❌ Incorrect password — cannot decrypt vault.';
-            errEl.style.display = 'block';
-            return;
-        }
-    } else {
-        vaultEntries = [];
-    }
+    if (!await _tryDecryptBlob(data, key, errEl)) return;
 
-    masterKey = key;
-    document.getElementById('lock-overlay').style.display = 'none';
-    renderAll();
-    toast('Vault unlocked ✓', 'success');
-    startAutoLock();
+    _finalizeUnlock(key, 'Vault unlocked ✓');
+}
+
+async function unlockVault(password) {
+    const errEl = document.getElementById('lock-error');
+    errEl.style.display = 'none';
+
+    if (isSetupMode && isNewVault) return _unlockSetupNewVault(password, errEl);
+    if (isSetupMode)               return _unlockSetupMigration(password, errEl);
+    return _unlockVaultNormal(password, errEl);
 }
 
 // ── Auto-lock on page hide > 5 min ───────────────────────────────

@@ -93,7 +93,7 @@ html, body {
 .lock-icon-wrap {
     width: 68px; height: 68px;
     margin: 0 auto 1.5rem;
-    background: linear-gradient(135deg, #d97706, #f59e0b);
+    background: linear-gradient(135deg, #78350f, #92400e);
     border-radius: 18px;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 8px 28px rgba(245,158,11,0.35);
@@ -124,7 +124,7 @@ html, body {
 
 .lock-btn {
     width: 100%; padding: 0.85rem;
-    background: linear-gradient(135deg, #d97706, #f59e0b);
+    background: linear-gradient(135deg, #78350f, #92400e);
     border: none; border-radius: 980px;
     color: #fff; font-weight: 700; font-size: 0.95rem;
     cursor: pointer; transition: var(--transition);
@@ -243,7 +243,7 @@ html, body {
     margin: 0.65rem;
     width: calc(100% - 1.3rem);
     padding: 0.6rem;
-    background: linear-gradient(135deg, #d97706, #f59e0b);
+    background: linear-gradient(135deg, #78350f, #92400e);
     border: none; border-radius: 980px;
     color: #fff; font-weight: 700; font-size: 0.85rem;
     cursor: pointer; transition: var(--transition);
@@ -399,23 +399,23 @@ html, body {
 .btn { padding: 0.6rem 1.25rem; border-radius: 980px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: var(--transition); border: 1px solid transparent; }
 .btn-ghost { background: var(--bg-secondary); border-color: var(--border-mid); color: var(--text-mid); }
 .btn-ghost:hover { border-color: rgba(0,0,0,0.22); color: var(--text); }
-.btn-primary { background: linear-gradient(135deg,#d97706,#f59e0b); color: #fff; border: none; box-shadow: 0 3px 12px rgba(245,158,11,0.25); }
+.btn-primary { background: linear-gradient(135deg,#78350f,#92400e); color: #fff; border: none; box-shadow: 0 3px 12px rgba(245,158,11,0.25); }
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,158,11,0.4); }
 .btn-danger { background: var(--red-subtle); border: 1px solid rgba(255,59,48,0.25); color: var(--red-mid); margin-right: auto; }
 .btn-danger:hover { background: rgba(255,59,48,0.12); }
 .btn-sm { padding: 0.38rem 0.85rem; border-radius: 980px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: var(--transition); border: 1px solid var(--border-mid); background: var(--bg-secondary); color: var(--text-mid); }
 .btn-sm:hover { border-color: rgba(0,0,0,0.22); color: var(--text); }
-.btn-sm.primary { background: linear-gradient(135deg,#d97706,#f59e0b); color: #fff; border: none; }
+.btn-sm.primary { background: linear-gradient(135deg,#78350f,#92400e); color: #fff; border: none; }
 
 /* ================================================================
    TYPE BADGE COLORS
    ================================================================ */
-.badge-password { background: rgba(99,102,241,0.1);  color: #6366f1; border: 1px solid rgba(99,102,241,0.25); }
-.badge-token    { background: rgba(14,165,233,0.1);  color: #0284c7; border: 1px solid rgba(14,165,233,0.25); }
-.badge-ssh      { background: rgba(16,185,129,0.1);  color: #059669; border: 1px solid rgba(16,185,129,0.25); }
-.badge-api      { background: rgba(168,85,247,0.1);  color: #7c3aed; border: 1px solid rgba(168,85,247,0.25); }
-.badge-env      { background: rgba(249,115,22,0.1);  color: #ea580c; border: 1px solid rgba(249,115,22,0.25); }
-.badge-note     { background: rgba(245,158,11,0.1);  color: var(--amber-mid); border: 1px solid rgba(245,158,11,0.25); }
+.badge-password { background: #4338ca; color: #fff; border: 1px solid #4338ca; }
+.badge-token    { background: #0369a1; color: #fff; border: 1px solid #0369a1; }
+.badge-ssh      { background: #065f46; color: #fff; border: 1px solid #065f46; }
+.badge-api      { background: #5b21b6; color: #fff; border: 1px solid #5b21b6; }
+.badge-env      { background: #9a3412; color: #fff; border: 1px solid #9a3412; }
+.badge-note     { background: #78350f; color: #fff; border: 1px solid #78350f; }
 
 .dot-password { background: var(--clr-password); }
 .dot-token    { background: var(--clr-token); }
@@ -429,7 +429,7 @@ html, body {
 .icon-ssh      { background: linear-gradient(135deg, #059669, #10b981); }
 .icon-api      { background: linear-gradient(135deg, #7c3aed, #a855f7); }
 .icon-env      { background: linear-gradient(135deg, #ea580c, #f97316); }
-.icon-note     { background: linear-gradient(135deg, #d97706, #f59e0b); }
+.icon-note     { background: linear-gradient(135deg, #78350f, #92400e); }
 
 /* ================================================================
    TOAST

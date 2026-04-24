@@ -206,7 +206,7 @@
             const v = inputEditor.getValue();
             charCount.textContent = v.length.toLocaleString() + ' chars';
             const lines = v ? v.split('\n').length : 0;
-            lineCount.textContent = lines + ' line' + (lines !== 1 ? 's' : '');
+            lineCount.textContent = lines + ' line' + (lines === 1 ? '' : 's');
         }
 
         function showError(msg, hint = '') {
