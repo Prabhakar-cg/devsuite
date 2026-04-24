@@ -80,16 +80,17 @@ function _authHeaders(extra) {
 }
 
 // Server sets HttpOnly ds_session + readable ds_csrf cookie on success.
+// Returns true on success, throws a user-visible Error on failure.
 async function _acquireServerSession(keyHex) {
-    try {
-        const r = await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key_hex: keyHex }),
-        });
-        if (!r.ok) return;
-        // Cookies are set by the server; no token stored in JS.
-    } catch { /* non-fatal */ }
+    const r = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key_hex: keyHex }),
+    });
+    if (r.status === 429) throw new Error('Too many attempts — please wait a minute and try again.');
+    if (r.status === 401) throw new Error('Incorrect master password.');
+    if (!r.ok) throw new Error(`Session request failed (HTTP ${r.status}).`);
+    return true;
 }
 
 // ── Persist vault to server ───────────────────────────────────────
@@ -134,22 +135,22 @@ function _validateSetupPassword(password) {
 
 /**
  * Derives a session key from the auth-challenge salt and acquires a server session.
- * Non-fatal — errors are silently swallowed.
+ * Throws a user-visible Error if authentication fails or is rate-limited.
+ * Returns silently (no-op) when no challenge is configured (first-time setup path).
  */
 async function _acquireChallengeSession(password) {
     const PBKDF2_AG_ITER = 50000;
     const PBKDF2_AG_KS   = 256 / 32;
-    try {
-        const chRes = await fetch('/api/auth/challenge');
-        if (!chRes.ok) return;
-        const ch = await chRes.json();
-        if (ch.salt) {
-            const sessionKey = CryptoJS.PBKDF2(password, CryptoJS.enc.Hex.parse(ch.salt), {
-                keySize: PBKDF2_AG_KS, iterations: PBKDF2_AG_ITER,
-            });
-            await _acquireServerSession(sessionKey.toString());
-        }
-    } catch { /* non-fatal */ }
+    const chRes = await fetch('/api/auth/challenge');
+    if (chRes.status === 429) throw new Error('Too many attempts — please wait a minute and try again.');
+    if (!chRes.ok) return;  // 404 = no challenge configured yet (setup path handles it)
+    const ch = await chRes.json();
+    if (ch.salt) {
+        const sessionKey = CryptoJS.PBKDF2(password, CryptoJS.enc.Hex.parse(ch.salt), {
+            keySize: PBKDF2_AG_KS, iterations: PBKDF2_AG_ITER,
+        });
+        await _acquireServerSession(sessionKey.toString());  // throws on wrong password or rate limit
+    }
 }
 
 /**
@@ -181,38 +182,40 @@ async function _resolveVaultSalt(data) {
  * Updates the lock-screen UI to reflect the completed setup.
  */
 async function _registerSetupChallenge(key, salt) {
-    try {
-        const verifyIv   = CryptoJS.lib.WordArray.random(16);
-        const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
-        const setupRes = await fetch('/api/auth/setup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                salt:        salt.toString(),
-                verify_blob: verifyBlob.toString(),
-                verify_iv:   verifyIv.toString(),
-            }),
-        });
-        if (!setupRes.ok) {
-            console.warn('Failed to register master password challenge: server returned', setupRes.status);
-            return;
-        }
-        await _acquireServerSession(key.toString());
-        if (isNewVault) {
-            await fetch('/api/vault', {
-                method: 'POST',
-                headers: _authHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
-            });
-        }
-        isSetupMode = false;
-        document.getElementById('lock-setup-desc').textContent =
-            'Your secrets are encrypted with AES-256. Enter your master password to unlock.';
-        document.getElementById('master-pw-confirm-wrap').style.display = 'none';
-        document.getElementById('unlock-btn').textContent = 'Unlock Vault';
-    } catch (e) {
-        console.warn('Failed to register master password challenge:', e);
+    const verifyIv   = CryptoJS.lib.WordArray.random(16);
+    const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
+    const setupRes = await fetch('/api/auth/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            salt:        salt.toString(),
+            verify_blob: verifyBlob.toString(),
+            verify_iv:   verifyIv.toString(),
+        }),
+    });
+    if (!setupRes.ok) {
+        throw new Error(`Setup failed (HTTP ${setupRes.status})`);
     }
+    await _acquireServerSession(key.toString());
+    // Verify the session cookie was actually set before attempting any protected calls.
+    if (!_csrfToken()) {
+        throw new Error('Session could not be established after setup — please reload and try again.');
+    }
+    if (isNewVault) {
+        const vaultRes = await fetch('/api/vault', {
+            method: 'POST',
+            headers: _authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
+        });
+        if (!vaultRes.ok) {
+            throw new Error(`Initial vault save failed (HTTP ${vaultRes.status})`);
+        }
+    }
+    isSetupMode = false;
+    document.getElementById('lock-setup-desc').textContent =
+        'Your secrets are encrypted with AES-256. Enter your master password to unlock.';
+    document.getElementById('master-pw-confirm-wrap').style.display = 'none';
+    document.getElementById('unlock-btn').textContent = 'Unlock Vault';
 }
 
 // ── Lock / Unlock ─────────────────────────────────────────────────
@@ -234,7 +237,10 @@ async function unlockVault(password) {
     const errEl = document.getElementById('lock-error');
     errEl.style.display = 'none';
 
-    // ── Setup-mode validations ──────────────────────────────────────
+    // ── First-time setup: no challenge or session exists yet ────────
+    // Generate salt/key locally, register the challenge (CSRF-exempt),
+    // acquire a session, then persist the empty vault — all without
+    // trying to hit /api/vault before cookies are established.
     if (isSetupMode && isNewVault) {
         const validationError = _validateSetupPassword(password);
         if (validationError) {
@@ -242,12 +248,64 @@ async function unlockVault(password) {
             errEl.style.display = 'block';
             return;
         }
+        const salt = CryptoJS.lib.WordArray.random(16);
+        vaultSaltHex = salt.toString();
+        const key = deriveKey(password, salt);
+        await _registerSetupChallenge(key, salt);
+        masterKey = key;
+        vaultEntries = [];
+        document.getElementById('lock-overlay').style.display = 'none';
+        renderAll();
+        toast('Vault created and unlocked ✓', 'success');
+        startAutoLock();
+        return;
     }
 
-    // Acquire a server session before hitting the protected API.
+    // ── Migration: vault exists but no challenge registered yet ────
+    // Read the encrypted blob via the session-free migration endpoint,
+    // verify the password by attempting to decrypt, then register the
+    // challenge and acquire a session before proceeding.
+    if (isSetupMode && !isNewVault) {
+        const migRes = await fetch('/api/vault/migrate');
+        if (!migRes.ok) throw new Error(`Migration read failed (HTTP ${migRes.status}).`);
+        const migData = await migRes.json();
+
+        const salt = CryptoJS.enc.Hex.parse(migData.salt);
+        vaultSaltHex = migData.salt;
+        const key = deriveKey(password, salt);
+
+        if (migData.encrypted_blob) {
+            try {
+                vaultEntries = decryptVault(migData.encrypted_blob, migData.iv, key);
+            } catch {
+                errEl.textContent = '❌ Incorrect password — cannot decrypt vault.';
+                errEl.style.display = 'block';
+                return;
+            }
+        } else {
+            vaultEntries = [];
+        }
+
+        await _registerSetupChallenge(key, salt);
+        masterKey = key;
+        document.getElementById('lock-overlay').style.display = 'none';
+        renderAll();
+        toast('Vault unlocked and master password registered ✓', 'success');
+        startAutoLock();
+        return;
+    }
+
+    // ── Normal unlock: acquire session then load vault ───────────────
     await _acquireChallengeSession(password);
 
-    const res  = await fetch('/api/vault', { headers: _authHeaders() });
+    const res = await fetch('/api/vault', { headers: _authHeaders() });
+    if (!res.ok) {
+        errEl.textContent = res.status === 401
+            ? '❌ Session could not be established — please reload and try again.'
+            : `❌ Could not load vault (HTTP ${res.status}).`;
+        errEl.style.display = 'block';
+        return;
+    }
     const data = await res.json();
 
     const salt = await _resolveVaultSalt(data);
@@ -263,11 +321,6 @@ async function unlockVault(password) {
         }
     } else {
         vaultEntries = [];
-    }
-
-    // ── Register master password challenge (first-time or migration) ─
-    if (isSetupMode) {
-        await _registerSetupChallenge(key, salt);
     }
 
     masterKey = key;
@@ -880,6 +933,10 @@ document.addEventListener('DOMContentLoaded', () => {
         unlockBtn.disabled = true;
         try {
             await unlockVault(pw);
+        } catch (e) {
+            const err = document.getElementById('lock-error');
+            err.textContent = '❌ ' + (e.message || 'Unknown error — check the browser console.');
+            err.style.display = 'block';
         } finally {
             // Only restore if vault is still locked (unlockVault hides the overlay on success)
             if (document.getElementById('lock-overlay').style.display !== 'none') {

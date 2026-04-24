@@ -92,7 +92,7 @@ async def _lifespan(_application: FastAPI):
     # (cleanup goes here if needed in future)
 
 
-APP_VERSION = "0.1.3"
+APP_VERSION = "0.1.6"
 _DEV_MODE = os.getenv("DEVSUITE_DEV", "0") == "1"
 
 app = FastAPI(
@@ -1117,6 +1117,30 @@ async def db_import(request: Request, file: Annotated[UploadFile, File(...)]):
 # ─── Auth — Master Password Management ──────────────────────────────────────
 # Client-side password verification: server stores a challenge blob (AES-encrypted
 # known plaintext).  The plaintext password never leaves the browser.
+
+
+@app.get(
+    "/api/vault/migrate",
+    summary="Read vault blob for one-time migration (no auth required)",
+    responses={
+        409: {"description": "Master password already configured — use /api/vault instead"},
+    },
+)
+def get_vault_migrate():
+    """Return the encrypted vault blob without session auth.
+
+    Only available when no master password has been configured yet (is_setup=false).
+    Safe because the blob is AES-encrypted client-side; the server never holds the key.
+    Once /api/auth/setup is called this endpoint is permanently disabled (returns 409).
+    """
+    prefs = _db.get_store("app_prefs") or {}
+    if prefs.get("master_setup_done"):
+        raise HTTPException(
+            status_code=409,
+            detail="Master password is configured — use /api/vault with a valid session.",
+        )
+    store = _db.get_store("vault")
+    return store if store else {"encrypted_blob": ""}
 
 
 @app.get(
