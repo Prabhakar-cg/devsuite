@@ -6,7 +6,7 @@
 .sftp-layout {
     display: flex;
     height: calc(100vh - 65px);
-    background: var(--bg-1);
+    background: var(--bg-main);
     color: var(--text-color);
     overflow: hidden;
 }
@@ -18,7 +18,7 @@
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    background: var(--bg-2);
+    background: var(--bg-panel);
     flex-shrink: 0;
 }
 
@@ -45,7 +45,7 @@
 }
 .sftp-icon-btn svg { width: 14px; height: 14px; }
 .sftp-icon-btn:hover {
-    color: #082f49;
+    color: var(--text-primary);
     border-color: #0ea5e9;
     background: rgba(14,165,233,0.08);
 }
@@ -55,7 +55,7 @@
     padding: 0.45rem 0.75rem;
     border-radius: 8px;
     border: 1px solid var(--border);
-    background: var(--bg-3);
+    background: var(--bg-surface);
     color: var(--text-color);
     font-size: 0.85rem;
     font-family: var(--font-body);
@@ -83,13 +83,13 @@
     margin-bottom: 2px;
 }
 .sftp-session-item:hover {
-    background: var(--bg-3);
+    background: var(--bg-surface);
     border-color: var(--border);
 }
 .sftp-session-item.active {
     background: rgba(14,165,233,0.12);
     border-color: rgba(14,165,233,0.35);
-    color: #082f49;
+    color: var(--text-primary);
 }
 .sftp-session-icon {
     width: 28px; height: 28px;
@@ -156,7 +156,7 @@
 .sftp-empty-icon {
     width: 72px; height: 72px;
     border-radius: 20px;
-    background: var(--bg-3);
+    background: var(--bg-surface);
     border: 1px solid var(--border);
     display: flex; align-items: center; justify-content: center;
     color: #0ea5e9;
@@ -180,7 +180,7 @@
     gap: 0.75rem;
     padding: 0.6rem 1rem;
     border-bottom: 1px solid var(--border);
-    background: var(--bg-2);
+    background: var(--bg-panel);
     flex-shrink: 0;
 }
 
@@ -211,7 +211,7 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    background: var(--bg-3);
+    background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 0.15rem 0.4rem;
@@ -231,7 +231,7 @@
 .sftp-nav-btn svg { width: 14px; height: 14px; }
 .sftp-nav-btn:hover:not(:disabled) {
     background: rgba(14,165,233,0.12);
-    color: #082f49;
+    color: var(--text-primary);
 }
 .sftp-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .sftp-path-input {
@@ -256,7 +256,7 @@
     font-family: var(--font-mono);
     color: var(--text-muted);
     border-bottom: 1px solid var(--border);
-    background: var(--bg-1);
+    background: var(--bg-main);
     flex-shrink: 0;
     overflow-x: auto;
     white-space: nowrap;
@@ -270,7 +270,7 @@
     border-radius: 4px;
     transition: all 0.1s;
 }
-.sftp-crumb:hover { color: #082f49; background: rgba(14,165,233,0.08); }
+.sftp-crumb:hover { color: var(--text-primary); background: rgba(14,165,233,0.08); }
 .sftp-crumb.active { color: var(--text-color); cursor: default; font-weight: 500; }
 .sftp-crumb-sep { color: var(--border); padding: 0 0.1rem; user-select: none; }
 
@@ -326,7 +326,7 @@
     padding: 0.85rem 0.65rem 0.7rem;
     border-radius: 10px;
     border: 1px solid var(--border);
-    background: var(--bg-2);
+    background: var(--bg-panel);
     cursor: pointer;
     transition: all 0.15s;
     text-align: center;
@@ -421,7 +421,7 @@
     z-index: 9999;
 }
 .sftp-modal {
-    background: var(--bg-1);
+    background: var(--bg-main);
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 2rem;
@@ -459,7 +459,7 @@
     padding: 0.6rem 0.85rem;
     border-radius: 8px;
     border: 1px solid var(--border);
-    background: var(--bg-2);
+    background: var(--bg-panel);
     color: var(--text-color);
     font-size: 0.9rem;
     font-family: var(--font-body);

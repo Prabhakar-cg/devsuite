@@ -310,7 +310,10 @@ const AuthGuard = (() => {
     /** Invalidate the current session (e.g., on explicit sign-out). */
     async function clearSession() {
         try {
-            await fetch('/api/auth/logout', { method: 'POST' });
+            const m = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+            const csrfToken = m ? decodeURIComponent(m[1]) : '';
+            const headers = csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
+            await fetch('/api/auth/logout', { method: 'POST', headers });
         } catch { /* best-effort — local state is cleared regardless */ }
         localStorage.removeItem(LS_EXPIRY_KEY);
         sessionStorage.removeItem(SS_CRED_KEY);

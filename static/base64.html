@@ -395,7 +395,7 @@
         document.getElementById('file-input').addEventListener('change', async e => {
             const file = e.target.files[0]; if (!file) return;
             e.target.value = '';
-            if (file.type.startsWith('text') || file.size < 500_000) {
+            if (file.type.startsWith('text/')) {
                 try {
                     inputEditor.setValue(await file.text());
                     toast('File loaded', 'success', 1800);

@@ -536,7 +536,7 @@ class CronSchedule {
 
   _normalizeDow(rawDow) {
     if (this.dialect.id === 'quartz' || this.dialect.id === 'aws') {
-      return rawDow === 0 ? 7 : rawDow; // map to 1=Sun..7=Sat for Quartz/AWS
+      return rawDow + 1; // map JS 0..6 to 1..7 (SUN=1..SAT=7) for Quartz/AWS
     }
     return rawDow;
   }
@@ -1108,9 +1108,30 @@ class CronVisualizer {
   }
 
   _copyToClipboard(text, successMsg) {
-    navigator.clipboard.writeText(text)
-      .then(() => this._showGlobalToast(successMsg, 'success'))
-      .catch(() => this._showGlobalToast('Copy failed — use Ctrl+C.', 'error'));
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => this._showGlobalToast(successMsg, 'success'))
+        .catch(() => this._showGlobalToast('Copy failed — use Ctrl+C.', 'error'));
+    } else {
+      // Fallback for non-secure contexts
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (success) {
+          this._showGlobalToast(successMsg, 'success');
+        } else {
+          this._showGlobalToast('Copy failed — use Ctrl+C.', 'error');
+        }
+      } catch (err) {
+        this._showGlobalToast('Copy failed — use Ctrl+C.', 'error');
+      }
+    }
   }
 
   _showGlobalToast(msg, type = 'info') {

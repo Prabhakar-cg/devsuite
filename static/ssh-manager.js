@@ -301,12 +301,18 @@ function makeDeleteHandler(p) {
     return async e => {
         e.stopPropagation();
         if (!confirm(`Delete session "${p.name || p.host}"?`)) return;
-        profiles = profiles.filter(x => x.id !== p.id);
-        const serialized = JSON.stringify(profiles);
+        const nextProfiles = profiles.filter(x => x.id !== p.id);
+        const serialized = JSON.stringify(nextProfiles);
         const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
-        await saveProfilesBlob(blob);
-        renderSidebar();
-        renderSftpSidebar();
+        try {
+            await saveProfilesBlob(blob);
+            profiles = nextProfiles;
+            renderSidebar();
+            renderSftpSidebar();
+        } catch (err) {
+            console.error('Failed to delete profile:', err);
+            alert('Failed to delete profile. Please try again.');
+        }
     };
 }
 

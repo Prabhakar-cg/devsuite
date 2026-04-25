@@ -870,7 +870,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyMergeAll(direction) {
-        const editor = folderResultsContainer.classList.contains('hidden') ? textDiffEditor : folderDiffEditor;
+        const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab;
+        const editor = activeTab === 'folder' ? folderDiffEditor : textDiffEditor;
         if (!editor?.getModel()) return showToast('No active diff editor.', 'warning');
         const changes = editor.getLineChanges() || [];
         if (changes.length === 0) return showToast('No differences detected — nothing to merge.', 'info');
@@ -1032,7 +1033,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const modLines = modText.split('\n');
         let patch = `--- Original\n+++ Modified\n`;
         // Simple unified diff — group using Monaco's changes for accuracy
-        const editor = folderResultsContainer.classList.contains('hidden') ? textDiffEditor : folderDiffEditor;
+        const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab;
+        const editor = activeTab === 'folder' ? folderDiffEditor : textDiffEditor;
         if (!editor?.getModel()) return patch + origLines.map(l => `-${l}`).join('\n') + '\n';
         const changes = editor.getLineChanges() || [];
         if (changes.length === 0) return patch + '(no differences)\n';
