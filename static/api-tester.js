@@ -212,9 +212,16 @@ function renderResponse(response) {
 
     els.respPlaceholder.style.display = 'none';
 
+    const outVal = response.body ? JSON.stringify(response.body, null, 2) : (response.bodyText || '');
     if (respEditor) {
-        const outVal = response.body ? JSON.stringify(response.body, null, 2) : response.bodyText;
         respEditor.setValue(outVal);
+        document.getElementById('resp-fallback').style.display = 'none';
+        els.respEditorContainer.style.display = 'block';
+    } else {
+        els.respEditorContainer.style.display = 'none';
+        const fallback = document.getElementById('resp-fallback');
+        fallback.textContent = outVal;
+        fallback.style.display = 'flex';
     }
 
     const hContainer = document.getElementById('resp-headers');
@@ -253,9 +260,12 @@ els.btnSend.addEventListener('click', async () => {
 
     try {
         const config = buildRequestConfig();
+        console.log('[API Tester] Sending request:', config.method, config.url);
         const response = await globalThis.ApiClient.execute(config);
+        console.log('[API Tester] Response received:', response.status, response.statusText, 'proxied:', response.wasProxied);
         renderResponse(response);
     } catch (e) {
+        console.error('[API Tester] Execute error:', e);
         showToast(e.message, 'error');
     } finally {
         els.btnSend.textContent = 'Send';
@@ -276,11 +286,19 @@ async function loadCollections() {
     }
 }
 
+function getCsrfToken() {
+    const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
+    return m ? decodeURIComponent(m[1]) : '';
+}
+
 async function saveCollections() {
+    const csrfToken = getCsrfToken();
+    const postHeaders = { 'Content-Type': 'application/json' };
+    if (csrfToken) postHeaders['X-CSRF-Token'] = csrfToken;
     try {
         await fetch('/api/collections', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: postHeaders,
             body: JSON.stringify({ items: collections })
         });
         showToast('Saved to ~/.devsuite/collections.json', 'success');
