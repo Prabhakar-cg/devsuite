@@ -1,5 +1,5 @@
 """
-DevSuite — FastAPI Backend  (v2.2.0)
+DevSuite — FastAPI Backend  (v0.2.0)
 ---------------------------------
 Serves the static frontend and provides REST/WebSocket APIs for all tools.
 
@@ -92,8 +92,9 @@ async def _lifespan(_application: FastAPI):
     # (cleanup goes here if needed in future)
 
 
-APP_VERSION = "0.1.6"
-_DEV_MODE = os.getenv("DEVSUITE_DEV", "0") == "1"
+APP_VERSION = "0.2.0"
+_DEV_MODE   = os.getenv("DEVSUITE_DEV",   "0") == "1"
+_HTTPS      = os.getenv("DEVSUITE_HTTPS", "0") == "1"
 
 app = FastAPI(
     title="DevSuite",
@@ -944,13 +945,13 @@ _AUDIT_LOG_PATH = _DEVSUITE_DIR / "audit.log"
 
 
 def _audit_log(event: str, **details) -> None:
-    """Append a structured line to ~/.devsuite/audit.log. Never logs secret values."""
+    """Append a JSON line to ~/.devsuite/audit.log. Never logs secret values."""
     try:
-        ts    = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        parts = [ts, event] + [f"{k}={v}" for k, v in details.items()]
+        record = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "event": event}
+        record.update({k: str(v) for k, v in details.items()})
         _DEVSUITE_DIR.mkdir(parents=True, exist_ok=True)
         with open(_AUDIT_LOG_PATH, "a", encoding="utf-8") as fh:
-            fh.write("  ".join(parts) + "\n")
+            fh.write(json.dumps(record) + "\n")
     except OSError:
         logger.warning("audit: failed to write log entry for %s", event)
 
@@ -1321,14 +1322,30 @@ def auth_session(request: Request, data: dict):  # pylint: disable=too-many-loca
     response = JSONResponse({"status": "ok", "expires_in": _SESSION_TTL})
     response.set_cookie(
         key="ds_session", value=token,
-        httponly=True, samesite="strict", max_age=_SESSION_TTL, secure=False,
+        httponly=True, samesite="strict", max_age=_SESSION_TTL, secure=_HTTPS,
     )
     # ds_csrf is readable by JS so the frontend can send it as X-CSRF-Token header.
     response.set_cookie(
         key="ds_csrf", value=csrf_token,
-        httponly=False, samesite="strict", max_age=_SESSION_TTL, secure=False,
+        httponly=False, samesite="strict", max_age=_SESSION_TTL, secure=_HTTPS,
     )
     return response
+
+
+@app.post(
+    "/api/auth/logout",
+    summary="Invalidate the current server-side session",
+)
+def auth_logout(request: Request, response: Response):
+    """Expire the ds_session and ds_csrf cookies and remove the session from the store."""
+    token = request.cookies.get("ds_session")
+    if token:
+        _sessions.pop(_hash_token(token), None)
+    client_ip = request.client.host if request.client else "unknown"
+    _audit_log("AUTH_LOGOUT", ip=client_ip)
+    response.delete_cookie(key="ds_session", path="/", samesite="strict")
+    response.delete_cookie(key="ds_csrf",    path="/", samesite="strict")
+    return {"status": "ok"}
 
 
 def _create_known_hosts(path: str) -> None:

@@ -167,7 +167,7 @@
                     <button id="sftp-refresh-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↺</button>
                     <button id="sftp-upload-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↑ Upload</button>
                     <input type="file" id="sftp-upload-input" style="display:none;" multiple>
-                    <button id="sftp-disconnect-btn" class="btn-small" style="background:rgba(239,68,68,0.12); color:#991b1b; border-color:rgba(239,68,68,0.3); display:none;">Disconnect</button>
+                    <button id="sftp-disconnect-btn" class="btn-small" style="color:#991b1b; border-color:rgba(239,68,68,0.3); display:none;">Disconnect</button>
                 </div>
 
                 <!-- Path bar -->
@@ -193,7 +193,7 @@
                         <span style="font-size:0.9rem;">Loading directory…</span>
                     </div>
                     <!-- Error -->
-                    <div id="sftp-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); color:#991b1b; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:0.5rem;"></div>
+                    <div id="sftp-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; border:1px solid rgba(239,68,68,0.3); color:#991b1b; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:0.5rem;"></div>
                     <!-- File grid -->
                     <div id="sftp-file-grid" class="sftp-grid"></div>
                 </div>
@@ -207,7 +207,7 @@
                         <span style="width:8px;height:8px;border-radius:50%;background:#6b7280;flex-shrink:0;" id="dashboard-status-dot"></span>
                         <span id="dashboard-conn-label">Not connected — select a session</span>
                     </div>
-                    <button id="dashboard-disconnect-btn" class="btn-small" style="background:rgba(153,27,27,0.12); color:#991b1b; border-color:rgba(153,27,27,0.3); display:none;">Disconnect</button>
+                    <button id="dashboard-disconnect-btn" class="btn-small" style="color:#991b1b; border-color:rgba(153,27,27,0.3); display:none;">Disconnect</button>
                 </div>
                 
                 <div style="flex:1; overflow-y:auto; padding:1.5rem; position:relative; background:var(--bg-2);" id="dashboard-content-area">
@@ -225,7 +225,7 @@
                         <span style="font-size:0.9rem;">Connecting and fetching telemetry…</span>
                     </div>
                     
-                    <div id="dashboard-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; background:rgba(153,27,27,0.08); border:1px solid rgba(153,27,27,0.3); color:#991b1b; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:1rem;"></div>
+                    <div id="dashboard-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; border:1px solid rgba(153,27,27,0.3); color:#991b1b; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:1rem;"></div>
 
                     <!-- Metrics Grid -->
                     <div id="dashboard-metrics" style="display:none; gap:1.5rem; flex-direction:column;">

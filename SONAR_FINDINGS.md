@@ -63,9 +63,9 @@ sonar.security.exclusions=tests/**,static/libs/**
 
 | File | Line | Complexity | Status |
 |---|---|---|---|
-| [static/cron.js](static/cron.js) | 528 | 21 → 15 | Open |
-| [static/ssh-manager.js](static/ssh-manager.js) | 946 | 18 → 15 | Open |
-| [static/file-converter.html](static/file-converter.html) | 1102 | 21 → 15 | Open |
+| [static/cron.js](static/cron.js) | 528 | 21 → 15 | Fixed ✅ |
+| [static/ssh-manager.js](static/ssh-manager.js) | 946 | 18 → 15 | Fixed ✅ |
+| [static/file-converter.html](static/file-converter.html) | 1102 | 21 → 15 | Fixed ✅ |
 
 > `ssh-manager.js:1142` resolved since last scan. ✅
 
@@ -73,8 +73,8 @@ sonar.security.exclusions=tests/**,static/libs/**
 
 | File | Line | Message | Status |
 |---|---|---|---|
-| [static/ssh-manager.js](static/ssh-manager.js) | 352 | Functions nested >4 levels deep | Open |
-| [static/regex.html](static/regex.html) | 398 | Functions nested >4 levels deep | Open |
+| [static/ssh-manager.js](static/ssh-manager.js) | 352 | Functions nested >4 levels deep | Fixed ✅ |
+| [static/regex.html](static/regex.html) | 398 | Functions nested >4 levels deep | Fixed ✅ |
 
 ### 2c. MAJOR Issues by File
 
@@ -105,12 +105,12 @@ sonar.security.exclusions=tests/**,static/libs/**
 
 | File | Rule | Lines | Message |
 |---|---|---|---|
-| [static/app.js](static/app.js) | S7735 | 440, 441, 648, 878, 1040, 1519, 1580 | Unexpected negated condition |
-| [static/app.js](static/app.js) | S7766 | 463, 464 | Prefer `Math.max()` over ternary |
-| [static/app.js](static/app.js) | S7756 | 526 | Prefer `Blob#arrayBuffer()` |
-| [static/cron.js](static/cron.js) | S1874 | 1132 | `document.execCommand` is deprecated |
-| [static/base64.html](static/base64.html) | S7756 | 401 | Prefer `Blob#text()` over `FileReader#readAsText()` |
-| [static/json.html](static/json.html) | S7735 | 209 | Unexpected negated condition |
+| [static/app.js](static/app.js) | S7735 | 440, 441, 648, 878, 1040, 1519, 1580 | Fixed ✅ |
+| [static/app.js](static/app.js) | S7766 | 463, 464 | Fixed ✅ |
+| [static/app.js](static/app.js) | S7756 | 526 | Fixed ✅ |
+| [static/cron.js](static/cron.js) | S1874 | 1132 | Fixed ✅ |
+| [static/base64.html](static/base64.html) | S7756 | 401 | Fixed ✅ |
+| [static/json.html](static/json.html) | S7735 | 209 | Fixed ✅ |
 
 > Resolved since last scan: `cron.js` S3358/S6582/S7762/S7764; `app.js` S7761/S7764; `api-tester.js` S1854; `devdb-client.js` S2486; `json.html` S1854/S7721; `url-shortener.html` S2486. ✅
 
@@ -120,9 +120,9 @@ sonar.security.exclusions=tests/**,static/libs/**
 
 | Severity | Rule | File | Line | Status |
 |---|---|---|---|---|
-| MAJOR | Web:S6819 | [static/home.html](static/home.html) | 53 | `<div role="dialog">` → needs JS refactor to `<dialog>` |
-| MAJOR | Web:S6819 | [static/tools.html](static/tools.html) | 117 | `<div role="dialog">` → needs JS refactor to `<dialog>` |
-| MAJOR | Web:S6819 | [static/db-manager.html](static/db-manager.html) | 280 | `<div role="dialog">` → same pattern |
+| MAJOR | Web:S6819 | [static/home.html](static/home.html) | 53 | Fixed ✅ — converted to `<dialog>` + `show()`/`close()` |
+| MAJOR | Web:S6819 | [static/tools.html](static/tools.html) | 117 | Fixed ✅ — converted to `<dialog>` + `show()`/`close()` |
+| MAJOR | Web:S6819 | [static/db-manager.html](static/db-manager.html) | 280 | Fixed ✅ — converted to `<dialog>` + `showModal()`/`close()` |
 
 All three require replacing `<div role="dialog">` with `<dialog>` and updating JS from CSS class-toggle to `dialog.show()` / `dialog.close()`.
 
@@ -134,16 +134,16 @@ All three require replacing `<div role="dialog">` with `<dialog>` and updating J
 
 | File | Lines | Status |
 |---|---|---|
-| [static/home.css](static/home.css) | 1902 | Pending |
-| [static/style.css](static/style.css) | 597, 619 | Pending |
-| [static/vault.css](static/vault.css) | 129, 248, 402, 408, 413–417 | Pending |
-| [static/db-manager.css](static/db-manager.css) | 252, 362 | Pending |
-| [static/sftp-browser.css](static/sftp-browser.css) | 50, 92, 234, 273, 309, 494 | Pending |
-| [static/ssh-manager.css](static/ssh-manager.css) | 127, 153, 348 | Pending |
-| [static/ssh-manager.html](static/ssh-manager.html) | 170, 196, 210, 228 | Pending (196 new) |
-| [static/file-converter.html](static/file-converter.html) | 310 | Pending |
-| [static/api-tester.html](static/api-tester.html) | 30 | Pending |
-| [static/regex.html](static/regex.html) | 87 | Pending |
+| [static/home.css](static/home.css) | 1902 | Fixed ✅ |
+| [static/style.css](static/style.css) | 597, 619 | Fixed ✅ |
+| [static/vault.css](static/vault.css) | 129, 248, 402, 408, 413–417 | Fixed ✅ |
+| [static/db-manager.css](static/db-manager.css) | 252, 362 | Fixed ✅ |
+| [static/sftp-browser.css](static/sftp-browser.css) | 50, 92, 234, 273, 309, 494 | Fixed ✅ |
+| [static/ssh-manager.css](static/ssh-manager.css) | 127, 153, 348 | Fixed ✅ |
+| [static/ssh-manager.html](static/ssh-manager.html) | 170, 196, 210, 228 | Fixed ✅ |
+| [static/file-converter.html](static/file-converter.html) | 310 | Fixed ✅ |
+| [static/api-tester.html](static/api-tester.html) | 30 | Fixed ✅ |
+| [static/regex.html](static/regex.html) | 87 | Fixed ✅ |
 
 ---
 

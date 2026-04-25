@@ -162,18 +162,10 @@ async function _resolveVaultSalt(data) {
         vaultSaltHex = data.salt;
         return CryptoJS.enc.Hex.parse(data.salt);
     }
-    // New vault — generate a salt and persist an empty placeholder.
+    // No salt stored — generate one; persistence is handled by the caller once
+    // a session/CSRF is established (e.g. _registerSetupChallenge).
     const salt = CryptoJS.lib.WordArray.random(16);
     vaultSaltHex = salt.toString();
-    const persistRes = await fetch('/api/vault', {
-        method: 'POST',
-        headers: _authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
-    });
-    if (!persistRes.ok) {
-        vaultSaltHex = null;
-        throw new Error('Failed to persist vault salt');
-    }
     return salt;
 }
 

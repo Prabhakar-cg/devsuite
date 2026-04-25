@@ -114,7 +114,7 @@
                             <polyline points="6 9 12 15 18 9"/>
                         </svg>
                     </button>
-                    <div class="theme-panel" id="themePanel" role="dialog" aria-label="Theme selector">
+                    <dialog class="theme-panel" id="themePanel" aria-label="Theme selector">
                         <div class="theme-options" id="themeOptions">
                             <button class="theme-option" data-theme="vs-dark">
                                 <span class="theme-swatch" style="background:linear-gradient(135deg,#05050a 40%,#3b82f6)"></span>
@@ -141,7 +141,7 @@
                                 Hi-Contrast
                             </button>
                         </div>
-                    </div>
+                    </dialog>
                 </div>
             </nav>
 
@@ -780,15 +780,15 @@
 
             toggleBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
-                panel.classList.toggle('open');
+                panel.open ? panel.close() : panel.show();
             });
 
             document.addEventListener('click', function (e) {
-                if (!picker.contains(e.target)) panel.classList.remove('open');
+                if (!picker.contains(e.target)) panel.close();
             });
 
             document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape') panel.classList.remove('open');
+                if (e.key === 'Escape') panel.close();
             });
 
             options.forEach(function (opt) {
@@ -796,7 +796,7 @@
                     const theme = opt.dataset.theme;
                     if (globalThis.setDevSuiteTheme) globalThis.setDevSuiteTheme(theme);
                     setActive(theme);
-                    panel.classList.remove('open');
+                    panel.close();
                 });
             });
 

@@ -1791,11 +1791,12 @@ html, body {
     flex-shrink: 0;
     transition: transform 0.18s ease;
 }
-.theme-picker:has(.theme-panel.open) .theme-toggle-btn .theme-chevron {
+.theme-picker:has(.theme-panel[open]) .theme-toggle-btn .theme-chevron {
     transform: rotate(180deg);
 }
 
 .theme-panel {
+    display: block;
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
@@ -1812,7 +1813,7 @@ html, body {
     transform-origin: top right;
     transition: opacity 0.16s ease, transform 0.16s ease;
 }
-.theme-panel.open {
+.theme-panel[open] {
     opacity: 1;
     pointer-events: all;
     transform: translateY(0) scale(1);
@@ -1898,7 +1899,7 @@ html[data-theme="vs"] .tag-chip {
     color: #374151;
 }
 html[data-theme="vs"] .badge-live {
-    background: rgba(22,163,74,0.1);
+    background: rgba(74,222,128,0.15);
     color: #052e16;
     border-color: rgba(22,163,74,0.25);
 }

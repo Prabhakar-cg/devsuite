@@ -390,7 +390,7 @@ def _is_safe_member(member: tarfile.TarInfo, base_dir: Path | None = None) -> bo
 def _extract_member_from_tarball(tgz_path: Path, tarball_path: str, dest: Path) -> bool:
     """Open a tgz archive and write the best-matching member to dest."""
     # Validate dest is within ROOT (prevents path traversal through symlinks)
-    if not _is_within_directory(ROOT, dest.relative_to(ROOT)):
+    if not _is_within_directory(ROOT, dest):
         print(f"    Destination {dest} escapes project root — aborting.")
         return False
     

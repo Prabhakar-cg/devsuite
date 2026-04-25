@@ -45,7 +45,7 @@
 }
 .sftp-icon-btn svg { width: 14px; height: 14px; }
 .sftp-icon-btn:hover {
-    color: #0c4a6e;
+    color: #082f49;
     border-color: #0ea5e9;
     background: rgba(14,165,233,0.08);
 }
@@ -89,7 +89,7 @@
 .sftp-session-item.active {
     background: rgba(14,165,233,0.12);
     border-color: rgba(14,165,233,0.35);
-    color: #0c4a6e;
+    color: #082f49;
 }
 .sftp-session-icon {
     width: 28px; height: 28px;
@@ -231,7 +231,7 @@
 .sftp-nav-btn svg { width: 14px; height: 14px; }
 .sftp-nav-btn:hover:not(:disabled) {
     background: rgba(14,165,233,0.12);
-    color: #0c4a6e;
+    color: #082f49;
 }
 .sftp-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .sftp-path-input {
@@ -270,7 +270,7 @@
     border-radius: 4px;
     transition: all 0.1s;
 }
-.sftp-crumb:hover { color: #0ea5e9; background: rgba(14,165,233,0.08); }
+.sftp-crumb:hover { color: #082f49; background: rgba(14,165,233,0.08); }
 .sftp-crumb.active { color: var(--text-color); cursor: default; font-weight: 500; }
 .sftp-crumb-sep { color: var(--border); padding: 0 0.1rem; user-select: none; }
 
@@ -304,7 +304,6 @@
 .sftp-file-error {
     padding: 1rem;
     border-radius: 8px;
-    background: rgba(239,68,68,0.08);
     border: 1px solid rgba(239,68,68,0.3);
     color: #ef4444;
     font-size: 0.875rem;
@@ -489,7 +488,6 @@
 .sftp-error {
     padding: 0.6rem 0.85rem;
     border-radius: 8px;
-    background: rgba(239,68,68,0.08);
     border: 1px solid rgba(239,68,68,0.3);
     color: #991b1b;
     font-size: 0.85rem;

@@ -753,7 +753,7 @@ async function sftpLoadDir(path) {
         };
         let r = await fetch('/api/sftp/list', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
             body:    JSON.stringify(payload)
         });
 
@@ -768,7 +768,7 @@ async function sftpLoadDir(path) {
                 if (!approved) { throw new Error('Host key rejected by user.'); }
                 r = await fetch('/api/sftp/list', {
                     method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
                     body:    JSON.stringify({ ...payload, approved_fingerprint: fp })
                 });
             }
@@ -867,7 +867,7 @@ async function sftpDownloadFile(filename) {
         };
         let r = await fetch('/api/sftp/download', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
             body:    JSON.stringify(payload)
         });
         // Host-key approval required (TOFU gate)
@@ -884,7 +884,7 @@ async function sftpDownloadFile(filename) {
                 if (!approved) { throw new Error('Host key rejected by user.'); }
                 r = await fetch('/api/sftp/download', {
                     method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
                     body:    JSON.stringify({ ...payload, approved_fingerprint: fingerprint })
                 });
             }
@@ -929,6 +929,8 @@ function sftpRetryUpload(fd, file, fp, resolve) {
     fd.append('approved_fingerprint', fp);
     const retryXhr = new XMLHttpRequest();
     retryXhr.open('POST', '/api/sftp/upload');
+    const retryHeaders = _sessionHeaders();
+    if (retryHeaders['X-CSRF-Token']) retryXhr.setRequestHeader('X-CSRF-Token', retryHeaders['X-CSRF-Token']);
     retryXhr.upload.onprogress = (evt) => {
         if (evt.lengthComputable) {
             const pct = Math.round((evt.loaded / evt.total) * 100);
@@ -988,6 +990,8 @@ async function sftpUploadFile(file) {
     return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/sftp/upload');
+        const uploadHeaders = _sessionHeaders();
+        if (uploadHeaders['X-CSRF-Token']) xhr.setRequestHeader('X-CSRF-Token', uploadHeaders['X-CSRF-Token']);
         xhr.upload.onprogress = (evt) => {
             if (evt.lengthComputable) {
                 const pct = Math.round((evt.loaded / evt.total) * 100);

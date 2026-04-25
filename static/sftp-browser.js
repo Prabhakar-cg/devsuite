@@ -268,7 +268,7 @@ async function loadDirectory(path) {
 
         const r = await fetch('/api/sftp/list', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
             body:    JSON.stringify(payload)
         });
 

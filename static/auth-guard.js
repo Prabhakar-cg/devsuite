@@ -147,6 +147,7 @@ const AuthGuard = (() => {
     // ── Acquire server-side session cookie ────────────────────────
     // The server responds by setting an HttpOnly ds_session cookie and a
     // readable ds_csrf cookie.  No token is stored in JS storage.
+    // Returns true on success; returns false on non-ok responses or network errors.
     async function _acquireServerSession(keyHex) {
         try {
             const r = await fetch('/api/auth/session', {
@@ -154,8 +155,14 @@ const AuthGuard = (() => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key_hex: keyHex }),
             });
-            if (r.ok) sessionStorage.setItem('devsuite_key_hex', keyHex);
-        } catch { /* non-fatal — DB API falls back gracefully */ }
+            if (r.ok) {
+                sessionStorage.setItem('devsuite_key_hex', keyHex);
+                return true;
+            }
+            return false;
+        } catch {
+            return false;
+        }
     }
 
     // ── Overlay HTML ──────────────────────────────────────────────
@@ -267,7 +274,14 @@ const AuthGuard = (() => {
                         err.style.display = 'block';
                         return;
                     }
-                    if (keyHex) await _acquireServerSession(keyHex);
+                    if (keyHex) {
+                        const ok = await _acquireServerSession(keyHex);
+                        if (!ok) {
+                            err.textContent = '❌ Session could not be established — server may be unreachable.';
+                            err.style.display = 'block';
+                            return;
+                        }
+                    }
                     _cacheSession(pw);
                     overlay.style.display = 'none';
                     resolve(pw);
@@ -294,7 +308,10 @@ const AuthGuard = (() => {
     }
 
     /** Invalidate the current session (e.g., on explicit sign-out). */
-    function clearSession() {
+    async function clearSession() {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch { /* best-effort — local state is cleared regardless */ }
         localStorage.removeItem(LS_EXPIRY_KEY);
         sessionStorage.removeItem(SS_CRED_KEY);
     }

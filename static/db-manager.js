@@ -185,7 +185,6 @@ async function loadMeta() {
         const r = await _authFetch('/api/db/meta');
         if (r.status === 401) {
             // Session expired — re-lock the UI
-            _serverToken = '';
             _authenticated = false;
             document.getElementById('lock-overlay').style.display = 'flex';
             toast('Session expired. Please unlock again.', 'warn');
@@ -321,11 +320,11 @@ function setupImport() {
 
 // ── Password modal ────────────────────────────────────────────────────────────
 function openPasswordModal() {
-    document.getElementById('pw-modal').classList.add('open');
+    document.getElementById('pw-modal').showModal();
     document.getElementById('new-pw-input').focus();
 }
 function closePasswordModal() {
-    document.getElementById('pw-modal').classList.remove('open');
+    document.getElementById('pw-modal').close();
     document.getElementById('new-pw-input').value    = '';
     document.getElementById('confirm-pw-input').value = '';
     document.getElementById('pw-modal-alert').style.display = 'none';
