@@ -16,7 +16,7 @@ const DevDB = (() => {
 
     // ── CSRF token (readable ds_csrf cookie set by server after unlock) ───────
     function _csrfToken() {
-        const m = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+        const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
         return m ? decodeURIComponent(m[1]) : '';
     }
 

@@ -332,6 +332,36 @@ class CronParser {
     return { valid: true, token: original, fieldName, type: 'hash', day, nth, values: null };
   }
 
+  _expandWildcard(range) {
+    const s = new Set();
+    for (let i = range.min; i <= range.max; i++) s.add(i);
+    return s;
+  }
+
+  _expandStep(result, range) {
+    const s = new Set();
+    for (let i = result.start; i <= range.max; i += result.step) s.add(i);
+    return s;
+  }
+
+  _expandWeekday(result, range) {
+    const s = new Set();
+    const target = result.values[0];
+    for (const offset of [0, -1, 1, -2, 2]) {
+      const v = target + offset;
+      if (v >= range.min && v <= range.max) { s.add(v); break; }
+    }
+    return s;
+  }
+
+  _expandHash(result, range) {
+    const s = new Set();
+    const first = 1 + (result.nth - 1) * 7;
+    const last  = 7 * result.nth;
+    for (let d = Math.max(range.min, first); d <= Math.min(range.max, last); d++) s.add(d);
+    return s;
+  }
+
   /**
    * Expand a parsed field result into a Set of matching numbers for a given unit range.
    */
@@ -339,48 +369,15 @@ class CronParser {
     if (!result.valid) return new Set();
     switch (result.type) {
       case 'wildcard':
-      case 'question': {
-        const s = new Set();
-        for (let i = range.min; i <= range.max; i++) s.add(i);
-        return s;
-      }
+      case 'question': return this._expandWildcard(range);
       case 'value':
       case 'list':
-      case 'range':
-        return new Set(result.values);
-      case 'step': {
-        const s = new Set();
-        for (let i = result.start; i <= range.max; i += result.step) s.add(i);
-        return s;
-      }
-      case 'last':
-        // Map to the last valid value in the supplied range (e.g. day 31, or DOW 6/7)
-        return new Set([range.max]);
-      case 'weekday': {
-        // Nearest weekday to result.value within range.min..range.max.
-        // We include the target day and its immediate neighbours that are within range.
-        const s = new Set();
-        const target = result.values[0];
-        for (const offset of [0, -1, 1, -2, 2]) {
-          const v = target + offset;
-          if (v >= range.min && v <= range.max) { s.add(v); break; }
-        }
-        return s;
-      }
-      case 'hash': {
-        // #N means the Nth occurrence of `result.day` in a month;
-        // for heatmap/schedule purposes we approximate: include day values
-        // that could be the result.nth occurrence (days 1+(nth-1)*7 .. 7*nth).
-        const s = new Set();
-        const firstOccurrence = 1 + (result.nth - 1) * 7;
-        const lastOccurrence  = 7 * result.nth;
-        for (let d = Math.max(range.min, firstOccurrence); d <= Math.min(range.max, lastOccurrence); d++) {
-          s.add(d);
-        }
-        return s;
-      }
-      default:
-        return new Set();
+      case 'range':    return new Set(result.values);
+      case 'step':     return this._expandStep(result, range);
+      case 'last':     return new Set([range.max]);
+      case 'weekday':  return this._expandWeekday(result, range);
+      case 'hash':     return this._expandHash(result, range);
+      default:         return new Set();
     }
   }
 }
@@ -1108,30 +1105,9 @@ class CronVisualizer {
   }
 
   _copyToClipboard(text, successMsg) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text)
-        .then(() => this._showGlobalToast(successMsg, 'success'))
-        .catch(() => this._showGlobalToast('Copy failed — use Ctrl+C.', 'error'));
-    } else {
-      // Fallback for non-secure contexts
-      try {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        const success = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        if (success) {
-          this._showGlobalToast(successMsg, 'success');
-        } else {
-          this._showGlobalToast('Copy failed — use Ctrl+C.', 'error');
-        }
-      } catch (err) {
-        this._showGlobalToast('Copy failed — use Ctrl+C.', 'error');
-      }
-    }
+    navigator.clipboard.writeText(text)
+      .then(() => this._showGlobalToast(successMsg, 'success'))
+      .catch(() => this._showGlobalToast('Copy failed — use Ctrl+C.', 'error'));
   }
 
   _showGlobalToast(msg, type = 'info') {

@@ -84,7 +84,7 @@
         .match-groups { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 2px; }
         .group-chip {
             font-size: 0.65rem; font-family: var(--font-mono);
-            background: rgba(2,44,34,0.15); color: #10b981;
+            background: rgba(2,44,34,0.15); color: #047857;
             border: 1px solid rgba(16,185,129,0.25); border-radius: 4px;
             padding: 1px 6px;
         }
@@ -342,6 +342,39 @@
             copyMatchBtn.disabled = true;
         }
 
+        function buildMatchItem(match, i) {
+            const item = document.createElement('div');
+            item.className = 'match-item';
+            const head = document.createElement('div');
+            head.className = 'match-item-head';
+            const idxSpan = document.createElement('span');
+            idxSpan.className = 'match-index';
+            idxSpan.textContent = '#' + (i + 1);
+            const posSpan1 = document.createElement('span');
+            posSpan1.className = 'match-pos';
+            posSpan1.textContent = `pos ${match.index}–${match.index + match.value.length}`;
+            const posSpan2 = document.createElement('span');
+            posSpan2.className = 'match-pos';
+            posSpan2.textContent = `len ${match.value.length}`;
+            head.appendChild(idxSpan);
+            head.appendChild(posSpan1);
+            head.appendChild(posSpan2);
+            item.appendChild(head);
+            const valDiv = document.createElement('div');
+            valDiv.className = 'match-value';
+            if (match.value) {
+                valDiv.textContent = match.value;
+            } else {
+                const emptySpan = document.createElement('span');
+                emptySpan.style.color = 'var(--text-muted)';
+                emptySpan.textContent = 'empty string';
+                valDiv.appendChild(emptySpan);
+            }
+            item.appendChild(valDiv);
+            appendMatchGroups(item, match);
+            return item;
+        }
+
         function renderMatches(matches, flags) {
             if (!matches.length) {
                 renderEmpty('No matches found');
@@ -356,7 +389,6 @@
             copyMatchBtn.disabled = false;
 
             matchPane.textContent = '';
-            
             const summaryRow = document.createElement('div');
             summaryRow.className = 'match-summary';
             summaryRow.textContent = 'Matches ';
@@ -366,45 +398,7 @@
             summaryRow.appendChild(badge);
             matchPane.appendChild(summaryRow);
 
-            matches.forEach((match, i) => {
-                const item = document.createElement('div');
-                item.className = 'match-item';
-
-                const head = document.createElement('div');
-                head.className = 'match-item-head';
-                
-                const idxSpan = document.createElement('span');
-                idxSpan.className = 'match-index';
-                idxSpan.textContent = '#' + (i + 1);
-                
-                const posSpan1 = document.createElement('span');
-                posSpan1.className = 'match-pos';
-                posSpan1.textContent = `pos ${match.index}–${match.index + match.value.length}`;
-
-                const posSpan2 = document.createElement('span');
-                posSpan2.className = 'match-pos';
-                posSpan2.textContent = `len ${match.value.length}`;
-                
-                head.appendChild(idxSpan);
-                head.appendChild(posSpan1);
-                head.appendChild(posSpan2);
-                item.appendChild(head);
-
-                const valDiv = document.createElement('div');
-                valDiv.className = 'match-value';
-                if (match.value) {
-                    valDiv.textContent = match.value;
-                } else {
-                    const emptySpan = document.createElement('span');
-                    emptySpan.style.color = 'var(--text-muted)';
-                    emptySpan.textContent = 'empty string';
-                    valDiv.appendChild(emptySpan);
-                }
-                item.appendChild(valDiv);
-
-                appendMatchGroups(item, match);
-                matchPane.appendChild(item);
-            });
+            matches.forEach((match, i) => matchPane.appendChild(buildMatchItem(match, i)));
         }
 
         // Flag toggles

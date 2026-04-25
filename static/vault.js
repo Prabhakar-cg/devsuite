@@ -68,7 +68,7 @@ function genId() {
 
 // ── CSRF token helpers ────────────────────────────────────────────
 function _csrfToken() {
-    const m = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+    const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
     return m ? decodeURIComponent(m[1]) : '';
 }
 
@@ -733,78 +733,61 @@ function populateModal(e) {
     }
 }
 
+function _modalPassword(base) {
+    const pw = document.getElementById('f-pw-password').value;
+    if (!pw) { toast('Password is required', 'error'); return null; }
+    return { ...base, username: document.getElementById('f-pw-username').value.trim(),
+        password: pw, url: document.getElementById('f-pw-url').value.trim(),
+        notes: document.getElementById('f-pw-notes').value.trim() };
+}
+function _modalToken(base) {
+    const tok = document.getElementById('f-tok-value').value.trim();
+    if (!tok) { toast('Token value is required', 'error'); return null; }
+    return { ...base, service: document.getElementById('f-tok-service').value.trim(),
+        token: tok, expiry: document.getElementById('f-tok-expiry').value,
+        environment: document.getElementById('f-tok-env').value,
+        notes: document.getElementById('f-tok-notes').value.trim() };
+}
+function _modalSsh(base) {
+    const key = document.getElementById('f-ssh-key').value.trim();
+    if (!key) { toast('Private key is required', 'error'); return null; }
+    return { ...base, host: document.getElementById('f-ssh-host').value.trim(),
+        username: document.getElementById('f-ssh-username').value.trim(),
+        private_key: key, passphrase: document.getElementById('f-ssh-passphrase').value,
+        notes: document.getElementById('f-ssh-notes').value.trim() };
+}
+function _modalApi(base) {
+    const ak = document.getElementById('f-api-key').value.trim();
+    if (!ak) { toast('API key is required', 'error'); return null; }
+    return { ...base, service: document.getElementById('f-api-service').value.trim(),
+        api_key: ak, environment: document.getElementById('f-api-env').value,
+        notes: document.getElementById('f-api-notes').value.trim() };
+}
+function _modalEnv(base) {
+    const varname = document.getElementById('f-env-varname').value.trim();
+    const val     = document.getElementById('f-env-value').value.trim();
+    if (!varname || !val) { toast('Variable name and value are required', 'error'); return null; }
+    return { ...base, varname, value: val,
+        notes: document.getElementById('f-env-notes').value.trim() };
+}
+function _modalNote(base) {
+    const content = document.getElementById('f-note-content').value.trim();
+    if (!content) { toast('Note content is required', 'error'); return null; }
+    return { ...base, content };
+}
+
 function buildEntryFromModal() {
     const type  = currentModalType;
     const title = document.getElementById('f-title').value.trim();
     if (!title) { toast('Title is required', 'error'); return null; }
 
-    const base = {
-        id: editingId || genId(),
-        type,
-        title,
-        modified: Date.now(),
+    const base = { id: editingId || genId(), type, title, modified: Date.now() };
+    const builders = {
+        password: _modalPassword, token: _modalToken,
+        ssh: _modalSsh, api: _modalApi,
+        env: _modalEnv, note: _modalNote,
     };
-
-    switch(type) {
-        case 'password': {
-            const pw = document.getElementById('f-pw-password').value;
-            if (!pw) { toast('Password is required', 'error'); return null; }
-            return { ...base,
-                username: document.getElementById('f-pw-username').value.trim(),
-                password: pw,
-                url:      document.getElementById('f-pw-url').value.trim(),
-                notes:    document.getElementById('f-pw-notes').value.trim(),
-            };
-        }
-        case 'token': {
-            const tok = document.getElementById('f-tok-value').value.trim();
-            if (!tok) { toast('Token value is required', 'error'); return null; }
-            return { ...base,
-                service:     document.getElementById('f-tok-service').value.trim(),
-                token:       tok,
-                expiry:      document.getElementById('f-tok-expiry').value,
-                environment: document.getElementById('f-tok-env').value,
-                notes:       document.getElementById('f-tok-notes').value.trim(),
-            };
-        }
-        case 'ssh': {
-            const key = document.getElementById('f-ssh-key').value.trim();
-            if (!key) { toast('Private key is required', 'error'); return null; }
-            return { ...base,
-                host:        document.getElementById('f-ssh-host').value.trim(),
-                username:    document.getElementById('f-ssh-username').value.trim(),
-                private_key: key,
-                passphrase:  document.getElementById('f-ssh-passphrase').value,
-                notes:       document.getElementById('f-ssh-notes').value.trim(),
-            };
-        }
-        case 'api': {
-            const ak = document.getElementById('f-api-key').value.trim();
-            if (!ak) { toast('API key is required', 'error'); return null; }
-            return { ...base,
-                service:     document.getElementById('f-api-service').value.trim(),
-                api_key:     ak,
-                environment: document.getElementById('f-api-env').value,
-                notes:       document.getElementById('f-api-notes').value.trim(),
-            };
-        }
-        case 'env': {
-            const varname = document.getElementById('f-env-varname').value.trim();
-            const val     = document.getElementById('f-env-value').value.trim();
-            if (!varname || !val) { toast('Variable name and value are required', 'error'); return null; }
-            return { ...base,
-                varname,
-                value: val,
-                notes: document.getElementById('f-env-notes').value.trim(),
-            };
-        }
-        case 'note': {
-            const content = document.getElementById('f-note-content').value.trim();
-            if (!content) { toast('Note content is required', 'error'); return null; }
-            return { ...base, content };
-        }
-        default: return null;
-    }
+    return builders[type]?.(base) ?? null;
 }
 
 async function saveModal() {

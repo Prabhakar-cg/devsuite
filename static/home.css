@@ -1796,7 +1796,6 @@ html, body {
 }
 
 .theme-panel {
-    display: block;
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
@@ -1807,16 +1806,20 @@ html, body {
     min-width: 218px;
     box-shadow: 0 20px 56px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.05) inset;
     z-index: 300;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-6px) scale(0.97);
     transform-origin: top right;
     transition: opacity 0.16s ease, transform 0.16s ease;
 }
 .theme-panel[open] {
+    display: block;
     opacity: 1;
     pointer-events: all;
     transform: translateY(0) scale(1);
+}
+@starting-style {
+    .theme-panel[open] {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.97);
+    }
 }
 
 .theme-panel-label {

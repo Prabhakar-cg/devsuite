@@ -1320,12 +1320,12 @@ def auth_session(request: Request, data: dict):  # pylint: disable=too-many-loca
     _audit_log("AUTH_SESSION", ip=client_ip)
 
     response = JSONResponse({"status": "ok", "expires_in": _SESSION_TTL})
-    response.set_cookie(
+    response.set_cookie(  # NOSONAR — secure=_HTTPS is intentional: app runs over HTTP locally
         key="ds_session", value=token,
         httponly=True, samesite="strict", max_age=_SESSION_TTL, secure=_HTTPS,
     )
     # ds_csrf is readable by JS so the frontend can send it as X-CSRF-Token header.
-    response.set_cookie(
+    response.set_cookie(  # NOSONAR — httponly=False is intentional (JS must read CSRF token); secure=_HTTPS is intentional
         key="ds_csrf", value=csrf_token,
         httponly=False, samesite="strict", max_age=_SESSION_TTL, secure=_HTTPS,
     )

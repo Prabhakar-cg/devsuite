@@ -507,8 +507,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            const buf = await file.arrayBuffer();
-            if (isBinaryFile(file, buf)) {
+            const head = await file.slice(0, 512).arrayBuffer();
+            if (isBinaryFile(file, head)) {
                 showError(`"${file.name}" is a binary file — only text files are supported.`);
                 return;
             }
@@ -516,8 +516,9 @@ document.addEventListener('DOMContentLoaded', () => {
             labelEl.textContent = file.name;
             updateLineCounts();
             showToast(`Loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, 'success', 3000);
-        } catch {
+        } catch (err) {
             showError(`Failed to read "${file.name}".`);
+            console.warn('handleFileUpload error:', err);
         }
     }
 
@@ -610,8 +611,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             setTimeout(() => {
-                if (id === 'text-diff' && textDiffEditor && !textDiffContainer.classList.contains('hidden')) textDiffEditor.layout();
-                if (id === 'folder-diff' && folderDiffEditor) folderDiffEditor.layout();
+                if (id === 'text-diff' && !textDiffContainer.classList.contains('hidden')) textDiffEditor?.layout();
+                if (id === 'folder-diff') folderDiffEditor?.layout();
             }, 60);
         });
     }
@@ -871,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function applyMergeAll(direction) {
         const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab;
-        const editor = activeTab === 'folder' ? folderDiffEditor : textDiffEditor;
+        const editor = activeTab === 'folder-diff' ? folderDiffEditor : textDiffEditor;
         if (!editor?.getModel()) return showToast('No active diff editor.', 'warning');
         const changes = editor.getLineChanges() || [];
         if (changes.length === 0) return showToast('No differences detected — nothing to merge.', 'info');
@@ -974,8 +975,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function _closeFolderExportMenu() {
-        if (folderExportMenu) folderExportMenu.classList.add('hidden');
-        if (folderExportBtn) folderExportBtn.setAttribute('aria-expanded', 'false');
+        folderExportMenu?.classList.add('hidden');
+        folderExportBtn?.setAttribute('aria-expanded', 'false');
     }
 
     folderExportBtn?.addEventListener('click', (e) => {
@@ -1034,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let patch = `--- Original\n+++ Modified\n`;
         // Simple unified diff — group using Monaco's changes for accuracy
         const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab;
-        const editor = activeTab === 'folder' ? folderDiffEditor : textDiffEditor;
+        const editor = activeTab === 'folder-diff' ? folderDiffEditor : textDiffEditor;
         if (!editor?.getModel()) return patch + origLines.map(l => `-${l}`).join('\n') + '\n';
         const changes = editor.getLineChanges() || [];
         if (changes.length === 0) return patch + '(no differences)\n';
@@ -1495,11 +1496,11 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} [fileName] - Optional display name for the active file; if omitted, the basename of `path` is used.
      */
     async function openFileDiff(path, status, fileName = '') {
-        if (dualTreeLayer) dualTreeLayer.classList.add('hidden'); // switch layout
-        if (folderEditorWrapper) folderEditorWrapper.classList.remove('hidden');
-        if (folderEditorHost) folderEditorHost.classList.remove('hidden');
-        if (folderStatsBar) folderStatsBar.classList.remove('hidden');
-        if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
+        dualTreeLayer?.classList.add('hidden'); // switch layout
+        folderEditorWrapper?.classList.remove('hidden');
+        folderEditorHost?.classList.remove('hidden');
+        folderStatsBar?.classList.remove('hidden');
+        folderDiffTitles?.classList.remove('hidden');
 
         currentFolderFileName = fileName || path.split('/').pop();
         if (activeDiffFileName) activeDiffFileName.textContent = currentFolderFileName;
@@ -1535,10 +1536,10 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} path - The file path or name used as a hint for language detection.
      */
     function initFolderDiffEditor(origTxt, modTxt, path) {
-        if (folderEditorWrapper) folderEditorWrapper.classList.remove('hidden');
-        if (folderEditorHost) folderEditorHost.classList.remove('hidden');
-        if (folderStatsBar) folderStatsBar.classList.remove('hidden');
-        if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
+        folderEditorWrapper?.classList.remove('hidden');
+        folderEditorHost?.classList.remove('hidden');
+        folderStatsBar?.classList.remove('hidden');
+        folderDiffTitles?.classList.remove('hidden');
 
         folderDiffEditor = monaco.editor.createDiffEditor(folderEditorHost, {
             theme: getMonacoTheme(),
@@ -1627,8 +1628,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // WINDOW RESIZE
     // ==========================================
     globalThis.addEventListener('resize', () => {
-        if (textDiffEditor) textDiffEditor.layout();
-        if (folderDiffEditor) folderDiffEditor.layout();
+        textDiffEditor?.layout();
+        folderDiffEditor?.layout();
     });
     /**
      * Activates the tab specified by the page URL's `tab` query parameter, if present.

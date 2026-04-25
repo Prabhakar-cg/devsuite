@@ -382,7 +382,7 @@ async function initApp() {
 }
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    initApp();
+    initApp(); // NOSONAR — intentional fire-and-forget init in non-module script
 } else {
     document.addEventListener('DOMContentLoaded', initApp);
 }

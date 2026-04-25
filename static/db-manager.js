@@ -19,7 +19,7 @@ let _meta = null;
 let _authenticated = false;
 
 function _csrfToken() {
-    const m = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+    const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
     return m ? decodeURIComponent(m[1]) : '';
 }
 
@@ -87,15 +87,18 @@ async function initLockScreen() {
 
     // Show the DB file path on the lock screen (path is not sensitive)
     try {
-        const meta = await _authFetch('/api/db/meta').then(r => r.json());
-        if (meta.path) {
-            document.getElementById('lock-db-path-text').textContent = meta.path;
-            document.getElementById('lock-db-path').style.display = 'flex';
-            // Also populate the main banner immediately
-            renderFileBanner(meta);
-            renderStores(meta);
-            updateEncryptionBadge(meta.encrypted);
-            _meta = meta;
+        const res = await _authFetch('/api/db/meta');
+        if (res.ok) {
+            const meta = await res.json();
+            if (meta.path) {
+                document.getElementById('lock-db-path-text').textContent = meta.path;
+                document.getElementById('lock-db-path').style.display = 'flex';
+                // Also populate the main banner immediately
+                renderFileBanner(meta);
+                renderStores(meta);
+                updateEncryptionBadge(meta.encrypted);
+                _meta = meta;
+            }
         }
     } catch (e) { console.error(e); }
 
@@ -427,10 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('change-pw-btn').addEventListener('click', openPasswordModal);
     document.getElementById('pw-cancel-btn').addEventListener('click', closePasswordModal);
     document.getElementById('pw-save-btn').addEventListener('click',   savePassword);
-    document.getElementById('pw-modal').addEventListener('click', e => {
-        if (e.target === document.getElementById('pw-modal')) closePasswordModal();
-    });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closePasswordModal(); });
+    document.getElementById('pw-modal').addEventListener('close', closePasswordModal);
 
     // About panel
     setupAboutPanel();
