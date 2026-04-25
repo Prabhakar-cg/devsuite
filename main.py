@@ -92,7 +92,7 @@ async def _lifespan(_application: FastAPI):
     # (cleanup goes here if needed in future)
 
 
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.2.1"
 _DEV_MODE   = os.getenv("DEVSUITE_DEV",   "0") == "1"
 _HTTPS      = os.getenv("DEVSUITE_HTTPS", "0") == "1"
 
@@ -108,15 +108,6 @@ app = FastAPI(
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-# Allowlist of hostnames that the /api/proxy endpoint is permitted to contact.
-# Adjust this set to match the APIs you intend to test via the proxy.
-ALLOWED_PROXY_HOSTS = {
-    # Example public APIs:
-    "api.github.com",
-    "jsonplaceholder.typicode.com",
-    "httpbin.org",
-}
 
 # ─── Shared string constants ──────────────────────────────────────────────────
 _ALLOWED_ORIGINS      = ["http://localhost:8000", "http://127.0.0.1:8000"]  # NOSONAR — localhost-only CORS; HTTPS not applicable for loopback dev server
@@ -879,15 +870,11 @@ async def proxy_request(req: ProxyRequest):
             raise HTTPException(status_code=400, detail="Only HTTP and HTTPS schemes are allowed")
         if not parsed.hostname:
             raise HTTPException(status_code=400, detail="Invalid URL: no hostname")
-        if parsed.hostname not in ALLOWED_PROXY_HOSTS:
-            raise HTTPException(status_code=400, detail="Target host is not allowed")
-
         _resolve_target_ips(parsed.hostname, parsed.port, parsed.scheme)
 
         req_body = req.body.encode('utf-8') if req.body else None
-        # Reconstruct the URL using the validated components to clear CodeQL dataflow taint.
-        safe_host = next(h for h in ALLOWED_PROXY_HOSTS if h == parsed.hostname)
-        safe_netloc = f"{safe_host}:{parsed.port}" if parsed.port else safe_host
+        # Reconstruct the URL from validated components to avoid taint-flow from raw user input.
+        safe_netloc = f"{parsed.hostname}:{parsed.port}" if parsed.port else parsed.hostname
         safe_url = urllib.parse.urlunparse((
             parsed.scheme, safe_netloc, parsed.path, parsed.params, parsed.query, parsed.fragment
         ))

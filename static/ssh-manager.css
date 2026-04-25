@@ -149,7 +149,7 @@
     color: var(--text-color);
 }
 .del-srv-icon:hover {
-    color: #991b1b;
+    color: #b91c1c;
 }
 .server-item:hover .edit-srv-icon,
 .server-item:hover .del-srv-icon {

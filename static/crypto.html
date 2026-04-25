@@ -362,7 +362,6 @@
             <span class="cs-label" style="margin-left:0.5rem;">Mode:</span>
             <select class="cs-select" id="aes-mode">
                 <option value="CBC">AES-256-CBC</option>
-                <option value="ECB">AES-256-ECB</option>
                 <option value="CTR">AES-256-CTR</option>
             </select>
 
@@ -732,8 +731,6 @@ document.getElementById('aes-encrypt-btn').addEventListener('click', () => {
         let encrypted;
         if (mode === 'CBC') {
             encrypted = CryptoJS.AES.encrypt(text, key, { mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
-        } else if (mode === 'ECB') {
-            encrypted = CryptoJS.AES.encrypt(text, key, { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 });
         } else {
             encrypted = CryptoJS.AES.encrypt(text, key, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.NoPadding });
         }
@@ -758,8 +755,6 @@ document.getElementById('aes-decrypt-btn').addEventListener('click', () => {
         let decrypted;
         if (mode === 'CBC') {
             decrypted = CryptoJS.AES.decrypt(text, key, { mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
-        } else if (mode === 'ECB') {
-            decrypted = CryptoJS.AES.decrypt(text, key, { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 });
         } else {
             decrypted = CryptoJS.AES.decrypt(text, key, { mode: CryptoJS.mode.CTR, padding: CryptoJS.pad.NoPadding });
         }

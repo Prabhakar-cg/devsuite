@@ -4,7 +4,7 @@
  * This file serves as the TypeScript source for the fetch wrapper.
  * The functional vanilla JavaScript version is available in api-client.js
  */
-export class ApiClient {
+class ApiClient {
     /**
      * UTF-8 safe Base64 encoder
      */
@@ -77,6 +77,11 @@ export class ApiClient {
         }
         return config.body;
     }
+    static _getCsrfToken() {
+        const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
     /**
      * Serialises a fetch body to a plain string for proxy forwarding.
      */
@@ -152,11 +157,14 @@ export class ApiClient {
     static _buildProxyOptions(targetUrl, config, body, headers) {
         const proxyTargetHeaders = {};
         headers.forEach((v, k) => { proxyTargetHeaders[k] = v; });
+        const csrfToken = this._getCsrfToken();
+        const fetchHeaders = { 'Content-Type': 'application/json' };
+        if (csrfToken) fetchHeaders['X-CSRF-Token'] = csrfToken;
         return {
             fetchUrl: '/api/proxy',
             fetchOptions: {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: fetchHeaders,
                 body: JSON.stringify({
                     url: targetUrl,
                     method: config.method,
@@ -209,3 +217,5 @@ export class ApiClient {
         }
     }
 }
+
+globalThis.ApiClient = ApiClient;

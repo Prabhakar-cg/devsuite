@@ -592,12 +592,12 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
 .tree-folder-badge {
     font-size: 0.55rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.06em; padding: 1px 5px; border-radius: 3px;
-    flex-shrink: 0; color: var(--text-muted); background: var(--bg-tertiary);
+    flex-shrink: 0; color: var(--text); background: var(--bg-tertiary);
 }
 .folder-status-removed .tree-folder-badge { background: var(--red-subtle); color: var(--red-mid); }
 .folder-status-added   .tree-folder-badge { background: var(--green-subtle); color: var(--green-mid); }
 .folder-status-modified .tree-folder-badge { background: var(--amber-subtle); color: var(--amber-mid); }
-.folder-status-mixed   .tree-folder-badge { background: rgba(113,0,200,0.08); color: #7b00d4; }
+.folder-status-mixed   .tree-folder-badge { background: rgba(113,0,200,0.08); color: #4a0073; }
 .tree-folder-badge:empty { display: none; }
 
 /* Folder row status highlights — left border accent + tinted bg */
@@ -619,13 +619,13 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
 .tree-folder-row.folder-status-mixed    {
     background: rgba(113,0,200,0.07);
     border-left: 3px solid #9b30e8;
-    color: #7b00d4;
+    color: #4a0073;
 }
 /* Icon color follows status */
 .tree-folder-row.folder-status-removed  .tree-icon { color: var(--red-mid);   opacity: 0.85; }
 .tree-folder-row.folder-status-added    .tree-icon { color: var(--green-mid); opacity: 0.85; }
 .tree-folder-row.folder-status-modified .tree-icon { color: var(--amber-mid); opacity: 0.85; }
-.tree-folder-row.folder-status-mixed    .tree-icon { color: #7b00d4;          opacity: 0.85; }
+.tree-folder-row.folder-status-mixed    .tree-icon { color: #4a0073;          opacity: 0.85; }
 /* Hover — slightly stronger */
 .tree-folder-row.folder-status-removed:hover  { background: rgba(255,59,48,0.14); }
 .tree-folder-row.folder-status-added:hover    { background: rgba(40,205,65,0.14); }
