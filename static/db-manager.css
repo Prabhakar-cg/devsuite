@@ -248,7 +248,8 @@ body::before {
     font-family: inherit;
 }
 .btn-primary {
-    background: linear-gradient(135deg, var(--accent), #1d4ed8);
+    background: #1d4ed8;
+    background-image: linear-gradient(135deg, var(--accent), #1d4ed8);
     color: #fff;
     box-shadow: 0 2px 12px var(--accent-glow);
 }
@@ -360,6 +361,7 @@ body::before {
 .toast {
     padding: 13px 20px; border-radius: var(--radius-sm);
     font-size: 13px; font-weight: 600;
+    background: #3730a3;
     background: rgba(55,48,163,0.95);
     backdrop-filter: blur(8px);
     color: #fff;

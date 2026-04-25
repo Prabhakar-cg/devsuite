@@ -306,9 +306,23 @@
         }
 
         .format-chip.server {
+            background: rgba(234,179,8,0.2);
+            color: #fbbf24;
+            border-color: rgba(234,179,8,0.4);
+        }
+
+        html[data-theme="vs"] .format-chip.server,
+        html[data-theme="ios-glass"] .format-chip.server {
             background: rgba(234,179,8,0.15);
             color: #92400e;
             border-color: rgba(234,179,8,0.35);
+        }
+
+        .server-note-label { color: #fbbf24; }
+
+        html[data-theme="vs"] .server-note-label,
+        html[data-theme="ios-glass"] .server-note-label {
+            color: #78350f;
         }
 
         .section-title {
@@ -533,7 +547,7 @@
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/>
                     <line x1="12" y1="8" x2="12.01" y2="8"/>
                 </svg>
-                <span style="color:#78350f;">Yellow</span> = requires server
+                <span class="server-note-label">Yellow</span> = requires server
             </span>
         </div>
         <div class="formats-grid">
