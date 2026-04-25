@@ -16,7 +16,7 @@ const DevDB = (() => {
 
     // ── CSRF token (readable ds_csrf cookie set by server after unlock) ───────
     function _csrfToken() {
-        const m = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+        const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
         return m ? decodeURIComponent(m[1]) : '';
     }
 
@@ -24,12 +24,12 @@ const DevDB = (() => {
     async function _apiFetch(url, opts = {}) {
         const csrf = _csrfToken();
         const res = await fetch(url, {
+            ...opts,
             headers: {
                 'Content-Type': 'application/json',
                 ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
                 ...opts.headers,
             },
-            ...opts,
         });
         if (!res.ok) {
             let detail = `HTTP ${res.status}`;

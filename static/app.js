@@ -437,8 +437,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateLineCounts() {
         const ol = countLines(originalInput.value);
         const ml = countLines(modifiedInput.value);
-        linesOriginal.textContent = `${ol} line${ol !== 1 ? 's' : ''}`;
-        linesModified.textContent = `${ml} line${ml !== 1 ? 's' : ''}`;
+        linesOriginal.textContent = `${ol} line${ol === 1 ? '' : 's'}`;
+        linesModified.textContent = `${ml} line${ml === 1 ? '' : 's'}`;
     }
 
     originalInput.addEventListener('input', updateLineCounts);
@@ -460,8 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
         changes.forEach(c => {
             const origLines = (c.originalEndLineNumber - c.originalStartLineNumber + 1) || 0;
             const modLines = (c.modifiedEndLineNumber - c.modifiedStartLineNumber + 1) || 0;
-            additions += modLines > 0 ? modLines : 0;
-            deletions += origLines > 0 ? origLines : 0;
+            additions += Math.max(modLines, 0);
+            deletions += Math.max(origLines, 0);
         });
 
         if (isFolder) {
@@ -499,31 +499,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // FILE UPLOAD — BINARY CHECK + CLIENT-SIDE
     // ==========================================
-    function handleFileUpload(file, labelEl, textareaEl) {
+    async function handleFileUpload(file, labelEl, textareaEl) {
         if (!file) return;
         const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
         if (file.size > MAX_FILE_SIZE_BYTES) {
             showError(`"${file.name}" is too large (max 50MB).`);
             return;
         }
-        const arrayReader = new FileReader();
-        arrayReader.onload = (e) => {
-            if (isBinaryFile(file, e.target.result)) {
+        try {
+            const head = await file.slice(0, 512).arrayBuffer();
+            if (isBinaryFile(file, head)) {
                 showError(`"${file.name}" is a binary file — only text files are supported.`);
                 return;
             }
-            const textReader = new FileReader();
-            textReader.onload = (ev) => {
-                textareaEl.value = ev.target.result;
-                labelEl.textContent = `${file.name}`;
-                updateLineCounts();
-                showToast(`Loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, 'success', 3000);
-            };
-            textReader.onerror = () => showError(`Failed to read "${file.name}".`);
-            textReader.readAsText(file, 'UTF-8');
-        };
-        arrayReader.onerror = () => showError(`Failed to inspect "${file.name}".`);
-        arrayReader.readAsArrayBuffer(file);
+            textareaEl.value = await file.text();
+            labelEl.textContent = file.name;
+            updateLineCounts();
+            showToast(`Loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, 'success', 3000);
+        } catch (err) {
+            showError(`Failed to read "${file.name}".`);
+            console.warn('handleFileUpload error:', err);
+        }
     }
 
     function setupDropzone(dropEl, inputEl, labelEl, textareaEl) {
@@ -569,7 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', async () => {
             const targetId = btn.dataset.target;
             const target = document.getElementById(targetId);
-            if (!target || !target.value) {
+            if (!target?.value) {
                 showToast('Nothing to copy — panel is empty.', 'warning', 2500);
                 return;
             }
@@ -615,8 +611,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             setTimeout(() => {
-                if (id === 'text-diff' && textDiffEditor && !textDiffContainer.classList.contains('hidden')) textDiffEditor.layout();
-                if (id === 'folder-diff' && folderDiffEditor) folderDiffEditor.layout();
+                if (id === 'text-diff' && !textDiffContainer.classList.contains('hidden')) textDiffEditor?.layout();
+                if (id === 'folder-diff') folderDiffEditor?.layout();
             }, 60);
         });
     }
@@ -645,7 +641,13 @@ document.addEventListener('DOMContentLoaded', () => {
         textDiffContainer.style.flex = '1';
         textDiffContainer.style.overflow = 'hidden';
 
-        if (!textDiffEditor) {
+        if (textDiffEditor) {
+            textOriginalModel.setValue(originalText);
+            textModifiedModel.setValue(modifiedText);
+            updateEditorLanguage(textOriginalModel, textModifiedModel, originalText);
+            compareBtn.classList.remove('loading');
+            compareBtn.disabled = false;
+        } else {
             requestAnimationFrame(() => {
                 setTimeout(() => {
                     initTextDiffEditor(originalText, modifiedText);
@@ -653,12 +655,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     compareBtn.disabled = false;
                 }, 30);
             });
-        } else {
-            textOriginalModel.setValue(originalText);
-            textModifiedModel.setValue(modifiedText);
-            updateEditorLanguage(textOriginalModel, textModifiedModel, originalText);
-            compareBtn.classList.remove('loading');
-            compareBtn.disabled = false;
         }
     }
 
@@ -875,8 +871,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyMergeAll(direction) {
-        const editor = !folderResultsContainer.classList.contains('hidden') ? folderDiffEditor : textDiffEditor;
-        if (!editor || !editor.getModel()) return showToast('No active diff editor.', 'warning');
+        const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab;
+        const editor = activeTab === 'folder-diff' ? folderDiffEditor : textDiffEditor;
+        if (!editor?.getModel()) return showToast('No active diff editor.', 'warning');
         const changes = editor.getLineChanges() || [];
         if (changes.length === 0) return showToast('No differences detected — nothing to merge.', 'info');
         const origModel = editor.getModel().original;
@@ -978,8 +975,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function _closeFolderExportMenu() {
-        if (folderExportMenu) folderExportMenu.classList.add('hidden');
-        if (folderExportBtn) folderExportBtn.setAttribute('aria-expanded', 'false');
+        folderExportMenu?.classList.add('hidden');
+        folderExportBtn?.setAttribute('aria-expanded', 'false');
     }
 
     folderExportBtn?.addEventListener('click', (e) => {
@@ -1037,8 +1034,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const modLines = modText.split('\n');
         let patch = `--- Original\n+++ Modified\n`;
         // Simple unified diff — group using Monaco's changes for accuracy
-        const editor = !folderResultsContainer.classList.contains('hidden') ? folderDiffEditor : textDiffEditor;
-        if (!editor || !editor.getModel()) return patch + origLines.map(l => `-${l}`).join('\n') + '\n';
+        const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab;
+        const editor = activeTab === 'folder-diff' ? folderDiffEditor : textDiffEditor;
+        if (!editor?.getModel()) return patch + origLines.map(l => `-${l}`).join('\n') + '\n';
         const changes = editor.getLineChanges() || [];
         if (changes.length === 0) return patch + '(no differences)\n';
 
@@ -1498,11 +1496,11 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} [fileName] - Optional display name for the active file; if omitted, the basename of `path` is used.
      */
     async function openFileDiff(path, status, fileName = '') {
-        if (dualTreeLayer) dualTreeLayer.classList.add('hidden'); // switch layout
-        if (folderEditorWrapper) folderEditorWrapper.classList.remove('hidden');
-        if (folderEditorHost) folderEditorHost.classList.remove('hidden');
-        if (folderStatsBar) folderStatsBar.classList.remove('hidden');
-        if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
+        dualTreeLayer?.classList.add('hidden'); // switch layout
+        folderEditorWrapper?.classList.remove('hidden');
+        folderEditorHost?.classList.remove('hidden');
+        folderStatsBar?.classList.remove('hidden');
+        folderDiffTitles?.classList.remove('hidden');
 
         currentFolderFileName = fileName || path.split('/').pop();
         if (activeDiffFileName) activeDiffFileName.textContent = currentFolderFileName;
@@ -1516,12 +1514,12 @@ document.addEventListener('DOMContentLoaded', () => {
             origTxt = 'Error reading original file.';
             modTxt = 'Error reading modified file.';
         }
-        if (!folderDiffEditor) {
-            initFolderDiffEditor(origTxt, modTxt, path);
-        } else {
+        if (folderDiffEditor) {
             folderOriginalModel.setValue(origTxt);
             folderModifiedModel.setValue(modTxt);
             updateEditorLanguage(folderOriginalModel, folderModifiedModel, origTxt || modTxt, path);
+        } else {
+            initFolderDiffEditor(origTxt, modTxt, path);
         }
     }
 
@@ -1538,10 +1536,10 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} path - The file path or name used as a hint for language detection.
      */
     function initFolderDiffEditor(origTxt, modTxt, path) {
-        if (folderEditorWrapper) folderEditorWrapper.classList.remove('hidden');
-        if (folderEditorHost) folderEditorHost.classList.remove('hidden');
-        if (folderStatsBar) folderStatsBar.classList.remove('hidden');
-        if (folderDiffTitles) folderDiffTitles.classList.remove('hidden');
+        folderEditorWrapper?.classList.remove('hidden');
+        folderEditorHost?.classList.remove('hidden');
+        folderStatsBar?.classList.remove('hidden');
+        folderDiffTitles?.classList.remove('hidden');
 
         folderDiffEditor = monaco.editor.createDiffEditor(folderEditorHost, {
             theme: getMonacoTheme(),
@@ -1577,17 +1575,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     languageSelect.addEventListener('change', (e) => {
         const lang = e.target.value;
-        if (lang !== 'auto') {
-            if (textOriginalModel) monaco.editor.setModelLanguage(textOriginalModel, lang);
-            if (textModifiedModel) monaco.editor.setModelLanguage(textModifiedModel, lang);
-            if (folderOriginalModel) monaco.editor.setModelLanguage(folderOriginalModel, lang);
-            if (folderModifiedModel) monaco.editor.setModelLanguage(folderModifiedModel, lang);
-        } else {
+        if (lang === 'auto') {
             if (textOriginalModel) updateEditorLanguage(textOriginalModel, textModifiedModel, textOriginalModel.getValue());
             if (folderOriginalModel) {
                 const active = document.querySelector('.tree-item.active .file-path-text');
                 updateEditorLanguage(folderOriginalModel, folderModifiedModel, folderOriginalModel.getValue(), active?.textContent);
             }
+        } else {
+            if (textOriginalModel) monaco.editor.setModelLanguage(textOriginalModel, lang);
+            if (textModifiedModel) monaco.editor.setModelLanguage(textModifiedModel, lang);
+            if (folderOriginalModel) monaco.editor.setModelLanguage(folderOriginalModel, lang);
+            if (folderModifiedModel) monaco.editor.setModelLanguage(folderModifiedModel, lang);
         }
     });
 
@@ -1595,7 +1593,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text || !globalThis.hljs) return null;
         try {
             const result = hljs.highlightAuto(text.substring(0, 1200));
-            let detected = result.language || (result.secondBest && result.secondBest.language);
+            let detected = result.language || result.secondBest?.language;
             if (!detected) return 'plaintext';
             const map = {
                 'js': 'javascript', 'ts': 'typescript', 'bash': 'shell', 'sh': 'shell',
@@ -1618,8 +1616,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 langNameSpan.textContent = lang;
                 langLabelContainer.classList.remove('hidden');
             }
-        } else {
-            if (langLabelContainer) langLabelContainer.classList.add('hidden');
+        } else if (langLabelContainer) {
+            langLabelContainer.classList.add('hidden');
         }
         if (origModel) monaco.editor.setModelLanguage(origModel, lang);
         if (modModel) monaco.editor.setModelLanguage(modModel, lang);
@@ -1630,8 +1628,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // WINDOW RESIZE
     // ==========================================
     globalThis.addEventListener('resize', () => {
-        if (textDiffEditor) textDiffEditor.layout();
-        if (folderDiffEditor) folderDiffEditor.layout();
+        textDiffEditor?.layout();
+        folderDiffEditor?.layout();
     });
     /**
      * Activates the tab specified by the page URL's `tab` query parameter, if present.

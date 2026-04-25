@@ -55,7 +55,7 @@ function decryptData(ct, pwd)   {
 }
 
 function _sessionHeaders(extra = {}) {
-    const m    = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+    const m    = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
     const csrf = m ? decodeURIComponent(m[1]) : '';
     return csrf ? { 'X-CSRF-Token': csrf, ...extra } : { ...extra };
 }
@@ -186,7 +186,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
 }
 
 // Boot: run auth-guard first, then unlock profiles with the master password
-(async () => {
+(async () => { // NOSONAR — top-level await requires ES module; script loads in non-module context
     const pwd = await AuthGuard.init('Secure Terminal', '🖥️');
     if (pwd) {
         await _applyMasterKey(pwd);
@@ -297,6 +297,72 @@ function getGroupedProfiles() {
     return groups;
 }
 
+function makeDeleteHandler(p) {
+    return async e => {
+        e.stopPropagation();
+        if (!confirm(`Delete session "${p.name || p.host}"?`)) return;
+        const nextProfiles = profiles.filter(x => x.id !== p.id);
+        const serialized = JSON.stringify(nextProfiles);
+        const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
+        try {
+            await saveProfilesBlob(blob);
+            profiles = nextProfiles;
+            renderSidebar();
+            renderSftpSidebar();
+        } catch (err) {
+            console.error('Failed to delete profile:', err);
+            alert('Failed to delete profile. Please try again.');
+        }
+    };
+}
+
+function _buildServerItem(p) {
+    const d = document.createElement('div');
+    d.className = 'server-item';
+    if (Object.values(activeTabs).some(t => t.profile.id === p.id)) d.classList.add('active');
+    d.innerHTML = `
+        <div class="server-name-lbl">🖥️ <span>${escHtml(p.name || p.host)}</span></div>
+        ${p.isWsl ? '' : '<div style="display:flex;gap:0.25rem;"><div class="edit-srv-icon" title="Edit Session">⚙</div><div class="del-srv-icon" title="Delete Session">🗑️</div></div>'}
+    `;
+    d.querySelector('.server-name-lbl').addEventListener('click', () => openTerminalTab(p));
+    if (!p.isWsl) {
+        d.querySelector('.edit-srv-icon').addEventListener('click', e => { e.stopPropagation(); openServerModal(p); });
+        d.querySelector('.del-srv-icon').addEventListener('click', makeDeleteHandler(p));
+    }
+    return d;
+}
+
+function _buildGroupDiv(gName, items) {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'tree-group';
+
+    const header = document.createElement('div');
+    header.className = 'tree-folder-header';
+    const isExpanded = expandedFolders.has(gName) || document.getElementById('quick-connect').value.length > 0;
+    header.innerHTML = `
+        <span class="folder-toggle">${isExpanded ? '[-]' : '[+]'}</span>
+        <span class="folder-icon">📂</span>
+        <span>${escHtml(gName)}</span>
+    `;
+
+    const childrenDiv = document.createElement('div');
+    childrenDiv.className = 'folder-children';
+    childrenDiv.style.display = isExpanded ? 'flex' : 'none';
+
+    header.addEventListener('click', () => {
+        const open = childrenDiv.style.display !== 'none';
+        childrenDiv.style.display = open ? 'none' : 'flex';
+        header.querySelector('.folder-toggle').textContent = open ? '[+]' : '[-]';
+        open ? expandedFolders.delete(gName) : expandedFolders.add(gName);
+    });
+
+    items.forEach(p => childrenDiv.appendChild(_buildServerItem(p)));
+
+    groupDiv.appendChild(header);
+    groupDiv.appendChild(childrenDiv);
+    return groupDiv;
+}
+
 function renderSidebar() {
     const list = document.getElementById('server-list');
     list.innerHTML = '';
@@ -312,58 +378,7 @@ function renderSidebar() {
         const items = groups[gName];
         if (!items.length) return;
         totalRendered += items.length;
-
-        const groupDiv = document.createElement('div');
-        groupDiv.className = 'tree-group';
-
-        const header = document.createElement('div');
-        header.className = 'tree-folder-header';
-        const isExpanded = expandedFolders.has(gName) || document.getElementById('quick-connect').value.length > 0;
-        header.innerHTML = `
-            <span class="folder-toggle">${isExpanded ? '[-]' : '[+]'}</span>
-            <span class="folder-icon">📂</span>
-            <span>${escHtml(gName)}</span>
-        `;
-
-        const childrenDiv = document.createElement('div');
-        childrenDiv.className = 'folder-children';
-        childrenDiv.style.display = isExpanded ? 'flex' : 'none';
-
-        header.addEventListener('click', () => {
-            const open = childrenDiv.style.display !== 'none';
-            childrenDiv.style.display = open ? 'none' : 'flex';
-            header.querySelector('.folder-toggle').textContent = open ? '[+]' : '[-]';
-            open ? expandedFolders.delete(gName) : expandedFolders.add(gName);
-        });
-
-        items.forEach(p => {
-            const d = document.createElement('div');
-            d.className = 'server-item';
-            if (Object.values(activeTabs).some(t => t.profile.id === p.id)) d.classList.add('active');
-            d.innerHTML = `
-                <div class="server-name-lbl">🖥️ <span>${escHtml(p.name || p.host)}</span></div>
-                ${p.isWsl ? '' : '<div style="display:flex;gap:0.25rem;"><div class="edit-srv-icon" title="Edit Session">⚙</div><div class="del-srv-icon" title="Delete Session">🗑️</div></div>'}
-            `;
-            d.querySelector('.server-name-lbl').addEventListener('click', () => openTerminalTab(p));
-            if (!p.isWsl) {
-                d.querySelector('.edit-srv-icon').addEventListener('click', e => { e.stopPropagation(); openServerModal(p); });
-                d.querySelector('.del-srv-icon').addEventListener('click', async e => {
-                    e.stopPropagation();
-                    if (!confirm(`Delete session "${p.name || p.host}"?`)) return;
-                    profiles = profiles.filter(x => x.id !== p.id);
-                    const serialized = JSON.stringify(profiles);
-                    const blob = profilesEncrypted ? encryptData(serialized, masterKey) : serialized;
-                    await saveProfilesBlob(blob);
-                    renderSidebar();
-                    renderSftpSidebar();
-                });
-            }
-            childrenDiv.appendChild(d);
-        });
-
-        groupDiv.appendChild(header);
-        groupDiv.appendChild(childrenDiv);
-        list.appendChild(groupDiv);
+        list.appendChild(_buildGroupDiv(gName, items));
     });
 
     if (totalRendered === 0) {
@@ -749,7 +764,7 @@ async function sftpLoadDir(path) {
         };
         let r = await fetch('/api/sftp/list', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
             body:    JSON.stringify(payload)
         });
 
@@ -764,7 +779,7 @@ async function sftpLoadDir(path) {
                 if (!approved) { throw new Error('Host key rejected by user.'); }
                 r = await fetch('/api/sftp/list', {
                     method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
                     body:    JSON.stringify({ ...payload, approved_fingerprint: fp })
                 });
             }
@@ -863,7 +878,7 @@ async function sftpDownloadFile(filename) {
         };
         let r = await fetch('/api/sftp/download', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
             body:    JSON.stringify(payload)
         });
         // Host-key approval required (TOFU gate)
@@ -880,7 +895,7 @@ async function sftpDownloadFile(filename) {
                 if (!approved) { throw new Error('Host key rejected by user.'); }
                 r = await fetch('/api/sftp/download', {
                     method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
                     body:    JSON.stringify({ ...payload, approved_fingerprint: fingerprint })
                 });
             }
@@ -921,11 +936,56 @@ document.getElementById('sftp-upload-input').addEventListener('change', async (e
     }
 });
 
-async function sftpUploadFile(file) {
-    if (!sftpConn) return;
-    const toastMsg = `Uploading ${file.name}… 0%`;
-    showToast(toastMsg, 'info');
+function sftpRetryUpload(fd, file, fp, resolve) {
+    fd.append('approved_fingerprint', fp);
+    const retryXhr = new XMLHttpRequest();
+    retryXhr.open('POST', '/api/sftp/upload');
+    const retryHeaders = _sessionHeaders();
+    if (retryHeaders['X-CSRF-Token']) retryXhr.setRequestHeader('X-CSRF-Token', retryHeaders['X-CSRF-Token']);
+    retryXhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable) {
+            const pct = Math.round((evt.loaded / evt.total) * 100);
+            showToast(`Uploading ${file.name}… ${pct}%`, 'info');
+        }
+    };
+    retryXhr.onload = async () => {
+        if (retryXhr.status >= 200 && retryXhr.status < 300) {
+            showToast(`Uploaded ${file.name}`, 'success');
+            await sftpLoadDir(sftpConn.path);
+        } else {
+            let d = `Server error ${retryXhr.status}`;
+            try { d = JSON.parse(retryXhr.response).detail || d; } catch {}
+            showToast(`Upload failed: ${d}`, 'error');
+        }
+        resolve();
+    };
+    retryXhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
+    retryXhr.send(fd);
+}
 
+async function sftpHandle409(xhr, fd, file, resolve) {
+    let errBody = {};
+    try { errBody = JSON.parse(xhr.response); } catch {}
+    const det = errBody.detail || {};
+    if (det.error !== 'host_key_approval_required') {
+        const msg = det.error || (typeof det === 'string' ? det : `Server error ${xhr.status}`);
+        showToast(`Upload failed: ${msg}`, 'error');
+        resolve();
+        return;
+    }
+    const fp = det.fingerprint || '(unknown)';
+    const approved = confirm(
+        `New SFTP host detected:\n\n${det.host}:${det.port}\nFingerprint: ${fp}\n\nTrust this host key?`
+    );
+    if (approved) {
+        sftpRetryUpload(fd, file, fp, resolve); // resolve() called by retryXhr
+    } else {
+        showToast(`Upload cancelled: host key rejected.`, 'warn');
+        resolve();
+    }
+}
+
+function _buildUploadForm(file) {
     const fd = new FormData();
     fd.append('host',        sftpConn.profile.host);
     fd.append('port',        sftpConn.profile.port || '22');
@@ -934,69 +994,40 @@ async function sftpUploadFile(file) {
     if (sftpConn.profile.key)  fd.append('private_key', sftpConn.profile.key);
     fd.append('remote_path', sftpConn.path);
     fd.append('file',        file, file.name);
+    return fd;
+}
+
+async function _handleUploadLoad(xhr, fd, file, resolve) {
+    if (xhr.status >= 200 && xhr.status < 300) {
+        showToast(`Uploaded ${file.name}`, 'success');
+        await sftpLoadDir(sftpConn.path);
+        resolve();
+    } else if (xhr.status === 409) {
+        await sftpHandle409(xhr, fd, file, resolve);
+    } else {
+        let detail = `Server error ${xhr.status}`;
+        try { detail = JSON.parse(xhr.response).detail || detail; } catch {}
+        showToast(`Upload failed: ${detail}`, 'error');
+        resolve();
+    }
+}
+
+async function sftpUploadFile(file) {
+    if (!sftpConn) return;
+    showToast(`Uploading ${file.name}… 0%`, 'info');
+    const fd = _buildUploadForm(file);
 
     return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/api/sftp/upload');
+        const uploadHeaders = _sessionHeaders();
+        if (uploadHeaders['X-CSRF-Token']) xhr.setRequestHeader('X-CSRF-Token', uploadHeaders['X-CSRF-Token']);
         xhr.upload.onprogress = (evt) => {
             if (evt.lengthComputable) {
-                const pct = Math.round((evt.loaded / evt.total) * 100);
-                showToast(`Uploading ${file.name}… ${pct}%`, 'info');
+                showToast(`Uploading ${file.name}… ${Math.round((evt.loaded / evt.total) * 100)}%`, 'info');
             }
         };
-        xhr.onload = async () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                showToast(`Uploaded ${file.name}`, 'success');
-                await sftpLoadDir(sftpConn.path);
-            } else if (xhr.status === 409) {
-                let errBody = {};
-                try { errBody = JSON.parse(xhr.response); } catch {}
-                const det = errBody.detail || {};
-                if (det.error === 'host_key_approval_required') {
-                    const fp = det.fingerprint || '(unknown)';
-                    const approved = confirm(
-                        `New SFTP host detected:\n\n${det.host}:${det.port}\nFingerprint: ${fp}\n\nTrust this host key?`
-                    );
-                    if (approved) {
-                        // Retry with approved fingerprint
-                        fd.append('approved_fingerprint', fp);
-                        const retryXhr = new XMLHttpRequest();
-                        retryXhr.open('POST', '/api/sftp/upload');
-                        retryXhr.upload.onprogress = (evt) => {
-                            if (evt.lengthComputable) {
-                                const pct = Math.round((evt.loaded / evt.total) * 100);
-                                showToast(`Uploading ${file.name}… ${pct}%`, 'info');
-                            }
-                        };
-                        retryXhr.onload = async () => {
-                            if (retryXhr.status >= 200 && retryXhr.status < 300) {
-                                showToast(`Uploaded ${file.name}`, 'success');
-                                await sftpLoadDir(sftpConn.path);
-                            } else {
-                                let d = `Server error ${retryXhr.status}`;
-                                try { d = JSON.parse(retryXhr.response).detail || d; } catch {}
-                                showToast(`Upload failed: ${d}`, 'error');
-                            }
-                            resolve();
-                        };
-                        retryXhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
-                        retryXhr.send(fd);
-                        return; // resolve() will be called by retryXhr
-                    } else {
-                        showToast(`Upload cancelled: host key rejected.`, 'warn');
-                    }
-                } else {
-                    const msg = det.error || (typeof det === 'string' ? det : `Server error ${xhr.status}`);
-                    showToast(`Upload failed: ${msg}`, 'error');
-                }
-                resolve();
-            } else {
-                let detail = `Server error ${xhr.status}`;
-                try { detail = JSON.parse(xhr.response).detail || detail; } catch {}
-                showToast(`Upload failed: ${detail}`, 'error');
-                resolve();
-            }
-        };
+        xhr.onload = () => _handleUploadLoad(xhr, fd, file, resolve);
         xhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
         xhr.send(fd);
     });

@@ -50,34 +50,34 @@
                             <polyline points="6 9 12 15 18 9"/>
                         </svg>
                     </button>
-                    <div class="theme-panel" id="themePanel" role="dialog" aria-label="Theme selector">
+                    <dialog class="theme-panel" id="themePanel" aria-label="Theme selector" role="menu">
                         <div class="theme-options" id="themeOptions">
-                            <button class="theme-option" data-theme="vs-dark">
+                            <button class="theme-option" data-theme="vs-dark" role="menuitemradio" aria-checked="false">
                                 <span class="theme-swatch" style="background:linear-gradient(135deg,#05050a 40%,#3b82f6)"></span>
                                 Noir
                             </button>
-                            <button class="theme-option" data-theme="midnight">
+                            <button class="theme-option" data-theme="midnight" role="menuitemradio" aria-checked="false">
                                 <span class="theme-swatch" style="background:linear-gradient(135deg,#07071a 40%,#8b5cf6)"></span>
                                 Midnight
                             </button>
-                            <button class="theme-option" data-theme="ocean">
+                            <button class="theme-option" data-theme="ocean" role="menuitemradio" aria-checked="false">
                                 <span class="theme-swatch" style="background:linear-gradient(135deg,#040d1a 40%,#38bdf8)"></span>
                                 Ocean
                             </button>
-                            <button class="theme-option" data-theme="solarized">
+                            <button class="theme-option" data-theme="solarized" role="menuitemradio" aria-checked="false">
                                 <span class="theme-swatch" style="background:linear-gradient(135deg,#002b36 40%,#268bd2)"></span>
                                 Solarized
                             </button>
-                            <button class="theme-option" data-theme="vs">
+                            <button class="theme-option" data-theme="vs" role="menuitemradio" aria-checked="false">
                                 <span class="theme-swatch" style="background:linear-gradient(135deg,#f3f4f8 40%,#2563eb)"></span>
                                 Light
                             </button>
-                            <button class="theme-option" data-theme="hc-black">
+                            <button class="theme-option" data-theme="hc-black" role="menuitemradio" aria-checked="false">
                                 <span class="theme-swatch" style="background:linear-gradient(135deg,#000 40%,#60a5fa)"></span>
                                 Hi-Contrast
                             </button>
                         </div>
-                    </div>
+                    </dialog>
                 </div>
             </nav>
 
@@ -506,20 +506,24 @@
             if (!picker || !toggleBtn || !panel) return;
 
             function setActive(theme) {
-                options.forEach(o => o.classList.toggle('active', o.dataset.theme === theme));
+                options.forEach(o => {
+                    const isActive = o.dataset.theme === theme;
+                    o.classList.toggle('active', isActive);
+                    o.setAttribute('aria-checked', isActive ? 'true' : 'false');
+                });
             }
 
             toggleBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
-                panel.classList.toggle('open');
+                panel.open ? panel.close() : panel.show();
             });
 
             document.addEventListener('click', function (e) {
-                if (!picker.contains(e.target)) panel.classList.remove('open');
+                if (!picker.contains(e.target)) panel.close();
             });
 
             document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape') panel.classList.remove('open');
+                if (e.key === 'Escape') panel.close();
             });
 
             options.forEach(function (opt) {
@@ -527,7 +531,7 @@
                     const theme = opt.dataset.theme;
                     if (globalThis.setDevSuiteTheme) globalThis.setDevSuiteTheme(theme);
                     setActive(theme);
-                    panel.classList.remove('open');
+                    panel.close();
                 });
             });
 

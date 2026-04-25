@@ -1791,7 +1791,7 @@ html, body {
     flex-shrink: 0;
     transition: transform 0.18s ease;
 }
-.theme-picker:has(.theme-panel.open) .theme-toggle-btn .theme-chevron {
+.theme-picker:has(.theme-panel[open]) .theme-toggle-btn .theme-chevron {
     transform: rotate(180deg);
 }
 
@@ -1806,16 +1806,20 @@ html, body {
     min-width: 218px;
     box-shadow: 0 20px 56px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.05) inset;
     z-index: 300;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-6px) scale(0.97);
     transform-origin: top right;
     transition: opacity 0.16s ease, transform 0.16s ease;
 }
-.theme-panel.open {
+.theme-panel[open] {
+    display: block;
     opacity: 1;
     pointer-events: all;
     transform: translateY(0) scale(1);
+}
+@starting-style {
+    .theme-panel[open] {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.97);
+    }
 }
 
 .theme-panel-label {
@@ -1898,8 +1902,8 @@ html[data-theme="vs"] .tag-chip {
     color: #374151;
 }
 html[data-theme="vs"] .badge-live {
-    background: rgba(22,163,74,0.1);
-    color: #16a34a;
+    background: rgba(74,222,128,0.15);
+    color: #052e16;
     border-color: rgba(22,163,74,0.25);
 }
 html[data-theme="vs"] .filter-tab {

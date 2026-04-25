@@ -306,9 +306,9 @@
         }
 
         .format-chip.server {
-            background: rgba(234,179,8,0.12);
-            color: #fbbf24;
-            border-color: rgba(234,179,8,0.25);
+            background: rgba(234,179,8,0.15);
+            color: #92400e;
+            border-color: rgba(234,179,8,0.35);
         }
 
         .section-title {
@@ -533,7 +533,7 @@
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/>
                     <line x1="12" y1="8" x2="12.01" y2="8"/>
                 </svg>
-                <span style="color:#fbbf24;">Yellow</span> = requires server
+                <span style="color:#78350f;">Yellow</span> = requires server
             </span>
         </div>
         <div class="formats-grid">
@@ -1099,6 +1099,22 @@ function jsonToXml(obj, tag) {
     return `<${clean(tag)}>${escHtml(String(obj ?? ''))}</${clean(tag)}>`;
 }
 
+function processXmlChild(obj, child) {
+    if (child.nodeType === Node.TEXT_NODE) {
+        const t = child.textContent.trim();
+        if (t) obj['#text'] = t;
+        return;
+    }
+    if (child.nodeType !== Node.ELEMENT_NODE) return;
+    const val = xmlToJson(child);
+    if (obj[child.nodeName] === undefined) {
+        obj[child.nodeName] = val;
+    } else {
+        if (!Array.isArray(obj[child.nodeName])) obj[child.nodeName] = [obj[child.nodeName]];
+        obj[child.nodeName].push(val);
+    }
+}
+
 function xmlToJson(node) {
     if (node.nodeType === Node.TEXT_NODE) {
         const t = node.textContent.trim();
@@ -1107,29 +1123,48 @@ function xmlToJson(node) {
     if (node.nodeType !== Node.ELEMENT_NODE) return null;
 
     const obj = {};
-    // Attributes
     if (node.attributes.length) {
         obj['@attributes'] = {};
         for (const attr of node.attributes) obj['@attributes'][attr.name] = attr.value;
     }
-
-    for (const child of node.childNodes) {
-        if (child.nodeType === Node.TEXT_NODE) {
-            const t = child.textContent.trim();
-            if (t) obj['#text'] = t;
-            continue;
-        }
-        if (child.nodeType === Node.ELEMENT_NODE) {
-            const val = xmlToJson(child);
-            if (obj[child.nodeName] === undefined) {
-                obj[child.nodeName] = val;
-            } else {
-                if (!Array.isArray(obj[child.nodeName])) obj[child.nodeName] = [obj[child.nodeName]];
-                obj[child.nodeName].push(val);
-            }
-        }
-    }
+    for (const child of node.childNodes) processXmlChild(obj, child);
     return obj;
+}
+
+function _walkInlineTag(tag, inner, node) {
+    switch (tag) {
+        case 'strong': case 'b': return `**${inner}**`;
+        case 'em': case 'i': return `*${inner}*`;
+        case 'code': return `\`${inner}\``;
+        case 'a': return `[${inner}](${node.getAttribute('href') || ''})`;
+        case 'img': return `![${node.getAttribute('alt') || ''}](${node.getAttribute('src') || ''})`;
+        default: return null;
+    }
+}
+
+function _walkBlockTag(tag, inner, node) {
+    const h = { h1:'# ',h2:'## ',h3:'### ',h4:'#### ',h5:'##### ',h6:'###### ' };
+    if (h[tag]) return `${h[tag]}${inner}\n\n`;
+    switch (tag) {
+        case 'p':  return `${inner}\n\n`;
+        case 'br': return '\n';
+        case 'pre': return `\`\`\`\n${inner}\n\`\`\`\n\n`;
+        case 'ul': return Array.from(node.children).map(li => `- ${walkHtmlNode(li)}\n`).join('') + '\n';
+        case 'ol': return Array.from(node.children).map((li, i) => `${i+1}. ${walkHtmlNode(li)}\n`).join('') + '\n';
+        case 'li': return inner.trim();
+        case 'blockquote': return inner.split('\n').map(l => `> ${l}`).join('\n') + '\n\n';
+        case 'hr': return '---\n\n';
+        case 'table': return htmlTableToMarkdown(node, walkHtmlNode);
+        default: return inner;
+    }
+}
+
+function walkHtmlNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    const tag = node.tagName.toLowerCase();
+    const inner = Array.from(node.childNodes).map(walkHtmlNode).join('');
+    return _walkInlineTag(tag, inner, node) ?? _walkBlockTag(tag, inner, node);
 }
 
 function htmlTableToMarkdown(node, walkFn) {
@@ -1143,37 +1178,7 @@ function htmlTableToMarkdown(node, walkFn) {
 
 function htmlToMarkdown(html) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const tmp = doc.body;
-    function walk(node) {
-        if (node.nodeType === Node.TEXT_NODE) return node.textContent;
-        if (node.nodeType !== Node.ELEMENT_NODE) return '';
-        const tag = node.tagName.toLowerCase();
-        const inner = Array.from(node.childNodes).map(walk).join('');
-        switch (tag) {
-            case 'h1': return `# ${inner}\n\n`;
-            case 'h2': return `## ${inner}\n\n`;
-            case 'h3': return `### ${inner}\n\n`;
-            case 'h4': return `#### ${inner}\n\n`;
-            case 'h5': return `##### ${inner}\n\n`;
-            case 'h6': return `###### ${inner}\n\n`;
-            case 'p':  return `${inner}\n\n`;
-            case 'br': return '\n';
-            case 'strong': case 'b': return `**${inner}**`;
-            case 'em': case 'i': return `*${inner}*`;
-            case 'code': return `\`${inner}\``;
-            case 'pre': return `\`\`\`\n${inner}\n\`\`\`\n\n`;
-            case 'a': return `[${inner}](${node.getAttribute('href') || ''})`;
-            case 'img': return `![${node.getAttribute('alt') || ''}](${node.getAttribute('src') || ''})`;
-            case 'ul': return Array.from(node.children).map(li => `- ${walk(li)}\n`).join('') + '\n';
-            case 'ol': return Array.from(node.children).map((li, i) => `${i+1}. ${walk(li)}\n`).join('') + '\n';
-            case 'li': return inner.trim();
-            case 'blockquote': return inner.split('\n').map(l => `> ${l}`).join('\n') + '\n\n';
-            case 'hr': return '---\n\n';
-            case 'table': return htmlTableToMarkdown(node, walk);
-            default: return inner;
-        }
-    }
-    return walk(tmp).trim();
+    return walkHtmlNode(doc.body).trim();
 }
 
 function escHtml(str) {

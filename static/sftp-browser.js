@@ -37,7 +37,7 @@ function decryptData(cipher, pwd)  {
 // Shared profile blob (same endpoint as SSH manager)
 // ──────────────────────────────────────────
 function _sessionHeaders(extra = {}) {
-    const m    = document.cookie.match(/(?:^|;\s*)ds_csrf=([^;]+)/);
+    const m    = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
     const csrf = m ? decodeURIComponent(m[1]) : '';
     return csrf ? { 'X-CSRF-Token': csrf, ...extra } : { ...extra };
 }
@@ -268,7 +268,7 @@ async function loadDirectory(path) {
 
         const r = await fetch('/api/sftp/list', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _sessionHeaders({ 'Content-Type': 'application/json' }),
             body:    JSON.stringify(payload)
         });
 
