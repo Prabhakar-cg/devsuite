@@ -72,6 +72,119 @@
             max-width: 520px;
             line-height: 1.7;
         }
+        /* ── Quick Access section ── */
+        .quick-access-section {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1.75rem 0 2rem;
+        }
+        .qa-stats-strip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .qa-stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+        }
+        .qa-stat svg { width: 11px; height: 11px; flex-shrink: 0; }
+        .qa-divider { color: var(--border-bright); font-size: 0.8rem; user-select: none; }
+        .qa-spacer { flex: 1; min-width: 0.5rem; }
+        .qa-jump-chips { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+        .qa-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 3px 10px;
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: border-color 0.15s, color 0.15s, background 0.15s;
+        }
+        .qa-chip:hover {
+            border-color: var(--border-accent);
+            color: var(--text-secondary);
+            background: var(--electric-dim);
+        }
+        .qa-chip span {
+            background: rgba(255,255,255,0.06);
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-size: 0.62rem;
+        }
+        .qa-label { margin-bottom: 0.85rem; }
+        .qa-rail {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.55rem;
+        }
+        .qa-card {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 0.75rem 1rem;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color 0.18s, background 0.18s, transform 0.18s;
+            box-shadow: var(--glow-card);
+        }
+        .qa-card:hover {
+            border-color: var(--border-accent);
+            background: var(--surface-3);
+            transform: translateY(-1px);
+        }
+        .qa-icon {
+            width: 34px; height: 34px; min-width: 34px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .qa-icon svg { width: 16px; height: 16px; color: #fff; }
+        .qa-info { flex: 1; min-width: 0; }
+        .qa-name {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .qa-cat {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            font-family: var(--font-mono);
+        }
+        .qa-arrow {
+            flex-shrink: 0;
+            color: var(--text-muted);
+            transition: color 0.15s, transform 0.15s;
+        }
+        .qa-card:hover .qa-arrow { color: var(--electric); transform: translateX(2px); }
+        @media (max-width: 900px) { .qa-rail { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 600px) {
+            .qa-rail { grid-template-columns: repeat(2, 1fr); }
+            .qa-spacer { display: none; }
+        }
+
         /* Visually hide radio inputs — labels act as the visible controls */
         .filter-radio {
             position: absolute;
@@ -164,63 +277,94 @@
     </div>
 
     <!-- =====================================================
-         FEATURED — AWS split layout, heading left cards right
+         QUICK ACCESS — stats strip + most-used rail
          ===================================================== -->
-    <section class="featured-section" id="featured">
+    <section class="quick-access-section" id="quick-access">
         <div class="container">
-            <div class="split-layout">
 
-                <!-- Left heading -->
-                <div class="split-head">
-                    <span class="eyebrow">Featured</span>
-                    <h2>Get started<br>by category.</h2>
-                    <p>Handpicked from the DevSuite toolkit — the tools developers reach for every day.</p>
-                    <a href="#tools" class="text-link">See all 13 tools →</a>
+            <!-- Stats + category jump chips -->
+            <div class="qa-stats-strip">
+                <span class="qa-stat">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                    13 tools
+                </span>
+                <span class="qa-divider">·</span>
+                <span class="qa-stat">100% offline</span>
+                <span class="qa-divider">·</span>
+                <span class="qa-stat">zero cloud</span>
+                <div class="qa-spacer"></div>
+                <div class="qa-jump-chips">
+                    <button class="qa-chip" data-jump="dev">Dev <span>5</span></button>
+                    <button class="qa-chip" data-jump="data">Data <span>4</span></button>
+                    <button class="qa-chip" data-jump="security">Security <span>3</span></button>
+                    <button class="qa-chip" data-jump="network">Network <span>2</span></button>
+                    <button class="qa-chip" data-jump="time">Schedule <span>1</span></button>
                 </div>
+            </div>
 
-                <!-- Right cards -->
-                <div class="featured-grid">
+            <!-- Most Used label -->
+            <div class="qa-label">
+                <span class="eyebrow">Popular</span>
+            </div>
 
-                    <!-- Hero featured card — aurora border, dark bg -->
-                    <a class="feat-card feat-card--hero" href="/vault">
-                        <div class="feat-card-top">
-                            <span class="feat-badge feat-badge--live">Live</span>
-                        </div>
-                        <div class="feat-card-content">
-                            <div class="feat-icon-sm" style="background:linear-gradient(135deg,#d97706,#f59e0b);">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            </div>
-                            <div class="feat-title">Secret Vault</div>
-                            <div class="feat-desc">KeePass-style encrypted secret manager. Store passwords, tokens, SSH keys, and API credentials — AES-256-GCM encrypted, fully offline, zero cloud.</div>
-                        </div>
-                        <div class="feat-cta">Open Vault <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
-                    </a>
+            <!-- Compact tool rail -->
+            <div class="qa-rail">
 
-                    <!-- Secondary featured card -->
-                    <a class="feat-card" href="/ssh">
-                        <div class="feat-card-top">
-                            <span class="feat-badge feat-badge--live">Live</span>
-                        </div>
-                        <div class="feat-card-content">
-                            <div class="feat-title">Secure Terminal &amp; SFTP</div>
-                            <div class="feat-desc">Multi-tab SSH client with built-in SFTP browser. Encrypted profiles, key &amp; password auth, WSL support — no extra apps needed.</div>
-                        </div>
-                        <div class="feat-cta">Open Terminal <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
-                    </a>
+                <a class="qa-card" href="/diff">
+                    <div class="qa-icon" style="background:linear-gradient(135deg,#312e81,#6366f1);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </div>
+                    <div class="qa-info">
+                        <div class="qa-name">Text Diff</div>
+                        <div class="qa-cat">Dev</div>
+                    </div>
+                    <svg class="qa-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
 
-                    <!-- Secondary featured card -->
-                    <a class="feat-card" href="/api-tester">
-                        <div class="feat-card-top">
-                            <span class="feat-badge feat-badge--live">Live</span>
-                        </div>
-                        <div class="feat-card-content">
-                            <div class="feat-title">Local API Tester</div>
-                            <div class="feat-desc">Local-first REST client. Test any endpoint from your machine with offline history, collections, and zero data sent to external servers.</div>
-                        </div>
-                        <div class="feat-cta">Open Tester <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
-                    </a>
+                <a class="qa-card" href="/json">
+                    <div class="qa-icon" style="background:linear-gradient(135deg,#064e3b,#059669);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 00-2 2v5a2 2 0 01-2 2 2 2 0 012 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 002-2v-5c0-1.1.9-2 2-2a2 2 0 01-2-2V5a2 2 0 00-2-2h-1"/></svg>
+                    </div>
+                    <div class="qa-info">
+                        <div class="qa-name">JSON Linter</div>
+                        <div class="qa-cat">Data</div>
+                    </div>
+                    <svg class="qa-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
 
-                </div>
+                <a class="qa-card" href="/regex">
+                    <div class="qa-icon" style="background:linear-gradient(135deg,#9f1239,#e11d48);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    </div>
+                    <div class="qa-info">
+                        <div class="qa-name">Regex Tester</div>
+                        <div class="qa-cat">Data</div>
+                    </div>
+                    <svg class="qa-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+
+                <a class="qa-card" href="/api-tester">
+                    <div class="qa-icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    </div>
+                    <div class="qa-info">
+                        <div class="qa-name">API Tester</div>
+                        <div class="qa-cat">Dev</div>
+                    </div>
+                    <svg class="qa-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+
+                <a class="qa-card" href="/vault">
+                    <div class="qa-icon" style="background:linear-gradient(135deg,#78350f,#b45309);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <div class="qa-info">
+                        <div class="qa-name">Secret Vault</div>
+                        <div class="qa-cat">Security</div>
+                    </div>
+                    <svg class="qa-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+
             </div>
         </div>
     </section>
@@ -230,12 +374,6 @@
          ===================================================== -->
     <section class="tools-section" id="tools">
         <div class="container">
-
-            <div class="tools-header">
-                <span class="eyebrow">Tools</span>
-                <h2>All Developer Tools</h2>
-                <p>Every tool in DevSuite. Filter by category and jump straight in.</p>
-            </div>
 
             <div class="filter-tabs" role="radiogroup" aria-label="Filter tools by category">
                 <input type="radio" name="tool-filter" id="filter-all"      class="filter-radio" value="all"      checked tabindex="0">
@@ -360,9 +498,9 @@
 
                 <!-- Crypto Suite -->
                 <a class="tool-card active-tool" href="/crypto" data-category="security"
-                   style="--card-glow:rgba(124,58,237,0.18);--card-border-hover:rgba(168,85,247,0.5);">
+                   style="--card-glow:rgba(180,83,9,0.18);--card-border-hover:rgba(245,158,11,0.5);">
                     <div class="card-header">
-                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#7c3aed,#a855f7);">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#b45309,#f59e0b);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </div>
                         <span class="badge badge-live">Live</span>
@@ -381,9 +519,9 @@
 
                 <!-- Link & QR Studio -->
                 <a class="tool-card active-tool" href="/url-shortener" data-category="network"
-                   style="--card-glow:rgba(56,189,248,0.18);--card-border-hover:rgba(56,189,248,0.5);">
+                   style="--card-glow:rgba(91,33,182,0.18);--card-border-hover:rgba(139,92,246,0.5);">
                     <div class="card-header">
-                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0284c7,#38bdf8);">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#5b21b6,#8b5cf6);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                         </div>
                         <span class="badge badge-live">Live</span>
@@ -404,7 +542,7 @@
                 <a class="tool-card active-tool" href="/api-tester" data-category="dev"
                    style="--card-glow:rgba(139,92,246,0.18);--card-border-hover:rgba(168,85,247,0.5);">
                     <div class="card-header">
-                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#7c3aed,#a855f7);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                         </div>
                         <span class="badge badge-live">Live</span>
@@ -423,9 +561,9 @@
 
                 <!-- SSH / SFTP -->
                 <a class="tool-card active-tool" href="/ssh" data-category="network"
-                   style="--card-glow:rgba(14,165,233,0.18);--card-border-hover:rgba(14,165,233,0.5);">
+                   style="--card-glow:rgba(12,74,110,0.18);--card-border-hover:rgba(3,105,161,0.5);">
                     <div class="card-header">
-                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#06b6d4,#0ea5e9);">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0c4a6e,#0369a1);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
                         </div>
                         <span class="badge badge-live">Live</span>
@@ -444,9 +582,9 @@
 
                 <!-- Cron Visualizer -->
                 <a class="tool-card active-tool" href="/cron" data-category="time"
-                   style="--card-glow:rgba(20,184,166,0.18);--card-border-hover:rgba(20,184,166,0.5);">
+                   style="--card-glow:rgba(146,64,14,0.18);--card-border-hover:rgba(217,119,6,0.5);">
                     <div class="card-header">
-                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0d9488,#14b8a6);">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#92400e,#d97706);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         </div>
                         <span class="badge badge-live">Live</span>
@@ -465,9 +603,9 @@
 
                 <!-- Secret Vault -->
                 <a class="tool-card active-tool" href="/vault" data-category="security"
-                   style="--card-glow:rgba(245,158,11,0.18);--card-border-hover:rgba(251,191,36,0.5);">
+                   style="--card-glow:rgba(120,53,15,0.18);--card-border-hover:rgba(180,83,9,0.5);">
                     <div class="card-header">
-                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#d97706,#f59e0b);">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#78350f,#b45309);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                         </div>
                         <span class="badge badge-live">Live</span>
@@ -486,9 +624,9 @@
 
                 <!-- DevDB Manager -->
                 <a class="tool-card active-tool" href="/db-manager" data-category="security"
-                   style="--card-glow:rgba(100,119,255,0.18);--card-border-hover:rgba(100,119,255,0.5);">
+                   style="--card-glow:rgba(49,46,129,0.18);--card-border-hover:rgba(79,70,229,0.5);">
                     <div class="card-header">
-                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#4f46e5,#6477ff);">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#312e81,#4f46e5);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
                         </div>
                         <span class="badge badge-live">Live</span>
@@ -507,9 +645,9 @@
 
                 <!-- File Format Converter -->
                 <a class="tool-card active-tool" href="/file-converter" data-category="data"
-                   style="--card-glow:rgba(109,40,217,0.14);--card-border-hover:rgba(167,139,250,0.45);">
+                   style="--card-glow:rgba(15,118,110,0.18);--card-border-hover:rgba(20,184,166,0.5);">
                     <div class="card-header">
-                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#6d28d9,#a78bfa);">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0f766e,#14b8a6);">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                 <polyline points="14 2 14 8 20 8"/>
@@ -679,6 +817,25 @@
         globalThis.addEventListener('scroll', () => {
             header.classList.toggle('scrolled', globalThis.scrollY > 20);
         }, { passive: true });
+    </script>
+
+    <!-- =====================================================
+         QUICK ACCESS — category jump chips
+         ===================================================== -->
+    <script>
+        (function () {
+            document.querySelectorAll('.qa-chip[data-jump]').forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    var cat = chip.dataset.jump;
+                    var radio = document.querySelector('input.filter-radio[value="' + cat + '"]');
+                    if (radio) {
+                        radio.checked = true;
+                        radio.dispatchEvent(new Event('change'));
+                    }
+                    document.getElementById('tools').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        })();
     </script>
 
     <!-- =====================================================

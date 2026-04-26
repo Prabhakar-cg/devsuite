@@ -1646,13 +1646,13 @@ html, body {
 }
 .card-icon-wrap svg { width: 17px; height: 17px; color: #fff; }
 
-.card-icon-indigo { background: linear-gradient(135deg, #4338ca, #6366f1); }
-.card-icon-violet { background: linear-gradient(135deg, #6d28d9, #8b5cf6); }
-.card-icon-emerald{ background: linear-gradient(135deg, #065f46, #10b981); }
-.card-icon-amber  { background: linear-gradient(135deg, #92400e, #f59e0b); }
-.card-icon-rose   { background: linear-gradient(135deg, #9f1239, #f43f5e); }
+.card-icon-indigo { background: linear-gradient(135deg, #6366f1, #3b82f6); }
+.card-icon-violet { background: linear-gradient(135deg, #5b21b6, #7c3aed); }
+.card-icon-emerald{ background: linear-gradient(135deg, #0c4a6e, #0ea5e9); }
+.card-icon-amber  { background: linear-gradient(135deg, #065f46, #059669); }
+.card-icon-rose   { background: linear-gradient(135deg, #5b21b6, #7c3aed); }
 .card-icon-sky    { background: linear-gradient(135deg, #075985, #38bdf8); }
-.card-icon-teal   { background: linear-gradient(135deg, #134e4a, #14b8a6); }
+.card-icon-teal   { background: linear-gradient(135deg, #0f766e, #14b8a6); }
 .card-icon-blue   { background: linear-gradient(135deg, #1e40af, #3b82f6); }
 
 /* Badges */

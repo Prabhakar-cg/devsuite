@@ -39,14 +39,22 @@
     --transition:      all 0.2s cubic-bezier(0.4,0,0.2,1);
     --font-sans:       'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono:       'JetBrains Mono', monospace;
+    --font-body:       var(--font-sans);
 
     /* Type accent colours */
-    --clr-password: #6366f1;
-    --clr-token:    #0ea5e9;
+    --clr-password: #a855f7;
+    --clr-token:    #6366f1;
     --clr-ssh:      #10b981;
-    --clr-api:      #a855f7;
+    --clr-api:      #0ea5e9;
     --clr-env:      #f97316;
     --clr-note:     #f59e0b;
+
+    /* Vault-specific DS tokens */
+    --vault-accent:   #b45309;
+    --vault-hover:    #f59e0b;
+    --vault-subtle:   rgba(255,159,10,0.08);
+    --vault-border:   rgba(255,159,10,0.2);
+    --vault-gradient: linear-gradient(135deg, #78350f, #92400e);
 }
 
 html, body {
