@@ -879,6 +879,7 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
 
 .pulse-dot {
     width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor;
     animation: pulse-dot-anim 2s ease-in-out infinite;
 }
 @keyframes pulse-dot-anim {

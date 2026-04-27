@@ -389,7 +389,7 @@ DevSuite uses **two distinct visual systems** — choose based on context:
 | Secret Vault | `linear-gradient(135deg,#78350f,#b45309)` |
 | DevDB Manager | `linear-gradient(135deg,#312e81,#4f46e5)` |
 | API Tester | `linear-gradient(135deg,#7c3aed,#a855f7)` |
-| SSH Terminal | `linear-gradient(135deg,#0c4a6e,0369a1)` |
+| SSH Terminal | `linear-gradient(135deg,#0c4a6e,#0369a1)` |
 | URL & QR Studio | `linear-gradient(135deg,#5b21b6,#8b5cf6)` |
 | Cron Visualizer | `linear-gradient(135deg,#92400e,#d97706)` |
 

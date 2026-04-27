@@ -124,7 +124,7 @@ function resolveMonacoTheme(ts) {
 }
 
 globalThis.addEventListener('devsuite-theme-changed', (e) => {
-    if (reqEditor) monaco.editor.setTheme(resolveMonacoTheme(e.detail.theme));
+    if (monaco) monaco.editor.setTheme(resolveMonacoTheme(e.detail.theme));
 });
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
