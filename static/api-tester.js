@@ -95,9 +95,9 @@ require(['vs/editor/editor.main'], function () {
     preReqEditor = monaco.editor.create(document.getElementById('pre-request-editor'), {
         value: [
             '// Pre-request script — runs before the request is sent',
-            '// bru.setVar("authToken", "my-token");',
-            '// bru.setEnvVar("baseUrl", "https://api.example.com");',
-            '// console.log("Active env var:", bru.getEnvVar("baseUrl"));',
+            '// ds.setVar("authToken", "my-token");',
+            '// ds.setEnvVar("baseUrl", "https://api.example.com");',
+            '// console.log("Active env var:", ds.getEnvVar("baseUrl"));',
         ].join('\n'),
         language: 'javascript', theme: monacoTheme, automaticLayout: true, minimap: { enabled: false }
     });
@@ -106,11 +106,11 @@ require(['vs/editor/editor.main'], function () {
         value: [
             '// Tests — run after the response is received',
             'test("Status is 200", () => {',
-            '\texpect(bru.response.status).to.equal(200);',
+            '\texpect(ds.response.status).to.equal(200);',
             '});',
             '',
-            'test("Response body has data", () => {',
-            '\texpect(bru.response.body).to.have.property("data");',
+            'test("Response has data property", () => {',
+            '\texpect(ds.response.body).to.have.property("data");',
             '});',
         ].join('\n'),
         language: 'javascript', theme: monacoTheme, automaticLayout: true, minimap: { enabled: false }
@@ -222,6 +222,18 @@ function setupDynamicList(containerId, addBtnId) {
 const paramsListObj   = setupDynamicList('params-list',    'btn-add-param');
 const headersListObj  = setupDynamicList('headers-list',   'btn-add-header');
 const formDataListObj = setupDynamicList('form-data-list', 'btn-add-form-data');
+
+// ─── Method Color ─────────────────────────────────────────────────────────────
+const METHOD_COLORS = {
+    GET: '#10b981', POST: '#f59e0b', PUT: '#3b82f6',
+    DELETE: '#ef4444', PATCH: '#8b5cf6', HEAD: '#6b7280', OPTIONS: '#6b7280',
+};
+
+function updateMethodColor() {
+    els.method.style.color = METHOD_COLORS[els.method.value] || 'var(--text-primary)';
+}
+
+els.method.addEventListener('change', updateMethodColor);
 
 // ─── Auth UI ──────────────────────────────────────────────────────────────────
 els.authType.addEventListener('change', (e) => {
@@ -419,7 +431,7 @@ function makeCapturedConsole(logs) {
     };
 }
 
-function makeBru(extra = {}) {
+function makeDs(extra = {}) {
     return {
         setVar:    (k, v) => { runtimeVars[k] = v; },
         getVar:    (k)    => runtimeVars[k] ?? getEnvVar(k),
@@ -437,15 +449,15 @@ async function runPreRequestScript(code) {
     if (!code.trim()) return logs;
     try {
         // eslint-disable-next-line no-new-func
-        const fn = new Function('bru', 'console', `return (async()=>{ ${code} })()`);
-        await fn(makeBru(), makeCapturedConsole(logs));
+        const fn = new Function('ds', 'console', `return (async()=>{ ${code} })()`);
+        await fn(makeDs(), makeCapturedConsole(logs));
     } catch (e) {
         logs.push({ type: 'error', text: `Pre-request error: ${e.message}` });
     }
     return logs;
 }
 
-async function runTestScript(code, bruResponse) {
+async function runTestScript(code, dsResponse) {
     const logs = [];
     const results = [];
     if (!code.trim()) return { logs, results };
@@ -483,8 +495,8 @@ async function runTestScript(code, bruResponse) {
 
     try {
         // eslint-disable-next-line no-new-func
-        const fn = new Function('bru', 'test', 'expect', 'console', `return (async()=>{ ${code} })()`);
-        await fn(makeBru({ response: bruResponse }), test, expect, makeCapturedConsole(logs));
+        const fn = new Function('ds', 'test', 'expect', 'console', `return (async()=>{ ${code} })()`);
+        await fn(makeDs({ response: dsResponse }), test, expect, makeCapturedConsole(logs));
     } catch (e) {
         logs.push({ type: 'error', text: `Test script error: ${e.message}` });
     }
@@ -660,12 +672,12 @@ els.btnSend.addEventListener('click', async () => {
 
         // 5. Run tests
         const testCode = testsEditor ? testsEditor.getValue() : '';
-        const bruResp  = {
+        const dsResp   = {
             status: response.status, statusText: response.statusText,
             headers: response.headers, body: response.body,
             bodyText: response.bodyText, timeMs: response.timeMs,
         };
-        const testRun = await runTestScript(testCode, bruResp);
+        const testRun = await runTestScript(testCode, dsResp);
         testLogs      = testRun.logs;
         testResults   = testRun.results;
 
@@ -838,6 +850,7 @@ document.getElementById('refresh-collections-btn').addEventListener('click', loa
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function initApp() {
+    updateMethodColor();
     const guard = await AuthGuard.init('API Tester', '📡');
     if (guard !== null) {
         loadCollections();

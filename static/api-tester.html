@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link rel="stylesheet" href="/static/linter.css?v=2">
-    <link rel="stylesheet" href="/static/api-tester.css?v=4">
+    <link rel="stylesheet" href="/static/api-tester.css?v=5">
     <script src="/static/crypto-js.min.js"></script>
     <script src="/static/libs/require.min.js"></script>
     <script src="/static/theme.js?v=2"></script>
@@ -96,20 +96,33 @@
                         <button class="tab-btn" data-target="tab-headers" role="tab" aria-selected="false">Headers</button>
                         <button class="tab-btn" data-target="tab-auth" role="tab" aria-selected="false">Auth</button>
                         <button class="tab-btn" data-target="tab-body" role="tab" aria-selected="false">Body</button>
-                        <button class="tab-btn" data-target="tab-pre-request" role="tab" aria-selected="false">Pre-Request</button>
-                        <button class="tab-btn" data-target="tab-tests" role="tab" aria-selected="false">Tests</button>
+                        <div class="tab-divider" aria-hidden="true"></div>
+                        <button class="tab-btn tab-btn-script" data-target="tab-pre-request" role="tab" aria-selected="false">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                            Pre-Request
+                        </button>
+                        <button class="tab-btn tab-btn-script" data-target="tab-tests" role="tab" aria-selected="false">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+                            Tests
+                        </button>
                     </div>
 
                     <!-- Params -->
                     <div id="tab-params" class="tab-content active req-tab-content" role="tabpanel">
+                        <div class="kv-table-head" aria-hidden="true">
+                            <span></span><span>Key</span><span>Value</span><span></span>
+                        </div>
                         <div id="params-list"></div>
-                        <button class="btn-small" id="btn-add-param" style="margin-top:0.5rem;">+ Add Param</button>
+                        <button class="btn-small btn-add-row" id="btn-add-param">+ Add Param</button>
                     </div>
 
                     <!-- Headers -->
                     <div id="tab-headers" class="tab-content req-tab-content" role="tabpanel">
+                        <div class="kv-table-head" aria-hidden="true">
+                            <span></span><span>Key</span><span>Value</span><span></span>
+                        </div>
                         <div id="headers-list"></div>
-                        <button class="btn-small" id="btn-add-header" style="margin-top:0.5rem;">+ Add Header</button>
+                        <button class="btn-small btn-add-row" id="btn-add-header">+ Add Header</button>
                     </div>
 
                     <!-- Auth -->
@@ -141,12 +154,16 @@
 
                     <!-- Body -->
                     <div id="tab-body" class="tab-content req-tab-content" role="tabpanel" style="display:flex; flex-direction:column; padding:0;">
-                        <fieldset class="body-type-bar">
+                        <fieldset class="body-type-pills">
                             <legend class="sr-only">Body type</legend>
-                            <label><input type="radio" name="bodyType" value="none" checked> None</label>
-                            <label><input type="radio" name="bodyType" value="json"> JSON</label>
-                            <label><input type="radio" name="bodyType" value="form-data"> Form Data</label>
-                            <label><input type="radio" name="bodyType" value="text"> Text</label>
+                            <input type="radio" name="bodyType" id="bt-none" value="none" checked>
+                            <label for="bt-none">None</label>
+                            <input type="radio" name="bodyType" id="bt-json" value="json">
+                            <label for="bt-json">JSON</label>
+                            <input type="radio" name="bodyType" id="bt-form" value="form-data">
+                            <label for="bt-form">Form Data</label>
+                            <input type="radio" name="bodyType" id="bt-text" value="text">
+                            <label for="bt-text">Text</label>
                         </fieldset>
                         <div id="req-body-editor-wrap" class="editor-container" style="display:none; flex:1;">
                             <div id="req-body-editor" style="width:100%; height:100%;"></div>
@@ -154,17 +171,28 @@
                         <div id="req-text-body-wrap" style="display:none; flex:1; padding:0.5rem;">
                             <textarea id="req-text-body" class="text-body-area" placeholder="Raw text body"></textarea>
                         </div>
-                        <div id="req-form-data-wrap" style="display:none; padding:1rem; flex:1; overflow-y:auto;">
-                            <div id="form-data-list"></div>
-                            <button class="btn-small" id="btn-add-form-data" style="margin-top:0.5rem;">+ Add Field</button>
+                        <div id="req-form-data-wrap" style="display:none; flex:1; overflow-y:auto;">
+                            <div class="kv-table-head" aria-hidden="true" style="margin:0.75rem 0.875rem 0;">
+                                <span></span><span>Field</span><span>Value</span><span></span>
+                            </div>
+                            <div id="form-data-list" style="padding:0 0.875rem;"></div>
+                            <div style="padding:0.5rem 0.875rem;">
+                                <button class="btn-small btn-add-row" id="btn-add-form-data">+ Add Field</button>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Pre-Request Script -->
                     <div id="tab-pre-request" class="tab-content req-tab-content" role="tabpanel" style="display:flex; flex-direction:column; padding:0;">
-                        <div class="script-hint">
-                            Runs before the request.
-                            Use <code>bru.setVar('key', val)</code> · <code>bru.getVar('key')</code> · <code>bru.setEnvVar('key', val)</code> · <code>console.log()</code>
+                        <div class="script-reference">
+                            <span class="ref-label">Runs before request &nbsp;·&nbsp; Available:</span>
+                            <div class="ref-chips">
+                                <code class="ref-chip">ds.setVar(key, val)</code>
+                                <code class="ref-chip">ds.getVar(key)</code>
+                                <code class="ref-chip">ds.setEnvVar(key, val)</code>
+                                <code class="ref-chip">ds.getEnvVar(key)</code>
+                                <code class="ref-chip">console.log()</code>
+                            </div>
                         </div>
                         <div id="pre-request-editor-wrap" class="editor-container" style="flex:1;">
                             <div id="pre-request-editor" style="width:100%; height:100%;"></div>
@@ -173,9 +201,18 @@
 
                     <!-- Tests -->
                     <div id="tab-tests" class="tab-content req-tab-content" role="tabpanel" style="display:flex; flex-direction:column; padding:0;">
-                        <div class="script-hint">
-                            Runs after the response.
-                            Use <code>test('name', () => { expect(bru.response.status).to.equal(200); })</code>
+                        <div class="script-reference">
+                            <span class="ref-label">Runs after response &nbsp;·&nbsp; Available:</span>
+                            <div class="ref-chips">
+                                <code class="ref-chip">test('name', fn)</code>
+                                <code class="ref-chip">expect(val).to.equal(n)</code>
+                                <code class="ref-chip">expect(val).to.include('str')</code>
+                                <code class="ref-chip">expect(val).to.have.property('key')</code>
+                                <code class="ref-chip">expect(val).to.be.ok</code>
+                                <code class="ref-chip">ds.response.status</code>
+                                <code class="ref-chip">ds.response.body</code>
+                                <code class="ref-chip">ds.response.headers</code>
+                            </div>
                         </div>
                         <div id="tests-editor-wrap" class="editor-container" style="flex:1;">
                             <div id="tests-editor" style="width:100%; height:100%;"></div>
@@ -265,5 +302,16 @@
     <div id="toast-container"></div>
 
     <script src="/static/api-tester.js?v=4"></script>
+    <script>
+        /* Sync data-method on .request-bar so CSS can colour the method select */
+        (function () {
+            const bar = document.querySelector('.request-bar');
+            const sel = document.getElementById('req-method');
+            if (!bar || !sel) return;
+            const sync = () => bar.setAttribute('data-method', sel.value);
+            sel.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
 </body>
 </html>
