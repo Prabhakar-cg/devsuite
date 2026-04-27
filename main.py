@@ -220,18 +220,27 @@ _FAVICON_TAG = (
 )
 
 
+def _asset_fingerprint(static_path: str) -> str:
+    """Return an 8-char MD5 of the file's content, falling back to APP_VERSION."""
+    file_path = os.path.join(static_dir, static_path.removeprefix('/static/'))
+    try:
+        with open(file_path, 'rb') as f:
+            return hashlib.md5(f.read()).hexdigest()[:8]
+    except OSError:
+        return APP_VERSION
+
+
 def _serve_html(filename: str) -> str:
-    """Read an HTML file, inject the favicon and cache-busting version into all local static asset URLs."""
+    """Read an HTML file, inject the favicon and per-file content-hash versions into static asset URLs."""
     html_path = os.path.join(static_dir, filename)
     try:
         with open(html_path, "r", encoding="utf-8") as f:
             html = f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"{filename} not found.") from None  # NOSONAR — helper raises documented at call-site routes
-    # Inject favicon into <head> if not already present
     if 'favicon' not in html:
         html = html.replace('<head>', f'<head>\n    {_FAVICON_TAG}', 1)
-    return _STATIC_ASSET_RE.sub(rf'\1?v={APP_VERSION}', html)
+    return _STATIC_ASSET_RE.sub(lambda m: f'{m.group(1)}?v={_asset_fingerprint(m.group(1))}', html)
 
 
 @app.get("/", response_class=HTMLResponse, summary="Serve DevSuite homepage")

@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link rel="stylesheet" href="/static/linter.css?v=2">
-    <link rel="stylesheet" href="/static/api-tester.css?v=6">
+    <link rel="stylesheet" href="/static/api-tester.css?v=9">
     <script src="/static/crypto-js.min.js"></script>
     <script src="/static/libs/require.min.js"></script>
     <script src="/static/theme.js?v=2"></script>
     <script src="/static/auth-guard.js?v=1"></script>
-    <script src="/static/api-client.js?v=3"></script>
+    <script src="/static/api-client.js?v=4"></script>
 </head>
 <body>
 
@@ -62,7 +62,7 @@
             <div id="sidebar-history" class="sidebar-panel" style="display:none;">
                 <div class="sidebar-panel-header">
                     <span class="sidebar-count">Recent</span>
-                    <button id="clear-history-btn" class="btn-icon" aria-label="Clear history" title="Clear history">✕</button>
+                    <button id="clear-history-btn" class="btn-icon" aria-label="Clear history" title="Clear history"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 </div>
                 <ul class="sidebar-content" id="history-list"></ul>
             </div>
@@ -153,7 +153,7 @@
                     </div>
 
                     <!-- Body -->
-                    <div id="tab-body" class="tab-content req-tab-content" role="tabpanel" style="display:flex; flex-direction:column; padding:0;">
+                    <div id="tab-body" class="tab-content req-tab-content" role="tabpanel">
                         <fieldset class="body-type-pills">
                             <legend class="sr-only">Body type</legend>
                             <input type="radio" name="bodyType" id="bt-none" value="none" checked>
@@ -183,7 +183,7 @@
                     </div>
 
                     <!-- Pre-Request Script -->
-                    <div id="tab-pre-request" class="tab-content req-tab-content" role="tabpanel" style="display:flex; flex-direction:column; padding:0;">
+                    <div id="tab-pre-request" class="tab-content req-tab-content" role="tabpanel">
                         <div class="script-reference">
                             <span class="ref-label">Runs before request &nbsp;·&nbsp; Available:</span>
                             <div class="ref-chips">
@@ -200,7 +200,7 @@
                     </div>
 
                     <!-- Tests -->
-                    <div id="tab-tests" class="tab-content req-tab-content" role="tabpanel" style="display:flex; flex-direction:column; padding:0;">
+                    <div id="tab-tests" class="tab-content req-tab-content" role="tabpanel">
                         <div class="script-reference">
                             <span class="ref-label">Runs after response &nbsp;·&nbsp; Available:</span>
                             <div class="ref-chips">
@@ -224,10 +224,14 @@
                 <section class="response-pane" aria-label="Response">
 
                     <output class="response-meta" id="resp-meta" style="display:none;" aria-live="polite" aria-atomic="true">
-                        <div>Status: <span id="resp-status" class="meta-value"></span></div>
-                        <div>Time: <span id="resp-time" class="meta-value"></span></div>
-                        <div>Size: <span id="resp-size" class="meta-value"></span></div>
-                        <div id="test-summary" style="display:none; margin-left:auto; font-size:0.8rem;"></div>
+                        <div class="meta-chip"><span class="meta-label">Status</span><span id="resp-status" class="meta-value"></span></div>
+                        <div class="meta-chip"><span class="meta-label">Time</span><span id="resp-time" class="meta-value"></span></div>
+                        <div class="meta-chip"><span class="meta-label">Size</span><span id="resp-size" class="meta-value"></span></div>
+                        <div id="resp-proxy-chip" class="meta-chip meta-chip-proxy" style="display:none;" title="Direct fetch was blocked by CORS — DevSuite routed this request through its local proxy. The status code and body are accurate.">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            <span>via proxy</span>
+                        </div>
+                        <div id="test-summary" style="display:none; margin-left:auto;"></div>
                     </output>
 
                     <div class="tabs-header" id="resp-tabs" role="tablist" aria-label="Response sections">
@@ -238,11 +242,12 @@
                         </button>
                     </div>
 
-                    <div id="resp-body" class="tab-content active resp-tab-content" role="tabpanel" style="padding:0; display:flex; flex-direction:column; position:relative; flex:1;">
+                    <div id="resp-body" class="tab-content active resp-tab-content" role="tabpanel">
                         <section id="resp-editor" style="width:100%; height:100%; position:absolute; top:0; left:0;" aria-live="polite"></section>
-                        <pre id="resp-fallback" style="display:none; flex:1; margin:0; padding:1rem; overflow:auto; font-family:var(--font-mono); font-size:0.85rem; color:var(--text-primary); white-space:pre-wrap; word-break:break-all; background:var(--bg-main);"></pre>
-                        <div id="resp-placeholder" style="display:flex; align-items:center; justify-content:center; flex:1; color:var(--text-muted); font-size:0.9rem;">
-                            Enter a URL and click Send to see the response.
+                        <pre id="resp-fallback" style="display:none; flex:1; margin:0; padding:1rem; overflow:auto; font-family:var(--font-mono); font-size:0.85rem; color:var(--text); white-space:pre-wrap; word-break:break-all; background:var(--bg);"></pre>
+                        <div id="resp-placeholder">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="opacity:0.22;color:var(--vio);"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            <span>Enter a URL above and press <strong>Send</strong></span>
                         </div>
                     </div>
 
@@ -269,7 +274,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <span class="modal-title">Environment Manager</span>
-                <button id="close-env-modal" class="btn-icon" aria-label="Close modal">✕</button>
+                <button id="close-env-modal" class="btn-icon" aria-label="Close modal"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div class="modal-body">
                 <div class="env-list-col">
@@ -302,16 +307,5 @@
     <div id="toast-container"></div>
 
     <script src="/static/api-tester.js?v=4"></script>
-    <script>
-        /* Sync data-method on .request-bar so CSS can colour the method select */
-        (function () {
-            const bar = document.querySelector('.request-bar');
-            const sel = document.getElementById('req-method');
-            if (!bar || !sel) return;
-            const sync = () => bar.setAttribute('data-method', sel.value);
-            sel.addEventListener('change', sync);
-            sync();
-        })();
-    </script>
 </body>
 </html>

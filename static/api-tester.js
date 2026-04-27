@@ -37,6 +37,7 @@ const els = {
     respStatus:         document.getElementById('resp-status'),
     respTime:           document.getElementById('resp-time'),
     respSize:           document.getElementById('resp-size'),
+    respProxyChip:      document.getElementById('resp-proxy-chip'),
     respPlaceholder:    document.getElementById('resp-placeholder'),
     respEditorEl:       document.getElementById('resp-editor'),
     respFallback:       document.getElementById('resp-fallback'),
@@ -605,6 +606,7 @@ function renderResponse(response) {
     els.respStatus.className   = `meta-value ${response.status >= 200 && response.status < 300 ? 'status-ok' : 'status-err'}`;
     els.respTime.textContent   = `${response.timeMs} ms`;
     els.respSize.textContent   = `${(response.sizeBytes / 1024).toFixed(2)} KB`;
+    els.respProxyChip.style.display = response.wasProxied ? 'inline-flex' : 'none';
     els.respPlaceholder.style.display = 'none';
 
     const bodyText = response.body ? JSON.stringify(response.body, null, 2) : (response.bodyText || '');
@@ -637,11 +639,10 @@ function renderResponse(response) {
         hContainer.appendChild(row);
     }
 
-    const label = response.wasProxied ? ' (CORS proxy)' : '';
     if (response.error || response.status === 0) {
         showToast('Network error — check console', 'error');
     } else {
-        showToast(`${response.status} in ${response.timeMs}ms${label}`, response.status < 400 ? 'success' : 'error');
+        showToast(`${response.status} ${response.statusText} in ${response.timeMs}ms`, response.status < 400 ? 'success' : 'error');
     }
 }
 

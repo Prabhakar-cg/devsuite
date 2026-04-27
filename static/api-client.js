@@ -90,6 +90,22 @@ class ApiClient {
         return body.toString();
     }
 
+    static _httpReasonPhrase(status) {
+        const phrases = {
+            100: 'Continue',            101: 'Switching Protocols',
+            200: 'OK',                  201: 'Created',             202: 'Accepted',
+            204: 'No Content',          206: 'Partial Content',
+            301: 'Moved Permanently',   302: 'Found',               304: 'Not Modified',
+            400: 'Bad Request',         401: 'Unauthorized',        403: 'Forbidden',
+            404: 'Not Found',           405: 'Method Not Allowed',  408: 'Request Timeout',
+            409: 'Conflict',            410: 'Gone',                422: 'Unprocessable Entity',
+            429: 'Too Many Requests',
+            500: 'Internal Server Error', 501: 'Not Implemented',   502: 'Bad Gateway',
+            503: 'Service Unavailable', 504: 'Gateway Timeout',
+        };
+        return phrases[status] || 'Unknown';
+    }
+
     /**
      * Tries to decode a proxy wrapper response. Returns the decoded ResponseData
      * object when the response was a proxy-wrapped payload, otherwise null.
@@ -100,7 +116,7 @@ class ApiClient {
             if (!proxyWrapper.proxy_response) return null;
             return {
                 status: proxyWrapper.status,
-                statusText: 'Proxy Forwarded',
+                statusText: this._httpReasonPhrase(proxyWrapper.status),
                 headers: proxyWrapper.headers || {},
                 bodyText: proxyWrapper.body || '',
                 body: (() => { try { return JSON.parse(proxyWrapper.body); } catch { return null; } })(),

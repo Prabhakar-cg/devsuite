@@ -283,7 +283,7 @@ pip_run install -r requirements.txt
 # Start the server
 echo -e "\nStarting FastAPI server on http://localhost:8000..."
 if command_exists uvicorn; then
-    uvicorn main:app --port 8000
+    uvicorn main:app --port 8000 --reload
 else
-    "$PYTHON_CMD" -m uvicorn main:app --port 8000
+    "$PYTHON_CMD" -m uvicorn main:app --port 8000 --reload
 fi

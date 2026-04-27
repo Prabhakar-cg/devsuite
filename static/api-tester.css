@@ -123,8 +123,10 @@
     border-radius: 4px;
     text-align: center;
     letter-spacing: 0.05em;
+    color: var(--text-mid);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-mid);
 }
-.method-badge { color: var(--text); background: var(--bg-secondary); border: 1px solid var(--border-mid); }
 
 /* ─── Main Area ───────────────────────────────────────────────── */
 .main-area {
@@ -152,7 +154,7 @@
     background: var(--bg-secondary);
     color: var(--text);
     border: 1.5px solid var(--border-mid);
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 0.48rem 2rem 0.48rem 0.75rem;
     font-weight: 700;
     font-size: 0.82rem;
@@ -277,6 +279,12 @@
     padding: 0.875rem;
 }
 .tab-content.active { display: block; }
+
+/* Flex tab panels — JS toggles display on click; CSS owns direction, spacing, layout.
+   #resp-body starts with .active in HTML, so needs flex override of the block above. */
+#resp-body.active                                      { display: flex; }
+#tab-body, #tab-pre-request, #tab-tests                { flex-direction: column; padding: 0; }
+#resp-body { flex-direction: column; padding: 0; position: relative; flex: 1; }
 
 /* ─── Tab Divider (between std tabs and script tabs) ─────────── */
 .tab-divider {
@@ -503,24 +511,49 @@
     padding: 0.45rem 1rem;
     display: flex;
     align-items: center;
-    gap: 1rem;
-    font-size: 0.79rem;
-    color: var(--text-mid);
+    gap: 0.5rem;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+}
+
+.meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.625rem;
+    background: var(--bg);
+    border: 1px solid var(--border-mid);
+    border-radius: 980px;
     font-family: var(--font-mono);
+}
+
+.meta-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
 }
 
 .meta-value {
-    font-family: var(--font-mono);
     font-weight: 700;
-    font-size: 0.82rem;
+    font-size: 0.79rem;
+    color: var(--text);
 }
 
-/* Colored status values */
-.status-ok  { color: #059669; }
-.status-err { color: #dc2626; }
+/* Colored status values — aligned with design system --green-mid / --red-mid */
+.status-ok  { color: #1a9c2a; }
+.status-err { color: #cc2016; }
+
+/* Proxy chip — amber tint, never an error, always an informational routing note */
+.meta-chip-proxy {
+    background: rgba(255,159,10,0.07);
+    border-color: rgba(180,83,9,0.28);
+    cursor: default;
+}
+.meta-chip-proxy span { color: #b45309; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.03em; }
+.meta-chip-proxy svg  { color: #b45309; flex-shrink: 0; }
 
 /* Test summary pushed to the right */
 #test-summary { margin-left: auto; font-size: 0.76rem; font-family: var(--font-body); }
@@ -545,19 +578,20 @@
 }
 
 .console-entry {
-    padding: 0.18rem 1rem;
+    padding: 0.18rem 1rem 0.18rem 0.875rem;
     white-space: pre-wrap;
     word-break: break-all;
     line-height: 1.6;
+    border-left: 2px solid transparent;
 }
 
-.console-section { color: var(--text-muted); font-size: 0.66rem; padding-top: 0.75rem; padding-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.09em; }
+.console-section { color: var(--text-muted); font-size: 0.66rem; padding-top: 0.75rem; padding-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.09em; border-left: none; padding-left: 1rem; }
 .console-log     { color: var(--text); }
-.console-info    { color: #0369a1; }
-.console-warn    { color: #92400e; }
-.console-error   { color: #991b1b; }
-.console-pass    { color: #047857; }
-.console-fail    { color: #991b1b; }
+.console-info    { color: #0369a1; border-left-color: rgba(3,105,161,0.35); }
+.console-warn    { color: #92400e; border-left-color: rgba(217,119,6,0.35); }
+.console-error   { color: #991b1b; border-left-color: rgba(185,28,28,0.35); }
+.console-pass    { color: #047857; border-left-color: rgba(5,150,105,0.35); }
+.console-fail    { color: #991b1b; border-left-color: rgba(185,28,28,0.35); }
 
 .console-badge {
     display: inline-block;
@@ -802,12 +836,13 @@ dialog.modal::backdrop {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.875rem;
     flex: 1;
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: 0.84rem;
     font-family: var(--font-body);
-    line-height: 1.7;
+    line-height: 1.6;
     padding: 2rem;
     text-align: center;
 }
+#resp-placeholder strong { color: var(--text-mid); font-weight: 600; }
