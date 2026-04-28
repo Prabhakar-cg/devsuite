@@ -612,7 +612,9 @@ function renderResponse(response) {
     const bodyText = response.body ? JSON.stringify(response.body, null, 2) : (response.bodyText || '');
     if (respEditor) {
         const ct = response.contentType || '';
-        const lang = ct.includes('xml') ? 'xml' : ct.includes('html') ? 'html' : 'json';
+        let lang = 'json';
+        if (ct.includes('xml'))       lang = 'xml';
+        else if (ct.includes('html')) lang = 'html';
         monaco.editor.setModelLanguage(respEditor.getModel(), lang);
         respEditor.setValue(bodyText);
         els.respFallback.style.display = 'none';

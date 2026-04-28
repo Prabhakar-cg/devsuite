@@ -1244,7 +1244,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
         if (payload.iss) claimsBar.appendChild(makeChip('iss', payload.iss, ''));
         if (payload.sub) claimsBar.appendChild(makeChip('sub', payload.sub, ''));
         if (payload.aud) {
-            const aud = Array.isArray(payload.aud) ? payload.aud.join(', ') : payload.aud;
+            const aud = [].concat(payload.aud).join(', ');
             claimsBar.appendChild(makeChip('aud', aud, ''));
         }
         if (payload.iat) {
