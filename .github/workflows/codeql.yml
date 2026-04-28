@@ -58,53 +58,16 @@ jobs:
         # your codebase is analyzed, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
     steps:
     - name: Checkout repository
-      run: |
-        set -e
-        git config --global --add safe.directory "$PWD"
-        git clone --depth=1 "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" .
-        git checkout --detach "$GITHUB_SHA"
-      shell: bash
+      uses: actions/checkout@v4
 
-    - name: Install CodeQL CLI
-      run: |
-        set -e
-        curl -sSL "https://github.com/github/codeql-action/releases/latest/download/codeql-bundle-linux64.zip" -o codeql.zip
-        unzip -q codeql.zip -d codeql
-        ./codeql/codeql version
-      shell: bash
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
 
-    - name: Create CodeQL database
-      run: |
-        set -e
-        ./codeql/codeql database create codeql-db \
-          --language="${{ matrix.language }}" \
-          --source-root="."
-      shell: bash
-
-    - name: Run CodeQL analysis
-      run: |
-        set -e
-        ./codeql/codeql database analyze codeql-db \
-          --format=sarif-latest \
-          --output=results-${{ matrix.language }}.sarif
-      shell: bash
-
-    - name: Upload CodeQL SARIF results
-      run: |
-        set -e
-        curl --fail -sS \
-          -X POST \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer $GITHUB_TOKEN" \
-          -H "Content-Type: application/sarif+json" \
-          --data-binary @results-${{ matrix.language }}.sarif \
-          "https://api.github.com/repos/${{ github.repository }}/code-scanning/sarifs?tool_name=CodeQL%20CLI"
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Run manual build steps
-      if: matrix.build-mode == 'manual'
+    - if: matrix.build-mode == 'manual'
+      name: Build
       shell: bash
       run: |
         echo 'If you are using a "manual" build mode for one or more of the' \
@@ -113,3 +76,8 @@ jobs:
         echo '  make bootstrap'
         echo '  make release'
         exit 1
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"

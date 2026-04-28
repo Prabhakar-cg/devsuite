@@ -1,6 +1,7 @@
 # DevSuite — Developer Tools from Hell
 
 ![Version](https://img.shields.io/badge/version-0.2.0-blue)
+[![CodeQL](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
@@ -121,7 +122,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Audit log** — sensitive operations (vault unlock, vault access, SSH connect) are recorded in an append-only `~/.devsuite/audit.log`. Secret values are never logged.
 - **URL validation** — the shortener backend validates scheme and host before storing any link.
 
-> **Security scan coverage note:** Static analysis (SonarCloud, CodeRabbit & Snyk) excludes `static/libs/**` and all `*.min.js` / `*.min.css` files. These are third-party vendored bundles (Monaco Editor, xterm.js, crypto-js, bwip-js) and are not covered by automated security scanning. Keep them updated to their latest stable releases to manage upstream CVEs.
+> **Security scan coverage note:** Static analysis (SonarCloud, CodeQL, CodeRabbit & Snyk) excludes `static/libs/**` and all `*.min.js` / `*.min.css` files. These are third-party vendored bundles (Monaco Editor, xterm.js, crypto-js, bwip-js) and are not covered by automated security scanning. Keep them updated to their latest stable releases to manage upstream CVEs.
 
 ---
 

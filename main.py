@@ -181,13 +181,11 @@ async def add_security_headers(request, call_next):
     # Content Security Policy (allows local assets and CDN resources used in the app)
     csp = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: "
-        "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; "
         "worker-src 'self' blob:; "
-        "style-src 'self' 'unsafe-inline' "
-        "https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "font-src 'self'; "
+        "img-src 'self' data:; "
         "connect-src 'self';"
     )
     response.headers["Content-Security-Policy"] = csp

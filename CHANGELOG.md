@@ -7,6 +7,13 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ## [Unreleased]
 
+### CI / DevX
+
+#### CodeQL Workflow Fix (`.github/workflows/codeql.yml`)
+- **Replaced broken hand-rolled implementation** with the standard `github/codeql-action` composite actions.
+- Previous workflow manually cloned the repo, downloaded the CodeQL CLI bundle from a non-existent URL (`codeql-bundle-linux64.zip` — bundle naming changed to `codeql-bundle-linux-amd64.tar.gz` and requires a versioned release tag, not `latest`), created the database, and uploaded SARIF manually — all of which broke at the "Install CodeQL CLI" step (exit code 128).
+- Now uses `actions/checkout@v4` → `github/codeql-action/init@v3` → `github/codeql-action/analyze@v3`, which handles CLI download, database creation, and SARIF upload internally. Analysis matrices unchanged: `javascript-typescript` and `python`, both `build-mode: none`.
+
 ---
 
 ## [0.2.0] — 2026-04-22
