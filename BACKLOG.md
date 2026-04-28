@@ -69,7 +69,7 @@
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| ROAD-1 | **CI/CD Pipeline**: GitHub Actions running linters, `pip-audit`, `npm audit`, and tests on every PR. Prerequisite for SEC-1, SEC-2, DX-6. | S | `[ ]` |
+| ROAD-1 | **CI/CD Pipeline**: GitHub Actions running linters, `pip-audit`, `npm audit`, and tests on every PR. Prerequisite for SEC-1, SEC-2, DX-6. CodeQL workflow fixed (was broken — hand-rolled CLI download used a non-existent URL); now uses standard `github/codeql-action@v3`. Remaining: wire linters + audit tools. | S | `[/]` |
 | ROAD-2 | **SonarQube CI Integration**: Wire `sonar-project.properties` into GitHub Actions for automated quality gate on every PR. v0.1.3 closed multiple S3776/S4666/S108 findings. | S | `[/]` |
 | ROAD-3 | **Dockerization**: Multi-stage `Dockerfile` and `docker-compose.yml` for zero-setup deployment. | S | `[ ]` |
 | ROAD-4 | **PyPI Packaging**: `pyproject.toml` to allow `pip install devsuite` with a CLI entry point. | M | `[ ]` |

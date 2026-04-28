@@ -35,6 +35,8 @@
     --transition:      0.2s ease;
     --font:            'Inter', system-ui, sans-serif;
     --mono:            'JetBrains Mono', monospace;
+    --font-body:       var(--font);
+    --font-sans:       var(--font);
     /* Backward-compatible alias used by cron.html inline styles */
     --cron-muted:      var(--text-muted);
 }
@@ -78,7 +80,7 @@ body {
 .header-center { display: flex; align-items: center; gap: 0.75rem; }
 .tool-icon {
     width: 32px; height: 32px; border-radius: 9px;
-    background: linear-gradient(135deg, #14b8a6, #06b6d4);
+    background: linear-gradient(135deg, #92400e, #d97706);
     display: flex; align-items: center; justify-content: center;
     position: relative; overflow: hidden;
 }

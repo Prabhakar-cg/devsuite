@@ -39,6 +39,8 @@
     --transition:      all 0.2s cubic-bezier(0.4,0,0.2,1);
     --font:            'Inter', -apple-system, blinkmacsystemfont, sans-serif;
     --font-mono:       'JetBrains Mono', monospace;
+    --font-body:       var(--font);
+    --font-sans:       var(--font);
 }
 
 /* ── Base ── */

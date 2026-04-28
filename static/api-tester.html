@@ -4,136 +4,218 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Tester — DevSuite</title>
-    <!-- Fonts -->
-        <link rel="stylesheet" href="/static/libs/fonts.css">
-    
-    <!-- CSS -->
+    <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link rel="stylesheet" href="/static/linter.css?v=2">
-    <link rel="stylesheet" href="/static/api-tester.css?v=2">
-    
-    <!-- Dependencies -->
-    <!-- crypto-js must load before require.min.js: its UMD wrapper calls define() when
-         an AMD loader is present, which corrupts RequireJS state and prevents Monaco from loading. -->
+    <link rel="stylesheet" href="/static/api-tester.css?v=9">
     <script src="/static/crypto-js.min.js"></script>
     <script src="/static/libs/require.min.js"></script>
     <script src="/static/theme.js?v=2"></script>
     <script src="/static/auth-guard.js?v=1"></script>
-    <script src="/static/api-client.js?v=3"></script>
+    <script src="/static/api-client.js?v=4"></script>
 </head>
 <body>
-    
-    <!-- Header -->
+
     <header class="app-header" aria-label="API Tester toolbar">
         <div style="display:flex; align-items:center; gap:0.75rem;">
             <a href="/tools" class="back-link" aria-label="← DevSuite — back to tools">← DevSuite</a>
             <div class="tool-identity" id="tool-identity">
-                <!-- We use Violet accent for API Tester per design -->
-                <div class="tool-icon tool-icon-violet" id="tool-header-icon" style="background:#6d28d9;background-image:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;" aria-hidden="true">
+                <div class="tool-icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 0 16px rgba(168,85,247,0.4);" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                     </svg>
                 </div>
-                <span class="tool-name" id="tool-header-name">
-                    API <span class="tool-accent" style="color:#7c3aed;">Tester</span>
-                </span>
-                <span class="tool-version" id="tool-header-version">V1.0</span>
+                <span class="tool-name">API <span class="tool-accent" style="color:#7c3aed;">Tester</span></span>
+                <span class="tool-version">V2.0</span>
             </div>
         </div>
         <div class="header-controls">
-            <button id="save-collection-btn" class="btn-small" style="background:var(--accent-1); color:#fff; border:none; margin-left:1rem;">Save Setup</button>
+            <div class="env-selector">
+                <span class="env-label">ENV</span>
+                <select id="env-select" aria-label="Active environment">
+                    <option value="">No Environment</option>
+                </select>
+                <button id="btn-manage-envs" class="btn-small" aria-label="Manage environments">Manage</button>
+            </div>
+            <button id="save-collection-btn" class="btn-small btn-accent" aria-label="Save request to collection">Save Request</button>
         </div>
     </header>
 
-    <!-- Main Tool Container -->
     <div class="api-tester-container">
-        
-        <!-- Sidebar: History & Collections -->
-        <nav class="sidebar" aria-label="Collections">
-            <div class="sidebar-header">
-                <span>Collections</span>
-                <button id="refresh-collections-btn" class="btn-small" style="border:none; background:transparent;" aria-label="Refresh collections">↺</button>
+
+        <!-- Sidebar -->
+        <nav class="sidebar" aria-label="Sidebar">
+            <div class="sidebar-tabs" role="tablist" aria-label="Sidebar sections">
+                <button class="sidebar-tab active" data-sidebar="collections" role="tab" aria-selected="true">Collections</button>
+                <button class="sidebar-tab" data-sidebar="history" role="tab" aria-selected="false">History</button>
             </div>
-            <ul class="sidebar-content" id="collections-list">
-                <!-- Injected natively via JS -->
-            </ul>
+
+            <div id="sidebar-collections" class="sidebar-panel">
+                <div class="sidebar-panel-header">
+                    <span id="collections-count" class="sidebar-count">0 requests</span>
+                    <button id="refresh-collections-btn" class="btn-icon" aria-label="Refresh collections">↺</button>
+                </div>
+                <ul class="sidebar-content" id="collections-list"></ul>
+            </div>
+
+            <div id="sidebar-history" class="sidebar-panel" style="display:none;">
+                <div class="sidebar-panel-header">
+                    <span class="sidebar-count">Recent</span>
+                    <button id="clear-history-btn" class="btn-icon" aria-label="Clear history" title="Clear history"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                </div>
+                <ul class="sidebar-content" id="history-list"></ul>
+            </div>
         </nav>
 
-        <!-- Request/Response Column -->
+        <!-- Main Area -->
         <div class="main-area">
 
             <div class="request-bar" role="search" aria-label="HTTP request">
                 <label for="req-method" class="sr-only">HTTP method</label>
                 <select id="req-method" class="method-select" aria-label="HTTP method">
-                    <option value="GET">GET</option>
-                    <option value="POST">POST</option>
-                    <option value="PUT">PUT</option>
-                    <option value="DELETE">DELETE</option>
-                    <option value="PATCH">PATCH</option>
+                    <option>GET</option>
+                    <option>POST</option>
+                    <option>PUT</option>
+                    <option>DELETE</option>
+                    <option>PATCH</option>
+                    <option>HEAD</option>
+                    <option>OPTIONS</option>
                 </select>
                 <label for="req-url" class="sr-only">Request URL</label>
-                <input type="text" id="req-url" class="url-input" placeholder="https://api.example.com/v1/users" aria-label="Request URL">
+                <input type="text" id="req-url" class="url-input" placeholder="https://api.example.com/v1/users  —  use {{variable}} for env vars" aria-label="Request URL">
                 <button id="btn-send" class="send-btn" aria-label="Send HTTP request">Send</button>
             </div>
 
             <div class="panes">
 
-                <!-- Request Configuration Pane -->
+                <!-- Request Pane -->
                 <section class="request-pane" aria-label="Request configuration">
                     <div class="tabs-header" id="req-tabs" role="tablist" aria-label="Request sections">
-                        <button class="tab-btn active" data-target="tab-params" role="tab" aria-selected="true" aria-controls="tab-params">Params</button>
-                        <button class="tab-btn" data-target="tab-headers" role="tab" aria-selected="false" aria-controls="tab-headers">Headers</button>
-                        <button class="tab-btn" data-target="tab-auth" role="tab" aria-selected="false" aria-controls="tab-auth">Auth</button>
-                        <button class="tab-btn" data-target="tab-body" role="tab" aria-selected="false" aria-controls="tab-body">Body</button>
+                        <button class="tab-btn active" data-target="tab-params" role="tab" aria-selected="true">Params</button>
+                        <button class="tab-btn" data-target="tab-headers" role="tab" aria-selected="false">Headers</button>
+                        <button class="tab-btn" data-target="tab-auth" role="tab" aria-selected="false">Auth</button>
+                        <button class="tab-btn" data-target="tab-body" role="tab" aria-selected="false">Body</button>
+                        <div class="tab-divider" aria-hidden="true"></div>
+                        <button class="tab-btn tab-btn-script" data-target="tab-pre-request" role="tab" aria-selected="false">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                            Pre-Request
+                        </button>
+                        <button class="tab-btn tab-btn-script" data-target="tab-tests" role="tab" aria-selected="false">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+                            Tests
+                        </button>
                     </div>
 
-                    <div id="tab-params" class="tab-content active req-tab-content" role="tabpanel" aria-label="Query parameters">
+                    <!-- Params -->
+                    <div id="tab-params" class="tab-content active req-tab-content" role="tabpanel">
+                        <div class="kv-table-head" aria-hidden="true">
+                            <span></span><span>Key</span><span>Value</span><span></span>
+                        </div>
                         <div id="params-list"></div>
-                        <button class="btn-small" id="btn-add-param" style="margin-top:0.5rem;" aria-label="+ Add Param">+ Add Param</button>
+                        <button class="btn-small btn-add-row" id="btn-add-param">+ Add Param</button>
                     </div>
 
-                    <div id="tab-headers" class="tab-content req-tab-content" role="tabpanel" aria-label="Request headers">
+                    <!-- Headers -->
+                    <div id="tab-headers" class="tab-content req-tab-content" role="tabpanel">
+                        <div class="kv-table-head" aria-hidden="true">
+                            <span></span><span>Key</span><span>Value</span><span></span>
+                        </div>
                         <div id="headers-list"></div>
-                        <button class="btn-small" id="btn-add-header" style="margin-top:0.5rem;" aria-label="+ Add Header">+ Add Header</button>
+                        <button class="btn-small btn-add-row" id="btn-add-header">+ Add Header</button>
                     </div>
 
-                    <div id="tab-auth" class="tab-content req-tab-content" role="tabpanel" aria-label="Authentication">
+                    <!-- Auth -->
+                    <div id="tab-auth" class="tab-content req-tab-content" role="tabpanel">
                         <label for="auth-type" class="sr-only">Authentication type</label>
                         <select id="auth-type" class="method-select" style="margin-bottom:1rem; width:100%;" aria-label="Authentication type">
                             <option value="none">No Auth</option>
                             <option value="bearer">Bearer Token</option>
                             <option value="basic">Basic Auth</option>
+                            <option value="api-key">API Key</option>
                         </select>
                         <div id="auth-bearer-config" style="display:none;">
-                            <label for="auth-token" class="sr-only">Bearer token</label>
-                            <input type="text" id="auth-token" class="url-input" style="width:100%;" placeholder="Token" aria-label="Bearer token">
+                            <label class="field-label" for="auth-token">Token</label>
+                            <input type="text" id="auth-token" class="url-input" style="width:100%;" placeholder="Bearer token or {{token_var}}">
                         </div>
                         <div id="auth-basic-config" style="display:none;">
-                            <label for="auth-username" class="sr-only">Username</label>
-                            <input type="text" id="auth-username" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="Username" aria-label="Username">
-                            <label for="auth-password" class="sr-only">Password</label>
-                            <input type="password" id="auth-password" class="url-input" style="width:100%;" placeholder="Password" aria-label="Password">
+                            <label class="field-label" for="auth-username">Username</label>
+                            <input type="text" id="auth-username" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="Username or {{username_var}}">
+                            <label class="field-label" for="auth-password">Password</label>
+                            <input type="password" id="auth-password" class="url-input" style="width:100%;" placeholder="Password or {{password_var}}">
+                        </div>
+                        <div id="auth-apikey-config" style="display:none;">
+                            <label class="field-label" for="auth-apikey-header">Header Name</label>
+                            <input type="text" id="auth-apikey-header" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="X-API-Key">
+                            <label class="field-label" for="auth-apikey-value">Value</label>
+                            <input type="text" id="auth-apikey-value" class="url-input" style="width:100%;" placeholder="Key value or {{api_key_var}}">
                         </div>
                     </div>
 
-                    <div id="tab-body" class="tab-content req-tab-content" role="tabpanel" aria-label="Request body" style="display:flex; flex-direction:column; padding:0;">
-                        <fieldset style="padding:0.5rem 1rem; border-bottom:1px solid var(--border); border:none; margin:0;">
+                    <!-- Body -->
+                    <div id="tab-body" class="tab-content req-tab-content" role="tabpanel">
+                        <fieldset class="body-type-pills">
                             <legend class="sr-only">Body type</legend>
-                            <label><input type="radio" name="bodyType" value="none" checked> None</label>
-                            <label style="margin-left:1rem;"><input type="radio" name="bodyType" value="json"> JSON</label>
-                            <label style="margin-left:1rem;"><input type="radio" name="bodyType" value="form-data"> Form Data</label>
+                            <input type="radio" name="bodyType" id="bt-none" value="none" checked>
+                            <label for="bt-none">None</label>
+                            <input type="radio" name="bodyType" id="bt-json" value="json">
+                            <label for="bt-json">JSON</label>
+                            <input type="radio" name="bodyType" id="bt-form" value="form-data">
+                            <label for="bt-form">Form Data</label>
+                            <input type="radio" name="bodyType" id="bt-text" value="text">
+                            <label for="bt-text">Text</label>
                         </fieldset>
-
-                        <!-- JSON Body Editor (Monaco) -->
                         <div id="req-body-editor-wrap" class="editor-container" style="display:none; flex:1;">
-                            <div id="req-body-editor" style="width:100%; height:100%;" aria-label="JSON request body"></div>
+                            <div id="req-body-editor" style="width:100%; height:100%;"></div>
                         </div>
+                        <div id="req-text-body-wrap" style="display:none; flex:1; padding:0.5rem;">
+                            <textarea id="req-text-body" class="text-body-area" placeholder="Raw text body"></textarea>
+                        </div>
+                        <div id="req-form-data-wrap" style="display:none; flex:1; overflow-y:auto;">
+                            <div class="kv-table-head" aria-hidden="true" style="margin:0.75rem 0.875rem 0;">
+                                <span></span><span>Field</span><span>Value</span><span></span>
+                            </div>
+                            <div id="form-data-list" style="padding:0 0.875rem;"></div>
+                            <div style="padding:0.5rem 0.875rem;">
+                                <button class="btn-small btn-add-row" id="btn-add-form-data">+ Add Field</button>
+                            </div>
+                        </div>
+                    </div>
 
-                        <!-- Form Data UI -->
-                        <div id="req-form-data-wrap" style="display:none; padding:1rem; flex:1; overflow-y:auto;">
-                            <div id="form-data-list"></div>
-                            <button class="btn-small" id="btn-add-form-data" style="margin-top:0.5rem;" aria-label="+ Add Field">+ Add Field</button>
+                    <!-- Pre-Request Script -->
+                    <div id="tab-pre-request" class="tab-content req-tab-content" role="tabpanel">
+                        <div class="script-reference">
+                            <span class="ref-label">Runs before request &nbsp;·&nbsp; Available:</span>
+                            <div class="ref-chips">
+                                <code class="ref-chip">ds.setVar(key, val)</code>
+                                <code class="ref-chip">ds.getVar(key)</code>
+                                <code class="ref-chip">ds.setEnvVar(key, val)</code>
+                                <code class="ref-chip">ds.getEnvVar(key)</code>
+                                <code class="ref-chip">console.log()</code>
+                            </div>
+                        </div>
+                        <div id="pre-request-editor-wrap" class="editor-container" style="flex:1;">
+                            <div id="pre-request-editor" style="width:100%; height:100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tests -->
+                    <div id="tab-tests" class="tab-content req-tab-content" role="tabpanel">
+                        <div class="script-reference">
+                            <span class="ref-label">Runs after response &nbsp;·&nbsp; Available:</span>
+                            <div class="ref-chips">
+                                <code class="ref-chip">test('name', fn)</code>
+                                <code class="ref-chip">expect(val).to.equal(n)</code>
+                                <code class="ref-chip">expect(val).to.include('str')</code>
+                                <code class="ref-chip">expect(val).to.have.property('key')</code>
+                                <code class="ref-chip">expect(val).to.be.ok</code>
+                                <code class="ref-chip">ds.response.status</code>
+                                <code class="ref-chip">ds.response.body</code>
+                                <code class="ref-chip">ds.response.headers</code>
+                            </div>
+                        </div>
+                        <div id="tests-editor-wrap" class="editor-container" style="flex:1;">
+                            <div id="tests-editor" style="width:100%; height:100%;"></div>
                         </div>
                     </div>
                 </section>
@@ -142,26 +224,40 @@
                 <section class="response-pane" aria-label="Response">
 
                     <output class="response-meta" id="resp-meta" style="display:none;" aria-live="polite" aria-atomic="true">
-                        <div>Status: <span id="resp-status" class="meta-value"></span></div>
-                        <div>Time: <span id="resp-time" class="meta-value"></span></div>
-                        <div>Size: <span id="resp-size" class="meta-value"></span></div>
+                        <div class="meta-chip"><span class="meta-label">Status</span><span id="resp-status" class="meta-value"></span></div>
+                        <div class="meta-chip"><span class="meta-label">Time</span><span id="resp-time" class="meta-value"></span></div>
+                        <div class="meta-chip"><span class="meta-label">Size</span><span id="resp-size" class="meta-value"></span></div>
+                        <div id="resp-proxy-chip" class="meta-chip meta-chip-proxy" style="display:none;" title="Direct fetch was blocked by CORS — DevSuite routed this request through its local proxy. The status code and body are accurate.">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            <span>via proxy</span>
+                        </div>
+                        <div id="test-summary" style="display:none; margin-left:auto;"></div>
                     </output>
 
                     <div class="tabs-header" id="resp-tabs" role="tablist" aria-label="Response sections">
-                        <button class="tab-btn active" data-target="resp-body" role="tab" aria-selected="true" aria-controls="resp-body">Response Body</button>
-                        <button class="tab-btn" data-target="resp-headers" role="tab" aria-selected="false" aria-controls="resp-headers">Headers</button>
+                        <button class="tab-btn active" data-target="resp-body" role="tab" aria-selected="true">Response</button>
+                        <button class="tab-btn" data-target="resp-headers-tab" role="tab" aria-selected="false">Headers</button>
+                        <button class="tab-btn" data-target="resp-console" role="tab" aria-selected="false">
+                            Console <span id="console-badge" class="console-badge" style="display:none;"></span>
+                        </button>
                     </div>
 
-                    <div id="resp-body" class="tab-content active resp-tab-content" role="tabpanel" aria-label="Response body" style="padding:0; display:flex; flex-direction:column; position:relative; flex:1;">
-                        <section id="resp-editor" style="width:100%; height:100%; position:absolute; top:0; left:0;" aria-label="Response body editor" aria-live="polite"></section>
-                        <pre id="resp-fallback" style="display:none; flex:1; margin:0; padding:1rem; overflow:auto; font-family:var(--font-mono); font-size:0.85rem; color:var(--text-primary); white-space:pre-wrap; word-break:break-all; background:var(--bg-main);"></pre>
-                        <div id="resp-placeholder" style="display:flex; align-items:center; justify-content:center; flex:1; color:var(--text-muted); font-size:0.9rem;" aria-label="Empty response">
-                            Enter a URL and click Send to see the response.
+                    <div id="resp-body" class="tab-content active resp-tab-content" role="tabpanel">
+                        <section id="resp-editor" style="width:100%; height:100%; position:absolute; top:0; left:0;" aria-live="polite"></section>
+                        <pre id="resp-fallback" style="display:none; flex:1; margin:0; padding:1rem; overflow:auto; font-family:var(--font-mono); font-size:0.85rem; color:var(--text); white-space:pre-wrap; word-break:break-all; background:var(--bg);"></pre>
+                        <div id="resp-placeholder">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="opacity:0.22;color:var(--vio);"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            <span>Enter a URL above and press <strong>Send</strong></span>
                         </div>
                     </div>
 
-                    <div id="resp-headers" class="tab-content resp-tab-content" role="tabpanel" aria-label="Response headers">
-                        <!-- Natively injected as key=value -->
+                    <div id="resp-headers-tab" class="tab-content resp-tab-content" role="tabpanel" style="display:none;"></div>
+
+                    <div id="resp-console" class="tab-content resp-tab-content console-output" role="tabpanel" style="display:none;">
+                        <div id="console-entries"></div>
+                        <div id="console-placeholder" class="console-placeholder">
+                            Script and test output will appear here after each request.
+                        </div>
                     </div>
 
                 </section>
@@ -172,9 +268,44 @@
 
     </div>
 
-    <!-- Toast Container -->
+    <!-- Environment Manager Modal -->
+    <dialog id="env-modal" class="modal" aria-label="Environment Manager">
+        <div class="modal-backdrop" id="env-modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Environment Manager</span>
+                <button id="close-env-modal" class="btn-icon" aria-label="Close modal"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="env-list-col">
+                    <button id="btn-add-env" class="btn-small" style="width:100%; margin-bottom:0.75rem;">+ New Environment</button>
+                    <ul id="env-list-ul" class="env-list-ul"></ul>
+                </div>
+                <div class="env-editor-col">
+                    <div class="env-editor-empty" id="env-editor-empty">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+                        <span>Select an environment to edit</span>
+                    </div>
+                    <div id="env-editor-form" style="display:none; height:100%; flex-direction:column; gap:0.75rem;">
+                        <div>
+                            <label class="field-label" for="env-name-input">Environment Name</label>
+                            <input type="text" id="env-name-input" class="url-input" style="width:100%;" placeholder="e.g. Development, Production">
+                        </div>
+                        <div class="field-label" style="margin-bottom:0.25rem;">Variables</div>
+                        <div id="env-vars-list" style="flex:1; overflow-y:auto; min-height:0;"></div>
+                        <button class="btn-small" id="btn-add-env-var">+ Add Variable</button>
+                        <div style="display:flex; gap:0.5rem; padding-top:0.5rem; border-top:1px solid var(--border);">
+                            <button id="btn-save-env" class="btn-small btn-accent" style="flex:1;">Save Environment</button>
+                            <button id="btn-delete-env" class="btn-small btn-danger">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
     <div id="toast-container"></div>
-    
-    <script src="/static/api-tester.js?v=3"></script>
+
+    <script src="/static/api-tester.js?v=4"></script>
 </body>
 </html>

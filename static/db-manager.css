@@ -35,6 +35,9 @@
     --shadow-lg:   0 8px 48px rgba(0,0,0,0.6);
     --blur:        blur(16px);
     --transition:  0.2s cubic-bezier(0.4,0,0.2,1);
+    --font-sans:   ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+    --font-body:   var(--font-sans);
+    --font-mono:   'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', monospace;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -87,9 +90,8 @@ body::before {
     width: 36px; height: 36px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     font-size: 18px;
-    background: linear-gradient(135deg, rgba(100,119,255,0.25), rgba(6,182,212,0.15));
-    border: 1px solid rgba(100,119,255,0.3);
-    box-shadow: 0 0 20px rgba(100,119,255,0.15);
+    background: linear-gradient(135deg, #312e81, #4f46e5);
+    box-shadow: 0 0 16px rgba(79,70,229,0.4);
 }
 
 .tool-name {

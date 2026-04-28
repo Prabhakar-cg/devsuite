@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DevDB Manager — DevSuite</title>
     <meta name="description" content="Unified KeePass-style encrypted database manager for DevSuite. View stores, export/import .dsb files, manage encryption, and monitor database health." />
+    <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/db-manager.css?v=2" />
 </head>
 <body>
@@ -12,7 +13,13 @@
 <!-- ── Lock Overlay ───────────────────────────────────────────────────────── -->
 <div id="lock-overlay" class="db-lock-overlay">
     <div class="db-lock-card">
-        <div class="db-lock-icon">🗄️</div>
+        <div class="db-lock-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;color:#fff;" aria-hidden="true" focusable="false">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+            </svg>
+        </div>
         <h2 class="db-lock-title">DevDB Manager</h2>
         <p class="db-lock-desc" id="lock-desc">Enter your master password to access the database.</p>
 
@@ -32,14 +39,14 @@
         </div>
 
         <div class="db-lock-path" id="lock-db-path" style="display:none;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.6">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.6" aria-hidden="true" focusable="false">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
             </svg>
             <span id="lock-db-path-text" style="font-family:monospace;font-size:0.78rem;word-break:break-all;opacity:0.75;"></span>
         </div>
 
         <div class="db-lock-warning">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:#f59e0b">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:#f59e0b" aria-hidden="true" focusable="false">
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             <span>Same master password as Secret Vault. Never stored — cannot be recovered if forgotten.</span>
@@ -50,14 +57,20 @@
 <!-- ── Header ─────────────────────────────────────────────────────────────── -->
 <header class="app-header">
     <a href="/tools" class="back-link" id="back-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">
             <polyline points="15 18 9 12 15 6"/>
         </svg>
         DevSuite
     </a>
 
     <div class="header-tool-id">
-        <div class="tool-icon">🗄️</div>
+        <div class="tool-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:#fff;" aria-hidden="true" focusable="false">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+            </svg>
+        </div>
         <div>
             <div class="tool-name">DevDB Manager</div>
             <div class="tool-sub">Unified encrypted persistent storage</div>
