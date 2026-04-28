@@ -415,9 +415,33 @@ function renderEntryList() {
 
     if (entries.length === 0) {
         empty.style.display = 'flex';
-        empty.innerHTML = searchQuery
-            ? `<div class="icon">🔍</div><p>No results for "<strong>${escHtml(searchQuery)}</strong>"</p>`
-            : `<div class="icon">🔐</div><p>No secrets yet.<br>Click <strong>New Secret</strong> to add one.</p>`;
+        empty.replaceChildren();
+
+        const icon = document.createElement('div');
+        icon.className = 'icon';
+
+        const message = document.createElement('p');
+
+        if (searchQuery) {
+            icon.textContent = '🔍';
+            message.append('No results for "');
+            const strong = document.createElement('strong');
+            strong.textContent = searchQuery;
+            message.appendChild(strong);
+            message.append('"');
+        } else {
+            icon.textContent = '🔐';
+            message.append('No secrets yet.');
+            message.appendChild(document.createElement('br'));
+            message.append('Click ');
+            const strong = document.createElement('strong');
+            strong.textContent = 'New Secret';
+            message.appendChild(strong);
+            message.append(' to add one.');
+        }
+
+        empty.appendChild(icon);
+        empty.appendChild(message);
         return;
     }
 
