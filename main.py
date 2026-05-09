@@ -654,12 +654,16 @@ async def upload_file(file: Annotated[UploadFile, File(...)]):
 @app.get(
     "/api/collections",
     summary="Get API Tester Collections",
-    responses={500: {"description": "Failed to read collections"}},
+    responses={
+        401: {"description": "Session token missing or expired"},
+        500: {"description": "Failed to read collections"},
+    },
 )
-def get_collections():
+def get_collections(request: Request):
     """Read saved collections from the DevDB 'collections' store.
     Backward-compatible shim for api-tester.js.
     """
+    require_unlocked(request)
     store = _db.get_store("collections")
     return store if store else {"items": []}
 
@@ -667,12 +671,16 @@ def get_collections():
 @app.post(
     "/api/collections",
     summary="Save API Tester Collections",
-    responses={500: {"description": "Failed to save collections"}},
+    responses={
+        401: {"description": "Session token missing or expired"},
+        500: {"description": "Failed to save collections"},
+    },
 )
-def save_collections(data: dict):
+def save_collections(data: dict, request: Request):
     """Persist collections into the DevDB 'collections' store.
     Backward-compatible shim for api-tester.js.
     """
+    require_unlocked(request)
     try:
         _db.set_store("collections", data)
         _db.save()

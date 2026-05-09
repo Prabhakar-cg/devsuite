@@ -288,9 +288,23 @@ els.authType.addEventListener('change', (e) => {
     if (e.target.value === 'oauth2')  els.authOauth2Config.style.display  = 'block';
 });
 
+function clearOAuth2Token() {
+    oauth2Token = null;
+    els.oauth2TokenDisplay.style.display = 'none';
+    els.oauth2TokenValue.value = '';
+    els.oauth2TokenStatus.textContent = '';
+}
+
 // OAuth2 grant type toggle
 els.oauth2Grant.addEventListener('change', (e) => {
     els.oauth2PasswordFields.style.display = e.target.value === 'password' ? 'block' : 'none';
+    clearOAuth2Token();
+});
+
+// Clear cached token whenever any OAuth2 config field changes
+[els.oauth2TokenUrl, els.oauth2ClientId, els.oauth2ClientSecret,
+ els.oauth2Scope, els.oauth2PwUsername, els.oauth2PwPassword].forEach(el => {
+    el.addEventListener('input', clearOAuth2Token);
 });
 
 // Fetch OAuth2 token
@@ -363,10 +377,14 @@ async function fetchOAuth2Token({ grantType, tokenUrl, clientId, clientSecret, s
             }),
         });
         const proxyData = await proxyRes.json();
-        if (!proxyData.status || proxyData.status >= 400) {
-            throw new Error(proxyData.body?.error_description || proxyData.body?.error || `HTTP ${proxyData.status}`);
+        let parsedBody = proxyData.body;
+        if (typeof parsedBody === 'string') {
+            try { parsedBody = JSON.parse(parsedBody); } catch { throw new Error(`Token endpoint error: ${parsedBody}`); }
         }
-        return proxyData.body?.access_token || (() => { throw new Error('No access_token in response'); })();
+        if (!proxyData.status || proxyData.status >= 400) {
+            throw new Error(parsedBody?.error_description || parsedBody?.error || `HTTP ${proxyData.status}`);
+        }
+        return parsedBody?.access_token || (() => { throw new Error('No access_token in response'); })();
     }
 
     data = await response.json();
@@ -539,7 +557,7 @@ els.btnDeleteEnv.addEventListener('click', () => {
 // ─── Variable Interpolation ───────────────────────────────────────────────────
 function interpolate(str) {
     if (typeof str !== 'string') return str;
-    return str.replaceAll(/\{\{([^}]+)\}\}/g, (_, raw) => {
+    return str.replaceAll(/\{\{([^}]{1,256})\}\}/g, (_, raw) => {
         const key = raw.trim();
         if (runtimeVars[key] !== undefined) return runtimeVars[key];
         const envVal = getEnvVar(key);
@@ -948,11 +966,28 @@ function createFolderElement(folderName, items) {
 
     const header = document.createElement('div');
     header.className = 'folder-header';
-    header.innerHTML = `
-        <svg class="folder-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true" style="color:var(--vio); opacity:0.7; flex-shrink:0;"><path d="M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg>
-        <span class="folder-name">${escHtml(folderName)}</span>
-        <span class="folder-count">${items.length}</span>`;
+    const _svg = (attrs, childTag, childAttrs) => {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        Object.entries(attrs).forEach(([k, v]) => k === 'style' ? (el.style.cssText = v) : el.setAttribute(k, v));
+        if (childTag) {
+            const ch = document.createElementNS('http://www.w3.org/2000/svg', childTag);
+            Object.entries(childAttrs).forEach(([k, v]) => ch.setAttribute(k, v));
+            el.appendChild(ch);
+        }
+        return el;
+    };
+    const arrowSvg = _svg({ class: 'folder-arrow', width: '10', height: '10', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linecap': 'round', 'aria-hidden': 'true' }, 'polyline', { points: '6 9 12 15 18 9' });
+    const folderSvg = _svg({ width: '12', height: '12', viewBox: '0 0 24 24', fill: 'currentColor', stroke: 'none', 'aria-hidden': 'true', style: 'color:var(--vio); opacity:0.7; flex-shrink:0;' }, 'path', { d: 'M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z' });
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'folder-name';
+    nameSpan.textContent = folderName;
+    const countSpan = document.createElement('span');
+    countSpan.className = 'folder-count';
+    countSpan.textContent = items.length;
+    header.appendChild(arrowSvg);
+    header.appendChild(folderSvg);
+    header.appendChild(nameSpan);
+    header.appendChild(countSpan);
 
     const content = document.createElement('ul');
     content.className = 'folder-content sidebar-content';
@@ -1032,6 +1067,7 @@ function restoreAuth(auth) {
     if (auth.type === 'basic') { els.authUsername.value = auth.username || ''; els.authPassword.value = auth.password || ''; }
     if (auth.type === 'api-key'){ els.authApikeyHeader.value = auth.headerName || ''; els.authApikeyValue.value = auth.headerValue || ''; }
     if (auth.type === 'oauth2') {
+        clearOAuth2Token();
         els.oauth2Grant.value    = auth.grantType    || 'client_credentials';
         els.oauth2TokenUrl.value = auth.tokenUrl     || '';
         els.oauth2ClientId.value = auth.clientId     || '';
@@ -1102,11 +1138,12 @@ els.importCollectionsFile.addEventListener('change', async (e) => {
         const data = JSON.parse(text);
         const imported = data.items || (Array.isArray(data) ? data : []);
         if (!imported.length) return showToast('No items found in file', 'error');
-        const action = confirm(`Import ${imported.length} request(s)?\n\nOK = merge with existing\nCancel = replace all`);
-        if (action) {
-            collections = [...collections, ...imported];
+        if (!confirm(`Import ${imported.length} request(s)? Executable scripts will be stripped from imported items.`)) return;
+        const sanitized = imported.map(({ preRequestScript: _p, testsScript: _t, ...rest }) => rest);
+        if (collections.length && confirm(`Replace all ${collections.length} existing request(s)?\n\nOK = Replace all\nCancel = Merge (add to existing)`)) {
+            collections = sanitized;
         } else {
-            collections = imported;
+            collections = [...collections, ...sanitized];
         }
         await saveCollections();
         renderCollections();
@@ -1169,68 +1206,66 @@ function closeOpenapiModal() {
     els.openapiModal.close();
 }
 
-function parseOpenApiSpec(spec) {
-    const items = [];
+function resolveBaseUrl(spec) {
     const isSwagger2 = spec.swagger && spec.swagger.startsWith('2');
-    const baseUrl = isSwagger2
+    return isSwagger2
         ? `${spec.schemes?.[0] || 'https'}://${spec.host || ''}${spec.basePath || ''}`
         : (spec.servers?.[0]?.url || '');
+}
 
-    const paths = spec.paths || {};
+function mergeParameters(pathItem, operation) {
+    const seen = new Set();
+    const result = { queryParams: [], headers: [] };
+    for (const p of [...(pathItem.parameters || []), ...(operation.parameters || [])]) {
+        if (seen.has(p.name)) continue;
+        seen.add(p.name);
+        const entry = { key: p.name, value: p.example != null ? String(p.example) : '', enabled: true };
+        if (p.in === 'query')  result.queryParams.push(entry);
+        if (p.in === 'header') result.headers.push(entry);
+    }
+    return result;
+}
 
-    for (const [path, pathItem] of Object.entries(paths)) {
-        const pathLevelParams = pathItem.parameters || [];
+function extractRequestBody(operation, isSwagger2) {
+    const requestBody = operation.requestBody;
+    if (requestBody) {
+        const jsonContent = requestBody.content?.['application/json'];
+        if (jsonContent) {
+            const example = jsonContent.example ?? jsonContent.schema?.example;
+            return { bodyType: 'json', body: example != null ? JSON.stringify(example, null, 2) : buildSchemaExample(jsonContent.schema) };
+        }
+    }
+    if (isSwagger2 && !requestBody) {
+        const bodyParam = (operation.parameters || []).find(p => p.in === 'body');
+        if (bodyParam) {
+            return {
+                bodyType: 'json',
+                body: bodyParam.schema?.example != null
+                    ? JSON.stringify(bodyParam.schema.example, null, 2)
+                    : buildSchemaExample(bodyParam.schema),
+            };
+        }
+    }
+    return { bodyType: 'none' };
+}
 
+function parseOpenApiSpec(spec) {
+    const isSwagger2 = spec.swagger && spec.swagger.startsWith('2');
+    const baseUrl = resolveBaseUrl(spec);
+    const items = [];
+
+    for (const [path, pathItem] of Object.entries(spec.paths || {})) {
         for (const method of ['get','post','put','delete','patch','head','options']) {
             const operation = pathItem[method];
             if (!operation) continue;
 
             const name = operation.summary || operation.operationId || `${method.toUpperCase()} ${path}`;
             const folder = operation.tags?.[0] || spec.info?.title || undefined;
+            const { queryParams, headers } = mergeParameters(pathItem, operation);
+            const bodyInfo = extractRequestBody(operation, isSwagger2);
 
-            const item = {
-                name,
-                method:      method.toUpperCase(),
-                url:         baseUrl + path,
-                queryParams: [],
-                headers:     [],
-                auth:        { type: 'none' },
-                bodyType:    'none',
-            };
+            const item = { name, method: method.toUpperCase(), url: baseUrl + path, queryParams, headers, auth: { type: 'none' }, ...bodyInfo };
             if (folder) item.folder = folder;
-
-            // Parameters (path + operation level, deduplicated by name)
-            const allParams = [...pathLevelParams, ...(operation.parameters || [])];
-            const seen = new Set();
-            for (const p of allParams) {
-                if (seen.has(p.name)) continue;
-                seen.add(p.name);
-                if (p.in === 'query')  item.queryParams.push({ key: p.name, value: p.example != null ? String(p.example) : '', enabled: true });
-                if (p.in === 'header') item.headers.push({ key: p.name, value: p.example != null ? String(p.example) : '', enabled: true });
-            }
-
-            // Request body (OAS3)
-            const requestBody = operation.requestBody;
-            if (requestBody) {
-                const jsonContent = requestBody.content?.['application/json'];
-                if (jsonContent) {
-                    item.bodyType = 'json';
-                    const example = jsonContent.example ?? jsonContent.schema?.example;
-                    item.body = example != null ? JSON.stringify(example, null, 2) : buildSchemaExample(jsonContent.schema);
-                }
-            }
-
-            // Request body (Swagger 2)
-            if (isSwagger2 && !requestBody) {
-                const bodyParam = (operation.parameters || []).find(p => p.in === 'body');
-                if (bodyParam) {
-                    item.bodyType = 'json';
-                    item.body = bodyParam.schema?.example != null
-                        ? JSON.stringify(bodyParam.schema.example, null, 2)
-                        : buildSchemaExample(bodyParam.schema);
-                }
-            }
-
             items.push(item);
         }
     }
