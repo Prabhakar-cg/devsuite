@@ -539,7 +539,7 @@ els.btnDeleteEnv.addEventListener('click', () => {
 // ─── Variable Interpolation ───────────────────────────────────────────────────
 function interpolate(str) {
     if (typeof str !== 'string') return str;
-    return str.replace(/\{\{([^}]+)\}\}/g, (_, raw) => {
+    return str.replaceAll(/\{\{([^}]+)\}\}/g, (_, raw) => {
         const key = raw.trim();
         if (runtimeVars[key] !== undefined) return runtimeVars[key];
         const envVal = getEnvVar(key);
@@ -591,6 +591,24 @@ async function runPreRequestScript(code) {
     return logs;
 }
 
+function expect(val) {
+    const assert = (pass, msg) => { if (!pass) throw new Error(msg); };
+    const chain = new Proxy({}, {
+        get(_, prop) {
+            if (prop === 'equal')    return (exp) => assert(val === exp, `Expected ${jsonSafe(val)} to equal ${jsonSafe(exp)}`);
+            if (prop === 'include')  return (str) => assert(String(val).includes(String(str)), `Expected "${val}" to include "${str}"`);
+            if (prop === 'property') return (key) => assert(val != null && key in Object(val), `Expected object to have property "${key}"`);
+            if (prop === 'status')   return (code) => assert(val?.status === code, `Expected status ${val?.status} to equal ${code}`);
+            if (prop === 'ok')       return assert(Boolean(val), `Expected ${jsonSafe(val)} to be truthy`);
+            if (prop === 'above')    return (n) => assert(val > n, `Expected ${val} to be above ${n}`);
+            if (prop === 'below')    return (n) => assert(val < n, `Expected ${val} to be below ${n}`);
+            if (prop === 'a')        return (t) => assert(typeof val === t, `Expected typeof ${typeof val} to be ${t}`);
+            return chain;
+        }
+    });
+    return chain;
+}
+
 async function runTestScript(code, dsResponse) {
     const logs = [];
     const results = [];
@@ -605,24 +623,6 @@ async function runTestScript(code, dsResponse) {
             results.push({ name, passed: false, error: e.message });
             logs.push({ type: 'fail', text: `✗  ${name}: ${e.message}` });
         }
-    }
-
-    function expect(val) {
-        const assert = (pass, msg) => { if (!pass) throw new Error(msg); };
-        const chain = new Proxy({}, {
-            get(_, prop) {
-                if (prop === 'equal')    return (exp) => assert(val === exp, `Expected ${jsonSafe(val)} to equal ${jsonSafe(exp)}`);
-                if (prop === 'include')  return (str) => assert(String(val).includes(String(str)), `Expected "${val}" to include "${str}"`);
-                if (prop === 'property') return (key) => assert(val != null && key in Object(val), `Expected object to have property "${key}"`);
-                if (prop === 'status')   return (code) => assert(val?.status === code, `Expected status ${val?.status} to equal ${code}`);
-                if (prop === 'ok')       return assert(Boolean(val), `Expected ${jsonSafe(val)} to be truthy`);
-                if (prop === 'above')    return (n) => assert(val > n, `Expected ${val} to be above ${n}`);
-                if (prop === 'below')    return (n) => assert(val < n, `Expected ${val} to be below ${n}`);
-                if (prop === 'a')        return (t) => assert(typeof val === t, `Expected typeof ${typeof val} to be ${t}`);
-                return chain;
-            }
-        });
-        return chain;
     }
 
     try {
@@ -643,8 +643,8 @@ function jsonSafe(v) {
 function renderConsole(preReqLogs, testLogs, testResults) {
     els.consoleEntries.innerHTML = '';
     const all = [];
-    if (preReqLogs.length) { all.push({ type: 'section', text: '── Pre-Request ──' }); all.push(...preReqLogs); }
-    if (testLogs.length)   { all.push({ type: 'section', text: '── Tests ──' }); all.push(...testLogs); }
+    if (preReqLogs.length) { all.push({ type: 'section', text: '── Pre-Request ──' }, ...preReqLogs); }
+    if (testLogs.length)   { all.push({ type: 'section', text: '── Tests ──' }, ...testLogs); }
 
     if (!all.length) {
         els.consolePlaceholder.style.display = 'block';

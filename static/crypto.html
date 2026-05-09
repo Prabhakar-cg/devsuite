@@ -1024,7 +1024,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
 
     // Tracks the last operation so Download knows what to produce
     let lastOp      = null;  // 'encode-text' | 'encode-file' | 'decode'
-    let uploadedFile = null; // { name, type }
+    let uploadedFile = null;
 
     function isUrlSafe() {
         return document.getElementById('b64-mode-select').value === 'url';
@@ -1126,20 +1126,17 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
     // ── Upload file → encode ──
     document.getElementById('b64-upload-btn').addEventListener('click', () => fileInput.click());
 
-    fileInput.addEventListener('change', (e) => {
+    fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         uploadedFile = { name: file.name, type: file.type || 'application/octet-stream' };
         filenameBadge.textContent = file.name;
         filenameBadge.style.display = 'inline-block';
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            b64Output.value = encodeBuffer(ev.target.result);
-            lastOp = 'encode-file';
-            setB64Status('File encoded ✓', 'ok');
-            toast('Encoded: ' + file.name, 'success');
-        };
-        reader.readAsArrayBuffer(file);
+        const buffer = await file.arrayBuffer();
+        b64Output.value = encodeBuffer(buffer);
+        lastOp = 'encode-file';
+        setB64Status('File encoded ✓', 'ok');
+        toast('Encoded: ' + file.name, 'success');
         e.target.value = '';
     });
 
@@ -1244,7 +1241,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
         if (payload.iss) claimsBar.appendChild(makeChip('iss', payload.iss, ''));
         if (payload.sub) claimsBar.appendChild(makeChip('sub', payload.sub, ''));
         if (payload.aud) {
-            const aud = [].concat(payload.aud).join(', ');
+            const aud = [payload.aud].flat().join(', ');
             claimsBar.appendChild(makeChip('aud', aud, ''));
         }
         if (payload.iat) {
