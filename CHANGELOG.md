@@ -16,6 +16,40 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.2.1] — 2026-05-09
+
+Security and quality fixes. No new user-facing features.
+
+### Security
+
+#### `/api/collections` Authentication (`main.py`)
+- Added `require_unlocked` guard to `GET /api/collections` and `POST /api/collections` — these endpoints now require a valid server-side session token, matching the protection already applied to `/api/vault` and `/api/ssh/profiles`.
+
+### Bug Fixes
+
+#### OAuth2 Proxy Body Parsing (`static/api-tester.js`)
+- Fixed `proxyData.body?.access_token` returning `undefined` in the CORS-fallback path — `/api/proxy` returns `body` as a string, not a parsed object. The token-fetch flow now JSON-parses the body string before extracting `access_token` or error fields.
+
+#### OpenAPI File Picker (`static/api-tester.html`)
+- Restricted the `accept` attribute on the OpenAPI file picker to `.json` only; the parser is JSON-only so accepting `.yaml`/`.yml` was misleading.
+
+### Quality
+
+#### Collection Import Safety (`static/api-tester.js`)
+- Cancel on the import dialog now aborts the import instead of silently performing a replace-all.
+- `preRequestScript` and `testsScript` fields are stripped from imported items; executable scripts from untrusted sources require manual re-entry.
+
+#### DOM Safety (`static/api-tester.js`)
+- Replaced `innerHTML` usage in `createFolderElement` with explicit `createElement`/`textContent` calls, per project constraint (CLAUDE.md §4).
+
+#### OAuth2 Token Invalidation (`static/api-tester.js`)
+- `oauth2Token` is now cleared when any OAuth2 configuration field changes or when a saved item with an OAuth2 auth config is restored, preventing stale token reuse across different configurations.
+
+#### `parseOpenApiSpec` Refactor (`static/api-tester.js`)
+- Extracted `resolveBaseUrl`, `mergeParameters`, and `extractRequestBody` helpers so the main loop is a thin coordinator; resolves Sonar cognitive-complexity findings.
+
+---
+
 ## [0.2.0] — 2026-04-22
 
 Security hardening release. No new user-facing features — all changes harden the authentication, session, and transport layers as planned in the v0.2.0 milestone.

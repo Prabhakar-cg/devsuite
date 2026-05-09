@@ -599,7 +599,7 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
 .folder-status-removed .tree-folder-badge { background: var(--red-subtle); color: var(--red-mid); }
 .folder-status-added   .tree-folder-badge { background: var(--green-subtle); color: var(--green-mid); }
 .folder-status-modified .tree-folder-badge { background: var(--amber-subtle); color: var(--amber-mid); }
-.folder-status-mixed   .tree-folder-badge { background: rgba(113,0,200,0.08); color: #4a0073; }
+.folder-status-mixed   .tree-folder-badge { background: rgba(113,0,200,0.08); color: #4a0073; } /* NOSONAR — #4a0073 on composited bg yields >10:1 contrast */
 .tree-folder-badge:empty { display: none; }
 
 /* Folder row status highlights — left border accent + tinted bg */
@@ -621,7 +621,7 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
 .tree-folder-row.folder-status-mixed    {
     background: rgba(113,0,200,0.07);
     border-left: 3px solid #9b30e8;
-    color: #4a0073;
+    color: #4a0073; /* NOSONAR — #4a0073 on composited bg yields >10:1 contrast */
 }
 /* Icon color follows status */
 .tree-folder-row.folder-status-removed  .tree-icon { color: var(--red-mid);   opacity: 0.85; }
@@ -873,9 +873,9 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
     letter-spacing: 0.05em; text-transform: uppercase;
     padding: 4px 10px; border-radius: 980px; border: 1px solid;
 }
-.status-live  { color: #28cd41; background: rgba(40,205,65,0.08);  border-color: rgba(40,205,65,0.25); }
-.status-beta  { color: #ff9f0a; background: rgba(255,159,10,0.08); border-color: rgba(255,159,10,0.25); }
-.status-error { color: #ff3b30; background: rgba(255,59,48,0.08);  border-color: rgba(255,59,48,0.25); }
+.status-live  { color: #15803d; background: rgba(40,205,65,0.08);  border-color: rgba(40,205,65,0.25); }
+.status-beta  { color: var(--amber-mid); background: rgba(255,159,10,0.08); border-color: rgba(255,159,10,0.25); }
+.status-error { color: var(--red-mid);   background: rgba(255,59,48,0.08);  border-color: rgba(255,59,48,0.25); }
 
 .pulse-dot {
     width: 5px; height: 5px; border-radius: 50%;
@@ -891,11 +891,11 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
    HTTP METHOD BADGES (design system naming)
    ============================================================ */
 .ds-method { font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px; letter-spacing: 0.06em; }
-.m-get    { background: rgba(40,205,65,0.12);   color: #1a9c2a; }
-.m-post   { background: rgba(0,113,227,0.12);   color: #0071e3; }
-.m-put    { background: rgba(255,159,10,0.12);  color: #b45309; }
-.m-delete { background: rgba(255,59,48,0.12);   color: #cc2016; }
-.m-patch  { background: rgba(139,92,246,0.12);  color: #7c3aed; }
+.m-get    { background: rgba(40,205,65,0.12);   color: #15803d; }
+.m-post   { background: rgba(0,113,227,0.12);   color: #005bbc; }
+.m-put    { background: rgba(255,159,10,0.12);  color: #92400e; }
+.m-delete { background: rgba(255,59,48,0.12);   color: #b91c1c; }
+.m-patch  { background: rgba(139,92,246,0.12);  color: #5b21b6; }
 
 /* ============================================================
    KEYBOARD SHORTCUT KEYCAPS (design system)
@@ -914,12 +914,12 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
    VERSION TAGS (design system)
    ============================================================ */
 .ver-stable {
-    background: rgba(40,205,65,0.1); color: #1a9c2a;
+    background: rgba(40,205,65,0.1); color: #15803d;
     border: 1px solid rgba(40,205,65,0.2); border-radius: 5px;
     padding: 3px 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700;
 }
 .ver-canary {
-    background: rgba(139,92,246,0.1); color: #7c3aed;
+    background: rgba(139,92,246,0.1); color: #5b21b6;
     border: 1px solid rgba(139,92,246,0.2); border-radius: 5px;
     padding: 3px 8px; font-family: var(--font-mono); font-size: 10px; font-weight: 700;
 }
@@ -928,13 +928,13 @@ textarea:focus { background: var(--bg); box-shadow: inset 2px 0 0 var(--blue); }
    DIFF STAT CHIPS (design system naming)
    ============================================================ */
 .diff-add {
-    color: #1a9c2a; background: rgba(40,205,65,0.08);
+    color: #15803d; background: rgba(40,205,65,0.08);
     border: 1px solid rgba(40,205,65,0.2);
     padding: 3px 10px; border-radius: 980px;
     font-family: var(--font-mono); font-size: 11px; font-weight: 700;
 }
 .diff-del {
-    color: #cc2016; background: rgba(255,59,48,0.08);
+    color: #b91c1c; background: rgba(255,59,48,0.08);
     border: 1px solid rgba(255,59,48,0.2);
     padding: 3px 10px; border-radius: 980px;
     font-family: var(--font-mono); font-size: 11px; font-weight: 700;

@@ -1,15 +1,18 @@
 /**
- * DevSuite API Tester — v2.0
- * Bruno-inspired: Environments, variable interpolation, pre-request scripts, tests/assertions, history
+ * DevSuite API Tester — v3.0
+ * Features: Environments, variable interpolation, pre-request scripts, tests/assertions, history,
+ *           OAuth 2.0, GraphQL, collection export/import, OpenAPI import, folder hierarchy
  */
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let reqEditor, respEditor, preReqEditor, testsEditor;
+let graphqlQueryEditor, graphqlVarsEditor;
 let collections = [];
 let environments = [];
 let activeEnvId = '';
 let runtimeVars = {};
-let selectedEnvId = null; // id of env open in modal editor
+let selectedEnvId = null;
+let oauth2Token = null;
 
 // ─── DOM Refs ─────────────────────────────────────────────────────────────────
 const els = {
@@ -21,16 +24,31 @@ const els = {
     authBearerConfig:   document.getElementById('auth-bearer-config'),
     authBasicConfig:    document.getElementById('auth-basic-config'),
     authApikeyConfig:   document.getElementById('auth-apikey-config'),
+    authOauth2Config:   document.getElementById('auth-oauth2-config'),
     authToken:          document.getElementById('auth-token'),
     authUsername:       document.getElementById('auth-username'),
     authPassword:       document.getElementById('auth-password'),
     authApikeyHeader:   document.getElementById('auth-apikey-header'),
     authApikeyValue:    document.getElementById('auth-apikey-value'),
 
+    oauth2Grant:        document.getElementById('oauth2-grant'),
+    oauth2TokenUrl:     document.getElementById('oauth2-token-url'),
+    oauth2ClientId:     document.getElementById('oauth2-client-id'),
+    oauth2ClientSecret: document.getElementById('oauth2-client-secret'),
+    oauth2PasswordFields: document.getElementById('oauth2-password-fields'),
+    oauth2PwUsername:   document.getElementById('oauth2-pw-username'),
+    oauth2PwPassword:   document.getElementById('oauth2-pw-password'),
+    oauth2Scope:        document.getElementById('oauth2-scope'),
+    btnFetchOauth2:     document.getElementById('btn-fetch-oauth2'),
+    oauth2TokenStatus:  document.getElementById('oauth2-token-status'),
+    oauth2TokenDisplay: document.getElementById('oauth2-token-display'),
+    oauth2TokenValue:   document.getElementById('oauth2-token-value'),
+
     bodyRadios:         document.getElementsByName('bodyType'),
     reqBodyEditorWrap:  document.getElementById('req-body-editor-wrap'),
     reqTextBodyWrap:    document.getElementById('req-text-body-wrap'),
     reqFormDataWrap:    document.getElementById('req-form-data-wrap'),
+    reqGraphqlWrap:     document.getElementById('req-graphql-wrap'),
     reqTextBody:        document.getElementById('req-text-body'),
 
     respMeta:           document.getElementById('resp-meta'),
@@ -46,11 +64,14 @@ const els = {
     collectionsList:    document.getElementById('collections-list'),
     collectionsCount:   document.getElementById('collections-count'),
     saveBtn:            document.getElementById('save-collection-btn'),
+    btnExportCollections: document.getElementById('btn-export-collections'),
+    btnImportCollections: document.getElementById('btn-import-collections'),
+    importCollectionsFile: document.getElementById('import-collections-file'),
+    btnImportOpenapi:   document.getElementById('btn-import-openapi'),
 
     envSelect:          document.getElementById('env-select'),
     btnManageEnvs:      document.getElementById('btn-manage-envs'),
     envModal:           document.getElementById('env-modal'),
-    envModalBackdrop:   document.getElementById('env-modal-backdrop'),
     closeEnvModal:      document.getElementById('close-env-modal'),
     btnAddEnv:          document.getElementById('btn-add-env'),
     envListUl:          document.getElementById('env-list-ul'),
@@ -61,6 +82,15 @@ const els = {
     btnDeleteEnv:       document.getElementById('btn-delete-env'),
     envEditorEmpty:     document.getElementById('env-editor-empty'),
     envEditorForm:      document.getElementById('env-editor-form'),
+
+    openapiModal:       document.getElementById('openapi-modal'),
+    closeOpenapiModal:  document.getElementById('close-openapi-modal'),
+    btnOpenapiLoadFile: document.getElementById('btn-openapi-load-file'),
+    openapiFileInput:   document.getElementById('openapi-file-input'),
+    openapiSpecInput:   document.getElementById('openapi-spec-input'),
+    btnOpenapiImport:   document.getElementById('btn-openapi-import'),
+    btnOpenapiCancel:   document.getElementById('btn-openapi-cancel'),
+    openapiImportStatus: document.getElementById('openapi-import-status'),
 
     consoleBadge:       document.getElementById('console-badge'),
     consoleEntries:     document.getElementById('console-entries'),
@@ -116,6 +146,16 @@ require(['vs/editor/editor.main'], function () {
         ].join('\n'),
         language: 'javascript', theme: monacoTheme, automaticLayout: true, minimap: { enabled: false }
     });
+
+    graphqlQueryEditor = monaco.editor.create(document.getElementById('req-graphql-query'), {
+        value: 'query {\n\t# your query here\n}',
+        language: 'graphql', theme: monacoTheme, automaticLayout: true, minimap: { enabled: false }
+    });
+
+    graphqlVarsEditor = monaco.editor.create(document.getElementById('req-graphql-vars'), {
+        value: '{}',
+        language: 'json', theme: monacoTheme, automaticLayout: true, minimap: { enabled: false }
+    });
 });
 
 function resolveMonacoTheme(ts) {
@@ -125,7 +165,7 @@ function resolveMonacoTheme(ts) {
 }
 
 globalThis.addEventListener('devsuite-theme-changed', (e) => {
-    if (monaco) monaco.editor.setTheme(resolveMonacoTheme(e.detail.theme));
+    if (typeof monaco !== 'undefined') monaco.editor.setTheme(resolveMonacoTheme(e.detail.theme));
 });
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
@@ -241,10 +281,117 @@ els.authType.addEventListener('change', (e) => {
     els.authBearerConfig.style.display  = 'none';
     els.authBasicConfig.style.display   = 'none';
     els.authApikeyConfig.style.display  = 'none';
+    els.authOauth2Config.style.display  = 'none';
     if (e.target.value === 'bearer')  els.authBearerConfig.style.display  = 'block';
     if (e.target.value === 'basic')   els.authBasicConfig.style.display   = 'block';
     if (e.target.value === 'api-key') els.authApikeyConfig.style.display  = 'block';
+    if (e.target.value === 'oauth2')  els.authOauth2Config.style.display  = 'block';
 });
+
+function clearOAuth2Token() {
+    oauth2Token = null;
+    els.oauth2TokenDisplay.style.display = 'none';
+    els.oauth2TokenValue.value = '';
+    els.oauth2TokenStatus.textContent = '';
+}
+
+// OAuth2 grant type toggle
+els.oauth2Grant.addEventListener('change', (e) => {
+    els.oauth2PasswordFields.style.display = e.target.value === 'password' ? 'block' : 'none';
+    clearOAuth2Token();
+});
+
+// Clear cached token whenever any OAuth2 config field changes
+[els.oauth2TokenUrl, els.oauth2ClientId, els.oauth2ClientSecret,
+ els.oauth2Scope, els.oauth2PwUsername, els.oauth2PwPassword].forEach(el => {
+    el.addEventListener('input', clearOAuth2Token);
+});
+
+// Fetch OAuth2 token
+els.btnFetchOauth2.addEventListener('click', async () => {
+    const tokenUrl    = interpolate(els.oauth2TokenUrl.value.trim());
+    const clientId    = interpolate(els.oauth2ClientId.value.trim());
+    const clientSecret = els.oauth2ClientSecret.value.trim();
+    const scope       = els.oauth2Scope.value.trim();
+    const grantType   = els.oauth2Grant.value;
+
+    if (!tokenUrl || !clientId) {
+        showToast('Token URL and Client ID are required', 'error');
+        return;
+    }
+
+    els.btnFetchOauth2.textContent = 'Fetching…';
+    els.btnFetchOauth2.disabled = true;
+    els.oauth2TokenStatus.textContent = '';
+
+    try {
+        const token = await fetchOAuth2Token({
+            grantType, tokenUrl, clientId, clientSecret, scope,
+            username: els.oauth2PwUsername.value.trim(),
+            password: els.oauth2PwPassword.value,
+        });
+        oauth2Token = token;
+        els.oauth2TokenValue.value = token;
+        els.oauth2TokenDisplay.style.display = 'block';
+        els.oauth2TokenStatus.textContent = 'Token fetched';
+        els.oauth2TokenStatus.style.color = '#15803d';
+        showToast('OAuth2 token fetched', 'success');
+    } catch (e) {
+        els.oauth2TokenStatus.textContent = e.message;
+        els.oauth2TokenStatus.style.color = '#dc2626';
+        showToast(`OAuth2 error: ${e.message}`, 'error');
+    } finally {
+        els.btnFetchOauth2.textContent = 'Fetch Token';
+        els.btnFetchOauth2.disabled = false;
+    }
+});
+
+async function fetchOAuth2Token({ grantType, tokenUrl, clientId, clientSecret, scope, username, password }) {
+    const params = new URLSearchParams();
+    params.set('grant_type', grantType);
+    params.set('client_id', clientId);
+    if (clientSecret) params.set('client_secret', clientSecret);
+    if (scope) params.set('scope', scope);
+    if (grantType === 'password') {
+        params.set('username', username);
+        params.set('password', password);
+    }
+
+    let response, data;
+    try {
+        response = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString(),
+        });
+    } catch {
+        // CORS fallback via local proxy
+        const proxyRes = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: tokenUrl,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString(),
+            }),
+        });
+        const proxyData = await proxyRes.json();
+        let parsedBody = proxyData.body;
+        if (typeof parsedBody === 'string') {
+            try { parsedBody = JSON.parse(parsedBody); } catch { throw new Error(`Token endpoint error: ${parsedBody}`); }
+        }
+        if (!proxyData.status || proxyData.status >= 400) {
+            throw new Error(parsedBody?.error_description || parsedBody?.error || `HTTP ${proxyData.status}`);
+        }
+        return parsedBody?.access_token || (() => { throw new Error('No access_token in response'); })();
+    }
+
+    data = await response.json();
+    if (!response.ok) throw new Error(data.error_description || data.error || `HTTP ${response.status}`);
+    if (!data.access_token) throw new Error('No access_token in response');
+    return data.access_token;
+}
 
 // ─── Body UI ──────────────────────────────────────────────────────────────────
 Array.from(els.bodyRadios).forEach(r => {
@@ -252,9 +399,11 @@ Array.from(els.bodyRadios).forEach(r => {
         els.reqBodyEditorWrap.style.display = 'none';
         els.reqFormDataWrap.style.display   = 'none';
         els.reqTextBodyWrap.style.display   = 'none';
+        els.reqGraphqlWrap.style.display    = 'none';
         if (e.target.value === 'json')      els.reqBodyEditorWrap.style.display = 'flex';
         if (e.target.value === 'form-data') els.reqFormDataWrap.style.display   = 'block';
         if (e.target.value === 'text')      els.reqTextBodyWrap.style.display   = 'flex';
+        if (e.target.value === 'graphql')   els.reqGraphqlWrap.style.display    = 'flex';
     });
 });
 
@@ -303,9 +452,11 @@ els.btnManageEnvs.addEventListener('click', openEnvModal);
 els.closeEnvModal.addEventListener('click', closeEnvModal);
 els.envModal.addEventListener('click', (e) => { if (e.target === els.envModal) closeEnvModal(); });
 
-// Close on Escape
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && els.envModal.open) closeEnvModal();
+    if (e.key === 'Escape') {
+        if (els.envModal.open) closeEnvModal();
+        if (els.openapiModal.open) closeOpenapiModal();
+    }
 });
 
 function openEnvModal() {
@@ -406,7 +557,7 @@ els.btnDeleteEnv.addEventListener('click', () => {
 // ─── Variable Interpolation ───────────────────────────────────────────────────
 function interpolate(str) {
     if (typeof str !== 'string') return str;
-    return str.replace(/\{\{([^}]+)\}\}/g, (_, raw) => {
+    return str.replaceAll(/\{\{([^}]{1,256})\}\}/g, (_, raw) => {
         const key = raw.trim();
         if (runtimeVars[key] !== undefined) return runtimeVars[key];
         const envVal = getEnvVar(key);
@@ -450,12 +601,30 @@ async function runPreRequestScript(code) {
     if (!code.trim()) return logs;
     try {
         // eslint-disable-next-line no-new-func
-        const fn = new Function('ds', 'console', `return (async()=>{ ${code} })()`);
-        await fn(makeDs(), makeCapturedConsole(logs));
+        const fn = new Function('ds', 'console', `return (async()=>{ ${code} })()`); // NOSONAR — intentional scripting sandbox; code is user-authored in the Monaco editor
+        await fn(makeDs(), makeCapturedConsole(logs)); // NOSONAR
     } catch (e) {
         logs.push({ type: 'error', text: `Pre-request error: ${e.message}` });
     }
     return logs;
+}
+
+function expect(val) {
+    const assert = (pass, msg) => { if (!pass) throw new Error(msg); };
+    const chain = new Proxy({}, {
+        get(_, prop) {
+            if (prop === 'equal')    return (exp) => assert(val === exp, `Expected ${jsonSafe(val)} to equal ${jsonSafe(exp)}`);
+            if (prop === 'include')  return (str) => assert(String(val).includes(String(str)), `Expected "${val}" to include "${str}"`);
+            if (prop === 'property') return (key) => assert(val != null && key in Object(val), `Expected object to have property "${key}"`);
+            if (prop === 'status')   return (code) => assert(val?.status === code, `Expected status ${val?.status} to equal ${code}`);
+            if (prop === 'ok')       return assert(Boolean(val), `Expected ${jsonSafe(val)} to be truthy`);
+            if (prop === 'above')    return (n) => assert(val > n, `Expected ${val} to be above ${n}`);
+            if (prop === 'below')    return (n) => assert(val < n, `Expected ${val} to be below ${n}`);
+            if (prop === 'a')        return (t) => assert(typeof val === t, `Expected typeof ${typeof val} to be ${t}`);
+            return chain;
+        }
+    });
+    return chain;
 }
 
 async function runTestScript(code, dsResponse) {
@@ -474,30 +643,10 @@ async function runTestScript(code, dsResponse) {
         }
     }
 
-    function expect(val) {
-        // Proxy-based fluent chain: expect(x).to.equal(y) / .to.be.ok / .to.have.property / etc.
-        const assert = (pass, msg) => { if (!pass) throw new Error(msg); };
-        const chain = new Proxy({}, {
-            get(_, prop) {
-                if (prop === 'equal')    return (exp) => assert(val === exp, `Expected ${jsonSafe(val)} to equal ${jsonSafe(exp)}`);
-                if (prop === 'include')  return (str) => assert(String(val).includes(String(str)), `Expected "${val}" to include "${str}"`);
-                if (prop === 'property') return (key) => assert(val != null && key in Object(val), `Expected object to have property "${key}"`);
-                if (prop === 'status')   return (code) => assert(val?.status === code, `Expected status ${val?.status} to equal ${code}`);
-                if (prop === 'ok')       return assert(Boolean(val), `Expected ${jsonSafe(val)} to be truthy`);
-                if (prop === 'above')    return (n) => assert(val > n, `Expected ${val} to be above ${n}`);
-                if (prop === 'below')    return (n) => assert(val < n, `Expected ${val} to be below ${n}`);
-                if (prop === 'a')        return (t) => assert(typeof val === t, `Expected typeof ${typeof val} to be ${t}`);
-                // Chainable no-ops: .to .be .have .not
-                return chain;
-            }
-        });
-        return chain;
-    }
-
     try {
         // eslint-disable-next-line no-new-func
-        const fn = new Function('ds', 'test', 'expect', 'console', `return (async()=>{ ${code} })()`);
-        await fn(makeDs({ response: dsResponse }), test, expect, makeCapturedConsole(logs));
+        const fn = new Function('ds', 'test', 'expect', 'console', `return (async()=>{ ${code} })()`); // NOSONAR — intentional scripting sandbox; code is user-authored in the Monaco editor
+        await fn(makeDs({ response: dsResponse }), test, expect, makeCapturedConsole(logs)); // NOSONAR
     } catch (e) {
         logs.push({ type: 'error', text: `Test script error: ${e.message}` });
     }
@@ -512,8 +661,8 @@ function jsonSafe(v) {
 function renderConsole(preReqLogs, testLogs, testResults) {
     els.consoleEntries.innerHTML = '';
     const all = [];
-    if (preReqLogs.length) { all.push({ type: 'section', text: '── Pre-Request ──' }); all.push(...preReqLogs); }
-    if (testLogs.length)   { all.push({ type: 'section', text: '── Tests ──' }); all.push(...testLogs); }
+    if (preReqLogs.length) { all.push({ type: 'section', text: '── Pre-Request ──' }, ...preReqLogs); }
+    if (testLogs.length)   { all.push({ type: 'section', text: '── Tests ──' }, ...testLogs); }
 
     if (!all.length) {
         els.consolePlaceholder.style.display = 'block';
@@ -547,12 +696,14 @@ function renderConsole(preReqLogs, testLogs, testResults) {
 
 // ─── Build Request Config ─────────────────────────────────────────────────────
 function buildRequestConfig() {
+    const bodyType = document.querySelector('input[name="bodyType"]:checked').value;
     const config = {
         url:         interpolate(els.url.value.trim()),
         method:      els.method.value,
         queryParams: interpolateObj(paramsListObj.get()),
         headers:     interpolateObj(headersListObj.get()),
         auth:        { type: els.authType.value },
+        bodyType,
     };
 
     if (config.auth.type === 'bearer') {
@@ -567,12 +718,25 @@ function buildRequestConfig() {
         const v = interpolate(els.authApikeyValue.value.trim());
         if (h && v) config.headers[h] = v;
     }
+    if (config.auth.type === 'oauth2') {
+        if (oauth2Token) {
+            config.auth.type = 'bearer';
+            config.auth.token = oauth2Token;
+        } else {
+            showToast('No OAuth2 token — click "Fetch Token" in the Auth tab first', 'error');
+        }
+    }
 
-    const bodyType = document.querySelector('input[name="bodyType"]:checked').value;
-    config.bodyType = bodyType;
-    if (bodyType === 'json' && reqEditor)  config.body = interpolate(reqEditor.getValue());
-    if (bodyType === 'form-data')          config.body = interpolateObj(formDataListObj.get());
-    if (bodyType === 'text')               config.body = interpolate(els.reqTextBody.value);
+    if (bodyType === 'json' && reqEditor)        config.body = interpolate(reqEditor.getValue());
+    if (bodyType === 'form-data')                config.body = interpolateObj(formDataListObj.get());
+    if (bodyType === 'text')                     config.body = interpolate(els.reqTextBody.value);
+    if (bodyType === 'graphql' && graphqlQueryEditor) {
+        let vars = {};
+        try { vars = JSON.parse(graphqlVarsEditor?.getValue() || '{}'); } catch { /* ignore */ }
+        config.body = JSON.stringify({ query: graphqlQueryEditor.getValue(), variables: vars });
+        config.bodyType = 'json';
+        if (!config.headers['Content-Type']) config.headers['Content-Type'] = 'application/json';
+    }
 
     return config;
 }
@@ -588,12 +752,22 @@ function buildRawConfig() {
         auth:        { type: els.authType.value },
         bodyType,
     };
-    if (config.auth.type === 'bearer')  config.auth.token      = els.authToken.value;
-    if (config.auth.type === 'basic') { config.auth.username   = els.authUsername.value; config.auth.password = els.authPassword.value; }
-    if (config.auth.type === 'api-key'){ config.auth.headerName= els.authApikeyHeader.value.trim(); config.auth.headerValue = els.authApikeyValue.value.trim(); }
-    if (bodyType === 'json'  && reqEditor) config.body = reqEditor.getValue();
-    if (bodyType === 'form-data')          config.body = formDataListObj.getAll();
-    if (bodyType === 'text')               config.body = els.reqTextBody.value;
+    if (config.auth.type === 'bearer')   config.auth.token      = els.authToken.value;
+    if (config.auth.type === 'basic') {  config.auth.username   = els.authUsername.value; config.auth.password = els.authPassword.value; }
+    if (config.auth.type === 'api-key'){ config.auth.headerName = els.authApikeyHeader.value.trim(); config.auth.headerValue = els.authApikeyValue.value.trim(); }
+    if (config.auth.type === 'oauth2') {
+        config.auth.grantType    = els.oauth2Grant.value;
+        config.auth.tokenUrl     = els.oauth2TokenUrl.value.trim();
+        config.auth.clientId     = els.oauth2ClientId.value.trim();
+        config.auth.scope        = els.oauth2Scope.value.trim();
+    }
+    if (bodyType === 'json'      && reqEditor)         config.body = reqEditor.getValue();
+    if (bodyType === 'form-data')                      config.body = formDataListObj.getAll();
+    if (bodyType === 'text')                           config.body = els.reqTextBody.value;
+    if (bodyType === 'graphql'   && graphqlQueryEditor) {
+        config.graphqlQuery = graphqlQueryEditor.getValue();
+        config.graphqlVars  = graphqlVarsEditor?.getValue() || '{}';
+    }
     if (preReqEditor) config.preRequestScript = preReqEditor.getValue();
     if (testsEditor)  config.testsScript      = testsEditor.getValue();
     return config;
@@ -625,7 +799,6 @@ function renderResponse(response) {
         els.respFallback.style.display = 'flex';
     }
 
-    // Response headers tab
     const hContainer = document.getElementById('resp-headers-tab');
     hContainer.innerHTML = '';
     for (const [k, v] of Object.entries(response.headers || {})) {
@@ -659,21 +832,15 @@ els.btnSend.addEventListener('click', async () => {
     let preReqLogs = [], testLogs = [], testResults = [];
 
     try {
-        // 1. Pre-request script
         const preCode = preReqEditor ? preReqEditor.getValue() : '';
         preReqLogs = await runPreRequestScript(preCode);
 
-        // 2. Send request (vars are now resolved with runtimeVars populated by script)
         const config   = buildRequestConfig();
         const response = await globalThis.ApiClient.execute(config);
 
-        // 3. Save to history
         addToHistory({ ...buildRawConfig(), timestamp: Date.now() });
-
-        // 4. Render response
         renderResponse(response);
 
-        // 5. Run tests
         const testCode = testsEditor ? testsEditor.getValue() : '';
         const dsResp   = {
             status: response.status, statusText: response.statusText,
@@ -687,7 +854,6 @@ els.btnSend.addEventListener('click', async () => {
     } catch (e) {
         showToast(e.message, 'error');
     } finally {
-        // 6. Render console (always, even on error)
         renderConsole(preReqLogs, testLogs, testResults);
         els.btnSend.textContent = 'Send';
         els.btnSend.disabled = false;
@@ -767,41 +933,115 @@ async function saveCollections() {
     }
 }
 
+// ─── Collections — Folder Rendering ──────────────────────────────────────────
 function renderCollections() {
     els.collectionsList.innerHTML = '';
-    if (els.collectionsCount) els.collectionsCount.textContent = `${collections.length} request${collections.length !== 1 ? 's' : ''}`;
+    const count = collections.length;
+    if (els.collectionsCount) els.collectionsCount.textContent = `${count} request${count !== 1 ? 's' : ''}`;
+
+    // Group by folder
+    const folderMap = new Map();
+    const noFolder = [];
 
     collections.forEach((item, idx) => {
-        const li = document.createElement('li');
-        li.className = 'collection-item';
+        if (item.folder) {
+            if (!folderMap.has(item.folder)) folderMap.set(item.folder, []);
+            folderMap.get(item.folder).push({ item, idx });
+        } else {
+            noFolder.push({ item, idx });
+        }
+    });
 
-        const badge = document.createElement('span');
-        badge.className = `method-badge ${item.method}`;
-        badge.textContent = item.method;
+    noFolder.forEach(({ item, idx }) => appendCollectionItem(els.collectionsList, item, idx));
 
-        const label = document.createElement('span');
-        label.style.cssText = 'flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.82rem;';
-        label.textContent = item.name || item.url;
-
-        const del = document.createElement('button');
-        del.textContent = '✕';
-        del.className = 'kv-remove';
-        del.title = 'Delete';
-        del.onclick = (e) => {
-            e.stopPropagation();
-            collections.splice(idx, 1);
-            saveCollections();
-            renderCollections();
-        };
-
-        li.appendChild(badge); li.appendChild(label); li.appendChild(del);
-        li.onclick = () => loadItem(item);
-        els.collectionsList.appendChild(li);
+    folderMap.forEach((items, folderName) => {
+        const folderLi = createFolderElement(folderName, items);
+        els.collectionsList.appendChild(folderLi);
     });
 }
 
+function createFolderElement(folderName, items) {
+    const li = document.createElement('li');
+    li.className = 'collection-folder';
+
+    const header = document.createElement('div');
+    header.className = 'folder-header';
+    const _svg = (attrs, childTag, childAttrs) => {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        Object.entries(attrs).forEach(([k, v]) => k === 'style' ? (el.style.cssText = v) : el.setAttribute(k, v));
+        if (childTag) {
+            const ch = document.createElementNS('http://www.w3.org/2000/svg', childTag);
+            Object.entries(childAttrs).forEach(([k, v]) => ch.setAttribute(k, v));
+            el.appendChild(ch);
+        }
+        return el;
+    };
+    const arrowSvg = _svg({ class: 'folder-arrow', width: '10', height: '10', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linecap': 'round', 'aria-hidden': 'true' }, 'polyline', { points: '6 9 12 15 18 9' });
+    const folderSvg = _svg({ width: '12', height: '12', viewBox: '0 0 24 24', fill: 'currentColor', stroke: 'none', 'aria-hidden': 'true', style: 'color:var(--vio); opacity:0.7; flex-shrink:0;' }, 'path', { d: 'M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z' });
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'folder-name';
+    nameSpan.textContent = folderName;
+    const countSpan = document.createElement('span');
+    countSpan.className = 'folder-count';
+    countSpan.textContent = items.length;
+    header.appendChild(arrowSvg);
+    header.appendChild(folderSvg);
+    header.appendChild(nameSpan);
+    header.appendChild(countSpan);
+
+    const content = document.createElement('ul');
+    content.className = 'folder-content sidebar-content';
+    content.style.cssText = 'padding:0.2rem 0 0.2rem 0.75rem; overflow:visible;';
+    items.forEach(({ item, idx }) => appendCollectionItem(content, item, idx));
+
+    let open = true;
+    header.addEventListener('click', () => {
+        open = !open;
+        content.style.display = open ? 'block' : 'none';
+        header.classList.toggle('folder-collapsed', !open);
+    });
+
+    li.appendChild(header);
+    li.appendChild(content);
+    return li;
+}
+
+function appendCollectionItem(parent, item, idx) {
+    const li = document.createElement('li');
+    li.className = 'collection-item';
+
+    const badge = document.createElement('span');
+    badge.className = `method-badge ${item.method}`;
+    badge.textContent = item.method;
+
+    const label = document.createElement('span');
+    label.style.cssText = 'flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.82rem;';
+    label.textContent = item.name || item.url;
+
+    const del = document.createElement('button');
+    del.textContent = '✕';
+    del.className = 'kv-remove';
+    del.title = 'Delete';
+    del.onclick = (e) => {
+        e.stopPropagation();
+        collections.splice(idx, 1);
+        saveCollections();
+        renderCollections();
+    };
+
+    li.appendChild(badge); li.appendChild(label); li.appendChild(del);
+    li.onclick = () => loadItem(item);
+    parent.appendChild(li);
+}
+
+function escHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ─── Load Item (restore request) ──────────────────────────────────────────────
 function loadItem(item) {
     els.method.value = item.method || 'GET';
+    updateMethodColor();
     els.url.value    = item.url || '';
 
     paramsListObj.clear();
@@ -810,13 +1050,12 @@ function loadItem(item) {
     els.authType.value = 'none';
     els.authType.dispatchEvent(new Event('change'));
 
-    // Restore params/headers — support both {key,value} array (raw) and {k:v} object formats
     const toEntries = (v) => Array.isArray(v) ? v : Object.entries(v || {}).map(([key, value]) => ({ key, value, enabled: true }));
     toEntries(item.queryParams).forEach(r => paramsListObj.add(r.key, r.value, r.enabled !== false));
     toEntries(item.headers).forEach(r => headersListObj.add(r.key, r.value, r.enabled !== false));
 
     if (item.auth) restoreAuth(item.auth);
-    if (item.bodyType) restoreBody(item.bodyType, item.body);
+    if (item.bodyType) restoreBody(item.bodyType, item);
     if (item.preRequestScript && preReqEditor) preReqEditor.setValue(item.preRequestScript);
     if (item.testsScript && testsEditor)       testsEditor.setValue(item.testsScript);
 }
@@ -825,31 +1064,235 @@ function restoreAuth(auth) {
     els.authType.value = auth.type || 'none';
     els.authType.dispatchEvent(new Event('change'));
     if (auth.type === 'bearer')  els.authToken.value = auth.token || '';
-    if (auth.type === 'basic')  { els.authUsername.value = auth.username || ''; els.authPassword.value = auth.password || ''; }
+    if (auth.type === 'basic') { els.authUsername.value = auth.username || ''; els.authPassword.value = auth.password || ''; }
     if (auth.type === 'api-key'){ els.authApikeyHeader.value = auth.headerName || ''; els.authApikeyValue.value = auth.headerValue || ''; }
-}
-
-function restoreBody(bodyType, body) {
-    const rb = document.querySelector(`input[name="bodyType"][value="${bodyType}"]`);
-    if (rb) { rb.checked = true; rb.dispatchEvent(new Event('change')); }
-    if (!body) return;
-    if (bodyType === 'json' && reqEditor) reqEditor.setValue(typeof body === 'string' ? body : JSON.stringify(body, null, 2));
-    if (bodyType === 'text') els.reqTextBody.value = body;
-    if (bodyType === 'form-data') {
-        const entries = Array.isArray(body) ? body : Object.entries(body).map(([key, value]) => ({ key, value, enabled: true }));
-        entries.forEach(r => formDataListObj.add(r.key, r.value, r.enabled !== false));
+    if (auth.type === 'oauth2') {
+        clearOAuth2Token();
+        els.oauth2Grant.value    = auth.grantType    || 'client_credentials';
+        els.oauth2TokenUrl.value = auth.tokenUrl     || '';
+        els.oauth2ClientId.value = auth.clientId     || '';
+        els.oauth2Scope.value    = auth.scope        || '';
+        els.oauth2Grant.dispatchEvent(new Event('change'));
     }
 }
 
+function restoreBody(bodyType, item) {
+    const rb = document.querySelector(`input[name="bodyType"][value="${bodyType}"]`);
+    if (rb) { rb.checked = true; rb.dispatchEvent(new Event('change')); }
+    const body = item.body;
+    if (bodyType === 'json' && reqEditor) reqEditor.setValue(typeof body === 'string' ? body : JSON.stringify(body ?? {}, null, 2));
+    if (bodyType === 'text') els.reqTextBody.value = body || '';
+    if (bodyType === 'form-data') {
+        const entries = Array.isArray(body) ? body : Object.entries(body || {}).map(([key, value]) => ({ key, value, enabled: true }));
+        entries.forEach(r => formDataListObj.add(r.key, r.value, r.enabled !== false));
+    }
+    if (bodyType === 'graphql') {
+        if (graphqlQueryEditor && item.graphqlQuery) graphqlQueryEditor.setValue(item.graphqlQuery);
+        if (graphqlVarsEditor  && item.graphqlVars)  graphqlVarsEditor.setValue(item.graphqlVars);
+    }
+}
+
+// ─── Save to Collection ───────────────────────────────────────────────────────
 els.saveBtn.addEventListener('click', () => {
-    const name = prompt('Name this request:');
-    if (!name) return;
-    collections.push({ ...buildRawConfig(), name });
+    const raw = prompt('Name this request:\n(Use "FolderName/RequestName" to save into a folder)');
+    if (!raw) return;
+    const slashIdx = raw.indexOf('/');
+    let folder, name;
+    if (slashIdx > 0 && slashIdx < raw.length - 1) {
+        folder = raw.slice(0, slashIdx).trim();
+        name   = raw.slice(slashIdx + 1).trim();
+    } else {
+        folder = undefined;
+        name   = raw.trim();
+    }
+    const item = { ...buildRawConfig(), name };
+    if (folder) item.folder = folder;
+    collections.push(item);
     saveCollections();
     renderCollections();
 });
 
 document.getElementById('refresh-collections-btn').addEventListener('click', loadCollections);
+
+// ─── Collection Export ────────────────────────────────────────────────────────
+els.btnExportCollections.addEventListener('click', () => {
+    if (!collections.length) return showToast('No collections to export', 'info');
+    const blob = new Blob([JSON.stringify({ version: 1, items: collections }, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href: url, download: 'devsuite-collections.json' });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${collections.length} request${collections.length !== 1 ? 's' : ''}`, 'success');
+});
+
+// ─── Collection Import ────────────────────────────────────────────────────────
+els.btnImportCollections.addEventListener('click', () => els.importCollectionsFile.click());
+
+els.importCollectionsFile.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const imported = data.items || (Array.isArray(data) ? data : []);
+        if (!imported.length) return showToast('No items found in file', 'error');
+        if (!confirm(`Import ${imported.length} request(s)? Executable scripts will be stripped from imported items.`)) return;
+        const sanitized = imported.map(({ preRequestScript: _p, testsScript: _t, ...rest }) => rest);
+        if (collections.length && confirm(`Replace all ${collections.length} existing request(s)?\n\nOK = Replace all\nCancel = Merge (add to existing)`)) {
+            collections = sanitized;
+        } else {
+            collections = [...collections, ...sanitized];
+        }
+        await saveCollections();
+        renderCollections();
+        showToast(`Imported ${imported.length} request(s)`, 'success');
+    } catch (err) {
+        showToast(`Import failed: ${err.message}`, 'error');
+    }
+    e.target.value = '';
+});
+
+// ─── OpenAPI Import ───────────────────────────────────────────────────────────
+els.btnImportOpenapi.addEventListener('click', openOpenapiModal);
+els.closeOpenapiModal.addEventListener('click', closeOpenapiModal);
+els.btnOpenapiCancel.addEventListener('click', closeOpenapiModal);
+els.openapiModal.addEventListener('click', (e) => { if (e.target === els.openapiModal) closeOpenapiModal(); });
+
+els.btnOpenapiLoadFile.addEventListener('click', () => els.openapiFileInput.click());
+els.openapiFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    els.openapiSpecInput.value = text;
+    e.target.value = '';
+});
+
+els.btnOpenapiImport.addEventListener('click', () => {
+    const raw = els.openapiSpecInput.value.trim();
+    if (!raw) return showToast('Paste a spec first', 'error');
+
+    let spec;
+    try {
+        spec = JSON.parse(raw);
+    } catch {
+        els.openapiImportStatus.textContent = 'Invalid JSON — only JSON specs are supported';
+        els.openapiImportStatus.style.color = '#dc2626';
+        return;
+    }
+
+    const imported = parseOpenApiSpec(spec);
+    if (!imported.length) {
+        els.openapiImportStatus.textContent = 'No paths found in spec';
+        els.openapiImportStatus.style.color = '#dc2626';
+        return;
+    }
+
+    collections = [...collections, ...imported];
+    saveCollections();
+    renderCollections();
+    closeOpenapiModal();
+    showToast(`Imported ${imported.length} endpoint${imported.length !== 1 ? 's' : ''} from OpenAPI spec`, 'success');
+});
+
+function openOpenapiModal() {
+    els.openapiSpecInput.value = '';
+    els.openapiImportStatus.textContent = '';
+    els.openapiModal.showModal();
+}
+
+function closeOpenapiModal() {
+    els.openapiModal.close();
+}
+
+function resolveBaseUrl(spec) {
+    const isSwagger2 = spec.swagger && spec.swagger.startsWith('2');
+    return isSwagger2
+        ? `${spec.schemes?.[0] || 'https'}://${spec.host || ''}${spec.basePath || ''}`
+        : (spec.servers?.[0]?.url || '');
+}
+
+function mergeParameters(pathItem, operation) {
+    const seen = new Set();
+    const result = { queryParams: [], headers: [] };
+    for (const p of [...(pathItem.parameters || []), ...(operation.parameters || [])]) {
+        if (seen.has(p.name)) continue;
+        seen.add(p.name);
+        const entry = { key: p.name, value: p.example != null ? String(p.example) : '', enabled: true };
+        if (p.in === 'query')  result.queryParams.push(entry);
+        if (p.in === 'header') result.headers.push(entry);
+    }
+    return result;
+}
+
+function extractRequestBody(operation, isSwagger2) {
+    const requestBody = operation.requestBody;
+    if (requestBody) {
+        const jsonContent = requestBody.content?.['application/json'];
+        if (jsonContent) {
+            const example = jsonContent.example ?? jsonContent.schema?.example;
+            return { bodyType: 'json', body: example != null ? JSON.stringify(example, null, 2) : buildSchemaExample(jsonContent.schema) };
+        }
+    }
+    if (isSwagger2 && !requestBody) {
+        const bodyParam = (operation.parameters || []).find(p => p.in === 'body');
+        if (bodyParam) {
+            return {
+                bodyType: 'json',
+                body: bodyParam.schema?.example != null
+                    ? JSON.stringify(bodyParam.schema.example, null, 2)
+                    : buildSchemaExample(bodyParam.schema),
+            };
+        }
+    }
+    return { bodyType: 'none' };
+}
+
+function parseOpenApiSpec(spec) {
+    const isSwagger2 = spec.swagger && spec.swagger.startsWith('2');
+    const baseUrl = resolveBaseUrl(spec);
+    const items = [];
+
+    for (const [path, pathItem] of Object.entries(spec.paths || {})) {
+        for (const method of ['get','post','put','delete','patch','head','options']) {
+            const operation = pathItem[method];
+            if (!operation) continue;
+
+            const name = operation.summary || operation.operationId || `${method.toUpperCase()} ${path}`;
+            const folder = operation.tags?.[0] || spec.info?.title || undefined;
+            const { queryParams, headers } = mergeParameters(pathItem, operation);
+            const bodyInfo = extractRequestBody(operation, isSwagger2);
+
+            const item = { name, method: method.toUpperCase(), url: baseUrl + path, queryParams, headers, auth: { type: 'none' }, ...bodyInfo };
+            if (folder) item.folder = folder;
+            items.push(item);
+        }
+    }
+
+    return items;
+}
+
+function buildSchemaExample(schema) {
+    if (!schema) return '{}';
+    if (schema.example != null) return JSON.stringify(schema.example, null, 2);
+    if (schema.type === 'object' || schema.properties) {
+        const obj = {};
+        for (const [k, v] of Object.entries(schema.properties || {})) {
+            obj[k] = v.example ?? v.default ?? typeDefault(v.type);
+        }
+        return JSON.stringify(obj, null, 2);
+    }
+    return '{}';
+}
+
+function typeDefault(t) {
+    if (t === 'string')  return '';
+    if (t === 'number' || t === 'integer') return 0;
+    if (t === 'boolean') return false;
+    if (t === 'array')   return [];
+    return null;
+}
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function initApp() {
