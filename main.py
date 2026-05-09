@@ -19,7 +19,6 @@ import re
 import secrets
 import socket
 import stat
-import string
 import struct
 import sys
 import time
@@ -72,22 +71,20 @@ logger = logging.getLogger("devsuite")
 # ─── DevDB — Unified Encrypted Database ────────────────────────────────────────
 _DEVSUITE_DIR  = Path.home() / ".devsuite"
 _DB_PATH       = _DEVSUITE_DIR / "devdb.dsb"
-_LEGACY_URL_DB = Path(__file__).parent / "url_db.json"   # in-repo legacy file
 
 _db = DevDB(_DB_PATH, password=os.environ.get("DEVDB_PASSWORD") or None)
 
 
 @asynccontextmanager
 async def _lifespan(_application: FastAPI):
-    """Modern FastAPI lifespan: open DevDB, migrate legacy files, seed url_db cache."""
+    """Modern FastAPI lifespan: open DevDB, migrate legacy files."""
     _db.open()
-    migrated = DevDB.migrate_legacy(_db, _DEVSUITE_DIR, _LEGACY_URL_DB)
+    migrated = DevDB.migrate_legacy(_db, _DEVSUITE_DIR)
     if migrated:
         _db.save()
         logger.info("DevDB: migration complete, database saved to %s", _DB_PATH)
     else:
         logger.info("DevDB: opened %s (%d bytes)", _DB_PATH, _db.file_size())
-    url_db.update(_db.get_store("url_db"))
     yield  # app is running
     # (cleanup goes here if needed in future)
 
@@ -125,33 +122,9 @@ os.makedirs(static_dir, exist_ok=True)
 # Serve static assets (JS, CSS, images) from the /static route
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-# ─── URL Shortener helpers (backed by DevDB 'url_db' store) ────────────────────
-
-
-def _load_url_db() -> dict:
-    """Load the url_db store from DevDB (falls back to empty dict)."""
-    return _db.get_store("url_db")
-
-
-def _save_url_db(data: dict) -> None:
-    """Persist the url_db store to DevDB."""
-    _db.set_store("url_db", data)
-    _db.save()
-
-
-# In-memory cache for the URL shortener (populated at startup via _startup_devdb)
-# This proxy ensures the rest of the shortener code has the dict in scope.
-url_db: dict = {}
-
 # Maximum size for file uploads to /api/convert (20 MB)
 MAX_UPLOAD_SIZE = 20 * 1024 * 1024
 _XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-
-class ShortenRequest(BaseModel):
-    """Request body for the /api/shorten endpoint."""
-
-    url: str
 
 
 @app.middleware("http")
@@ -288,11 +261,6 @@ def read_crypto_tool():
     """Serve the Crypto Suite tool (Hash, AES, RSA, HMAC)."""
     return _serve_html("crypto.html")
 
-
-@app.get("/url-shortener", response_class=HTMLResponse, summary="Serve URL Shortener tool")
-def read_url_shortener_tool():
-    """Serve the Link & QR Studio tool."""
-    return _serve_html("url-shortener.html")
 
 
 @app.get("/api-tester", response_class=HTMLResponse, summary="Serve Local API Tester tool")
@@ -633,87 +601,6 @@ def save_vault(data: dict, request: Request):
         raise HTTPException(status_code=500, detail="Failed to save vault") from e
 
 
-@app.post(
-    "/api/shorten",
-    summary="Create a short URL",
-    responses={
-        400: {"description": "Invalid or empty URL"},
-        500: {"description": "Failed to generate unique short ID"},
-    },
-)
-def shorten_url(req: ShortenRequest, request: Request):
-    """
-    Create and store a 6-character short identifier for the provided URL and return
-    the short link and original URL.
-
-    The input URL is trimmed of surrounding whitespace; if it lacks an HTTP scheme,
-    ``https://`` is prepended. A random 6-character alphanumeric ``short_id`` is
-    generated, stored in the in-memory datastore, and used to build the redirectable
-    short URL from ``request.base_url``.
-
-    Parameters:
-        req (ShortenRequest): Request model containing the `url` to shorten.
-        request (Request): FastAPI request used to derive the application's base URL.
-
-    Returns:
-        dict: {
-            "short_id": str — the generated 6-character identifier,
-            "short_url": str — the full short URL that redirects to the original,
-            "original_url": str — the normalized original URL stored for this id
-        }
-    """
-    url = req.url.strip()
-    if not url:
-        raise HTTPException(status_code=400, detail="URL cannot be empty")
-
-    parsed = urllib.parse.urlparse(url)
-    if not parsed.scheme:
-        url = "https://" + url
-        parsed = urllib.parse.urlparse(url)
-    elif parsed.scheme not in ("http", "https"):
-        raise HTTPException(status_code=400, detail="Unsupported URL scheme")
-
-    if not parsed.scheme or not parsed.netloc:
-        raise HTTPException(status_code=400, detail="Invalid URL format")
-
-    alphabet = string.ascii_letters + string.digits
-    for _ in range(10):
-        short_id = "".join(secrets.choice(alphabet) for _ in range(6))
-        if short_id not in url_db:
-            break
-    else:
-        raise HTTPException(status_code=500, detail="Failed to generate unique short ID")
-
-    # Store in memory and persist to DevDB
-    url_db[short_id] = url
-    _save_url_db(url_db)
-
-    # Return the full short URL
-    base_url = str(request.base_url).rstrip("/")
-    short_url = f"{base_url}/r/{short_id}"
-    return {"short_id": short_id, "short_url": short_url, "original_url": url}
-
-
-@app.get(
-    "/r/{short_id}",
-    summary="Redirect to original URL",
-    responses={404: {"description": "Short URL not found"}},
-)
-def redirect_short_url(short_id: str):
-    """
-    Redirects a short identifier to the stored original URL.
-
-    Returns:
-        RedirectResponse: A 302 redirect response to the original URL.
-
-    Raises:
-        HTTPException: If the provided `short_id` does not exist (status code 404).
-    """
-    if short_id in url_db:
-        return RedirectResponse(url=url_db[short_id], status_code=302)
-    raise HTTPException(status_code=404, detail="Short URL not found.")
-
-
 async def _read_upload_stream(file: UploadFile, max_size: int) -> tuple[bytearray, bool]:
     """Read file in 1 MB chunks; detect null bytes in the first chunk; enforce size limit."""
     raw_bytes = bytearray()
@@ -983,7 +870,7 @@ def require_unlocked(request: Request) -> None:
 # These endpoints expose the DevDB engine directly for the DB Manager UI
 # and any future tools that want to read/write named stores.
 
-_ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "url_db", "app_prefs"}
+_ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "app_prefs"}
 
 # Only allow printable, non-shell-special characters for WSL distro names.
 _DISTRO_NAME_RE = re.compile(r'^[A-Za-z0-9_.\-]+$')
@@ -1040,9 +927,6 @@ def db_set_store(name: str, data: dict, request: Request):
     try:
         _db.set_store(name, data)
         _db.save()
-        if name == "url_db":
-            url_db.clear()
-            url_db.update(_db.get_store("url_db") or {})
         return {"status": "ok", "store": name}
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Failed to write store %r: %s", name, e)
@@ -1092,16 +976,10 @@ async def db_import(request: Request, file: Annotated[UploadFile, File(...)]):
             raise HTTPException(status_code=413, detail="Import file too large (50 MB limit)")
         imported = DevDB.from_bytes(raw)  # parses & validates the binary format
         # Merge all stores from the imported file (skip unknown store names)
-        url_db_updated = False
         for store_name in imported.list_stores():
             if store_name in _ALLOWED_STORES:
                 _db.set_store(store_name, imported.get_store(store_name))
-                if store_name == "url_db":
-                    url_db_updated = True
         _db.save()
-        if url_db_updated:
-            url_db.clear()
-            url_db.update(_db.get_store("url_db") or {})
         return {"status": "ok", "imported_stores": imported.list_stores()}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

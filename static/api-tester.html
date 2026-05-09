@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link rel="stylesheet" href="/static/linter.css?v=2">
-    <link rel="stylesheet" href="/static/api-tester.css?v=9">
+    <link rel="stylesheet" href="/static/api-tester.css?v=10">
     <script src="/static/crypto-js.min.js"></script>
     <script src="/static/libs/require.min.js"></script>
     <script src="/static/theme.js?v=2"></script>
@@ -54,7 +54,18 @@
             <div id="sidebar-collections" class="sidebar-panel">
                 <div class="sidebar-panel-header">
                     <span id="collections-count" class="sidebar-count">0 requests</span>
-                    <button id="refresh-collections-btn" class="btn-icon" aria-label="Refresh collections">↺</button>
+                    <div style="display:flex; gap:0.1rem;">
+                        <button id="btn-import-openapi" class="btn-icon" title="Import OpenAPI spec" aria-label="Import OpenAPI spec">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                        </button>
+                        <button id="btn-import-collections" class="btn-icon" title="Import collections (JSON)" aria-label="Import collections">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                        </button>
+                        <button id="btn-export-collections" class="btn-icon" title="Export collections (JSON)" aria-label="Export collections">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="21" x2="12" y2="9"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+                        </button>
+                        <button id="refresh-collections-btn" class="btn-icon" aria-label="Refresh collections" title="Sync from server">↺</button>
+                    </div>
                 </div>
                 <ul class="sidebar-content" id="collections-list"></ul>
             </div>
@@ -133,6 +144,7 @@
                             <option value="bearer">Bearer Token</option>
                             <option value="basic">Basic Auth</option>
                             <option value="api-key">API Key</option>
+                            <option value="oauth2">OAuth 2.0</option>
                         </select>
                         <div id="auth-bearer-config" style="display:none;">
                             <label class="field-label" for="auth-token">Token</label>
@@ -150,6 +162,35 @@
                             <label class="field-label" for="auth-apikey-value">Value</label>
                             <input type="text" id="auth-apikey-value" class="url-input" style="width:100%;" placeholder="Key value or {{api_key_var}}">
                         </div>
+                        <div id="auth-oauth2-config" style="display:none;">
+                            <label class="field-label" for="oauth2-grant">Grant Type</label>
+                            <select id="oauth2-grant" class="method-select" style="width:100%; margin-bottom:0.75rem;">
+                                <option value="client_credentials">Client Credentials</option>
+                                <option value="password">Password</option>
+                            </select>
+                            <label class="field-label" for="oauth2-token-url">Token URL</label>
+                            <input type="text" id="oauth2-token-url" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="https://auth.example.com/oauth/token">
+                            <label class="field-label" for="oauth2-client-id">Client ID</label>
+                            <input type="text" id="oauth2-client-id" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="client_id or {{client_id_var}}">
+                            <label class="field-label" for="oauth2-client-secret">Client Secret</label>
+                            <input type="password" id="oauth2-client-secret" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="client_secret">
+                            <div id="oauth2-password-fields" style="display:none;">
+                                <label class="field-label" for="oauth2-pw-username">Username</label>
+                                <input type="text" id="oauth2-pw-username" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="Username or {{username_var}}">
+                                <label class="field-label" for="oauth2-pw-password">Password</label>
+                                <input type="password" id="oauth2-pw-password" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="Password">
+                            </div>
+                            <label class="field-label" for="oauth2-scope">Scope <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                            <input type="text" id="oauth2-scope" class="url-input" style="width:100%; margin-bottom:0.875rem;" placeholder="read write openid">
+                            <div style="display:flex; align-items:center; gap:0.625rem; flex-wrap:wrap;">
+                                <button id="btn-fetch-oauth2" class="btn-small btn-accent" aria-label="Fetch OAuth2 access token">Fetch Token</button>
+                                <span id="oauth2-token-status" style="font-size:0.76rem; color:var(--text-muted);"></span>
+                            </div>
+                            <div id="oauth2-token-display" style="display:none; margin-top:0.75rem;">
+                                <label class="field-label" for="oauth2-token-value">Access Token <span style="font-weight:400;text-transform:none;letter-spacing:0;">(auto-sent as Bearer)</span></label>
+                                <input type="text" id="oauth2-token-value" class="url-input" style="width:100%;" readonly>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Body -->
@@ -164,6 +205,8 @@
                             <label for="bt-form">Form Data</label>
                             <input type="radio" name="bodyType" id="bt-text" value="text">
                             <label for="bt-text">Text</label>
+                            <input type="radio" name="bodyType" id="bt-graphql" value="graphql">
+                            <label for="bt-graphql">GraphQL</label>
                         </fieldset>
                         <div id="req-body-editor-wrap" class="editor-container" style="display:none; flex:1;">
                             <div id="req-body-editor" style="width:100%; height:100%;"></div>
@@ -178,6 +221,16 @@
                             <div id="form-data-list" style="padding:0 0.875rem;"></div>
                             <div style="padding:0.5rem 0.875rem;">
                                 <button class="btn-small btn-add-row" id="btn-add-form-data">+ Add Field</button>
+                            </div>
+                        </div>
+                        <div id="req-graphql-wrap" style="display:none; flex:1; flex-direction:column; min-height:0;">
+                            <div class="graphql-section-label">Query</div>
+                            <div class="editor-container" style="flex:1; min-height:120px;">
+                                <div id="req-graphql-query" style="width:100%; height:100%;"></div>
+                            </div>
+                            <div class="graphql-section-label" style="border-top:1px solid var(--border);">Variables <span style="font-weight:400;text-transform:none;letter-spacing:0;">(JSON)</span></div>
+                            <div class="editor-container" style="flex:0 0 110px;">
+                                <div id="req-graphql-vars" style="width:100%; height:100%;"></div>
                             </div>
                         </div>
                     </div>
@@ -268,6 +321,31 @@
 
     </div>
 
+    <input type="file" id="import-collections-file" accept=".json" style="display:none;" aria-hidden="true">
+    <input type="file" id="openapi-file-input" accept=".json,.yaml,.yml" style="display:none;" aria-hidden="true">
+
+    <!-- OpenAPI Import Modal -->
+    <dialog id="openapi-modal" class="modal" aria-label="Import OpenAPI Spec">
+        <div class="modal-header">
+            <span class="modal-title">Import OpenAPI Spec</span>
+            <button id="close-openapi-modal" class="btn-icon" aria-label="Close">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="openapi-modal-body">
+            <p class="openapi-hint">Paste an OpenAPI 3.x / Swagger 2.x <strong>JSON</strong> spec, or load a file. Each path×method becomes a collection request.</p>
+            <div style="display:flex; gap:0.5rem; flex-shrink:0;">
+                <button id="btn-openapi-load-file" class="btn-small">Load JSON File…</button>
+            </div>
+            <textarea id="openapi-spec-input" class="openapi-spec-textarea" placeholder='{"openapi":"3.0.0","info":{"title":"My API","version":"1.0"},"paths":{"/users":{"get":{"summary":"List users","responses":{"200":{"description":"OK"}}}}}}'></textarea>
+            <div style="display:flex; align-items:center; gap:0.625rem; flex-shrink:0;">
+                <button id="btn-openapi-import" class="btn-small btn-accent">Import into Collection</button>
+                <button id="btn-openapi-cancel" class="btn-small">Cancel</button>
+                <span id="openapi-import-status" style="font-size:0.78rem; color:var(--text-muted); margin-left:auto;"></span>
+            </div>
+        </div>
+    </dialog>
+
     <!-- Environment Manager Modal -->
     <dialog id="env-modal" class="modal" aria-label="Environment Manager">
         <div class="modal-backdrop" id="env-modal-backdrop"></div>
@@ -306,6 +384,6 @@
 
     <div id="toast-container"></div>
 
-    <script src="/static/api-tester.js?v=4"></script>
+    <script src="/static/api-tester.js?v=5"></script>
 </body>
 </html>

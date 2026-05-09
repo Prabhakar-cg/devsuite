@@ -830,6 +830,113 @@ dialog.modal::backdrop {
     font-size: 0.79rem;
 }
 
+/* ─── GraphQL Section Labels ──────────────────────────────────── */
+.graphql-section-label {
+    flex-shrink: 0;
+    padding: 0.4rem 0.875rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+}
+
+/* ─── Collection Folders ──────────────────────────────────────── */
+.collection-folder {
+    list-style: none;
+}
+
+.folder-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.42rem 0.625rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background var(--transition);
+    user-select: none;
+}
+.folder-header:hover { background: var(--bg-secondary); }
+
+.folder-arrow {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+}
+.folder-collapsed .folder-arrow { transform: rotate(-90deg); }
+
+.folder-name {
+    flex: 1;
+    font-size: 0.81rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.folder-count {
+    font-size: 0.62rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 980px;
+    padding: 0.05em 0.5em;
+    flex-shrink: 0;
+}
+
+.folder-content {
+    list-style: none;
+    margin: 0;
+}
+
+/* ─── OpenAPI Modal ───────────────────────────────────────────── */
+.openapi-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1.25rem;
+    height: 520px;
+}
+
+.openapi-hint {
+    font-size: 0.81rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.6;
+    flex-shrink: 0;
+}
+.openapi-hint strong { color: var(--text-mid); }
+
+.openapi-spec-textarea {
+    flex: 1;
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg-secondary);
+    color: var(--text);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    padding: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.77rem;
+    line-height: 1.55;
+    resize: none;
+    outline: none;
+    transition: var(--transition);
+    min-height: 0;
+}
+.openapi-spec-textarea:focus {
+    border-color: var(--vio);
+    box-shadow: 0 0 0 3px var(--vio-subtle);
+    background: var(--bg);
+}
+.openapi-spec-textarea::placeholder { color: var(--text-muted); }
+
 /* ─── Response Placeholder ────────────────────────────────────── */
 #resp-placeholder {
     display: flex;
