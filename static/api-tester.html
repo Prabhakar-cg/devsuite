@@ -58,7 +58,7 @@
                         <button id="btn-import-openapi" class="btn-icon" title="Import OpenAPI spec" aria-label="Import OpenAPI spec">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                         </button>
-                        <button id="btn-import-collections" class="btn-icon" title="Import collections (JSON)" aria-label="Import collections">
+                        <button id="btn-import-collections" class="btn-icon" title="Import collections (DevSuite JSON / Postman v2.x)" aria-label="Import collections">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
                         </button>
                         <button id="btn-export-collections" class="btn-icon" title="Export collections (JSON)" aria-label="Export collections">
@@ -141,11 +141,15 @@
                         <label for="auth-type" class="sr-only">Authentication type</label>
                         <select id="auth-type" class="method-select" style="margin-bottom:1rem; width:100%;" aria-label="Authentication type">
                             <option value="none">No Auth</option>
+                            <option value="inherit">Inherit from parent</option>
                             <option value="bearer">Bearer Token</option>
                             <option value="basic">Basic Auth</option>
                             <option value="api-key">API Key</option>
                             <option value="oauth2">OAuth 2.0</option>
                         </select>
+                        <div id="auth-inherit-config" style="display:none;">
+                            <p id="auth-inherit-status" style="font-size:0.82rem; color:var(--text-muted); margin:0; line-height:1.6;"></p>
+                        </div>
                         <div id="auth-bearer-config" style="display:none;">
                             <label class="field-label" for="auth-token">Token</label>
                             <input type="text" id="auth-token" class="url-input" style="width:100%;" placeholder="Bearer token or {{token_var}}">
@@ -280,12 +284,20 @@
                         <div class="meta-chip"><span class="meta-label">Status</span><span id="resp-status" class="meta-value"></span></div>
                         <div class="meta-chip"><span class="meta-label">Time</span><span id="resp-time" class="meta-value"></span></div>
                         <div class="meta-chip"><span class="meta-label">Size</span><span id="resp-size" class="meta-value"></span></div>
-                        <div id="resp-proxy-chip" class="meta-chip meta-chip-proxy" style="display:none;" title="Direct fetch was blocked by CORS — DevSuite routed this request through its local proxy. The status code and body are accurate.">
+                        <div id="resp-proxy-chip" class="meta-chip meta-chip-proxy" style="display:none;" title="CORS blocked the direct request — DevSuite retried via its local proxy. Status and body reflect the target API, but your real client would be CORS-blocked, and timing includes proxy round-trip overhead.">
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                             <span>via proxy</span>
                         </div>
                         <div id="test-summary" style="display:none; margin-left:auto;"></div>
                     </output>
+
+                    <div id="resp-proxy-banner" class="proxy-warning-banner" style="display:none;" role="alert">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0; margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <div>
+                            <strong>CORS blocked the direct request — response fetched via local proxy.</strong>
+                            Your actual client would be blocked by this API's CORS policy. Status and body are accurate, but timing includes proxy overhead and is not representative of real network latency.
+                        </div>
+                    </div>
 
                     <div class="tabs-header" id="resp-tabs" role="tablist" aria-label="Response sections">
                         <button class="tab-btn active" data-target="resp-body" role="tab" aria-selected="true">Response</button>
@@ -322,6 +334,7 @@
     </div>
 
     <input type="file" id="import-collections-file" accept=".json" style="display:none;" aria-hidden="true">
+    <input type="file" id="import-env-file" accept=".json" style="display:none;" aria-hidden="true">
     <input type="file" id="openapi-file-input" accept=".json" style="display:none;" aria-hidden="true">
 
     <!-- OpenAPI Import Modal -->
@@ -356,7 +369,10 @@
             </div>
             <div class="modal-body">
                 <div class="env-list-col">
-                    <button id="btn-add-env" class="btn-small" style="width:100%; margin-bottom:0.75rem;">+ New Environment</button>
+                    <div style="display:flex; gap:0.4rem; margin-bottom:0.75rem;">
+                        <button id="btn-add-env" class="btn-small" style="flex:1;">+ New Environment</button>
+                        <button id="btn-import-env" class="btn-small" title="Import environment (DevSuite / Postman JSON)" aria-label="Import environment">Import</button>
+                    </div>
                     <ul id="env-list-ul" class="env-list-ul"></ul>
                 </div>
                 <div class="env-editor-col">
@@ -377,6 +393,47 @@
                             <button id="btn-delete-env" class="btn-small btn-danger">Delete</button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Folder Auth Modal -->
+    <dialog id="folder-auth-modal" class="modal" aria-label="Folder Auth Settings">
+        <div class="modal-content" style="min-width:340px; max-width:420px;">
+            <div class="modal-header">
+                <span class="modal-title">Folder Auth — <span id="folder-auth-modal-name"></span></span>
+                <button id="close-folder-auth-modal" class="btn-icon" aria-label="Close">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div style="padding:1rem; display:flex; flex-direction:column; gap:0.75rem;">
+                <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">Requests in this folder that use <strong>Inherit from parent</strong> will use the auth configured here.</p>
+                <select id="folder-auth-type" class="method-select" style="width:100%;" aria-label="Folder auth type">
+                    <option value="none">No Auth</option>
+                    <option value="bearer">Bearer Token</option>
+                    <option value="basic">Basic Auth</option>
+                    <option value="api-key">API Key</option>
+                </select>
+                <div id="folder-auth-bearer-config" style="display:none;">
+                    <label class="field-label" for="folder-auth-token">Token</label>
+                    <input type="text" id="folder-auth-token" class="url-input" style="width:100%;" placeholder="Bearer token or {{token_var}}">
+                </div>
+                <div id="folder-auth-basic-config" style="display:none;">
+                    <label class="field-label" for="folder-auth-username">Username</label>
+                    <input type="text" id="folder-auth-username" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="Username or {{username_var}}">
+                    <label class="field-label" for="folder-auth-password">Password</label>
+                    <input type="password" id="folder-auth-password" class="url-input" style="width:100%;" placeholder="Password">
+                </div>
+                <div id="folder-auth-apikey-config" style="display:none;">
+                    <label class="field-label" for="folder-auth-apikey-header">Header Name</label>
+                    <input type="text" id="folder-auth-apikey-header" class="url-input" style="width:100%; margin-bottom:0.5rem;" placeholder="X-API-Key">
+                    <label class="field-label" for="folder-auth-apikey-value">Value</label>
+                    <input type="text" id="folder-auth-apikey-value" class="url-input" style="width:100%;" placeholder="Key value or {{api_key_var}}">
+                </div>
+                <div style="display:flex; gap:0.5rem; padding-top:0.25rem; border-top:1px solid var(--border);">
+                    <button id="btn-save-folder-auth" class="btn-small btn-accent" style="flex:1;">Save</button>
+                    <button id="btn-cancel-folder-auth" class="btn-small">Cancel</button>
                 </div>
             </div>
         </div>

@@ -555,6 +555,30 @@
 .meta-chip-proxy span { color: #b45309; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.03em; }
 .meta-chip-proxy svg  { color: #b45309; flex-shrink: 0; }
 
+/* Proxy warning banner — shown below meta bar when a request was proxied */
+.proxy-warning-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.55rem 1rem;
+    background: rgba(180,83,9,0.08);
+    border-bottom: 1px solid rgba(180,83,9,0.25);
+    color: #92400e;
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+.proxy-warning-banner strong { font-weight: 700; }
+@media (prefers-color-scheme: dark) {
+    .proxy-warning-banner { color: #f5dfa0; background: rgba(120,53,15,0.35); border-color: rgba(180,83,9,0.5); }
+}
+[data-theme="vs-dark"] .proxy-warning-banner,
+[data-theme="hc-black"] .proxy-warning-banner,
+[data-theme="ios-glass"] .proxy-warning-banner {
+    color: #f5dfa0;
+    background: rgba(120,53,15,0.35);
+    border-color: rgba(180,83,9,0.5);
+}
+
 /* Test summary pushed to the right */
 #test-summary { margin-left: auto; font-size: 0.76rem; font-family: var(--font-body); }
 

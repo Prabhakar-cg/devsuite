@@ -213,6 +213,14 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 - REST client supporting: GET, POST, PUT, DELETE, PATCH.
 - Custom headers and body.
 - Request Collections with folder organization — persisted in DevDB `collections`.
+- Environment import from the Environment Manager modal — auto-detects format:
+  - **DevSuite native** — `[{id, name, vars: {key: value}}]` array.
+  - **Postman environment** — detected via `_postman_variable_scope: "environment"` or `{name, values: [{key, value, enabled}]}`. Disabled variables are skipped. Existing environments with the same name are replaced in-place.
+- Collection import auto-detects format from the uploaded JSON file:
+  - **DevSuite native** — `{ items: [...] }` (scripts stripped on import for safety).
+  - **Postman v2.x** — detected via `info.schema` containing `getpostman.com`. Nested folders are flattened to a single folder level. Parses URL, query params, headers, body (raw/JSON/text/form-data/GraphQL), and auth (bearer, basic, API key). Compatible with Postman exports and Bruno "Export as Postman" collections.
+- Collection export as DevSuite native JSON.
+- OpenAPI 3.x / Swagger 2.x JSON import — each path×method becomes a collection request.
 - Local CORS Proxy (`/api/proxy`) to bypass browser CORS restrictions (targets any public host; private IPs blocked server-side).
 - Frontend uses 8-hour session auth via `auth-guard.js`. The `/api/collections` backend endpoints themselves are **not** auth-gated — they rely on frontend session management only.
 

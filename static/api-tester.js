@@ -9,9 +9,11 @@ let reqEditor, respEditor, preReqEditor, testsEditor;
 let graphqlQueryEditor, graphqlVarsEditor;
 let collections = [];
 let environments = [];
+let folderAuths = {};
 let activeEnvId = '';
 let runtimeVars = {};
 let selectedEnvId = null;
+let currentItemFolder = null;
 let oauth2Token = null;
 
 // ─── DOM Refs ─────────────────────────────────────────────────────────────────
@@ -21,6 +23,8 @@ const els = {
     btnSend:            document.getElementById('btn-send'),
 
     authType:           document.getElementById('auth-type'),
+    authInheritConfig:  document.getElementById('auth-inherit-config'),
+    authInheritStatus:  document.getElementById('auth-inherit-status'),
     authBearerConfig:   document.getElementById('auth-bearer-config'),
     authBasicConfig:    document.getElementById('auth-basic-config'),
     authApikeyConfig:   document.getElementById('auth-apikey-config'),
@@ -74,6 +78,8 @@ const els = {
     envModal:           document.getElementById('env-modal'),
     closeEnvModal:      document.getElementById('close-env-modal'),
     btnAddEnv:          document.getElementById('btn-add-env'),
+    btnImportEnv:       document.getElementById('btn-import-env'),
+    importEnvFile:      document.getElementById('import-env-file'),
     envListUl:          document.getElementById('env-list-ul'),
     envNameInput:       document.getElementById('env-name-input'),
     envVarsList:        document.getElementById('env-vars-list'),
@@ -82,6 +88,21 @@ const els = {
     btnDeleteEnv:       document.getElementById('btn-delete-env'),
     envEditorEmpty:     document.getElementById('env-editor-empty'),
     envEditorForm:      document.getElementById('env-editor-form'),
+
+    folderAuthModal:         document.getElementById('folder-auth-modal'),
+    folderAuthModalName:     document.getElementById('folder-auth-modal-name'),
+    closeFolderAuthModal:    document.getElementById('close-folder-auth-modal'),
+    folderAuthType:          document.getElementById('folder-auth-type'),
+    folderAuthBearerConfig:  document.getElementById('folder-auth-bearer-config'),
+    folderAuthBasicConfig:   document.getElementById('folder-auth-basic-config'),
+    folderAuthApikeyConfig:  document.getElementById('folder-auth-apikey-config'),
+    folderAuthToken:         document.getElementById('folder-auth-token'),
+    folderAuthUsername:      document.getElementById('folder-auth-username'),
+    folderAuthPassword:      document.getElementById('folder-auth-password'),
+    folderAuthApikeyHeader:  document.getElementById('folder-auth-apikey-header'),
+    folderAuthApikeyValue:   document.getElementById('folder-auth-apikey-value'),
+    btnSaveFolderAuth:       document.getElementById('btn-save-folder-auth'),
+    btnCancelFolderAuth:     document.getElementById('btn-cancel-folder-auth'),
 
     openapiModal:       document.getElementById('openapi-modal'),
     closeOpenapiModal:  document.getElementById('close-openapi-modal'),
@@ -138,10 +159,6 @@ require(['vs/editor/editor.main'], function () {
             '// Tests — run after the response is received',
             'test("Status is 200", () => {',
             '\texpect(ds.response.status).to.equal(200);',
-            '});',
-            '',
-            'test("Response has data property", () => {',
-            '\texpect(ds.response.body).to.have.property("data");',
             '});',
         ].join('\n'),
         language: 'javascript', theme: monacoTheme, automaticLayout: true, minimap: { enabled: false }
@@ -278,10 +295,12 @@ els.method.addEventListener('change', updateMethodColor);
 
 // ─── Auth UI ──────────────────────────────────────────────────────────────────
 els.authType.addEventListener('change', (e) => {
+    els.authInheritConfig.style.display = 'none';
     els.authBearerConfig.style.display  = 'none';
     els.authBasicConfig.style.display   = 'none';
     els.authApikeyConfig.style.display  = 'none';
     els.authOauth2Config.style.display  = 'none';
+    if (e.target.value === 'inherit')  { els.authInheritConfig.style.display = 'block'; updateInheritInfo(); }
     if (e.target.value === 'bearer')  els.authBearerConfig.style.display  = 'block';
     if (e.target.value === 'basic')   els.authBasicConfig.style.display   = 'block';
     if (e.target.value === 'api-key') els.authApikeyConfig.style.display  = 'block';
@@ -456,6 +475,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         if (els.envModal.open) closeEnvModal();
         if (els.openapiModal.open) closeOpenapiModal();
+        if (els.folderAuthModal?.open) els.folderAuthModal.close();
     }
 });
 
@@ -554,6 +574,55 @@ els.btnDeleteEnv.addEventListener('click', () => {
     showEnvEditorEmpty();
 });
 
+// ─── Environment Import ───────────────────────────────────────────────────────
+els.btnImportEnv.addEventListener('click', () => els.importEnvFile.click());
+
+els.importEnvFile.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const toImport = parseEnvImport(data);
+        if (!toImport.length) return showToast('No environments found in file', 'error');
+        const label = toImport.length === 1 ? `"${toImport[0].name}"` : `${toImport.length} environments`;
+        if (!confirm(`Import ${label}? Existing environments with the same name will be replaced.`)) return;
+        for (const env of toImport) {
+            const existing = environments.findIndex(ex => ex.name === env.name);
+            if (existing >= 0) {
+                environments[existing] = env;
+            } else {
+                environments.push(env);
+            }
+        }
+        saveEnvironments();
+        renderEnvSelect();
+        renderEnvList();
+        showToast(`Imported ${label}`, 'success');
+    } catch (err) {
+        showToast(`Import failed: ${err.message}`, 'error');
+    }
+    e.target.value = '';
+});
+
+function parseEnvImport(data) {
+    // Postman single environment: { name, values: [{key, value, enabled}], _postman_variable_scope: "environment" }
+    if (data._postman_variable_scope === 'environment' || (data.name && Array.isArray(data.values))) {
+        const vars = {};
+        for (const v of (data.values || [])) {
+            if (v.key && v.enabled !== false) vars[v.key] = v.value ?? '';
+        }
+        return [{ id: crypto.randomUUID(), name: data.name || 'Imported', vars }];
+    }
+    // DevSuite native: [{id, name, vars}]
+    if (Array.isArray(data)) {
+        return data
+            .filter(e => e.name && typeof e.vars === 'object')
+            .map(e => ({ id: e.id || crypto.randomUUID(), name: e.name, vars: e.vars }));
+    }
+    return [];
+}
+
 // ─── Variable Interpolation ───────────────────────────────────────────────────
 function interpolate(str) {
     if (typeof str !== 'string') return str;
@@ -601,7 +670,7 @@ async function runPreRequestScript(code) {
     if (!code.trim()) return logs;
     try {
         // eslint-disable-next-line no-new-func
-        const fn = new Function('ds', 'console', `return (async()=>{ ${code} })()`); // NOSONAR — intentional scripting sandbox; code is user-authored in the Monaco editor
+        const fn = new Function('ds', 'console', `return (async()=>{\n${code}\n})()`); // NOSONAR — intentional scripting sandbox; code is user-authored in the Monaco editor
         await fn(makeDs(), makeCapturedConsole(logs)); // NOSONAR
     } catch (e) {
         logs.push({ type: 'error', text: `Pre-request error: ${e.message}` });
@@ -645,7 +714,7 @@ async function runTestScript(code, dsResponse) {
 
     try {
         // eslint-disable-next-line no-new-func
-        const fn = new Function('ds', 'test', 'expect', 'console', `return (async()=>{ ${code} })()`); // NOSONAR — intentional scripting sandbox; code is user-authored in the Monaco editor
+        const fn = new Function('ds', 'test', 'expect', 'console', `return (async()=>{\n${code}\n})()`); // NOSONAR — intentional scripting sandbox; code is user-authored in the Monaco editor
         await fn(makeDs({ response: dsResponse }), test, expect, makeCapturedConsole(logs)); // NOSONAR
     } catch (e) {
         logs.push({ type: 'error', text: `Test script error: ${e.message}` });
@@ -706,16 +775,22 @@ function buildRequestConfig() {
         bodyType,
     };
 
+    // Resolve "inherit from parent" → folder auth
+    if (config.auth.type === 'inherit') {
+        const fa = currentItemFolder ? (folderAuths[currentItemFolder] || { type: 'none' }) : { type: 'none' };
+        config.auth = { ...fa };
+    }
+
     if (config.auth.type === 'bearer') {
-        config.auth.token = interpolate(els.authToken.value);
+        config.auth.token = interpolate(config.auth.token ?? els.authToken.value);
     }
     if (config.auth.type === 'basic') {
-        config.auth.username = interpolate(els.authUsername.value);
-        config.auth.password = interpolate(els.authPassword.value);
+        config.auth.username = interpolate(config.auth.username ?? els.authUsername.value);
+        config.auth.password = interpolate(config.auth.password ?? els.authPassword.value);
     }
     if (config.auth.type === 'api-key') {
-        const h = interpolate(els.authApikeyHeader.value.trim());
-        const v = interpolate(els.authApikeyValue.value.trim());
+        const h = interpolate(config.auth.headerName ?? els.authApikeyHeader.value.trim());
+        const v = interpolate(config.auth.headerValue ?? els.authApikeyValue.value.trim());
         if (h && v) config.headers[h] = v;
     }
     if (config.auth.type === 'oauth2') {
@@ -778,9 +853,11 @@ function renderResponse(response) {
     els.respMeta.style.display = 'flex';
     els.respStatus.textContent = `${response.status} ${response.statusText}`;
     els.respStatus.className   = `meta-value ${response.status >= 200 && response.status < 300 ? 'status-ok' : 'status-err'}`;
-    els.respTime.textContent   = `${response.timeMs} ms`;
+    els.respTime.textContent   = response.wasProxied ? `${response.timeMs} ms (proxy)` : `${response.timeMs} ms`;
     els.respSize.textContent   = `${(response.sizeBytes / 1024).toFixed(2)} KB`;
     els.respProxyChip.style.display = response.wasProxied ? 'inline-flex' : 'none';
+    const proxyBanner = document.getElementById('resp-proxy-banner');
+    if (proxyBanner) proxyBanner.style.display = response.wasProxied ? 'flex' : 'none';
     els.respPlaceholder.style.display = 'none';
 
     const bodyText = response.body ? JSON.stringify(response.body, null, 2) : (response.bodyText || '');
@@ -910,6 +987,7 @@ async function loadCollections() {
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
         collections = data.items || [];
+        folderAuths  = data.folderAuths || {};
         renderCollections();
     } catch (e) {
         console.warn('Could not load collections', e);
@@ -926,7 +1004,7 @@ async function saveCollections() {
     const csrf = getCsrfToken();
     if (csrf) headers['X-CSRF-Token'] = csrf;
     try {
-        await fetch('/api/collections', { method: 'POST', headers, body: JSON.stringify({ items: collections }) });
+        await fetch('/api/collections', { method: 'POST', headers, body: JSON.stringify({ items: collections, folderAuths }) });
         showToast('Saved to ~/.devsuite/collections.json', 'success');
     } catch {
         showToast('Failed to save collection', 'error');
@@ -984,10 +1062,32 @@ function createFolderElement(folderName, items) {
     const countSpan = document.createElement('span');
     countSpan.className = 'folder-count';
     countSpan.textContent = items.length;
+    const lockBtn = document.createElement('button');
+    lockBtn.className = 'btn-icon';
+    lockBtn.title = 'Configure folder auth';
+    lockBtn.setAttribute('aria-label', 'Configure folder auth');
+    const hasAuth = folderAuths[folderName] && folderAuths[folderName].type !== 'none';
+    lockBtn.style.cssText = `margin-left:auto; opacity:${hasAuth ? '1' : '0.28'}; color:${hasAuth ? 'var(--vio)' : 'inherit'};`;
+    const lockNS = 'http://www.w3.org/2000/svg';
+    const lockSvg = document.createElementNS(lockNS, 'svg');
+    lockSvg.setAttribute('width', '10'); lockSvg.setAttribute('height', '10');
+    lockSvg.setAttribute('viewBox', '0 0 24 24'); lockSvg.setAttribute('fill', 'none');
+    lockSvg.setAttribute('stroke', 'currentColor'); lockSvg.setAttribute('stroke-width', '2.5');
+    lockSvg.setAttribute('stroke-linecap', 'round'); lockSvg.setAttribute('aria-hidden', 'true');
+    const lockRect = document.createElementNS(lockNS, 'rect');
+    lockRect.setAttribute('x', '3'); lockRect.setAttribute('y', '11');
+    lockRect.setAttribute('width', '18'); lockRect.setAttribute('height', '11'); lockRect.setAttribute('rx', '2');
+    const lockPath = document.createElementNS(lockNS, 'path');
+    lockPath.setAttribute('d', 'M7 11V7a5 5 0 0 1 10 0v4');
+    lockSvg.appendChild(lockRect); lockSvg.appendChild(lockPath);
+    lockBtn.appendChild(lockSvg);
+    lockBtn.addEventListener('click', (e) => { e.stopPropagation(); openFolderAuthModal(folderName); });
+
     header.appendChild(arrowSvg);
     header.appendChild(folderSvg);
     header.appendChild(nameSpan);
     header.appendChild(countSpan);
+    header.appendChild(lockBtn);
 
     const content = document.createElement('ul');
     content.className = 'folder-content sidebar-content';
@@ -1040,6 +1140,7 @@ function escHtml(s) {
 
 // ─── Load Item (restore request) ──────────────────────────────────────────────
 function loadItem(item) {
+    currentItemFolder = item.folder || null;
     els.method.value = item.method || 'GET';
     updateMethodColor();
     els.url.value    = item.url || '';
@@ -1136,23 +1237,216 @@ els.importCollectionsFile.addEventListener('change', async (e) => {
     try {
         const text = await file.text();
         const data = JSON.parse(text);
-        const imported = data.items || (Array.isArray(data) ? data : []);
-        if (!imported.length) return showToast('No items found in file', 'error');
-        if (!confirm(`Import ${imported.length} request(s)? Executable scripts will be stripped from imported items.`)) return;
-        const sanitized = imported.map(({ preRequestScript: _p, testsScript: _t, ...rest }) => rest);
-        if (collections.length && confirm(`Replace all ${collections.length} existing request(s)?\n\nOK = Replace all\nCancel = Merge (add to existing)`)) {
-            collections = sanitized;
+
+        const format = detectImportFormat(data);
+        let imported, formatLabel;
+
+        if (format === 'postman') {
+            imported = parsePostmanCollection(data);
+            formatLabel = `Postman — "${data.info?.name || file.name}"`;
+        } else if (format === 'devsuite') {
+            const raw = data.items || (Array.isArray(data) ? data : []);
+            imported = raw.map(({ preRequestScript: _p, testsScript: _t, ...rest }) => rest);
+            formatLabel = 'DevSuite';
         } else {
-            collections = [...collections, ...sanitized];
+            return showToast('Unrecognized format — supported: DevSuite JSON, Postman v2.x', 'error');
+        }
+
+        if (!imported.length) return showToast('No requests found in file', 'error');
+        if (!confirm(`Import ${imported.length} request(s) from ${formatLabel}?`)) return;
+
+        if (collections.length && confirm(`Replace all ${collections.length} existing request(s)?\n\nOK = Replace all\nCancel = Merge (add to existing)`)) {
+            collections = imported;
+        } else {
+            collections = [...collections, ...imported];
         }
         await saveCollections();
         renderCollections();
-        showToast(`Imported ${imported.length} request(s)`, 'success');
+        showToast(`Imported ${imported.length} request(s) from ${formatLabel}`, 'success');
     } catch (err) {
         showToast(`Import failed: ${err.message}`, 'error');
     }
     e.target.value = '';
 });
+
+// ─── Inherit Info ─────────────────────────────────────────────────────────────
+function updateInheritInfo() {
+    if (!els.authInheritStatus) return;
+    if (!currentItemFolder) {
+        els.authInheritStatus.textContent = 'This request has no parent folder — inherited auth has no effect.';
+        return;
+    }
+    const fa = folderAuths[currentItemFolder];
+    if (!fa || fa.type === 'none') {
+        els.authInheritStatus.textContent = `Folder "${currentItemFolder}" has no auth set. Click the 🔒 icon on the folder in the sidebar to configure one.`;
+    } else {
+        const labels = { bearer: 'Bearer Token', basic: 'Basic Auth', 'api-key': 'API Key' };
+        els.authInheritStatus.textContent = `Will use ${labels[fa.type] || fa.type} from folder "${currentItemFolder}".`;
+    }
+}
+
+// ─── Folder Auth Modal ────────────────────────────────────────────────────────
+let editingFolderName = null;
+
+function openFolderAuthModal(folderName) {
+    editingFolderName = folderName;
+    els.folderAuthModalName.textContent = folderName;
+    const fa = folderAuths[folderName] || { type: 'none' };
+    els.folderAuthType.value = fa.type || 'none';
+    els.folderAuthToken.value         = fa.token      || '';
+    els.folderAuthUsername.value      = fa.username   || '';
+    els.folderAuthPassword.value      = fa.password   || '';
+    els.folderAuthApikeyHeader.value  = fa.headerName || '';
+    els.folderAuthApikeyValue.value   = fa.headerValue || '';
+    syncFolderAuthPanels(fa.type || 'none');
+    els.folderAuthModal.showModal();
+}
+
+function syncFolderAuthPanels(type) {
+    els.folderAuthBearerConfig.style.display = type === 'bearer'   ? 'block' : 'none';
+    els.folderAuthBasicConfig.style.display  = type === 'basic'    ? 'block' : 'none';
+    els.folderAuthApikeyConfig.style.display = type === 'api-key'  ? 'block' : 'none';
+}
+
+els.folderAuthType.addEventListener('change', (e) => syncFolderAuthPanels(e.target.value));
+
+els.closeFolderAuthModal.addEventListener('click', () => els.folderAuthModal.close());
+els.btnCancelFolderAuth.addEventListener('click', () => els.folderAuthModal.close());
+els.folderAuthModal.addEventListener('click', (e) => { if (e.target === els.folderAuthModal) els.folderAuthModal.close(); });
+
+els.btnSaveFolderAuth.addEventListener('click', async () => {
+    if (!editingFolderName) return;
+    const type = els.folderAuthType.value;
+    const auth = { type };
+    if (type === 'bearer')   auth.token      = els.folderAuthToken.value;
+    if (type === 'basic')  { auth.username   = els.folderAuthUsername.value; auth.password = els.folderAuthPassword.value; }
+    if (type === 'api-key'){ auth.headerName = els.folderAuthApikeyHeader.value; auth.headerValue = els.folderAuthApikeyValue.value; }
+    folderAuths[editingFolderName] = auth;
+    await saveCollections();
+    renderCollections();
+    if (els.authType.value === 'inherit') updateInheritInfo();
+    els.folderAuthModal.close();
+    showToast(`Auth saved for folder "${editingFolderName}"`, 'success');
+});
+
+// ─── Postman / Bruno Import ───────────────────────────────────────────────────
+function detectImportFormat(data) {
+    if (data.info?.schema?.includes('getpostman.com')) return 'postman';
+    if (Array.isArray(data) || data.items) return 'devsuite';
+    return 'unknown';
+}
+
+function parsePostmanCollection(data) {
+    const items = [];
+
+    function processNodes(nodes, parentFolder) {
+        for (const node of (nodes || [])) {
+            if (Array.isArray(node.item)) {
+                // Folder node — flatten deep nesting to first-level folder name
+                processNodes(node.item, parentFolder || node.name);
+            } else if (node.request) {
+                const parsed = parsePostmanRequest(node.request);
+                parsed.name = node.name || 'Unnamed';
+                if (parentFolder) parsed.folder = parentFolder;
+                items.push(parsed);
+            }
+        }
+    }
+
+    processNodes(data.item, null);
+    return items;
+}
+
+function parsePostmanRequest(req) {
+    // ── URL ──
+    let url = '';
+    let queryParams = [];
+    if (typeof req.url === 'string') {
+        const qi = req.url.indexOf('?');
+        url = qi >= 0 ? req.url.slice(0, qi) : req.url;
+        if (qi >= 0) {
+            new URLSearchParams(req.url.slice(qi + 1)).forEach((value, key) => {
+                queryParams.push({ key, value, enabled: true });
+            });
+        }
+    } else if (req.url && typeof req.url === 'object') {
+        const raw = req.url.raw || '';
+        const qi = raw.indexOf('?');
+        url = qi >= 0 ? raw.slice(0, qi) : raw;
+        queryParams = (req.url.query || [])
+            .filter(q => q.key != null && !q.disabled)
+            .map(q => ({ key: q.key || '', value: q.value || '', enabled: true }));
+    }
+
+    // ── Headers ──
+    const headers = (req.header || [])
+        .filter(h => !h.disabled && h.key)
+        .map(h => ({ key: h.key, value: h.value || '', enabled: true }));
+
+    // ── Body ──
+    let bodyType = 'none';
+    let body = null;
+    let graphqlQuery, graphqlVars;
+    if (req.body) {
+        const mode = req.body.mode;
+        if (mode === 'raw') {
+            const lang = req.body.options?.raw?.language || 'text';
+            if (lang === 'json') {
+                bodyType = 'json';
+                body = req.body.raw || '{}';
+            } else if (lang === 'graphql') {
+                bodyType = 'graphql';
+                try {
+                    const gql = JSON.parse(req.body.raw || '{}');
+                    graphqlQuery = gql.query || '';
+                    graphqlVars = JSON.stringify(gql.variables || {}, null, 2);
+                } catch {
+                    bodyType = 'text';
+                    body = req.body.raw || '';
+                }
+            } else {
+                bodyType = 'text';
+                body = req.body.raw || '';
+            }
+        } else if (mode === 'urlencoded') {
+            bodyType = 'form-data';
+            body = (req.body.urlencoded || [])
+                .filter(f => !f.disabled)
+                .map(f => ({ key: f.key || '', value: f.value || '', enabled: true }));
+        } else if (mode === 'formdata') {
+            bodyType = 'form-data';
+            body = (req.body.formdata || [])
+                .filter(f => !f.disabled && f.type !== 'file')
+                .map(f => ({ key: f.key || '', value: f.value || '', enabled: true }));
+        }
+    }
+
+    // ── Auth ──
+    let auth = { type: 'none' };
+    if (req.auth) {
+        const lookup = (arr, key) => (arr || []).find(e => e.key === key)?.value || '';
+        const t = req.auth.type;
+        if (t === 'bearer') {
+            auth = { type: 'bearer', token: lookup(req.auth.bearer, 'token') };
+        } else if (t === 'basic') {
+            auth = { type: 'basic', username: lookup(req.auth.basic, 'username'), password: lookup(req.auth.basic, 'password') };
+        } else if (t === 'apikey') {
+            auth = { type: 'api-key', headerName: lookup(req.auth.apikey, 'key'), headerValue: lookup(req.auth.apikey, 'value') };
+        }
+    }
+
+    const result = {
+        method: (req.method || 'GET').toUpperCase(),
+        url,
+        queryParams,
+        headers,
+        auth,
+        bodyType,
+    };
+    if (body !== null) result.body = body;
+    if (graphqlQuery !== undefined) { result.graphqlQuery = graphqlQuery; result.graphqlVars = graphqlVars; }
+    return result;
+}
 
 // ─── OpenAPI Import ───────────────────────────────────────────────────────────
 els.btnImportOpenapi.addEventListener('click', openOpenapiModal);
