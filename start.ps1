@@ -82,11 +82,6 @@ if (-not $pythonOk) {
     Add-InstallationToQueue -softName "Python 3" -wingetId "Python.Python.3" -chocoPkg "python" -scoopPkg "python"
 }
 
-# Check Node.js / npm
-if (-not (Test-CommandAvailable node) -or -not (Test-CommandAvailable npm)) {
-    Add-InstallationToQueue -softName "Node.js & npm" -wingetId "OpenJS.NodeJS" -chocoPkg "nodejs" -scoopPkg "nodejs"
-}
-
 if ($missingPkgs.Count -gt 0) {
     Write-Host "Missing dependencies detected.`n`nThe following system dependencies are missing and need to be installed:"
     $missingSoftware | ForEach-Object { Write-Host "- $_" }
@@ -152,24 +147,6 @@ if ($missingPkgs.Count -gt 0) {
     }
 } else {
     Write-Host "All prerequisites met."
-}
-
-# ---------------------------------------------------------------------------
-# TypeScript global check
-# ---------------------------------------------------------------------------
-if (Test-CommandAvailable npm) {
-    if (-not (Test-CommandAvailable tsc)) {
-        Write-Host "`nTypeScript compiler (tsc) is missing."
-        if (Get-UserConfirmation "Do you want to run 'npm install -g typescript'?") {
-            Write-Host "Installing typescript globally..."
-            npm install -g typescript
-            if ($LASTEXITCODE -ne 0) {
-                Write-Host "Warning: npm failed to install typescript globally (exit code $LASTEXITCODE)."
-            }
-        } else {
-            Write-Host "Installation aborted. You may need tsc for compiling frontend assets."
-        }
-    }
 }
 
 # ---------------------------------------------------------------------------

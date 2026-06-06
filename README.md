@@ -132,8 +132,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - Python 3.10+
 
 > [!NOTE]
-> Custom CSS and JS files run directly in the browser without compilation or additional software.
-> If you modify `api-client.ts` (the TypeScript source), you will need Node.js and TypeScript (`npm install -g typescript`) to recompile it to `api-client.js`.
+> All HTML, CSS, and JS run directly in the browser with no compilation, bundler, or build step. Python is the only runtime requirement — Node.js and npm are **not** needed to run DevSuite.
 
 ### Quick Start
 
@@ -198,8 +197,7 @@ devsuite/
     ├── api-tester.html      # Local API Tester
     ├── api-tester.js        # API Tester UI logic (collection tree, request tabs, history)
     ├── api-tester.css       # API Tester layout styles
-    ├── api-client.ts        # TypeScript source for the fetch wrapper
-    ├── api-client.js        # Compiled JS fetch wrapper used by API Tester
+    ├── api-client.js        # Vanilla-JS fetch wrapper used by API Tester
     │
     ├── ssh-manager.html     # Secure Terminal & SFTP (multi-tab SSH + SFTP sub-tab)
     ├── ssh-manager.js       # Terminal & SFTP logic (xterm.js, WebSocket, SFTP grid)

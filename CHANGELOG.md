@@ -7,12 +7,34 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ## [Unreleased]
 
+### Security
+
+#### CORS Proxy SSRF — redirect & response hardening (`main.py`)
+- The `/api/proxy` SSRF guard validated only the initial target IP, but `urllib` followed 3xx redirects automatically — so a public host could redirect into a private/reserved address (e.g. `http://169.254.169.254/` cloud metadata). Redirects now route through `_SSRFSafeRedirectHandler`, which re-validates every hop's resolved IP and scheme before following. Proxied responses are capped at 10 MB to prevent memory exhaustion.
+
+#### WebSocket origin-check hardening (`main.py`)
+- `_ws_check_origin` previously accepted any scheme ending in `//<host>` and silently allowed **all** origins when the `Host` header was absent. It now requires an allowlisted origin or an exact `http(s)://<host>` match.
+
+#### Secret Vault — removed inline `onclick` injection vector (`static/vault.js`)
+- Field copy/reveal buttons were built as inline `onclick` strings that interpolated the secret value via `encodeURIComponent`, which does not escape single quotes — a value containing `'` could break out into the attribute/JS context. Buttons are now wired with `addEventListener` (value read from a closure), matching the safe pattern already used by the URL opener.
+
+### Tests
+
+#### Added Python backend test suite (`tests/python/`)
+- New `pytest` suite covering the security-critical paths in SPEC §10.2: DevDB AES-256-GCM round-trip + tamper / wrong-password detection and plain-mode checksum; CORS-proxy SSRF (loopback / scheme / redirect-to-private blocked); CSRF enforcement (missing or mismatched token → 403; bootstrap endpoints exempt); session-token hashing (raw token never stored, expiry purged on access); and auth-challenge rate limiting (429). 21 tests, all passing.
+
 ### CI / DevX
 
 #### CodeQL Workflow Fix (`.github/workflows/codeql.yml`)
 - **Replaced broken hand-rolled implementation** with the standard `github/codeql-action` composite actions.
 - Previous workflow manually cloned the repo, downloaded the CodeQL CLI bundle from a non-existent URL (`codeql-bundle-linux64.zip` — bundle naming changed to `codeql-bundle-linux-amd64.tar.gz` and requires a versioned release tag, not `latest`), created the database, and uploaded SARIF manually — all of which broke at the "Install CodeQL CLI" step (exit code 128).
 - Now uses `actions/checkout@v4` → `github/codeql-action/init@v3` → `github/codeql-action/analyze@v3`, which handles CLI download, database creation, and SARIF upload internally. Analysis matrices unchanged: `javascript-typescript` and `python`, both `build-mode: none`.
+
+### Build / Tooling
+
+#### Removed vestigial TypeScript / Node build path (`start.sh`, `start.ps1`, `static/api-client.ts`)
+- Deleted `static/api-client.ts`. The shipping `static/api-client.js` is the canonical, hand-maintained source loaded by `api-tester.html`; the `.ts` had drifted out of sync and was **missing the CSRF-token injection on proxy requests** that the `.js` performs — so recompiling it (as the old README instructed) would have regressed security.
+- Removed the Node.js / npm prerequisite check and the global-`typescript` install prompt from `start.sh` and `start.ps1`. DevSuite has no build step; **Python is the only runtime requirement**. The setup scripts no longer force a Node toolchain to run the app, matching the "no build tools" constraint in `SPEC.md §2`.
 
 ---
 

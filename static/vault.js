@@ -550,18 +550,26 @@ function addFieldRow(container, { label, value, secret, fieldId, clipLabel, isUr
                 ${displayVal}
             </div>
             ${secret ? `
-            <button class="field-action-btn" title="Reveal / hide" onclick="toggleReveal('${fieldId}')">
+            <button class="field-action-btn js-reveal-btn" title="Reveal / hide">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="eye-${fieldId}">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                 </svg>
             </button>` : ''}
-            <button class="field-action-btn" title="Copy to clipboard" onclick="copyToClipboard(decodeURIComponent('${encodeURIComponent(value)}'),'${clipLabel || label}')">
+            <button class="field-action-btn js-copy-btn" title="Copy to clipboard">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                 </svg>
             </button>
         </div>`;
     container.appendChild(row);
+
+    // Wire actions via listeners instead of inline onclick. Secret values must never be
+    // interpolated into an attribute/JS-string context — encodeURIComponent does not
+    // escape single quotes, which made the old inline onclick an injection vector.
+    const revealBtn = row.querySelector('.js-reveal-btn');
+    if (revealBtn) revealBtn.addEventListener('click', () => toggleReveal(fieldId));
+    const copyBtn = row.querySelector('.js-copy-btn');
+    if (copyBtn) copyBtn.addEventListener('click', () => copyToClipboard(value, clipLabel || label));
 
     // Attach safe URL opener — validates scheme before opening
     if (isUrl) {

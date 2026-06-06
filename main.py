@@ -717,24 +717,52 @@ def _check_ip_not_private(ip_str: str) -> None:
 
 _HOP_BY_HOP_HEADERS = frozenset(("host", "connection", "origin", "referer", "accept-encoding"))
 
+# Cap the bytes read from a proxied response to avoid memory exhaustion (DoS).
+_MAX_PROXY_RESPONSE = 10 * 1024 * 1024  # 10 MB
+
 
 def _filter_proxy_headers(headers: dict) -> dict:
     return {k: v for k, v in headers.items() if k.lower() not in _HOP_BY_HOP_HEADERS}
 
 
+class _SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Re-validate every redirect hop so a public URL cannot 3xx into a private/reserved IP.
+
+    urllib follows redirects automatically; without this the initial-host SSRF
+    check is trivially bypassed (e.g. a public host returning
+    ``302 Location: http://169.254.169.254/`` to reach cloud metadata).
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        parsed = urllib.parse.urlparse(newurl)
+        if parsed.scheme not in ("http", "https"):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Redirect to disallowed scheme '{parsed.scheme}' blocked",
+            )
+        if not parsed.hostname:
+            raise HTTPException(status_code=400, detail="Redirect to a URL without a hostname blocked")
+        # Raises HTTPException(403) when the redirect target resolves to a private/reserved IP.
+        _resolve_target_ips(parsed.hostname, parsed.port, parsed.scheme)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def _execute_proxy_request(request_obj) -> dict:
-    """Run a urllib request and return a normalised proxy-response dict."""
+    """Run a urllib request (redirects re-validated, response size-capped) and normalise it."""
+    opener = urllib.request.build_opener(_SSRFSafeRedirectHandler())
     try:
-        with urllib.request.urlopen(request_obj, timeout=15) as resp:  # nosec B310
+        with opener.open(request_obj, timeout=15) as resp:  # nosec B310
+            raw = resp.read(_MAX_PROXY_RESPONSE + 1)
             return {
                 "proxy_response": True,
                 "status": resp.status,
                 "headers": dict(resp.headers),
-                "body": resp.read().decode("utf-8", errors="replace"),
+                "body": raw[:_MAX_PROXY_RESPONSE].decode("utf-8", errors="replace"),
+                "truncated": len(raw) > _MAX_PROXY_RESPONSE,
             }
     except urllib.error.HTTPError as e:
         try:
-            body = e.read().decode("utf-8", errors="replace") if hasattr(e, "read") else ""
+            body = e.read(_MAX_PROXY_RESPONSE).decode("utf-8", errors="replace") if hasattr(e, "read") else ""
         except (OSError, ValueError):
             body = ""
         return {"proxy_response": True, "status": e.code, "headers": dict(e.headers), "body": body}
@@ -1338,7 +1366,13 @@ async def _ws_check_origin(websocket: WebSocket) -> bool:
     if not origin:
         await websocket.close(code=1008, reason=_ERR_ORIGIN_REQUIRED)
         return False
-    if origin not in _ALLOWED_ORIGINS and host and not origin.endswith(f"//{host}"):
+    # Allow an allowlisted origin, or an http(s) origin that exactly matches this
+    # server's Host. The previous `endswith("//"+host)` test accepted any scheme and
+    # silently allowed everything when the Host header was absent.
+    allowed = origin in _ALLOWED_ORIGINS or (
+        bool(host) and origin in (f"http://{host}", f"https://{host}")
+    )
+    if not allowed:
         await websocket.close(code=1008, reason=_ERR_ORIGIN_NOT_ALLOWED)
         return False
     return True

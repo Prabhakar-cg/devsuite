@@ -80,7 +80,7 @@ devsuite/
     ├── tools.html        # Tools hub / dashboard (all 13 tool cards)
     ├── index.html / app.js            # Diff tool
     ├── json.html / yaml.html / regex.html / base64.html / crypto.html
-    ├── api-tester.html / api-tester.js / api-tester.css / api-client.ts / api-client.js
+    ├── api-tester.html / api-tester.js / api-tester.css / api-client.js
     ├── ssh-manager.html / ssh-manager.js / ssh-manager.css
     ├── sftp-browser.html / sftp-browser.js / sftp-browser.css
     ├── xterm.js / xterm.css / xterm-addon-fit.js
@@ -99,7 +99,7 @@ devsuite/
         └── require.min.js
 ```
 
-> **Note:** No `tests/` directory exists yet. Test suites are a planned addition (v1.0.0 milestone).
+> **Note:** A Python backend test suite lives in `tests/python/` (run with `pytest`). Coverage currently focuses on the security-critical paths in §10.2; broader per-tool coverage remains a v1.0.0 milestone.
 
 ### 3.3 HTML Serving Behavior
 
@@ -399,7 +399,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 |---|---|---|
 | `POST` | `/api/proxy` | Forward request to any HTTP/HTTPS host |
 
-**Security:** The proxy is **not** allowlist-based — it accepts any public host. SSRF protection blocks requests that resolve to private, loopback, link-local, multicast, or reserved IP addresses (HTTP 403). Only `http` and `https` schemes are allowed. The URL is reconstructed from validated components before dispatch to prevent taint-flow from raw user input. Timeout: 15 s.
+**Security:** The proxy is **not** allowlist-based — it accepts any public host. SSRF protection blocks requests that resolve to private, loopback, link-local, multicast, or reserved IP addresses (HTTP 403). Only `http` and `https` schemes are allowed. The URL is reconstructed from validated components before dispatch to prevent taint-flow from raw user input. **Redirects are followed only after re-validating each hop's resolved IP and scheme against the same private/reserved blocklist, so a public host cannot 3xx into an internal address (e.g. cloud metadata).** Responses are capped at 10 MB. Timeout: 15 s.
 
 ### 5.10 HTTP Security Headers (every response)
 
@@ -674,12 +674,12 @@ Themes driven by `theme.js`. Custom event `devsuite-theme-changed` fires on togg
 
 ### 10.1 Test Suites
 
-> **Status:** No `tests/` directory exists yet — writing tests is a v1.0.0 deliverable.
+> **Status:** The Python backend suite exists in `tests/python/` (`pytest`) and covers the §10.2 security-critical paths. A JavaScript suite is still a v1.0.0 deliverable.
 
-| Suite | Planned Location | Command |
+| Suite | Location | Command |
 |---|---|---|
 | Python backend | `tests/python/` | `pytest tests/python/` |
-| JavaScript | `tests/javascript/` | `node tests/javascript/run.js` |
+| JavaScript | `tests/javascript/` (planned) | `node tests/javascript/run.js` |
 
 ### 10.2 Required Coverage (Security-Critical Paths)
 

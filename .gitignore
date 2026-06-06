@@ -47,3 +47,6 @@ url_db.json
 
 # Node.js (if frontend tooling is added)
 node_modules/
+
+# graphify (generated knowledge graph — regenerable from source)
+graphify-out/
