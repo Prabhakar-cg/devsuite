@@ -1,8 +1,8 @@
 /**
- * DevSuite API Client Wrapper (TypeScript Version)
+ * DevSuite API Client Wrapper
  *
- * This file serves as the TypeScript source for the fetch wrapper.
- * The functional vanilla JavaScript version is available in api-client.js
+ * Canonical hand-maintained vanilla-JS fetch wrapper for the API Tester.
+ * Loaded directly by api-tester.html — no build step or compilation.
  */
 class ApiClient {
     /**

@@ -1,6 +1,6 @@
 # DevSuite — Developer Tools from Hell
 
-![Version](https://img.shields.io/badge/version-0.2.1-blue)
+![Version](https://img.shields.io/badge/version-0.2.3-blue)
 [![CodeQL](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
@@ -132,8 +132,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - Python 3.10+
 
 > [!NOTE]
-> Custom CSS and JS files run directly in the browser without compilation or additional software.
-> If you modify `api-client.ts` (the TypeScript source), you will need Node.js and TypeScript (`npm install -g typescript`) to recompile it to `api-client.js`.
+> All HTML, CSS, and JS run directly in the browser with no compilation, bundler, or build step. Python is the only runtime requirement — Node.js and npm are **not** needed to run DevSuite.
 
 ### Quick Start
 
@@ -198,8 +197,7 @@ devsuite/
     ├── api-tester.html      # Local API Tester
     ├── api-tester.js        # API Tester UI logic (collection tree, request tabs, history)
     ├── api-tester.css       # API Tester layout styles
-    ├── api-client.ts        # TypeScript source for the fetch wrapper
-    ├── api-client.js        # Compiled JS fetch wrapper used by API Tester
+    ├── api-client.js        # Vanilla-JS fetch wrapper used by API Tester
     │
     ├── ssh-manager.html     # Secure Terminal & SFTP (multi-tab SSH + SFTP sub-tab)
     ├── ssh-manager.js       # Terminal & SFTP logic (xterm.js, WebSocket, SFTP grid)

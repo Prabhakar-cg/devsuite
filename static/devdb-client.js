@@ -14,11 +14,9 @@
 
 const DevDB = (() => {
 
-    // ── CSRF token (readable ds_csrf cookie set by server after unlock) ───────
-    function _csrfToken() {
-        const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
-        return m ? decodeURIComponent(m[1]) : '';
-    }
+    // ── CSRF token — delegates to the canonical helper in components.js ────────
+    // DevSuite.csrfToken() reads the ds_csrf cookie set by the server after unlock.
+    function _csrfToken() { return (globalThis.DevSuite?.csrfToken?.() ?? ''); }
 
     // ── Internal fetch helper ────────────────────────────────────────────────
     async function _apiFetch(url, opts = {}) {

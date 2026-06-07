@@ -602,12 +602,14 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById(id).classList.add('active');
 
             // Update Header Icon and Name
+            // FEATURE_ICONS and FEATURE_NAMES are compile-time static literals above —
+            // no user-controlled data reaches innerHTML here.
             if (toolHeaderIcon) {
-                toolHeaderIcon.innerHTML = FEATURE_ICONS[id] || '';
+                toolHeaderIcon.innerHTML = FEATURE_ICONS[id] || ''; // static SVG only
                 toolHeaderIcon.className = `tool-icon tool-icon-${id === 'folder-diff' ? 'amber' : 'indigo'}`;
             }
             if (toolHeaderName) {
-                toolHeaderName.innerHTML = FEATURE_NAMES[id] || 'Diff Tool';
+                toolHeaderName.innerHTML = FEATURE_NAMES[id] || 'Diff Tool'; // static strings only
             }
 
             setTimeout(() => {

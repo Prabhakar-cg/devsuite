@@ -1,6 +1,6 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.2.1  
+> **Version:** 0.2.3  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Single source of truth for spec-driven development. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.
 
@@ -18,7 +18,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.2.1` — bumped simultaneously in `main.py` (FastAPI `version=`), `README.md`, and `CHANGELOG.md`.
+`0.2.3` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md`, and `CHANGELOG.md`.
 
 ---
 
@@ -58,7 +58,17 @@ These are hard rules. No implementation may violate them.
 
 ```
 devsuite/
-├── main.py              # Single backend: all routes, WebSocket, SFTP, DevDB REST, CORS proxy
+├── main.py              # Thin orchestrator: app factory, middleware, router inclusion
+├── deps.py              # Shared singletons & helpers (DevDB, limiter, sessions, constants)
+├── routes/
+│   ├── __init__.py
+│   ├── auth.py          # /api/auth/*, /api/vault/migrate
+│   ├── convert.py       # /api/convert (format conversion)
+│   ├── db.py            # /api/db/* (DevDB REST API)
+│   ├── pages.py         # HTML page routes, /upload
+│   ├── proxy.py         # /api/proxy (CORS bypass)
+│   ├── ssh.py           # SSH terminal, SFTP, WSL discovery, dashboard WebSocket
+│   └── storage.py       # /api/vault, /api/collections, /api/ssh/profiles
 ├── devdb.py             # Storage engine: .dsb binary (AES-256-GCM)
 ├── requirements.txt
 ├── pytest.ini
@@ -80,7 +90,7 @@ devsuite/
     ├── tools.html        # Tools hub / dashboard (all 13 tool cards)
     ├── index.html / app.js            # Diff tool
     ├── json.html / yaml.html / regex.html / base64.html / crypto.html
-    ├── api-tester.html / api-tester.js / api-tester.css / api-client.ts / api-client.js
+    ├── api-tester.html / api-tester.js / api-tester.css / api-client.js
     ├── ssh-manager.html / ssh-manager.js / ssh-manager.css
     ├── sftp-browser.html / sftp-browser.js / sftp-browser.css
     ├── xterm.js / xterm.css / xterm-addon-fit.js
@@ -99,7 +109,7 @@ devsuite/
         └── require.min.js
 ```
 
-> **Note:** No `tests/` directory exists yet. Test suites are a planned addition (v1.0.0 milestone).
+> **Note:** A Python backend test suite lives in `tests/python/` (run with `pytest`). Coverage currently focuses on the security-critical paths in §10.2; broader per-tool coverage remains a v1.0.0 milestone.
 
 ### 3.3 HTML Serving Behavior
 
@@ -213,8 +223,16 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 - REST client supporting: GET, POST, PUT, DELETE, PATCH.
 - Custom headers and body.
 - Request Collections with folder organization — persisted in DevDB `collections`.
+- Environment import from the Environment Manager modal — auto-detects format:
+  - **DevSuite native** — `[{id, name, vars: {key: value}}]` array.
+  - **Postman environment** — detected via `_postman_variable_scope: "environment"` or `{name, values: [{key, value, enabled}]}`. Disabled variables are skipped. Existing environments with the same name are replaced in-place.
+- Collection import auto-detects format from the uploaded JSON file:
+  - **DevSuite native** — `{ items: [...] }` (scripts stripped on import for safety).
+  - **Postman v2.x** — detected via `info.schema` containing `getpostman.com`. Nested folders are flattened to a single folder level. Parses URL, query params, headers, body (raw/JSON/text/form-data/GraphQL), and auth (bearer, basic, API key). Compatible with Postman exports and Bruno "Export as Postman" collections.
+- Collection export as DevSuite native JSON.
+- OpenAPI 3.x / Swagger 2.x JSON import — each path×method becomes a collection request.
 - Local CORS Proxy (`/api/proxy`) to bypass browser CORS restrictions (targets any public host; private IPs blocked server-side).
-- Frontend uses 8-hour session auth via `auth-guard.js`. The `/api/collections` backend endpoints themselves are **not** auth-gated — they rely on frontend session management only.
+- Frontend uses 8-hour session auth via `auth-guard.js`. Both `/api/collections` endpoints also call `require_unlocked` server-side — the backend enforces auth, not just the frontend.
 
 **Network notice:** The CORS proxy initiates outbound connections to the target host. This tool is not strictly offline.
 
@@ -324,8 +342,8 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Method | Route | Rate Limit | Description |
 |---|---|---|---|
 | `GET` | `/api/auth/status` | — | Check if master password is configured (`is_setup`, `vault_has_data`) |
-| `GET` | `/api/auth/challenge` | 5 req/min/IP | Return `salt`, `verify_blob`, `verify_iv` for client-side key verification |
-| `POST` | `/api/auth/setup` | — | Initial Master Password setup (stores `salt`, `verify_blob`, `verify_iv` in `app_prefs`) |
+| `GET` | `/api/auth/challenge` | 5 req/min/IP | Return `salt`, `verify_blob`, `challenge_version` (+ `verify_iv` v1 / `verify_nonce` v2) |
+| `POST` | `/api/auth/setup` | — | Initial Master Password setup (v2: stores `salt`, `verify_blob`, `verify_nonce`, `challenge_version=2`) |
 | `POST` | `/api/auth/session` | 5 req/min/IP | Verify key and issue session; sets `ds_session` + `ds_csrf` cookies |
 | `POST` | `/api/auth/update-challenge` | — | Replace verification challenge after password change; revokes all active sessions |
 | `POST` | `/api/auth/logout` | — | Invalidate current session; clears `ds_session` + `ds_csrf` cookies |
@@ -391,7 +409,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 |---|---|---|
 | `POST` | `/api/proxy` | Forward request to any HTTP/HTTPS host |
 
-**Security:** The proxy is **not** allowlist-based — it accepts any public host. SSRF protection blocks requests that resolve to private, loopback, link-local, multicast, or reserved IP addresses (HTTP 403). Only `http` and `https` schemes are allowed. The URL is reconstructed from validated components before dispatch to prevent taint-flow from raw user input. Timeout: 15 s.
+**Security:** The proxy is **not** allowlist-based — it accepts any public host. SSRF protection blocks requests that resolve to private, loopback, link-local, multicast, or reserved IP addresses (HTTP 403). Only `http` and `https` schemes are allowed. The URL is reconstructed from validated components before dispatch to prevent taint-flow from raw user input. **Redirects are followed only after re-validating each hop's resolved IP and scheme against the same private/reserved blocklist, so a public host cannot 3xx into an internal address (e.g. cloud metadata).** Responses are capped at 10 MB. Timeout: 15 s.
 
 ### 5.10 HTTP Security Headers (every response)
 
@@ -459,7 +477,7 @@ Access via the DevDB REST API is restricted to these store names (`_ALLOWED_STOR
 | `vault` | Secret Vault | AES-256 ciphertext blob (never decrypted server-side) |
 | `ssh_profiles` | SSH Terminal / SFTP | AES-256 ciphertext blob (never decrypted server-side) |
 | `collections` | API Tester | JSON request collections |
-| `app_prefs` | Auth system | `master_setup_done`, `master_salt`, `master_verify_blob`, `master_verify_iv` |
+| `app_prefs` | Auth system | `master_setup_done`, `master_salt`, `master_verify_blob`, `challenge_version`; `master_verify_iv` (v1) or `master_verify_nonce` (v2) |
 
 ### 6.5 JS Client (`devdb-client.js`)
 
@@ -475,9 +493,9 @@ DevDB.getMeta()           // GET /api/db/meta
 
 ### 7.1 Authentication Flow
 
-1. On first visit to `/vault`: user creates a Master Password → `POST /api/auth/setup` stores a PBKDF2-derived challenge blob.
-2. On subsequent visits: user enters password → `GET /api/auth/challenge` + `POST /api/auth/session` verifies it → server sets `ds_session` HttpOnly cookie.
-3. `auth-guard.js` caches the verified password in `sessionStorage` for 8 hours (key: `devsuite_session_pwd`). Vault and DB Manager always-ask (no cache).
+1. On first visit to `/vault`: user creates a Master Password → browser derives **Kenc** + **Kauth** (see §7.5) → `POST /api/auth/setup` stores the PBKDF2 salt and an AES-GCM verify_blob encrypted with **Kauth**.
+2. On subsequent visits: user enters password → browser re-derives Kenc/Kauth → `GET /api/auth/challenge` + `POST /api/auth/session` verifies **Kauth** → server sets `ds_session` HttpOnly cookie.
+3. `auth-guard.js` holds the verified password **in-memory only** for the page's lifetime. Vault and DB Manager always-ask (no cross-page cache). Navigating to a new tool re-prompts (this is intentional — the master password is never written to `sessionStorage` or `localStorage`).
 
 ### 7.2 Session Token Lifecycle
 
@@ -502,9 +520,15 @@ DevDB.getMeta()           // GET /api/db/meta
 
 ### 7.5 Client-Side Encryption
 
-- Vault and SSH profiles are encrypted in-browser using CryptoJS AES-256 before being sent to the backend.
-- The server stores and returns opaque ciphertext blobs. It never has access to plaintext secrets.
-- Master Password is never transmitted or stored — only a PBKDF2 challenge derived from it is stored.
+- Vault blobs are encrypted in-browser using **WebCrypto AES-256-GCM** (authenticated). SSH profile blobs use CryptoJS AES-256 (separate key scheme, see SSH Manager).
+- The server stores and returns opaque ciphertext blobs. It **never** decrypts them.
+- Master Password is never transmitted or stored.
+- **Domain-separated keys (v2 scheme, `challenge_version: 2`):**
+  - `root = PBKDF2-HMAC-SHA256(password, salt, 310 000 iter) → 512 bits`
+  - `Kenc  = root[0:32]` — vault encryption key, **never leaves the browser**
+  - `Kauth = root[32:64]` — server authentication key, sent as `key_hex` to `/api/auth/session`
+  - Even if the server is compromised and logs `key_hex`, it cannot decrypt the vault (Kenc ≠ Kauth).
+- **Backward compatibility:** v1 vaults (challenge_version absent or 1) use CryptoJS PBKDF2-SHA1/50k single-key scheme; on first unlock they are automatically migrated to v2 (re-encrypted as AES-GCM, new challenge registered with Kauth).
 
 ### 7.6 Audit Log
 
@@ -666,12 +690,12 @@ Themes driven by `theme.js`. Custom event `devsuite-theme-changed` fires on togg
 
 ### 10.1 Test Suites
 
-> **Status:** No `tests/` directory exists yet — writing tests is a v1.0.0 deliverable.
+> **Status:** The Python backend suite exists in `tests/python/` (`pytest`) and covers the §10.2 security-critical paths. A JavaScript suite is still a v1.0.0 deliverable.
 
-| Suite | Planned Location | Command |
+| Suite | Location | Command |
 |---|---|---|
 | Python backend | `tests/python/` | `pytest tests/python/` |
-| JavaScript | `tests/javascript/` | `node tests/javascript/run.js` |
+| JavaScript | `tests/javascript/` (planned) | `node tests/javascript/run.js` |
 
 ### 10.2 Required Coverage (Security-Critical Paths)
 
@@ -702,8 +726,8 @@ These paths must have automated tests. Adding or changing any of them requires a
 - Hotspots S3330, S5042 (×2): unreviewed.
 - 8 new violations since 2026-04-19.
 
-**Active blockers/criticals:**
-- `db-manager.js:188` S2703: implicit global `_serverToken` (BLOCKER).
+**Active criticals:**
+- ~~`db-manager.js:188` S2703: implicit global `_serverToken` (BLOCKER)~~ — **resolved**, no longer present in code.
 - `vault.js:236` S3776: cognitive complexity 21 (CRITICAL).
 - `cron.js:528`, `ssh-manager.js:947`, `file-converter.html:1102`: S3776 complexity.
 - `ssh-manager.js:353`, `regex.html:398`: S2004 functions nested >4 levels.
@@ -850,8 +874,8 @@ Follows Semantic Versioning. Each release section includes: Security · Frontend
 | `DEVSUITE_DEV` | `0` | Set to `1` to enable `/docs` (Swagger UI) and `/redoc` |
 | `DEVSUITE_HTTPS` | `0` | Set to `1` to add `Secure` flag to `ds_session` and `ds_csrf` cookies (use when serving over HTTPS) |
 | `DEVDB_PASSWORD` | _(empty)_ | Server-side DevDB encryption password (leave blank to disable) |
-| `PORT` | `8000` | Port Uvicorn listens on (passed to uvicorn at startup) |
-| `HOST` | `127.0.0.1` | Bind host |
+| `PORT` | `8000` | Port Uvicorn listens on — honoured by `__main__` and `start.sh`/`start.ps1` |
+| `HOST` | `127.0.0.1` | Bind host — honoured by `__main__`; `reload=True` is only set when `DEVSUITE_DEV=1` |
 
 ### 14.3 Upgrade Process Summary
 
@@ -866,4 +890,4 @@ Follows Semantic Versioning. Each release section includes: Security · Frontend
 
 ---
 
-*This spec reflects DevSuite v0.2.1. Update before implementing any new feature or changing existing behavior.*
+*This spec reflects DevSuite v0.2.2. Update before implementing any new feature or changing existing behavior.*

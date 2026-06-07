@@ -11,6 +11,17 @@
 
 globalThis.DevSuite = globalThis.DevSuite || {};
 
+/* ─── CSRF token helper ───────────────────────────────────────────────────── */
+/**
+ * Read the ds_csrf cookie written by the server after a successful session.
+ * The cookie is not HttpOnly so it can be read by JS for the double-submit pattern.
+ * Returns the token string, or '' if no session is active.
+ */
+DevSuite.csrfToken = function csrfToken() {
+    const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
+    return m ? decodeURIComponent(m[1]) : '';
+};
+
 /* ─── Toast notification ──────────────────────────────────────────────────── */
 DevSuite.toast = function toast(msg, type = 'info', ms = 3000) {
     const c = document.getElementById('toast-container');
@@ -61,7 +72,7 @@ DevSuite.initMonaco = function initMonaco(callback) {
             console.error('DevSuite.initMonaco: failed to load Monaco from CDN', err);
             const banner = document.createElement('div');
             banner.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:8px 16px;background:#ff3b30;color:#fff;font-family:sans-serif;font-size:13px;z-index:9999;text-align:center;';
-            banner.textContent = 'Editor unavailable — Monaco CDN could not be reached. Check your network connection.';
+            banner.textContent = 'Editor unavailable — Monaco could not be loaded from local assets (/static/libs). Check the browser console for details.';
             document.body.prepend(banner);
         }
     );

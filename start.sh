@@ -159,11 +159,6 @@ else
     fi
 fi
 
-# Check Node and npm
-if ! command_exists node || ! command_exists npm; then
-    queue_installation "Node.js & npm" "nodejs npm" "node" "nodejs" "nodejs npm" "nodejs" "OpenJS.NodeJS"
-fi
-
 # Trim leading space from packages list if present
 MISSING_PKGS=$(echo "$MISSING_PKGS" | xargs)
 
@@ -228,26 +223,6 @@ elif [[ -n "$MISSING_SOFTWARE" ]] && [[ "$PKG_MGR" = "$UNKNOWN" ]]; then
     exit 1
 else
     echo "All prerequisites met."
-fi
-
-_install_typescript () {
-    if ask_permission "Do you want to run 'npm install -g typescript'?"; then
-        echo "Installing typescript globally..."
-        if [[ "$OS" = "$WINDOWS" ]] || [[ "$OS" = "macOS" ]]; then
-            npm install -g typescript
-        else
-            run_as_root npm install -g typescript
-        fi
-    else
-        echo "Installation aborted. You may need tsc for compiling frontend assets."
-    fi
-    return 0
-}
-
-# TypeScript global check
-if command_exists npm && ! command_exists tsc; then
-    echo -e "\nTypeScript compiler (tsc) is missing."
-    _install_typescript
 fi
 
 # Create virtual environment if it doesn't exist
