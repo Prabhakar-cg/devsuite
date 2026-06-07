@@ -29,6 +29,13 @@ def isolated_db(tmp_path, monkeypatch):
     monkeypatch.setattr(main, "_DEVSUITE_DIR", tmp_path)
     monkeypatch.setattr(main, "_AUDIT_LOG_PATH", tmp_path / "audit.log")
     main._sessions.clear()
+    # Reset the in-memory rate-limiter counters so each test starts from zero.
+    # Without this, rate-limit stress tests contaminate subsequent tests that
+    # call the same endpoints.
+    try:
+        main.limiter._storage.reset()
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
     yield db
     main._sessions.clear()
 

@@ -7,7 +7,13 @@
 'use strict';
 
 // ── State ──────────────────────────────────────────────────────────
-let masterKey = null;       // Derived CryptoJS key (in-memory only)
+// V1 legacy state (CryptoJS — used only during migration of old vaults)
+let masterKey = null;       // CryptoJS WordArray (v1 path only; null when unlocked via v2)
+
+// V2 domain-separated keys (WebCrypto — current scheme)
+let masterKenc  = null;     // Uint8Array 32 bytes — vault encryption key, NEVER sent to server
+let masterKauth = null;     // Uint8Array 32 bytes — server auth key (sent as key_hex to /api/auth/session)
+
 let vaultSaltHex = null;    // Hex-encoded PBKDF2 salt (kept in memory, persisted with every save)
 let vaultEntries = [];      // Decrypted entries array
 let activeFilter = 'all';
@@ -16,6 +22,7 @@ let selectedId   = null;
 let editingId    = null;    // null = new entry
 let revealedFields = new Set(); // field ids currently revealed
 let autoLockTimer = null;
+// V1 KDF constants (legacy — kept for migration path only)
 const PBKDF2_ITERATIONS = 50000;
 const PBKDF2_KEYSIZE    = 256 / 32;  // 256-bit key → 8 32-bit words
 
@@ -35,7 +42,7 @@ const TYPE_META = {
     note:     { emoji: '📝', label: 'Secure Note',  badgeClass: 'badge-note',     iconClass: 'icon-note'     },
 };
 
-// ── Crypto helpers ────────────────────────────────────────────────
+// ── V1 Crypto helpers (legacy — migration path only) ─────────────
 function deriveKey(password, salt) {
     return CryptoJS.PBKDF2(password, salt, {
         keySize: PBKDF2_KEYSIZE,
@@ -58,6 +65,64 @@ function decryptVault(ciphertext, iv, key) {
         iv: CryptoJS.enc.Hex.parse(iv),
     });
     return JSON.parse(dec.toString(CryptoJS.enc.Utf8));
+}
+
+// ── V2 Crypto helpers (WebCrypto — current scheme) ───────────────
+// Uses WebCrypto APIs (always available in modern browsers) to provide:
+//   • PBKDF2-HMAC-SHA256 @ 310 000 iterations → 512-bit root
+//   • First 256 bits = Kenc  (AES-256-GCM vault encryption — never leaves browser)
+//   • Second 256 bits = Kauth (server auth — replaces the old single shared key)
+// This satisfies SPEC.md §2 / §7.5: "The backend is an opaque store — it never
+// decrypts these."
+
+function _hexToBytes(hex) {
+    const b = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) b[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+    return b;
+}
+function _bytesToHex(bytes) {
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Derive Kenc + Kauth from password + salt using WebCrypto PBKDF2-SHA256/310k.
+ * Returns { Kenc: Uint8Array(32), Kauth: Uint8Array(32) }.
+ * Kenc is the vault encryption key (never sent to server).
+ * Kauth is the server authentication key (sent as key_hex to /api/auth/session).
+ */
+async function _deriveMasterKeysV2(password, saltHex) {
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']
+    );
+    const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', hash: 'SHA-256', salt: _hexToBytes(saltHex), iterations: 310000 },
+        keyMaterial, 512
+    );
+    const arr = new Uint8Array(bits);
+    return { Kenc: arr.slice(0, 32), Kauth: arr.slice(32, 64) };
+}
+
+/** Encrypt vault entries with AES-256-GCM. Returns {version:2, ciphertext, iv} (all hex). */
+async function encryptVaultGCM(entries, Kenc) {
+    const iv     = crypto.getRandomValues(new Uint8Array(12));
+    const aesKey = await crypto.subtle.importKey('raw', Kenc, { name: 'AES-GCM' }, false, ['encrypt']);
+    const buf    = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        aesKey,
+        new TextEncoder().encode(JSON.stringify(entries))
+    );
+    return { version: 2, ciphertext: _bytesToHex(new Uint8Array(buf)), iv: _bytesToHex(iv) };
+}
+
+/** Decrypt AES-256-GCM vault ciphertext (hex) + iv (hex) with Kenc. Returns parsed entries. */
+async function decryptVaultGCM(ciphertextHex, ivHex, Kenc) {
+    const aesKey = await crypto.subtle.importKey('raw', Kenc, { name: 'AES-GCM' }, false, ['decrypt']);
+    const buf    = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: _hexToBytes(ivHex) },
+        aesKey,
+        _hexToBytes(ciphertextHex)
+    );
+    return JSON.parse(new TextDecoder().decode(buf));
 }
 
 // ── ID generator ──────────────────────────────────────────────────
@@ -95,12 +160,17 @@ async function _acquireServerSession(keyHex) {
 
 // ── Persist vault to server ───────────────────────────────────────
 async function persistVault() {
-    if (!masterKey) return;
-    const payload = encryptVault(vaultEntries, masterKey);
+    if (!masterKenc) return;
+    const payload = await encryptVaultGCM(vaultEntries, masterKenc);
     const res = await fetch('/api/vault', {
         method: 'POST',
         headers: _authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ encrypted_blob: payload.ciphertext, iv: payload.iv, salt: vaultSaltHex }),
+        body: JSON.stringify({
+            encrypted_blob: payload.ciphertext,
+            iv:      payload.iv,
+            salt:    vaultSaltHex,
+            version: 2,
+        }),
     });
     if (!res.ok) throw new Error(`Vault save failed: HTTP ${res.status}`);
 }
@@ -134,22 +204,39 @@ function _validateSetupPassword(password) {
 }
 
 /**
- * Derives a session key from the auth-challenge salt and acquires a server session.
- * Throws a user-visible Error if authentication fails or is rate-limited.
+ * Derives the auth key from the challenge salt and acquires a server session.
+ * Handles both v1 (CryptoJS PBKDF2-SHA1/50k) and v2 (WebCrypto PBKDF2-SHA256/310k
+ * with domain-separated Kauth) challenge formats.
+ *
+ * Throws a user-visible Error on wrong password or rate-limit.
  * Returns silently (no-op) when no challenge is configured (first-time setup path).
+ *
+ * In v2 mode also sets masterKenc + masterKauth so the caller doesn't need
+ * to re-derive them.
  */
 async function _acquireChallengeSession(password) {
-    const PBKDF2_AG_ITER = 50000;
-    const PBKDF2_AG_KS   = 256 / 32;
     const chRes = await fetch('/api/auth/challenge');
     if (chRes.status === 429) throw new Error('Too many attempts — please wait a minute and try again.');
     if (!chRes.ok) return;  // 404 = no challenge configured yet (setup path handles it)
     const ch = await chRes.json();
-    if (ch.salt) {
+    if (!ch.salt) return;
+
+    const version = ch.challenge_version || 1;
+
+    if (version === 2) {
+        // V2: derive both keys — Kenc never leaves the browser
+        const keys = await _deriveMasterKeysV2(password, ch.salt);
+        masterKenc  = keys.Kenc;
+        masterKauth = keys.Kauth;
+        await _acquireServerSession(_bytesToHex(keys.Kauth));  // throws on wrong password
+    } else {
+        // V1 (legacy): single PBKDF2-SHA1/50k key
         const sessionKey = CryptoJS.PBKDF2(password, CryptoJS.enc.Hex.parse(ch.salt), {
-            keySize: PBKDF2_AG_KS, iterations: PBKDF2_AG_ITER,
+            keySize: 256 / 32, iterations: 50000,
         });
-        await _acquireServerSession(sessionKey.toString());  // throws on wrong password or rate limit
+        await _acquireServerSession(sessionKey.toString());  // throws on wrong password
+        // masterKenc/masterKauth remain null; v1 unlock path uses masterKey instead
+        masterKey = sessionKey;
     }
 }
 
@@ -170,49 +257,61 @@ async function _resolveVaultSalt(data) {
 }
 
 /**
- * Registers the master password challenge on first-run / migration.
- * Updates the lock-screen UI to reflect the completed setup.
+ * Registers the master-password challenge on first-run or after KDF migration.
+ * Uses v2 format: WebCrypto AES-256-GCM verify_blob with Kauth (not Kenc).
+ *
+ * @param {Uint8Array} Kenc  - vault encryption key (never sent to server)
+ * @param {Uint8Array} Kauth - server authentication key (sent as key_hex)
+ * @param {string}     saltHex - hex salt used for key derivation
  */
-async function _registerSetupChallenge(key, salt) {
-    const verifyIv   = CryptoJS.lib.WordArray.random(16);
-    const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
+async function _registerSetupChallenge(Kenc, Kauth, saltHex) {
+    // Build AES-GCM verify_blob using Kauth — the server verifies this, NOT Kenc.
+    const nonce    = crypto.getRandomValues(new Uint8Array(12));
+    const aesKey   = await crypto.subtle.importKey('raw', Kauth, { name: 'AES-GCM' }, false, ['encrypt']);
+    const encBuf   = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: nonce },
+        aesKey,
+        new TextEncoder().encode('DEVSUITE_MASTER_OK')
+    );
+    const verifyBlob  = _bytesToHex(new Uint8Array(encBuf));
+    const verifyNonce = _bytesToHex(nonce);
+
     const setupRes = await fetch('/api/auth/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            salt:        salt.toString(),
-            verify_blob: verifyBlob.toString(),
-            verify_iv:   verifyIv.toString(),
+            salt:              saltHex,
+            verify_blob:       verifyBlob,
+            verify_nonce:      verifyNonce,
+            challenge_version: 2,
         }),
     });
-    if (!setupRes.ok) {
-        throw new Error(`Setup failed (HTTP ${setupRes.status})`);
-    }
-    await _acquireServerSession(key.toString());
-    // Verify the session cookie was actually set before attempting any protected calls.
-    if (!_csrfToken()) {
-        throw new Error('Session could not be established after setup — please reload and try again.');
-    }
+    if (!setupRes.ok) throw new Error(`Setup failed (HTTP ${setupRes.status})`);
+
+    // Acquire server session using Kauth (domain-separated from Kenc).
+    await _acquireServerSession(_bytesToHex(Kauth));
+    if (!_csrfToken()) throw new Error('Session could not be established — please reload.');
+
     if (isNewVault) {
         const vaultRes = await fetch('/api/vault', {
             method: 'POST',
             headers: _authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex }),
+            body: JSON.stringify({ encrypted_blob: '', iv: '', salt: vaultSaltHex, version: 2 }),
         });
-        if (!vaultRes.ok) {
-            throw new Error(`Initial vault save failed (HTTP ${vaultRes.status})`);
-        }
+        if (!vaultRes.ok) throw new Error(`Initial vault save failed (HTTP ${vaultRes.status})`);
     }
     isSetupMode = false;
     document.getElementById('lock-setup-desc').textContent =
-        'Your secrets are encrypted with AES-256. Enter your master password to unlock.';
+        'Your secrets are encrypted with AES-256-GCM. Enter your master password to unlock.';
     document.getElementById('master-pw-confirm-wrap').style.display = 'none';
     document.getElementById('unlock-btn').textContent = 'Unlock Vault';
 }
 
 // ── Lock / Unlock ─────────────────────────────────────────────────
 function lockVault() {
-    masterKey = null;
+    masterKey   = null;
+    masterKenc  = null;
+    masterKauth = null;
     vaultSaltHex = null;
     vaultEntries = [];
     selectedId = null;
@@ -226,13 +325,22 @@ function lockVault() {
 }
 
 /**
- * Attempts to decrypt data.encrypted_blob with key.
+ * Attempts to decrypt data.encrypted_blob.
+ * Detects version from data.version:
+ *   v2 (GCM) — uses module-level masterKenc (Uint8Array); ignores keyV1 param.
+ *   v1 (CBC) — uses keyV1 (CryptoJS WordArray); migration to v2 is the caller's job.
  * Sets vaultEntries on success. Shows errEl and returns false on wrong password.
  */
-async function _tryDecryptBlob(data, key, errEl) {
+async function _tryDecryptBlob(data, keyV1, errEl) {
     if (!data.encrypted_blob) { vaultEntries = []; return true; }
     try {
-        vaultEntries = decryptVault(data.encrypted_blob, data.iv, key);
+        if ((data.version || 1) === 2) {
+            // V2: authenticated AES-GCM — masterKenc must already be set by caller
+            vaultEntries = await decryptVaultGCM(data.encrypted_blob, data.iv, masterKenc);
+        } else {
+            // V1: unauthenticated AES-CBC (legacy migration path)
+            vaultEntries = decryptVault(data.encrypted_blob, data.iv, keyV1);
+        }
         return true;
     } catch {
         errEl.textContent = '❌ Incorrect password — cannot decrypt vault.';
@@ -241,8 +349,8 @@ async function _tryDecryptBlob(data, key, errEl) {
     }
 }
 
-function _finalizeUnlock(key, successMsg) {
-    masterKey = key;
+// masterKenc / masterKauth / vaultEntries are all set before this is called.
+function _finalizeUnlock(successMsg) {
     document.getElementById('lock-overlay').style.display = 'none';
     renderAll();
     toast(successMsg, 'success');
@@ -250,9 +358,8 @@ function _finalizeUnlock(key, successMsg) {
 }
 
 // ── First-time setup: no challenge or session exists yet ────────
-// Generate salt/key locally, register the challenge (CSRF-exempt),
-// acquire a session, then persist the empty vault — all without
-// trying to hit /api/vault before cookies are established.
+// Generate salt/key locally using v2 (WebCrypto), register the challenge
+// (CSRF-exempt), acquire a session, then persist the empty vault.
 async function _unlockSetupNewVault(password, errEl) {
     const validationError = _validateSetupPassword(password);
     if (validationError) {
@@ -260,35 +367,60 @@ async function _unlockSetupNewVault(password, errEl) {
         errEl.style.display = 'block';
         return;
     }
-    const salt = CryptoJS.lib.WordArray.random(16);
-    vaultSaltHex = salt.toString();
-    const key = deriveKey(password, salt);
-    await _registerSetupChallenge(key, salt);
+    const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+    vaultSaltHex    = _bytesToHex(saltBytes);
+    const keys      = await _deriveMasterKeysV2(password, vaultSaltHex);
+    masterKenc  = keys.Kenc;
+    masterKauth = keys.Kauth;
+    masterKey   = null;
+    await _registerSetupChallenge(masterKenc, masterKauth, vaultSaltHex);
     vaultEntries = [];
-    _finalizeUnlock(key, 'Vault created and unlocked ✓');
+    _finalizeUnlock('Vault created and unlocked ✓');
 }
 
 // ── Migration: vault exists but no challenge registered yet ────
 // Read the encrypted blob via the session-free migration endpoint,
-// verify the password by attempting to decrypt, then register the
-// challenge and acquire a session before proceeding.
+// verify the password by attempting to decrypt, register v2 challenge,
+// re-encrypt the vault with GCM, then proceed.
 async function _unlockSetupMigration(password, errEl) {
     const migRes = await fetch('/api/vault/migrate');
     if (!migRes.ok) throw new Error(`Migration read failed (HTTP ${migRes.status}).`);
     const migData = await migRes.json();
 
-    const salt = CryptoJS.enc.Hex.parse(migData.salt);
     vaultSaltHex = migData.salt;
-    const key = deriveKey(password, salt);
 
-    if (!await _tryDecryptBlob(migData, key, errEl)) return;
+    // Decrypt whatever format the migrated vault is in
+    const blobVersion = migData.version || 1;
+    if (blobVersion === 2) {
+        // Already v2 — derive v2 keys and decrypt
+        const keys = await _deriveMasterKeysV2(password, vaultSaltHex);
+        masterKenc  = keys.Kenc;
+        masterKauth = keys.Kauth;
+        masterKey   = null;
+        if (!await _tryDecryptBlob(migData, null, errEl)) return;
+    } else {
+        // V1 blob — decrypt with CryptoJS then migrate up
+        masterKenc = null;  // ensure _tryDecryptBlob uses v1 path
+        const salt = CryptoJS.enc.Hex.parse(migData.salt);
+        const key  = deriveKey(password, salt);
+        if (!await _tryDecryptBlob(migData, key, errEl)) return;
+        // Derive v2 keys for the new challenge
+        const keys = await _deriveMasterKeysV2(password, vaultSaltHex);
+        masterKenc  = keys.Kenc;
+        masterKauth = keys.Kauth;
+        masterKey   = null;
+    }
 
-    await _registerSetupChallenge(key, salt);
-    _finalizeUnlock(key, 'Vault unlocked and master password registered ✓');
+    // Register v2 challenge and (if new vault) persist initial empty vault
+    await _registerSetupChallenge(masterKenc, masterKauth, vaultSaltHex);
+    // Re-encrypt existing vault data under v2 GCM
+    await persistVault();
+    _finalizeUnlock('Vault unlocked and security upgraded ✓');
 }
 
 // ── Normal unlock: acquire session then load vault ───────────────
 async function _unlockVaultNormal(password, errEl) {
+    // _acquireChallengeSession sets masterKenc/masterKauth (v2) or masterKey (v1)
     await _acquireChallengeSession(password);
 
     const res = await fetch('/api/vault', { headers: _authHeaders() });
@@ -300,12 +432,41 @@ async function _unlockVaultNormal(password, errEl) {
         return;
     }
     const data = await res.json();
-    const salt = await _resolveVaultSalt(data);
-    const key  = deriveKey(password, salt);
+    await _resolveVaultSalt(data);  // sets vaultSaltHex
 
-    if (!await _tryDecryptBlob(data, key, errEl)) return;
+    const blobVersion = data.version || 1;
 
-    _finalizeUnlock(key, 'Vault unlocked ✓');
+    if (blobVersion === 2 && masterKenc) {
+        // V2 blob + v2 keys — straightforward decrypt
+        if (!await _tryDecryptBlob(data, null, errEl)) return;
+    } else if (blobVersion === 1 && masterKey) {
+        // V1 blob + v1 key — decrypt, then auto-migrate to v2
+        const v1key = masterKey;  // CryptoJS WordArray set by _acquireChallengeSession
+        // Temporarily set masterKenc to null so _tryDecryptBlob uses the v1 path
+        masterKenc = null;
+        if (!await _tryDecryptBlob(data, v1key, errEl)) return;
+
+        // ── Migrate: derive v2 keys and re-register the challenge ──
+        toast('Upgrading vault encryption — please wait…', 'success');
+        const keys = await _deriveMasterKeysV2(password, vaultSaltHex);
+        masterKenc  = keys.Kenc;
+        masterKauth = keys.Kauth;
+        masterKey   = null;  // clear v1 key from memory
+        try {
+            await _registerSetupChallenge(masterKenc, masterKauth, vaultSaltHex);
+            await persistVault();  // re-encrypt with GCM and save
+            toast('Vault upgraded to AES-256-GCM ✓', 'success');
+        } catch (migrateErr) {
+            // Non-fatal: vault is decrypted in memory; migration can retry on next unlock
+            console.warn('v1→v2 migration failed (will retry next unlock):', migrateErr);
+        }
+    } else {
+        errEl.textContent = '❌ Unexpected vault/challenge version mismatch — please reload.';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    _finalizeUnlock('Vault unlocked ✓');
 }
 
 async function unlockVault(password) {

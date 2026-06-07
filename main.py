@@ -1,5 +1,5 @@
 """
-DevSuite — FastAPI Backend  (v0.2.0)
+DevSuite — FastAPI Backend  (v0.2.1)
 ---------------------------------
 Serves the static frontend and provides REST/WebSocket APIs for all tools.
 
@@ -78,6 +78,12 @@ _db = DevDB(_DB_PATH, password=os.environ.get("DEVDB_PASSWORD") or None)
 @asynccontextmanager
 async def _lifespan(_application: FastAPI):
     """Modern FastAPI lifespan: open DevDB, migrate legacy files."""
+    # Ensure the data directory exists and is locked down to the owning user.
+    _DEVSUITE_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        _DEVSUITE_DIR.chmod(0o700)
+    except OSError:
+        pass  # best-effort — may be a no-op on Windows/non-POSIX
     _db.open()
     migrated = DevDB.migrate_legacy(_db, _DEVSUITE_DIR)
     if migrated:
@@ -149,8 +155,9 @@ async def add_security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     # Prevent MIME-type sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
-    # Basic XSS protection for older browsers
-    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # X-XSS-Protection is deprecated; modern browsers ignore/mishandle it.
+    # Set to "0" to avoid legacy browser quirks — rely on Content-Security-Policy.
+    response.headers["X-XSS-Protection"] = "0"
     # Content Security Policy (allows local assets and CDN resources used in the app)
     csp = (
         "default-src 'self'; "
@@ -196,7 +203,7 @@ def _asset_fingerprint(static_path: str) -> str:
     file_path = os.path.join(static_dir, static_path.removeprefix('/static/'))
     try:
         with open(file_path, 'rb') as f:
-            return hashlib.md5(f.read()).hexdigest()[:8]
+            return hashlib.md5(f.read(), usedforsecurity=False).hexdigest()[:8]
     except OSError:
         return APP_VERSION
 
@@ -709,8 +716,8 @@ def _check_ip_not_private(ip_str: str) -> None:
                 status_code=403,
                 detail=f"Access to private/reserved IP addresses is forbidden: {ip_str}",
             )
-        if ip_str.startswith("169.254."):
-            raise HTTPException(status_code=403, detail="Access to cloud metadata endpoints is forbidden")
+        # Note: the `169.254.x.x` cloud-metadata range is already covered by
+        # ip_obj.is_link_local above — no separate branch needed.
     except ValueError:
         pass  # intentionally ignored: non-IP strings (hostnames) are not checked
 
@@ -867,8 +874,14 @@ def _audit_log(event: str, **details) -> None:
         record = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "event": event}
         record.update({k: str(v) for k, v in details.items()})
         _DEVSUITE_DIR.mkdir(parents=True, exist_ok=True)
+        first_write = not _AUDIT_LOG_PATH.exists()
         with open(_AUDIT_LOG_PATH, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(record) + "\n")
+        if first_write:
+            try:
+                os.chmod(_AUDIT_LOG_PATH, 0o600)
+            except OSError:
+                pass  # best-effort — non-POSIX systems
     except OSError:
         logger.warning("audit: failed to write log entry for %s", event)
 
@@ -1074,14 +1087,22 @@ def auth_status():
 )
 @limiter.limit("5/minute")
 def auth_challenge(request: Request):
-    """Return the stored salt + encrypted-verify-blob for client-side password checking."""
+    """Return the stored salt + encrypted-verify-blob for client-side password checking.
+
+    v1 (legacy): returns verify_iv (AES-CBC with PBKDF2-SHA1/50k key).
+    v2 (current): returns verify_nonce (AES-GCM with domain-separated Kauth from
+                  PBKDF2-SHA256/310k → 512-bit split). challenge_version field
+                  discriminates; absence implies 1.
+    """
     prefs = _db.get_store("app_prefs") or {}
     if not prefs.get("master_setup_done"):
         raise HTTPException(status_code=404, detail="Master password not configured")
     return {
-        "salt":        prefs.get("master_salt", ""),
-        "verify_blob": prefs.get("master_verify_blob", ""),
-        "verify_iv":   prefs.get("master_verify_iv", ""),
+        "salt":              prefs.get("master_salt", ""),
+        "verify_blob":       prefs.get("master_verify_blob", ""),
+        "verify_iv":         prefs.get("master_verify_iv", ""),    # v1 only
+        "verify_nonce":      prefs.get("master_verify_nonce", ""), # v2 only
+        "challenge_version": prefs.get("challenge_version", 1),
     }
 
 
@@ -1096,28 +1117,44 @@ def auth_challenge(request: Request):
 def auth_setup(data: dict):
     """One-time setup: store the PBKDF2 salt and AES verification blob in app_prefs.
     Called by vault.js after the user sets their master password for the first time.
-    Expects: {salt, verify_blob, verify_iv}
+
+    v1: {salt, verify_blob, verify_iv}
+    v2: {salt, verify_blob, verify_nonce, challenge_version: 2}
     """
     prefs = _db.get_store("app_prefs") or {}
     if prefs.get("master_setup_done"):
         raise HTTPException(status_code=409, detail="Master password already configured")
 
-    salt        = str(data.get("salt",        "")).strip()
-    verify_blob = str(data.get("verify_blob", "")).strip()
-    verify_iv   = str(data.get("verify_iv",   "")).strip()
+    salt              = str(data.get("salt",              "")).strip()
+    verify_blob       = str(data.get("verify_blob",       "")).strip()
+    challenge_version = int(data.get("challenge_version", 1))
 
-    if not salt or not verify_blob or not verify_iv:
-        raise HTTPException(
-            status_code=400,
-            detail="Missing required fields: salt, verify_blob, verify_iv",
-        )
+    if challenge_version == 2:
+        verify_nonce = str(data.get("verify_nonce", "")).strip()
+        if not salt or not verify_blob or not verify_nonce:
+            raise HTTPException(status_code=400,
+                detail="Missing required fields: salt, verify_blob, verify_nonce")
+        prefs.update({
+            "master_setup_done":  True,
+            "master_salt":        salt,
+            "master_verify_blob": verify_blob,
+            "master_verify_nonce": verify_nonce,
+            "master_verify_iv":   "",  # unused for v2
+            "challenge_version":  2,
+        })
+    else:
+        verify_iv = str(data.get("verify_iv", "")).strip()
+        if not salt or not verify_blob or not verify_iv:
+            raise HTTPException(status_code=400,
+                detail="Missing required fields: salt, verify_blob, verify_iv")
+        prefs.update({
+            "master_setup_done":  True,
+            "master_salt":        salt,
+            "master_verify_blob": verify_blob,
+            "master_verify_iv":   verify_iv,
+            "challenge_version":  1,
+        })
 
-    prefs.update({
-        "master_setup_done":  True,
-        "master_salt":        salt,
-        "master_verify_blob": verify_blob,
-        "master_verify_iv":   verify_iv,
-    })
     _db.set_store("app_prefs", prefs)
     _db.save()
     return {"status": "ok"}
@@ -1134,28 +1171,42 @@ def auth_setup(data: dict):
 )
 def auth_update_challenge(data: dict, request: Request):
     """Replace the verification challenge when the master password is changed.
-    Expects: {salt, verify_blob, verify_iv}
+
+    v1: {salt, verify_blob, verify_iv}
+    v2: {salt, verify_blob, verify_nonce, challenge_version: 2}
     """
     require_unlocked(request)
     prefs = _db.get_store("app_prefs") or {}
     if not prefs.get("master_setup_done"):
         raise HTTPException(status_code=404, detail="Master password not yet configured")
 
-    salt        = str(data.get("salt",        "")).strip()
-    verify_blob = str(data.get("verify_blob", "")).strip()
-    verify_iv   = str(data.get("verify_iv",   "")).strip()
+    salt              = str(data.get("salt",              "")).strip()
+    verify_blob       = str(data.get("verify_blob",       "")).strip()
+    challenge_version = int(data.get("challenge_version", 1))
 
-    if not salt or not verify_blob or not verify_iv:
-        raise HTTPException(
-            status_code=400,
-            detail="Missing required fields: salt, verify_blob, verify_iv",
-        )
-
-    prefs.update({
-        "master_salt":        salt,
-        "master_verify_blob": verify_blob,
-        "master_verify_iv":   verify_iv,
-    })
+    if challenge_version == 2:
+        verify_nonce = str(data.get("verify_nonce", "")).strip()
+        if not salt or not verify_blob or not verify_nonce:
+            raise HTTPException(status_code=400,
+                detail="Missing required fields: salt, verify_blob, verify_nonce")
+        prefs.update({
+            "master_salt":         salt,
+            "master_verify_blob":  verify_blob,
+            "master_verify_nonce": verify_nonce,
+            "master_verify_iv":    "",
+            "challenge_version":   2,
+        })
+    else:
+        verify_iv = str(data.get("verify_iv", "")).strip()
+        if not salt or not verify_blob or not verify_iv:
+            raise HTTPException(status_code=400,
+                detail="Missing required fields: salt, verify_blob, verify_iv")
+        prefs.update({
+            "master_salt":        salt,
+            "master_verify_blob": verify_blob,
+            "master_verify_iv":   verify_iv,
+            "challenge_version":  1,
+        })
     _db.set_store("app_prefs", prefs)
     _db.save()
     # Revoke all existing session tokens so old sessions cannot continue
@@ -1178,11 +1229,15 @@ def auth_update_challenge(data: dict, request: Request):
 def auth_session(request: Request, data: dict):  # pylint: disable=too-many-locals
     """Verify the PBKDF2-derived key (hex) against the stored challenge and issue a session token.
 
-    The client sends {key_hex: <hex>} where key_hex is the AES key derived from
-    the master password using PBKDF2-SHA1(50 000 iter, 32-byte output).  The server
-    decrypts the stored verify_blob to confirm key correctness without ever seeing
-    the plaintext password.  On success a BLAKE2b-hashed token is stored server-side
-    and the raw token is written to an HttpOnly SameSite=Strict cookie.
+    The client sends {key_hex: <hex>} where:
+    - v1: key_hex is the full AES key (PBKDF2-SHA1/50k) — legacy path for existing vaults.
+    - v2: key_hex is Kauth, the second 256-bit half of PBKDF2-SHA256/310k → 512-bit.
+          Kenc (the first half, used for vault encryption) is never sent to the server.
+          This upholds the zero-knowledge guarantee in SPEC.md §2/§7.5.
+
+    The server decrypts the stored verify_blob to confirm key correctness without ever seeing
+    the plaintext password.  On success a BLAKE2b-hashed token is stored server-side and
+    the raw token is written to an HttpOnly SameSite=Strict cookie.
     """
     prefs = _db.get_store("app_prefs") or {}
     if not prefs.get("master_setup_done"):
@@ -1192,27 +1247,36 @@ def auth_session(request: Request, data: dict):  # pylint: disable=too-many-loca
     if not key_hex:
         raise HTTPException(status_code=400, detail="Missing key_hex")
 
+    challenge_version = prefs.get("challenge_version", 1)
+
     try:
-        import base64 as _b64  # pylint: disable=import-outside-toplevel
-        from cryptography.hazmat.primitives.ciphers import (  # pylint: disable=import-outside-toplevel
-            Cipher,
-            algorithms,
-            modes,
-        )
-        from cryptography.hazmat.backends import default_backend  # pylint: disable=import-outside-toplevel
+        key_bytes = bytes.fromhex(key_hex)
 
-        key        = bytes.fromhex(key_hex)
-        verify_iv  = bytes.fromhex(prefs["master_verify_iv"])
-        ciphertext = _b64.b64decode(prefs["master_verify_blob"])
+        if challenge_version == 2:
+            # ── v2: AES-256-GCM (authenticated; key_hex = Kauth, never Kenc) ────────
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # pylint: disable=import-outside-toplevel
+            nonce      = bytes.fromhex(prefs["master_verify_nonce"])
+            ciphertext = bytes.fromhex(prefs["master_verify_blob"])  # GCM ciphertext + 16-byte tag
+            aesgcm     = AESGCM(key_bytes)
+            plaintext  = aesgcm.decrypt(nonce, ciphertext, None).decode("utf-8", errors="strict")
+        else:
+            # ── v1 (legacy): AES-256-CBC (PKCS7) — CryptoJS client compatibility ────
+            import base64 as _b64  # pylint: disable=import-outside-toplevel
+            from cryptography.hazmat.primitives.ciphers import (  # pylint: disable=import-outside-toplevel
+                Cipher, algorithms, modes,
+            )
+            from cryptography.hazmat.backends import default_backend  # pylint: disable=import-outside-toplevel
 
-        cipher = Cipher(algorithms.AES(key), modes.CBC(verify_iv), backend=default_backend())  # NOSONAR — CBC required for CryptoJS client compatibility; verify_blob is a one-way challenge, not sensitive data
-        decryptor = cipher.decryptor()
-        padded = decryptor.update(ciphertext) + decryptor.finalize()
-        # Remove PKCS7 padding
-        pad_len = padded[-1]
-        if pad_len < 1 or pad_len > 16:
-            raise ValueError("Invalid PKCS7 padding")
-        plaintext = padded[:-pad_len].decode("utf-8", errors="strict")
+            verify_iv  = bytes.fromhex(prefs["master_verify_iv"])
+            ciphertext = _b64.b64decode(prefs["master_verify_blob"])
+
+            cipher = Cipher(algorithms.AES(key_bytes), modes.CBC(verify_iv), backend=default_backend())  # NOSONAR — CBC required for CryptoJS v1 compat; verify_blob is a one-way challenge
+            decryptor = cipher.decryptor()
+            padded    = decryptor.update(ciphertext) + decryptor.finalize()
+            pad_len   = padded[-1]
+            if pad_len < 1 or pad_len > 16:
+                raise ValueError("Invalid PKCS7 padding")
+            plaintext = padded[:-pad_len].decode("utf-8", errors="strict")
 
         if plaintext != "DEVSUITE_MASTER_OK":
             raise HTTPException(status_code=401, detail="Invalid master key")
@@ -1654,11 +1718,14 @@ async def sftp_download(req: SFTPDownloadRequest):
                             yield chunk
 
         filename = req.path.rstrip('/').split('/')[-1]
+        # RFC 5987-encode the filename so CR/LF/double-quotes in a remote filename
+        # cannot inject additional headers or escape the Content-Disposition value.
+        safe_filename = urllib.parse.quote(filename, safe='')
         from starlette.responses import StreamingResponse  # pylint: disable=import-outside-toplevel
         return StreamingResponse(
             _stream_file(),
             media_type=_MIME_OCTET_STREAM,
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{safe_filename}"},
         )
     except HTTPException:
         raise
@@ -1998,4 +2065,7 @@ async def local_terminal(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    _host   = os.environ.get("HOST", "127.0.0.1")
+    _port   = int(os.environ.get("PORT", "8000"))
+    # reload=True is a dev-only convenience — only enabled when DEVSUITE_DEV=1.
+    uvicorn.run("main:app", host=_host, port=_port, reload=_DEV_MODE)

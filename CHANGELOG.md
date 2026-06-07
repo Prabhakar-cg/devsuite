@@ -9,6 +9,37 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ### Security
 
+#### Vault zero-knowledge — domain-separated encryption + auth keys (`vault.js`, `auth-guard.js`, `main.py`)
+- **P0 §4.1 fix:** The server previously received `key_hex` = the vault's AES encryption key (derived by `CryptoJS.PBKDF2`) on every unlock. This broke the "zero-knowledge" claim in SPEC §2/§7.5 — a compromised server could decrypt the vault.
+- Introduced **v2 key derivation**: `WebCrypto PBKDF2-HMAC-SHA256 @ 310 000 iter → 512-bit root`. First 256 bits = `Kenc` (vault encryption, never leaves browser); second 256 bits = `Kauth` (server auth, sent as `key_hex`). `Kenc ≠ Kauth` by construction; knowing `Kauth` cannot recover `Kenc`.
+- **Vault encryption upgraded to WebCrypto AES-256-GCM** (§4.3 fix): authenticated encryption replaces the previous AES-256-CBC with no MAC. GCM detects ciphertext tampering; CBC with JSON parse errors was not authentication.
+- **KDF strengthened** (§4.4 fix): PBKDF2-HMAC-SHA256 @ 310 000 iterations replaces PBKDF2-HMAC-SHA1 @ 50 000. This raises the offline brute-force bar significantly and aligns with OWASP 2023 guidance.
+- **Versioned blob format**: blobs now carry `version: 2` (v1 = old CBC/SHA-1 scheme, no field / absent). Old vaults are automatically migrated to v2 on first unlock: decrypted with v1 key, re-encrypted with `Kenc`/GCM, new `challenge_version: 2` challenge registered with `Kauth`.
+- **Server**: `POST /api/auth/setup` and `POST /api/auth/update-challenge` now accept `challenge_version` + `verify_nonce` (v2) alongside existing `verify_iv` (v1). `POST /api/auth/session` verifies with AES-256-GCM (v2) or AES-CBC (v1) based on stored `challenge_version`. `GET /api/auth/challenge` returns `challenge_version` + `verify_nonce`.
+- **`auth-guard.js`** updated to handle v2 challenges (`_verify` dispatches on `challenge_version`; derives `Kauth` via WebCrypto and never sends `Kenc`).
+
+#### Master password / key no longer stored in `sessionStorage` (`auth-guard.js`)
+- **P2 §4.6 fix:** `devsuite_session_cred` (password) and `devsuite_key_hex` were written to `sessionStorage`, making them readable by any same-origin XSS. Both are now held exclusively in **module-level in-memory variables** (`_sessionPwd`, `_sessionKeyHex`) — cleared on page unload. Re-prompting on page navigation is the correct, safer default (the Vault already used this model).
+
+#### `auth-guard.js` overlay rebuilt with DOM methods (no `innerHTML` for dynamic content)
+- `_buildOverlay` used template-literal `innerHTML` with `${toolName}` / `${toolIcon}` interpolation. Both are static call-site literals today but represent an injection vector for future dynamic callers. Rebuilt with `createElement` + `textContent` throughout, matching SPEC §2 / CLAUDE.md rule 4.
+
+#### `X-XSS-Protection` header set to `0` (`main.py`)
+- Changed from `1; mode=block` to `0`. The header is deprecated in all major browsers; `mode=block` can introduce quirks in legacy browsers. Modern XSS protection relies on CSP.
+
+#### SFTP download filename header injection fixed (`main.py`)
+- `sftp_download` put the raw remote filename directly into `Content-Disposition: attachment; filename="..."`. A filename containing CR/LF/double-quotes could inject arbitrary response headers. Now RFC 5987-encoded: `filename*=UTF-8''<pct-encoded>`.
+
+#### `~/.devsuite/` directory and audit log permissions hardened (`main.py`)
+- On startup `_DEVSUITE_DIR.chmod(0o700)` — locks the data directory to the owning user on POSIX systems.
+- `audit.log` receives `chmod 600` on its first write — prevents world-readable audit data.
+
+#### Dead code removed: `169.254.x.x` redundant branch (`main.py`)
+- The `if ip_str.startswith("169.254."):` branch in `_check_ip_not_private` was unreachable — `ip_obj.is_link_local` already covers the entire `169.254.0.0/16` range and raises first. Replaced with a clarifying comment.
+
+#### `hashlib.md5` security flag (`main.py`)
+- Added `usedforsecurity=False` to the `hashlib.md5` call used for asset cache-busting fingerprints, suppressing false-positive security scanner alerts.
+
 #### CORS Proxy SSRF — redirect & response hardening (`main.py`)
 - The `/api/proxy` SSRF guard validated only the initial target IP, but `urllib` followed 3xx redirects automatically — so a public host could redirect into a private/reserved address (e.g. `http://169.254.169.254/` cloud metadata). Redirects now route through `_SSRFSafeRedirectHandler`, which re-validates every hop's resolved IP and scheme before following. Proxied responses are capped at 10 MB to prevent memory exhaustion.
 
@@ -19,6 +50,9 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 - Field copy/reveal buttons were built as inline `onclick` strings that interpolated the secret value via `encodeURIComponent`, which does not escape single quotes — a value containing `'` could break out into the attribute/JS context. Buttons are now wired with `addEventListener` (value read from a closure), matching the safe pattern already used by the URL opener.
 
 ### Tests
+
+#### v2 vault challenge test suite (`tests/python/test_vault_v2.py`)
+- 6 new tests verifying: v2 challenge setup stores correct prefs; challenge endpoint returns `challenge_version` + `verify_nonce`; `POST /api/auth/session` accepts `Kauth` and **rejects `Kenc`** (domain separation enforced); rejects random keys; v1 CBC path still passes (backward compat). Rate-limiter storage now reset between tests in `conftest.py` to prevent cross-test contamination.
 
 #### Added Python backend test suite (`tests/python/`)
 - New `pytest` suite covering the security-critical paths in SPEC §10.2: DevDB AES-256-GCM round-trip + tamper / wrong-password detection and plain-mode checksum; CORS-proxy SSRF (loopback / scheme / redirect-to-private blocked); CSRF enforcement (missing or mismatched token → 403; bootstrap endpoints exempt); session-token hashing (raw token never stored, expiry purged on access); and auth-challenge rate limiting (429). 21 tests, all passing.
@@ -31,6 +65,14 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 - Now uses `actions/checkout@v4` → `github/codeql-action/init@v3` → `github/codeql-action/analyze@v3`, which handles CLI download, database creation, and SARIF upload internally. Analysis matrices unchanged: `javascript-typescript` and `python`, both `build-mode: none`.
 
 ### Build / Tooling
+
+#### `__main__` now honours `HOST` / `PORT` env vars; `reload=True` gated to dev mode (`main.py`)
+- `uvicorn.run(...)` hardcoded `host="127.0.0.1"`, `port=8000`, `reload=True` regardless of environment, contradicting `SPEC.md §14.2`. Now reads `HOST` / `PORT` from env (defaults unchanged); `reload` is only `True` when `DEVSUITE_DEV=1`. Fixes spec drift D-3.
+
+#### Spec drift resolved (`SPEC.md`)
+- **D-2:** Updated §4.7 to document that `/api/collections` IS auth-gated server-side (code was already correct; spec was wrong).
+- **D-4:** Fixed docstring on line 2 of `main.py` still reading `v0.2.0` despite `APP_VERSION = "0.2.1"`.
+- **D-5:** Removed stale SonarCloud blocker note for `_serverToken` implicit global — no longer present in `db-manager.js`.
 
 #### Removed vestigial TypeScript / Node build path (`start.sh`, `start.ps1`, `static/api-client.ts`)
 - Deleted `static/api-client.ts`. The shipping `static/api-client.js` is the canonical, hand-maintained source loaded by `api-tester.html`; the `.ts` had drifted out of sync and was **missing the CSRF-token injection on proxy requests** that the `.js` performs — so recompiling it (as the old README instructed) would have regressed security.

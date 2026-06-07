@@ -222,7 +222,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 - Collection export as DevSuite native JSON.
 - OpenAPI 3.x / Swagger 2.x JSON import — each path×method becomes a collection request.
 - Local CORS Proxy (`/api/proxy`) to bypass browser CORS restrictions (targets any public host; private IPs blocked server-side).
-- Frontend uses 8-hour session auth via `auth-guard.js`. The `/api/collections` backend endpoints themselves are **not** auth-gated — they rely on frontend session management only.
+- Frontend uses 8-hour session auth via `auth-guard.js`. Both `/api/collections` endpoints also call `require_unlocked` server-side — the backend enforces auth, not just the frontend.
 
 **Network notice:** The CORS proxy initiates outbound connections to the target host. This tool is not strictly offline.
 
@@ -332,8 +332,8 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Method | Route | Rate Limit | Description |
 |---|---|---|---|
 | `GET` | `/api/auth/status` | — | Check if master password is configured (`is_setup`, `vault_has_data`) |
-| `GET` | `/api/auth/challenge` | 5 req/min/IP | Return `salt`, `verify_blob`, `verify_iv` for client-side key verification |
-| `POST` | `/api/auth/setup` | — | Initial Master Password setup (stores `salt`, `verify_blob`, `verify_iv` in `app_prefs`) |
+| `GET` | `/api/auth/challenge` | 5 req/min/IP | Return `salt`, `verify_blob`, `challenge_version` (+ `verify_iv` v1 / `verify_nonce` v2) |
+| `POST` | `/api/auth/setup` | — | Initial Master Password setup (v2: stores `salt`, `verify_blob`, `verify_nonce`, `challenge_version=2`) |
 | `POST` | `/api/auth/session` | 5 req/min/IP | Verify key and issue session; sets `ds_session` + `ds_csrf` cookies |
 | `POST` | `/api/auth/update-challenge` | — | Replace verification challenge after password change; revokes all active sessions |
 | `POST` | `/api/auth/logout` | — | Invalidate current session; clears `ds_session` + `ds_csrf` cookies |
@@ -467,7 +467,7 @@ Access via the DevDB REST API is restricted to these store names (`_ALLOWED_STOR
 | `vault` | Secret Vault | AES-256 ciphertext blob (never decrypted server-side) |
 | `ssh_profiles` | SSH Terminal / SFTP | AES-256 ciphertext blob (never decrypted server-side) |
 | `collections` | API Tester | JSON request collections |
-| `app_prefs` | Auth system | `master_setup_done`, `master_salt`, `master_verify_blob`, `master_verify_iv` |
+| `app_prefs` | Auth system | `master_setup_done`, `master_salt`, `master_verify_blob`, `challenge_version`; `master_verify_iv` (v1) or `master_verify_nonce` (v2) |
 
 ### 6.5 JS Client (`devdb-client.js`)
 
@@ -483,9 +483,9 @@ DevDB.getMeta()           // GET /api/db/meta
 
 ### 7.1 Authentication Flow
 
-1. On first visit to `/vault`: user creates a Master Password → `POST /api/auth/setup` stores a PBKDF2-derived challenge blob.
-2. On subsequent visits: user enters password → `GET /api/auth/challenge` + `POST /api/auth/session` verifies it → server sets `ds_session` HttpOnly cookie.
-3. `auth-guard.js` caches the verified password in `sessionStorage` for 8 hours (key: `devsuite_session_pwd`). Vault and DB Manager always-ask (no cache).
+1. On first visit to `/vault`: user creates a Master Password → browser derives **Kenc** + **Kauth** (see §7.5) → `POST /api/auth/setup` stores the PBKDF2 salt and an AES-GCM verify_blob encrypted with **Kauth**.
+2. On subsequent visits: user enters password → browser re-derives Kenc/Kauth → `GET /api/auth/challenge` + `POST /api/auth/session` verifies **Kauth** → server sets `ds_session` HttpOnly cookie.
+3. `auth-guard.js` holds the verified password **in-memory only** for the page's lifetime. Vault and DB Manager always-ask (no cross-page cache). Navigating to a new tool re-prompts (this is intentional — the master password is never written to `sessionStorage` or `localStorage`).
 
 ### 7.2 Session Token Lifecycle
 
@@ -510,9 +510,15 @@ DevDB.getMeta()           // GET /api/db/meta
 
 ### 7.5 Client-Side Encryption
 
-- Vault and SSH profiles are encrypted in-browser using CryptoJS AES-256 before being sent to the backend.
-- The server stores and returns opaque ciphertext blobs. It never has access to plaintext secrets.
-- Master Password is never transmitted or stored — only a PBKDF2 challenge derived from it is stored.
+- Vault blobs are encrypted in-browser using **WebCrypto AES-256-GCM** (authenticated). SSH profile blobs use CryptoJS AES-256 (separate key scheme, see SSH Manager).
+- The server stores and returns opaque ciphertext blobs. It **never** decrypts them.
+- Master Password is never transmitted or stored.
+- **Domain-separated keys (v2 scheme, `challenge_version: 2`):**
+  - `root = PBKDF2-HMAC-SHA256(password, salt, 310 000 iter) → 512 bits`
+  - `Kenc  = root[0:32]` — vault encryption key, **never leaves the browser**
+  - `Kauth = root[32:64]` — server authentication key, sent as `key_hex` to `/api/auth/session`
+  - Even if the server is compromised and logs `key_hex`, it cannot decrypt the vault (Kenc ≠ Kauth).
+- **Backward compatibility:** v1 vaults (challenge_version absent or 1) use CryptoJS PBKDF2-SHA1/50k single-key scheme; on first unlock they are automatically migrated to v2 (re-encrypted as AES-GCM, new challenge registered with Kauth).
 
 ### 7.6 Audit Log
 
@@ -710,8 +716,8 @@ These paths must have automated tests. Adding or changing any of them requires a
 - Hotspots S3330, S5042 (×2): unreviewed.
 - 8 new violations since 2026-04-19.
 
-**Active blockers/criticals:**
-- `db-manager.js:188` S2703: implicit global `_serverToken` (BLOCKER).
+**Active criticals:**
+- ~~`db-manager.js:188` S2703: implicit global `_serverToken` (BLOCKER)~~ — **resolved**, no longer present in code.
 - `vault.js:236` S3776: cognitive complexity 21 (CRITICAL).
 - `cron.js:528`, `ssh-manager.js:947`, `file-converter.html:1102`: S3776 complexity.
 - `ssh-manager.js:353`, `regex.html:398`: S2004 functions nested >4 levels.
@@ -858,8 +864,8 @@ Follows Semantic Versioning. Each release section includes: Security · Frontend
 | `DEVSUITE_DEV` | `0` | Set to `1` to enable `/docs` (Swagger UI) and `/redoc` |
 | `DEVSUITE_HTTPS` | `0` | Set to `1` to add `Secure` flag to `ds_session` and `ds_csrf` cookies (use when serving over HTTPS) |
 | `DEVDB_PASSWORD` | _(empty)_ | Server-side DevDB encryption password (leave blank to disable) |
-| `PORT` | `8000` | Port Uvicorn listens on (passed to uvicorn at startup) |
-| `HOST` | `127.0.0.1` | Bind host |
+| `PORT` | `8000` | Port Uvicorn listens on — honoured by `__main__` and `start.sh`/`start.ps1` |
+| `HOST` | `127.0.0.1` | Bind host — honoured by `__main__`; `reload=True` is only set when `DEVSUITE_DEV=1` |
 
 ### 14.3 Upgrade Process Summary
 

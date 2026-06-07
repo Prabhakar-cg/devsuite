@@ -13,11 +13,17 @@
 
 const AuthGuard = (() => {
     // ── Constants ─────────────────────────────────────────────────
-    const LS_EXPIRY_KEY = 'devsuite_session_expiry';   // localStorage
-    const SS_CRED_KEY   = 'devsuite_session_cred';     // sessionStorage — stores derived key for session
+    const LS_EXPIRY_KEY = 'devsuite_session_expiry';   // localStorage (non-sensitive: expiry only)
     const SESSION_MS    = 8 * 60 * 60 * 1000;         // 8 hours
     const PBKDF2_ITER   = 50000;
     const PBKDF2_KS     = 256 / 32;
+
+    // ── In-memory session state (never persisted to storage) ───────
+    // Storing the password or derived key in sessionStorage is too broad:
+    // any same-origin XSS could read it. Keep it here, in the module
+    // closure, so it's gone on page unload (re-prompt is the safe default).
+    let _sessionPwd    = null;   // master password, cleared on unload/lock
+    let _sessionKeyHex = null;   // PBKDF2-derived auth key, used to re-acquire server session
 
     // ── Inject styles (once) ──────────────────────────────────────
     const _css = `
@@ -111,7 +117,7 @@ const AuthGuard = (() => {
     }
 
     function _cachedPwd() {
-        return sessionStorage.getItem(SS_CRED_KEY) || null;
+        return _sessionPwd;
     }
 
     function _sessionExpiresIn() {
@@ -125,15 +131,63 @@ const AuthGuard = (() => {
 
     function _cacheSession(pwd) {
         localStorage.setItem(LS_EXPIRY_KEY, String(Date.now() + SESSION_MS));
-        sessionStorage.setItem(SS_CRED_KEY, pwd);
+        _sessionPwd = pwd;  // in-memory only — never written to sessionStorage
+    }
+
+    // ── Hex helpers ───────────────────────────────────────────────
+    function _hexToBytes(hex) {
+        const b = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < hex.length; i += 2) b[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+        return b;
+    }
+    function _bytesToHex(bytes) {
+        return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     // ── Password verification ─────────────────────────────────────
+    // Supports both challenge formats:
+    //   v1: CryptoJS PBKDF2-SHA1/50k → AES-CBC verify_blob (legacy)
+    //   v2: WebCrypto PBKDF2-SHA256/310k → 512-bit split → Kauth + Kenc;
+    //       Kauth used for AES-GCM verify_blob; Kenc NEVER sent to server.
     async function _verify(pwd) {
         const resp = await fetch('/api/auth/challenge');
         if (!resp.ok) return { ok: false, keyHex: null };
         const ch = await resp.json();
-        if (!ch.salt || !ch.verify_blob || !ch.verify_iv) return { ok: false, keyHex: null };
+        if (!ch.salt || !ch.verify_blob) return { ok: false, keyHex: null };
+
+        const version = ch.challenge_version || 1;
+
+        if (version === 2) {
+            // ── v2: WebCrypto — domain-separated keys, AES-GCM verify_blob ──
+            if (!ch.verify_nonce) return { ok: false, keyHex: null };
+            try {
+                const km = await crypto.subtle.importKey(
+                    'raw', new TextEncoder().encode(pwd), 'PBKDF2', false, ['deriveBits']
+                );
+                const bits = await crypto.subtle.deriveBits(
+                    { name: 'PBKDF2', hash: 'SHA-256', salt: _hexToBytes(ch.salt), iterations: 310000 },
+                    km, 512
+                );
+                const arr    = new Uint8Array(bits);
+                const Kauth  = arr.slice(32, 64);  // second 256 bits — sent to server
+                // Kenc = arr.slice(0, 32)         // first 256 bits — vault encryption, never sent
+                const aesKey = await crypto.subtle.importKey(
+                    'raw', Kauth, { name: 'AES-GCM' }, false, ['decrypt']
+                );
+                const plainBuf = await crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: _hexToBytes(ch.verify_nonce) },
+                    aesKey, _hexToBytes(ch.verify_blob)
+                );
+                const plain = new TextDecoder().decode(plainBuf);
+                const ok    = plain === 'DEVSUITE_MASTER_OK';
+                return { ok, keyHex: ok ? _bytesToHex(Kauth) : null };
+            } catch {
+                return { ok: false, keyHex: null };
+            }
+        }
+
+        // ── v1 (legacy): CryptoJS PBKDF2-SHA1/50k → AES-CBC ────────────────
+        if (!ch.verify_iv) return { ok: false, keyHex: null };
         const key = CryptoJS.PBKDF2(pwd, CryptoJS.enc.Hex.parse(ch.salt), {
             keySize: PBKDF2_KS, iterations: PBKDF2_ITER,
         });
@@ -156,7 +210,7 @@ const AuthGuard = (() => {
                 body: JSON.stringify({ key_hex: keyHex }),
             });
             if (r.ok) {
-                sessionStorage.setItem('devsuite_key_hex', keyHex);
+                _sessionKeyHex = keyHex;  // in-memory only — NOT written to sessionStorage
                 return true;
             }
             return false;
@@ -166,46 +220,109 @@ const AuthGuard = (() => {
     }
 
     // ── Overlay HTML ──────────────────────────────────────────────
+    // Built with DOM methods (not innerHTML) so toolName/toolIcon — though
+    // currently static call-site literals — cannot become an injection vector
+    // if future callers pass dynamic content (SPEC.md §2 / CLAUDE.md rule 4).
     function _buildOverlay(toolName, toolIcon, sessionInfo) {
         if (document.getElementById('ag-overlay')) return;
 
-        const div = document.createElement('div');
-        div.id = 'ag-overlay';
+        const overlay = document.createElement('div');
+        overlay.id = 'ag-overlay';
 
-        // Fast-path: session is valid but we don't have the password in sessionStorage
-        // (e.g., browser was restarted within the 8-hour window)
-        const sessionBadge = sessionInfo
-            ? `<div class="ag-session-badge">✅ Session active &nbsp;·&nbsp; expires in ${sessionInfo}</div>`
-            : '';
+        const card = document.createElement('div');
+        card.className = 'ag-card';
 
-        div.innerHTML = `
-            <div class="ag-card">
-                <div class="ag-icon">${toolIcon}</div>
-                <h2 class="ag-title">${toolName}</h2>
-                ${sessionBadge}
-                <p class="ag-desc" id="ag-desc">Enter your DevSuite master password to continue.</p>
-                <div id="ag-not-setup" class="ag-notice" style="display:none;">
-                    <span>⚠️</span>
-                    <span>No master password configured yet.
-                        Visit <a href="/vault" class="ag-link">Secret Vault</a> first to set one up.</span>
-                </div>
-                <div id="ag-form" style="display:none;">
-                    <input type="password" id="ag-pw" class="ag-input"
-                           placeholder="Master Password" autocomplete="off" spellcheck="false">
-                    <div id="ag-err" class="ag-error" style="display:none;"></div>
-                    <p class="ag-hint">🕐 Your session will be remembered for 8 hours.</p>
-                    <button id="ag-btn" class="ag-btn">Unlock</button>
-                </div>
-                <div class="ag-warning">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    Same master password as Secret Vault · Session valid for 8 hours
-                </div>
-            </div>`;
-        document.body.insertBefore(div, document.body.firstChild);
+        // Icon
+        const iconEl = document.createElement('div');
+        iconEl.className = 'ag-icon';
+        iconEl.textContent = toolIcon || '🔒';
+
+        // Title
+        const titleEl = document.createElement('h2');
+        titleEl.className = 'ag-title';
+        titleEl.textContent = toolName;
+
+        card.appendChild(iconEl);
+        card.appendChild(titleEl);
+
+        // Optional session badge (non-sensitive: just a countdown string)
+        if (sessionInfo) {
+            const badge = document.createElement('div');
+            badge.className = 'ag-session-badge';
+            badge.textContent = `✅ Session active · expires in ${sessionInfo}`;
+            card.appendChild(badge);
+        }
+
+        // Description paragraph
+        const desc = document.createElement('p');
+        desc.className = 'ag-desc';
+        desc.id = 'ag-desc';
+        desc.textContent = 'Enter your DevSuite master password to continue.';
+        card.appendChild(desc);
+
+        // Not-setup notice
+        const notSetup = document.createElement('div');
+        notSetup.id = 'ag-not-setup';
+        notSetup.className = 'ag-notice';
+        notSetup.style.display = 'none';
+        const nsIcon = document.createElement('span');
+        nsIcon.textContent = '⚠️';
+        const nsText = document.createElement('span');
+        nsText.textContent = 'No master password configured yet. Visit ';
+        const nsLink = document.createElement('a');
+        nsLink.href = '/vault';
+        nsLink.className = 'ag-link';
+        nsLink.textContent = 'Secret Vault';
+        const nsTextEnd = document.createTextNode(' first to set one up.');
+        nsText.appendChild(nsLink);
+        nsText.appendChild(nsTextEnd);
+        notSetup.appendChild(nsIcon);
+        notSetup.appendChild(nsText);
+        card.appendChild(notSetup);
+
+        // Form
+        const form = document.createElement('div');
+        form.id = 'ag-form';
+        form.style.display = 'none';
+
+        const pwInput = document.createElement('input');
+        pwInput.type = 'password';
+        pwInput.id = 'ag-pw';
+        pwInput.className = 'ag-input';
+        pwInput.placeholder = 'Master Password';
+        pwInput.autocomplete = 'off';
+        pwInput.spellcheck = false;
+
+        const errDiv = document.createElement('div');
+        errDiv.id = 'ag-err';
+        errDiv.className = 'ag-error';
+        errDiv.style.display = 'none';
+
+        const hint = document.createElement('p');
+        hint.className = 'ag-hint';
+        hint.textContent = '🕐 Your session will be remembered for 8 hours.';
+
+        const btn = document.createElement('button');
+        btn.id = 'ag-btn';
+        btn.className = 'ag-btn';
+        btn.textContent = 'Unlock';
+
+        form.appendChild(pwInput);
+        form.appendChild(errDiv);
+        form.appendChild(hint);
+        form.appendChild(btn);
+        card.appendChild(form);
+
+        // Footer warning (static copy — safe as textContent)
+        const warning = document.createElement('div');
+        warning.className = 'ag-warning';
+        warning.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+        const warnText = document.createTextNode(' Same master password as Secret Vault · Session valid for 8 hours');
+        warning.appendChild(warnText);
+        card.appendChild(warning);
+
+        overlay.appendChild(card);
+        document.body.insertBefore(overlay, document.body.firstChild);
     }
 
     // ── Public: init ──────────────────────────────────────────────
@@ -220,12 +337,11 @@ const AuthGuard = (() => {
     async function init(toolName, toolIcon) {
         _injectStyle();
 
-        // Fast path: both session valid AND password in sessionStorage
+        // Fast path: session still valid in this page's lifetime (password is in-memory).
+        // Re-acquire the server cookie on every fast-path hit so server restarts
+        // (which clear the in-memory session store) are handled transparently.
         if (_sessionValid() && _cachedPwd()) {
-            // Always re-acquire server token to handle server restarts (in-memory
-            // session store is cleared on restart, but client still has the old token).
-            const keyHex = sessionStorage.getItem('devsuite_key_hex');
-            if (keyHex) await _acquireServerSession(keyHex);
+            if (_sessionKeyHex) await _acquireServerSession(_sessionKeyHex);
             return _cachedPwd();
         }
 
@@ -316,7 +432,8 @@ const AuthGuard = (() => {
             await fetch('/api/auth/logout', { method: 'POST', headers });
         } catch { /* best-effort — local state is cleared regardless */ }
         localStorage.removeItem(LS_EXPIRY_KEY);
-        sessionStorage.removeItem(SS_CRED_KEY);
+        _sessionPwd    = null;
+        _sessionKeyHex = null;
     }
 
     return { init, cachedPwd, clearSession };
