@@ -187,7 +187,7 @@
                             <label class="field-label" for="oauth2-scope">Scope <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
                             <input type="text" id="oauth2-scope" class="url-input" style="width:100%; margin-bottom:0.875rem;" placeholder="read write openid">
                             <div style="display:flex; align-items:center; gap:0.625rem; flex-wrap:wrap;">
-                                <button id="btn-fetch-oauth2" class="btn-small btn-accent" aria-label="Fetch OAuth2 access token">Fetch Token</button>
+                                <button id="btn-fetch-oauth2" class="btn-small btn-accent" aria-label="Fetch Token — OAuth2 access token">Fetch Token</button>
                                 <span id="oauth2-token-status" style="font-size:0.76rem; color:var(--text-muted);"></span>
                             </div>
                             <div id="oauth2-token-display" style="display:none; margin-top:0.75rem;">
@@ -333,9 +333,9 @@
 
     </div>
 
-    <input type="file" id="import-collections-file" accept=".json" style="display:none;" aria-hidden="true">
-    <input type="file" id="import-env-file" accept=".json" style="display:none;" aria-hidden="true">
-    <input type="file" id="openapi-file-input" accept=".json" style="display:none;" aria-hidden="true">
+    <input type="file" id="import-collections-file" accept=".json" style="display:none;" tabindex="-1">
+    <input type="file" id="import-env-file" accept=".json" style="display:none;" tabindex="-1">
+    <input type="file" id="openapi-file-input" accept=".json" style="display:none;" tabindex="-1">
 
     <!-- OpenAPI Import Modal -->
     <dialog id="openapi-modal" class="modal" aria-label="Import OpenAPI Spec">

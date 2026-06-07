@@ -320,14 +320,35 @@ function _buildServerItem(p) {
     const d = document.createElement('div');
     d.className = 'server-item';
     if (Object.values(activeTabs).some(t => t.profile.id === p.id)) d.classList.add('active');
-    d.innerHTML = `
-        <div class="server-name-lbl">🖥️ <span>${escHtml(p.name || p.host)}</span></div>
-        ${p.isWsl ? '' : '<div style="display:flex;gap:0.25rem;"><div class="edit-srv-icon" title="Edit Session">⚙</div><div class="del-srv-icon" title="Delete Session">🗑️</div></div>'}
-    `;
-    d.querySelector('.server-name-lbl').addEventListener('click', () => openTerminalTab(p));
+
+    const nameLbl = document.createElement('div');
+    nameLbl.className = 'server-name-lbl';
+    nameLbl.textContent = '🖥️ ';
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = p.name || p.host;
+    nameLbl.appendChild(nameSpan);
+    nameLbl.addEventListener('click', () => openTerminalTab(p));
+    d.appendChild(nameLbl);
+
     if (!p.isWsl) {
-        d.querySelector('.edit-srv-icon').addEventListener('click', e => { e.stopPropagation(); openServerModal(p); });
-        d.querySelector('.del-srv-icon').addEventListener('click', makeDeleteHandler(p));
+        const actionsDiv = document.createElement('div');
+        actionsDiv.style.cssText = 'display:flex;gap:0.25rem;';
+
+        const editBtn = document.createElement('div');
+        editBtn.className = 'edit-srv-icon';
+        editBtn.title = 'Edit Session';
+        editBtn.textContent = '⚙';
+        editBtn.addEventListener('click', e => { e.stopPropagation(); openServerModal(p); });
+        actionsDiv.appendChild(editBtn);
+
+        const delBtn = document.createElement('div');
+        delBtn.className = 'del-srv-icon';
+        delBtn.title = 'Delete Session';
+        delBtn.textContent = '🗑️';
+        delBtn.addEventListener('click', makeDeleteHandler(p));
+        actionsDiv.appendChild(delBtn);
+
+        d.appendChild(actionsDiv);
     }
     return d;
 }
@@ -339,11 +360,21 @@ function _buildGroupDiv(gName, items) {
     const header = document.createElement('div');
     header.className = 'tree-folder-header';
     const isExpanded = expandedFolders.has(gName) || document.getElementById('quick-connect').value.length > 0;
-    header.innerHTML = `
-        <span class="folder-toggle">${isExpanded ? '[-]' : '[+]'}</span>
-        <span class="folder-icon">📂</span>
-        <span>${escHtml(gName)}</span>
-    `;
+
+    const toggleSpan = document.createElement('span');
+    toggleSpan.className = 'folder-toggle';
+    toggleSpan.textContent = isExpanded ? '[-]' : '[+]';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'folder-icon';
+    iconSpan.textContent = '📂';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = gName;
+
+    header.appendChild(toggleSpan);
+    header.appendChild(iconSpan);
+    header.appendChild(nameSpan);
 
     const childrenDiv = document.createElement('div');
     childrenDiv.className = 'folder-children';
@@ -428,22 +459,39 @@ function renderSftpSidebar() {
         list.appendChild(label);
 
         groups[gName].forEach(p => {
-            const item = document.createElement('div');
-            item.className = 'sftp-sess-item';
-            if (sftpConn && sftpConn.profile.id === p.id) item.classList.add('active');
-
-            const initials = (p.name || p.host || '?').slice(0, 2).toUpperCase();
-            item.innerHTML = `
-                <div class="sftp-sess-avatar">${escHtml(initials)}</div>
-                <div style="overflow:hidden;">
-                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;">${escHtml(p.name || p.host)}</div>
-                    <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.user || '')}@${escHtml(p.host)}:${p.port || 22}</div>
-                </div>
-            `;
-            item.addEventListener('click', () => sftpConnectTo(p));
-            list.appendChild(item);
+            list.appendChild(_buildSftpSessItem(p, sftpConn, sftpConnectTo));
         });
     });
+}
+
+/** Shared SFTP/Dashboard session list item builder — no innerHTML with user data. */
+function _buildSftpSessItem(p, activeConn, onClickFn, avatarStyle) {
+    const item = document.createElement('div');
+    item.className = 'sftp-sess-item';
+    if (activeConn && activeConn.profile.id === p.id) item.classList.add('active');
+
+    const avatar = document.createElement('div');
+    avatar.className = 'sftp-sess-avatar';
+    if (avatarStyle) avatar.style.cssText = avatarStyle;
+    avatar.textContent = (p.name || p.host || '?').slice(0, 2).toUpperCase();
+
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'overflow:hidden;';
+
+    const nameDiv = document.createElement('div');
+    nameDiv.style.cssText = 'font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;';
+    nameDiv.textContent = p.name || p.host;
+
+    const hostDiv = document.createElement('div');
+    hostDiv.style.cssText = 'font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    hostDiv.textContent = `${p.user || ''}@${p.host}:${p.port || 22}`;
+
+    infoDiv.appendChild(nameDiv);
+    infoDiv.appendChild(hostDiv);
+    item.appendChild(avatar);
+    item.appendChild(infoDiv);
+    item.addEventListener('click', () => onClickFn(p));
+    return item;
 }
 
 document.getElementById('sftp-session-search').addEventListener('input', renderSftpSidebar);
@@ -487,20 +535,7 @@ function renderDashboardSidebar() {
         list.appendChild(label);
 
         groups[gName].forEach(p => {
-            const item = document.createElement('div');
-            item.className = 'sftp-sess-item'; // reuse sftp style
-            if (dashConn && dashConn.profile.id === p.id) item.classList.add('active');
-
-            const initials = (p.name || p.host || '?').slice(0, 2).toUpperCase();
-            item.innerHTML = `
-                <div class="sftp-sess-avatar" style="background:linear-gradient(135deg,#8b5cf6,#a855f7);">${escHtml(initials)}</div>
-                <div style="overflow:hidden;">
-                    <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.875rem;">${escHtml(p.name || p.host)}</div>
-                    <div style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.user || '')}@${escHtml(p.host)}:${p.port || 22}</div>
-                </div>
-            `;
-            item.addEventListener('click', () => dashConnectTo(p));
-            list.appendChild(item);
+            list.appendChild(_buildSftpSessItem(p, dashConn, dashConnectTo, 'background:linear-gradient(135deg,#8b5cf6,#a855f7);'));
         });
     });
 }
@@ -640,12 +675,22 @@ function renderTabsHeader() {
         const d = document.createElement('div');
         d.className = 'term-tab';
         if (tab.id === currentTabId) d.classList.add('active');
-        d.innerHTML = `
-            <div class="term-tab-title"><span style="color:#0ea5e9;">➜</span> ${escHtml(tab.profile.name || tab.profile.host)}</div>
-            <div class="tab-close">✖</div>
-        `;
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'term-tab-title';
+        const arrowSpan = document.createElement('span');
+        arrowSpan.style.color = '#0ea5e9';
+        arrowSpan.textContent = '➜';
+        titleDiv.appendChild(arrowSpan);
+        titleDiv.appendChild(document.createTextNode(' ' + (tab.profile.name || tab.profile.host)));
+        d.appendChild(titleDiv);
+
+        const closeDiv = document.createElement('div');
+        closeDiv.className = 'tab-close';
+        closeDiv.textContent = '✖';
+        d.appendChild(closeDiv);
+
         d.addEventListener('click', () => switchTab(tab.id));
-        d.querySelector('.tab-close').addEventListener('click', e => { e.stopPropagation(); closeTab(tab.id); });
+        closeDiv.addEventListener('click', e => { e.stopPropagation(); closeTab(tab.id); });
         strip.appendChild(d);
     });
 }
@@ -1271,15 +1316,25 @@ function updateDashboardGauges(metrics) {
                  wrap.style.display = 'flex';
                  wrap.style.flexDirection = 'column';
                  
-                 wrap.innerHTML = `
-                     <div style="font-weight: 500; font-size: 0.85rem; margin-bottom: 0.5rem; text-align: center; color: var(--text-color);">${escHtml(disk.mount)}</div>
-                     <div style="height: 100px; position: relative;">
-                         <canvas id="${diskId}-canvas"></canvas>
-                     </div>
-                     <div style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">
-                         <span id="${diskId}-sub"></span>
-                     </div>
-                 `;
+                 const mountLabel = document.createElement('div');
+                 mountLabel.style.cssText = 'font-weight: 500; font-size: 0.85rem; margin-bottom: 0.5rem; text-align: center; color: var(--text-color);';
+                 mountLabel.textContent = disk.mount;
+
+                 const chartWrap = document.createElement('div');
+                 chartWrap.style.cssText = 'height: 100px; position: relative;';
+                 const canvas = document.createElement('canvas');
+                 canvas.id = `${diskId}-canvas`;
+                 chartWrap.appendChild(canvas);
+
+                 const subWrap = document.createElement('div');
+                 subWrap.style.cssText = 'text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);';
+                 const subSpan = document.createElement('span');
+                 subSpan.id = `${diskId}-sub`;
+                 subWrap.appendChild(subSpan);
+
+                 wrap.appendChild(mountLabel);
+                 wrap.appendChild(chartWrap);
+                 wrap.appendChild(subWrap);
                  disksContainer.appendChild(wrap);
             }
             

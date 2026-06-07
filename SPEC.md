@@ -1,6 +1,6 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.2.2  
+> **Version:** 0.2.3  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Single source of truth for spec-driven development. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.
 
@@ -18,7 +18,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.2.2` — bumped simultaneously in `main.py` (FastAPI `version=`), `README.md`, and `CHANGELOG.md`.
+`0.2.3` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md`, and `CHANGELOG.md`.
 
 ---
 
@@ -58,7 +58,17 @@ These are hard rules. No implementation may violate them.
 
 ```
 devsuite/
-├── main.py              # Single backend: all routes, WebSocket, SFTP, DevDB REST, CORS proxy
+├── main.py              # Thin orchestrator: app factory, middleware, router inclusion
+├── deps.py              # Shared singletons & helpers (DevDB, limiter, sessions, constants)
+├── routes/
+│   ├── __init__.py
+│   ├── auth.py          # /api/auth/*, /api/vault/migrate
+│   ├── convert.py       # /api/convert (format conversion)
+│   ├── db.py            # /api/db/* (DevDB REST API)
+│   ├── pages.py         # HTML page routes, /upload
+│   ├── proxy.py         # /api/proxy (CORS bypass)
+│   ├── ssh.py           # SSH terminal, SFTP, WSL discovery, dashboard WebSocket
+│   └── storage.py       # /api/vault, /api/collections, /api/ssh/profiles
 ├── devdb.py             # Storage engine: .dsb binary (AES-256-GCM)
 ├── requirements.txt
 ├── pytest.ini

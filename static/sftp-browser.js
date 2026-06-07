@@ -160,14 +160,25 @@ function renderSidebar() {
             item.className = 'sftp-session-item';
             if (activeConn && activeConn.profile.id === p.id) item.classList.add('active');
 
-            const initials = (p.name || p.host || '?').slice(0, 2).toUpperCase();
-            item.innerHTML = `
-                <div class="sftp-session-icon">${initials}</div>
-                <div class="sftp-session-info">
-                    <div class="sftp-session-name">${escHtml(p.name || p.host)}</div>
-                    <div class="sftp-session-host">${escHtml(p.user || '')}@${escHtml(p.host)}:${p.port || 22}</div>
-                </div>
-            `;
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'sftp-session-icon';
+            iconDiv.textContent = (p.name || p.host || '?').slice(0, 2).toUpperCase();
+
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'sftp-session-info';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'sftp-session-name';
+            nameDiv.textContent = p.name || p.host;
+
+            const hostDiv = document.createElement('div');
+            hostDiv.className = 'sftp-session-host';
+            hostDiv.textContent = `${p.user || ''}@${p.host}:${p.port || 22}`;
+
+            infoDiv.appendChild(nameDiv);
+            infoDiv.appendChild(hostDiv);
+            item.appendChild(iconDiv);
+            item.appendChild(infoDiv);
             item.addEventListener('click', () => connectTo(p));
             list.appendChild(item);
         });

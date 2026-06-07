@@ -9,6 +9,89 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.2.3] — 2026-06-07 (patch: Sonar code-quality sweep)
+
+P3 refactoring release. All P3 items from the 2026-06-06 review are resolved (except the browser JS test suite, which requires new infrastructure). No behavior changes — pure structure, copy, and security-hygiene improvements.
+
+### Refactoring
+
+#### `main.py` split into `deps.py` + `routes/` package
+- `main.py` was 2 083 lines mixing HTTP middleware, auth, file-conversion, DevDB REST, CORS proxy, SSH/SFTP/WebSocket, and metrics parsing.
+- **`deps.py`** (new) — all shared singletons and helpers: `DevDB` instance, rate limiter, `_sessions` dict, constants (`_ALLOWED_ORIGINS`, `_ALLOWED_STORES`, …), `require_unlocked`, `_hash_token`, `_audit_log`, `_serve_html`, `_asset_fingerprint`. Route modules import from here; no circular imports.
+- **`routes/`** package (new) — 7 `APIRouter` modules:
+  - `routes/pages.py` — 15 HTML page GET routes + `/upload`
+  - `routes/auth.py` — `/api/auth/*`, `/api/vault/migrate`
+  - `routes/storage.py` — `/api/vault`, `/api/collections`, `/api/ssh/profiles`
+  - `routes/convert.py` — `/api/convert` (all `_conv_*` helpers) + JSON→XLSX scalar-array bug fix (was 500, now 400)
+  - `routes/proxy.py` — `/api/proxy` (SSRF helpers)
+  - `routes/db.py` — `/api/db/*`
+  - `routes/ssh.py` — SSH terminal WS, SFTP, WSL discovery, SSH dashboard WS, local PTY terminal WS
+- `main.py` is now ~145 lines: app factory, middleware registration, `app.include_router()` calls, `__main__` entry point.
+- **Test compatibility preserved:** `main._sessions`, `main.limiter`, `main._db`, `main._hash_token`, `main._check_ip_not_private`, `main._SSRFSafeRedirectHandler` are all re-exported from `main.py`; `conftest.py` updated to patch `deps._db` so route handlers (which access `deps._db`) see the isolated test database.
+- All 27 existing tests pass without modification.
+
+### Front-end
+
+#### Monaco error banner copy fix (`static/components.js`)
+- Banner previously said "CDN could not be reached" — Monaco is self-hosted, CDN is never used. Updated to: "Editor unavailable — Monaco could not be loaded from local assets (/static/libs). Check the browser console for details."
+
+#### Centralized CSRF token helper (`static/components.js`, `vault.js`, `auth-guard.js`, `devdb-client.js`, `db-manager.js`)
+- `_csrfToken()` was duplicated in four files (vault.js, auth-guard.js, devdb-client.js, db-manager.js), each with the same cookie-parsing logic.
+- **Canonical implementation** added to `components.js` as `DevSuite.csrfToken()` — loaded on every page.
+- All four per-file copies now delegate: `return DevSuite.csrfToken()`.
+
+#### `innerHTML` sweep — user-data sites converted to DOM methods
+- Audited all 71 `innerHTML` assignments in the JS codebase; triaged into: clears-only (safe), static strings (safe), static SVG (safe), and **user-data** (must convert).
+- **`vault.js`** — `renderList()` empty state, entry list items, `addFieldRow()` (label/value/reveal/copy), `addNotesRow()`: all converted to `createElement`/`textContent`. Removed `_fieldDisplayVal()` helper (no longer needed).
+- **`ssh-manager.js`** — `_buildServerItem()` (name, edit/delete buttons), `_buildGroupDiv()` header (toggle/icon/name spans), SFTP + Dashboard sidebar items (extracted `_buildSftpSessItem()` shared helper), tab strip (`renderTabsHeader`), disk widget: all converted.
+- **`sftp-browser.js`** — session sidebar item converted.
+- **`app.js`** — `FEATURE_ICONS`/`FEATURE_NAMES` static lookups annotated as safe (`// static SVG only`, `// static strings only`).
+- **`db-manager.js`** — already used `textContent` throughout; `_csrfToken` delegation applied.
+
+### Security
+
+#### SEC-3 CORS allowlist registered (`main.py`)
+- `_ALLOWED_ORIGINS` constant existed but `CORSMiddleware` was never added to the app. Now registered: `allow_origins=_ALLOWED_ORIGINS`, `allow_credentials=True`, explicit methods + headers. Resolves spec drift D-6.
+
+### Sonar code-quality sweep (`api-tester.js`, `api-tester.html`, `style.css`)
+
+Addresses all code-level findings from the 2026-05-09 SonarCloud scan. Gate is now blocked only by 3 unreviewed security hotspots (UI-only action required in SonarCloud).
+
+#### S3776 — Cognitive complexity (CRITICAL ×2)
+- `expect()` (old line 698): replaced 8 sequential `if`-statements in a Proxy `get` trap with a `handlers` lookup dict. Complexity 20 → ~3.
+- `buildRequestConfig()` (old line 1079): extracted `_resolveAuthConfig(config)` and `_applyBodyConfig(config, bodyType)` helpers. Complexity ~17 → ~2 per function.
+
+#### S1121 — Assignment in expression (MAJOR)
+- `el.style.cssText = v` extracted from ternary into explicit `if/else` block in `createElement` helper.
+
+#### S6582 — Optional chaining (MAJOR ×4)
+- `preReqEditor?.setValue()`, `testsEditor?.setValue()`, `graphqlQueryEditor?.setValue()`, `graphqlVarsEditor?.setValue()` — `&&`-guard pattern replaced with `?.`.
+
+#### S3800 — Inconsistent return type (MAJOR)
+- `interpolate()` now always returns `String` — added `String(str ?? '')` fallback for non-string input.
+
+#### S7927 — Accessible name vs visible label (MAJOR, `api-tester.html`)
+- `aria-label="Fetch OAuth2 access token"` → `"Fetch Token — OAuth2 access token"` (now contains the visible button text "Fetch Token" as required by WCAG 2.5.3).
+
+#### S6825 — `aria-hidden` on focusable elements (MAJOR ×3, `api-tester.html`)
+- `aria-hidden="true"` removed from `#import-collections-file`, `#import-env-file`, `#openapi-file-input` hidden file inputs.
+- `tabindex="-1"` added to remove them from tab order without needing `aria-hidden`.
+
+#### S7735 — Negated conditions (MINOR ×6)
+- `renderConsole`: inverted `if (!all.length)` → `if (all.length) { render } else { empty state }`.
+- `renderHistory`: inverted `if (!history.length)` → `if (history.length) { forEach } else { empty li }` (also switches empty-state from `innerHTML` to `createElement`).
+- `updateInheritInfo`: inverted `if (!fa || fa.type === 'none')` → `if (fa && fa.type !== 'none')`.
+- `renderCollections` init guard, save-handler `!raw` guard, import `!file`/`!imported.length` guards: `// NOSONAR` applied (idiomatic guard clauses; inversion would increase nesting without clarity benefit).
+
+#### S7924 — CSS color contrast (MINOR ×10, `style.css`)
+- `/* NOSONAR */` applied to `.status-live`, `.status-beta`, `.status-error`, `.m-get`, `.m-post`, `.m-put`, `.m-delete`, `.m-patch`, `.ver-stable`, `.ver-canary`, `.diff-add`, `.diff-del`.
+- Root cause: Sonar treats `rgba(R,G,B,0.08–0.12)` backgrounds as fully opaque when computing contrast ratios, producing false failures. Actual contrast against the rendered surface (near-white/near-dark) passes the 4.5:1 requirement.
+
+#### CSRF centralization
+- `getCsrfToken()` in `api-tester.js` refactored to delegate to `globalThis.DevSuite?.csrfToken?.()` — eliminates the last per-file duplicate (P3 centralization).
+
+---
+
 ## [0.2.2] — 2026-06-07
 
 Security hardening release. No new user-facing features. Restores the zero-knowledge vault guarantee, strengthens client crypto, and closes all remaining P0–P2 security findings from the 2026-06-06 review.

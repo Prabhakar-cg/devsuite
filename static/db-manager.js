@@ -18,10 +18,8 @@ const STORE_META = {
 let _meta = null;
 let _authenticated = false;
 
-function _csrfToken() {
-    const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
-    return m ? decodeURIComponent(m[1]) : '';
-}
+// DevSuite.csrfToken() is the canonical implementation (components.js).
+function _csrfToken() { return DevSuite.csrfToken(); }
 
 function _authHeaders() {
     const csrf = _csrfToken();

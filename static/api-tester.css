@@ -556,27 +556,39 @@
 .meta-chip-proxy svg  { color: #b45309; flex-shrink: 0; }
 
 /* Proxy warning banner — shown below meta bar when a request was proxied */
+/*
+ * Solid colors throughout — no rgba overlays.
+ * rgba-on-white blends to a warm mid-tone that kills contrast with both
+ * light and dark text. Solid backgrounds are predictable across all themes.
+ *
+ * Default = dark themes (vs-dark removes data-theme; hc-black gets override below).
+ */
 .proxy-warning-banner {
     display: flex;
     align-items: flex-start;
     gap: 0.55rem;
     padding: 0.55rem 1rem;
-    background: rgba(180,83,9,0.08);
-    border-bottom: 1px solid rgba(180,83,9,0.25);
-    color: #92400e;
+    background: #431407;
+    border-bottom: 1px solid #78350f;
+    color: #fde68a;
     font-size: 0.78rem;
     line-height: 1.5;
 }
 .proxy-warning-banner strong { font-weight: 700; }
-@media (prefers-color-scheme: dark) {
-    .proxy-warning-banner { color: #f5dfa0; background: rgba(120,53,15,0.35); border-color: rgba(180,83,9,0.5); }
-}
-[data-theme="vs-dark"] .proxy-warning-banner,
-[data-theme="hc-black"] .proxy-warning-banner,
+
+/* Light themes — solid amber-50 background, amber-800 text (≥7:1 contrast) */
+[data-theme="vs"] .proxy-warning-banner,
 [data-theme="ios-glass"] .proxy-warning-banner {
-    color: #f5dfa0;
-    background: rgba(120,53,15,0.35);
-    border-color: rgba(180,83,9,0.5);
+    background: #fffbeb;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+/* High-contrast — maximum legibility */
+[data-theme="high-contrast"] .proxy-warning-banner {
+    background: #1c0a00;
+    border-color: #f59e0b;
+    color: #fbbf24;
 }
 
 /* Test summary pushed to the right */

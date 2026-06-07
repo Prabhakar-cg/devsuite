@@ -132,10 +132,9 @@ function genId() {
 }
 
 // ── CSRF token helpers ────────────────────────────────────────────
-function _csrfToken() {
-    const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
-    return m ? decodeURIComponent(m[1]) : '';
-}
+// DevSuite.csrfToken() is the canonical implementation (components.js).
+// This thin wrapper keeps the call-site spelling unchanged.
+function _csrfToken() { return DevSuite.csrfToken(); }
 
 function _authHeaders(extra) {
     const csrf = _csrfToken();
@@ -576,9 +575,29 @@ function renderEntryList() {
 
     if (entries.length === 0) {
         empty.style.display = 'flex';
-        empty.innerHTML = searchQuery
-            ? `<div class="icon">🔍</div><p>No results for "<strong>${escHtml(searchQuery)}</strong>"</p>`
-            : `<div class="icon">🔐</div><p>No secrets yet.<br>Click <strong>New Secret</strong> to add one.</p>`;
+        empty.textContent = '';
+        const iconEl = document.createElement('div');
+        iconEl.className = 'icon';
+        const pEl = document.createElement('p');
+        if (searchQuery) {
+            iconEl.textContent = '🔍';
+            pEl.textContent = 'No results for "';
+            const strong = document.createElement('strong');
+            strong.textContent = searchQuery;
+            pEl.appendChild(strong);
+            pEl.appendChild(document.createTextNode('"'));
+        } else {
+            iconEl.textContent = '🔐';
+            pEl.textContent = 'No secrets yet.';
+            pEl.appendChild(document.createElement('br'));
+            pEl.appendChild(document.createTextNode('Click '));
+            const strong = document.createElement('strong');
+            strong.textContent = 'New Secret';
+            pEl.appendChild(strong);
+            pEl.appendChild(document.createTextNode(' to add one.'));
+        }
+        empty.appendChild(iconEl);
+        empty.appendChild(pEl);
         return;
     }
 
@@ -589,16 +608,37 @@ function renderEntryList() {
         item.className = 'entry-item' + (e.id === selectedId ? ' selected' : '');
         item.dataset.id = e.id;
         const sub = subtitleFor(e);
-        item.innerHTML = `
-            <div class="entry-item-header">
-                <span class="entry-type-badge ${m[e.type].badgeClass}">${m[e.type].emoji} ${m[e.type].label}</span>
-            </div>
-            <div class="entry-title">${escHtml(e.title)}</div>
-            ${sub ? `<div class="entry-subtitle">${escHtml(sub)}</div>` : ''}
-            <div class="entry-modified">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                ${relativeTime(e.modified)}
-            </div>`;
+
+        // entry-item-header / badge
+        const header = document.createElement('div');
+        header.className = 'entry-item-header';
+        const badge = document.createElement('span');
+        badge.className = `entry-type-badge ${m[e.type].badgeClass}`;
+        badge.textContent = `${m[e.type].emoji} ${m[e.type].label}`;
+        header.appendChild(badge);
+        item.appendChild(header);
+
+        // title
+        const titleEl = document.createElement('div');
+        titleEl.className = 'entry-title';
+        titleEl.textContent = e.title;
+        item.appendChild(titleEl);
+
+        // optional subtitle
+        if (sub) {
+            const subEl = document.createElement('div');
+            subEl.className = 'entry-subtitle';
+            subEl.textContent = sub;
+            item.appendChild(subEl);
+        }
+
+        // modified timestamp (SVG clock is static markup)
+        const modEl = document.createElement('div');
+        modEl.className = 'entry-modified';
+        modEl.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'; // static SVG
+        modEl.appendChild(document.createTextNode(' ' + relativeTime(e.modified)));
+        item.appendChild(modEl);
+
         item.addEventListener('click', () => selectEntry(e.id));
         list.appendChild(item);
     });
@@ -688,40 +728,61 @@ function buildDetailFields(e, container) {
     if (builder) builder(e, container);
 }
 
-function _fieldDisplayVal(secret, isUrl, value) {
-    if (secret) return '••••••••••••';
-    if (isUrl) return `<span class="url-inner">${escHtml(value)}</span>`;
-    return escHtml(value);
-}
-
 function addFieldRow(container, { label, value, secret, fieldId, clipLabel, isUrl = false, isTextarea = false }) {
     const row = document.createElement('div');
     row.className = 'field-row';
 
-    const displayVal = _fieldDisplayVal(secret, isUrl, value);
-    const hiddenClass = secret ? 'secret-hidden' : '';
-    const textareaClass = isTextarea ? 'is-textarea' : '';
-    const urlClass = isUrl ? 'url-val' : '';
+    // Label
+    const labelEl = document.createElement('div');
+    labelEl.className = 'field-label';
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
 
-    row.innerHTML = `
-        <div class="field-label">${escHtml(label)}</div>
-        <div class="field-val-wrap">
-            <div class="field-val ${hiddenClass} ${textareaClass} ${urlClass}" id="fv-${fieldId}"
-                 data-secret="${secret}" data-raw="${encodeURIComponent(value)}">
-                ${displayVal}
-            </div>
-            ${secret ? `
-            <button class="field-action-btn js-reveal-btn" title="Reveal / hide">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="eye-${fieldId}">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-            </button>` : ''}
-            <button class="field-action-btn js-copy-btn" title="Copy to clipboard">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-            </button>
-        </div>`;
+    // Value wrap
+    const wrap = document.createElement('div');
+    wrap.className = 'field-val-wrap';
+
+    const fvClasses = ['field-val'];
+    if (secret)     fvClasses.push('secret-hidden');
+    if (isTextarea) fvClasses.push('is-textarea');
+    if (isUrl)      fvClasses.push('url-val');
+
+    const fvEl = document.createElement('div');
+    fvEl.className = fvClasses.join(' ');
+    if (fieldId) fvEl.id = `fv-${fieldId}`;
+    fvEl.dataset.secret = secret;
+    fvEl.dataset.raw    = encodeURIComponent(value); // encodeURIComponent so raw value never lives in an HTML attribute unescaped
+
+    if (secret) {
+        fvEl.textContent = '••••••••••••';
+    } else if (isUrl) {
+        // Wrap in a <span> for URL-specific styling; value is text, not HTML
+        const inner = document.createElement('span');
+        inner.className = 'url-inner';
+        inner.textContent = value;
+        fvEl.appendChild(inner);
+    } else {
+        fvEl.textContent = value;
+    }
+    wrap.appendChild(fvEl);
+
+    // Optional reveal button (secret fields only) — SVG is static markup
+    if (secret) {
+        const revBtn = document.createElement('button');
+        revBtn.className = 'field-action-btn js-reveal-btn';
+        revBtn.title = 'Reveal / hide';
+        revBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"${fieldId ? ` id="eye-${fieldId}"` : ''}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`; // static SVG
+        wrap.appendChild(revBtn);
+    }
+
+    // Copy button — SVG is static markup
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'field-action-btn js-copy-btn';
+    copyBtn.title = 'Copy to clipboard';
+    copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`; // static SVG
+    wrap.appendChild(copyBtn);
+
+    row.appendChild(wrap);
     container.appendChild(row);
 
     // Wire actions via listeners instead of inline onclick. Secret values must never be
@@ -752,9 +813,17 @@ function addFieldRow(container, { label, value, secret, fieldId, clipLabel, isUr
 function addNotesRow(container, text) {
     const row = document.createElement('div');
     row.className = 'field-row';
-    row.innerHTML = `
-        <div class="field-label">Notes</div>
-        <div class="field-notes">${escHtml(text)}</div>`;
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'field-label';
+    labelEl.textContent = 'Notes';
+    row.appendChild(labelEl);
+
+    const notesEl = document.createElement('div');
+    notesEl.className = 'field-notes';
+    notesEl.textContent = text;
+    row.appendChild(notesEl);
+
     container.appendChild(row);
 }
 

@@ -579,7 +579,7 @@ els.btnImportEnv.addEventListener('click', () => els.importEnvFile.click());
 
 els.importEnvFile.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) return; // NOSONAR — guard clause
     try {
         const text = await file.text();
         const data = JSON.parse(text);
@@ -625,7 +625,7 @@ function parseEnvImport(data) {
 
 // ─── Variable Interpolation ───────────────────────────────────────────────────
 function interpolate(str) {
-    if (typeof str !== 'string') return str;
+    if (typeof str !== 'string') return String(str ?? '');
     return str.replaceAll(/\{\{([^}]{1,256})\}\}/g, (_, raw) => {
         const key = raw.trim();
         if (runtimeVars[key] !== undefined) return runtimeVars[key];
@@ -680,18 +680,18 @@ async function runPreRequestScript(code) {
 
 function expect(val) {
     const assert = (pass, msg) => { if (!pass) throw new Error(msg); };
+    const handlers = {
+        equal:    (exp)  => assert(val === exp,                         `Expected ${jsonSafe(val)} to equal ${jsonSafe(exp)}`),
+        include:  (str)  => assert(String(val).includes(String(str)),   `Expected "${val}" to include "${str}"`),
+        property: (key)  => assert(val != null && key in Object(val),   `Expected object to have property "${key}"`),
+        status:   (code) => assert(val?.status === code,                `Expected status ${val?.status} to equal ${code}`),
+        ok:       ()     => assert(Boolean(val),                        `Expected ${jsonSafe(val)} to be truthy`),
+        above:    (n)    => assert(val > n,                             `Expected ${val} to be above ${n}`),
+        below:    (n)    => assert(val < n,                             `Expected ${val} to be below ${n}`),
+        a:        (t)    => assert(typeof val === t,                    `Expected typeof ${typeof val} to be ${t}`),
+    };
     const chain = new Proxy({}, {
-        get(_, prop) {
-            if (prop === 'equal')    return (exp) => assert(val === exp, `Expected ${jsonSafe(val)} to equal ${jsonSafe(exp)}`);
-            if (prop === 'include')  return (str) => assert(String(val).includes(String(str)), `Expected "${val}" to include "${str}"`);
-            if (prop === 'property') return (key) => assert(val != null && key in Object(val), `Expected object to have property "${key}"`);
-            if (prop === 'status')   return (code) => assert(val?.status === code, `Expected status ${val?.status} to equal ${code}`);
-            if (prop === 'ok')       return assert(Boolean(val), `Expected ${jsonSafe(val)} to be truthy`);
-            if (prop === 'above')    return (n) => assert(val > n, `Expected ${val} to be above ${n}`);
-            if (prop === 'below')    return (n) => assert(val < n, `Expected ${val} to be below ${n}`);
-            if (prop === 'a')        return (t) => assert(typeof val === t, `Expected typeof ${typeof val} to be ${t}`);
-            return chain;
-        }
+        get(_, prop) { return handlers[prop] ?? chain; },
     });
     return chain;
 }
@@ -733,54 +733,44 @@ function renderConsole(preReqLogs, testLogs, testResults) {
     if (preReqLogs.length) { all.push({ type: 'section', text: '── Pre-Request ──' }, ...preReqLogs); }
     if (testLogs.length)   { all.push({ type: 'section', text: '── Tests ──' }, ...testLogs); }
 
-    if (!all.length) {
-        els.consolePlaceholder.style.display = 'block';
-        els.consoleBadge.style.display = 'none';
-        return;
-    }
-    els.consolePlaceholder.style.display = 'none';
+    if (all.length) {
+        els.consolePlaceholder.style.display = 'none';
 
-    all.forEach(entry => {
-        const row = document.createElement('div');
-        row.className = `console-entry console-${entry.type}`;
-        row.textContent = entry.text;
-        els.consoleEntries.appendChild(row);
-    });
+        all.forEach(entry => {
+            const row = document.createElement('div');
+            row.className = `console-entry console-${entry.type}`;
+            row.textContent = entry.text;
+            els.consoleEntries.appendChild(row);
+        });
 
-    const passCount = testResults.filter(r => r.passed).length;
-    const failCount = testResults.filter(r => !r.passed).length;
-    if (testResults.length) {
-        els.consoleBadge.style.display = 'inline-block';
-        els.consoleBadge.textContent = `${passCount}/${testResults.length}`;
-        els.consoleBadge.className = `console-badge ${failCount ? 'badge-fail' : 'badge-pass'}`;
-        els.testSummary.style.display = 'flex';
-        els.testSummary.innerHTML =
-            `<span style="color:#10b981;">✓ ${passCount} passed</span>` +
-            (failCount ? `<span style="color:#ef4444; margin-left:0.75rem;">✗ ${failCount} failed</span>` : '');
+        const passCount = testResults.filter(r => r.passed).length;
+        const failCount = testResults.filter(r => !r.passed).length;
+        if (testResults.length) {
+            els.consoleBadge.style.display = 'inline-block';
+            els.consoleBadge.textContent = `${passCount}/${testResults.length}`;
+            els.consoleBadge.className = `console-badge ${failCount ? 'badge-fail' : 'badge-pass'}`;
+            els.testSummary.style.display = 'flex';
+            els.testSummary.innerHTML =
+                `<span style="color:#10b981;">✓ ${passCount} passed</span>` +
+                (failCount ? `<span style="color:#ef4444; margin-left:0.75rem;">✗ ${failCount} failed</span>` : '');
+        } else {
+            els.consoleBadge.style.display = 'none';
+            els.testSummary.style.display = 'none';
+        }
     } else {
         els.consoleBadge.style.display = 'none';
-        els.testSummary.style.display = 'none';
+        els.consolePlaceholder.style.display = 'block';
     }
 }
 
 // ─── Build Request Config ─────────────────────────────────────────────────────
-function buildRequestConfig() {
-    const bodyType = document.querySelector('input[name="bodyType"]:checked').value;
-    const config = {
-        url:         interpolate(els.url.value.trim()),
-        method:      els.method.value,
-        queryParams: interpolateObj(paramsListObj.get()),
-        headers:     interpolateObj(headersListObj.get()),
-        auth:        { type: els.authType.value },
-        bodyType,
-    };
 
-    // Resolve "inherit from parent" → folder auth
+/** Resolve auth credentials into config.auth (mutates config in-place). */
+function _resolveAuthConfig(config) {
     if (config.auth.type === 'inherit') {
         const fa = currentItemFolder ? (folderAuths[currentItemFolder] || { type: 'none' }) : { type: 'none' };
         config.auth = { ...fa };
     }
-
     if (config.auth.type === 'bearer') {
         config.auth.token = interpolate(config.auth.token ?? els.authToken.value);
     }
@@ -801,7 +791,10 @@ function buildRequestConfig() {
             showToast('No OAuth2 token — click "Fetch Token" in the Auth tab first', 'error');
         }
     }
+}
 
+/** Set config.body and config.bodyType based on the active body-type radio (mutates in-place). */
+function _applyBodyConfig(config, bodyType) {
     if (bodyType === 'json' && reqEditor)        config.body = interpolate(reqEditor.getValue());
     if (bodyType === 'form-data')                config.body = interpolateObj(formDataListObj.get());
     if (bodyType === 'text')                     config.body = interpolate(els.reqTextBody.value);
@@ -812,7 +805,20 @@ function buildRequestConfig() {
         config.bodyType = 'json';
         if (!config.headers['Content-Type']) config.headers['Content-Type'] = 'application/json';
     }
+}
 
+function buildRequestConfig() {
+    const bodyType = document.querySelector('input[name="bodyType"]:checked').value;
+    const config = {
+        url:         interpolate(els.url.value.trim()),
+        method:      els.method.value,
+        queryParams: interpolateObj(paramsListObj.get()),
+        headers:     interpolateObj(headersListObj.get()),
+        auth:        { type: els.authType.value },
+        bodyType,
+    };
+    _resolveAuthConfig(config);
+    _applyBodyConfig(config, bodyType);
     return config;
 }
 
@@ -950,29 +956,32 @@ function renderHistory() {
     const list = document.getElementById('history-list');
     const history = getHistory();
     list.innerHTML = '';
-    if (!history.length) {
-        list.innerHTML = '<li style="padding:1rem; color:var(--text-muted); font-size:0.83rem;">No history yet</li>';
-        return;
-    }
-    history.forEach(item => {
+    if (history.length) {
+        history.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'collection-item';
+            const badge = document.createElement('span');
+            badge.className = `method-badge ${item.method}`;
+            badge.textContent = item.method;
+            const info = document.createElement('div');
+            info.style.cssText = 'flex:1; min-width:0;';
+            const urlEl = document.createElement('div');
+            urlEl.style.cssText = 'font-size:0.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-primary);';
+            urlEl.textContent = item.url;
+            const timeEl = document.createElement('div');
+            timeEl.style.cssText = 'font-size:0.7rem; color:var(--text-muted); margin-top:0.1rem;';
+            timeEl.textContent = new Date(item.timestamp).toLocaleTimeString();
+            info.appendChild(urlEl); info.appendChild(timeEl);
+            li.appendChild(badge); li.appendChild(info);
+            li.onclick = () => loadItem(item);
+            list.appendChild(li);
+        });
+    } else {
         const li = document.createElement('li');
-        li.className = 'collection-item';
-        const badge = document.createElement('span');
-        badge.className = `method-badge ${item.method}`;
-        badge.textContent = item.method;
-        const info = document.createElement('div');
-        info.style.cssText = 'flex:1; min-width:0;';
-        const urlEl = document.createElement('div');
-        urlEl.style.cssText = 'font-size:0.8rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-primary);';
-        urlEl.textContent = item.url;
-        const timeEl = document.createElement('div');
-        timeEl.style.cssText = 'font-size:0.7rem; color:var(--text-muted); margin-top:0.1rem;';
-        timeEl.textContent = new Date(item.timestamp).toLocaleTimeString();
-        info.appendChild(urlEl); info.appendChild(timeEl);
-        li.appendChild(badge); li.appendChild(info);
-        li.onclick = () => loadItem(item);
+        li.style.cssText = 'padding:1rem; color:var(--text-muted); font-size:0.83rem;';
+        li.textContent = 'No history yet';
         list.appendChild(li);
-    });
+    }
 }
 
 document.getElementById('clear-history-btn').addEventListener('click', () => {
@@ -995,8 +1004,7 @@ async function loadCollections() {
 }
 
 function getCsrfToken() {
-    const m = /(?:^|;\s*)ds_csrf=([^;]+)/.exec(document.cookie);
-    return m ? decodeURIComponent(m[1]) : '';
+    return globalThis.DevSuite?.csrfToken?.() ?? '';
 }
 
 async function saveCollections() {
@@ -1023,7 +1031,7 @@ function renderCollections() {
 
     collections.forEach((item, idx) => {
         if (item.folder) {
-            if (!folderMap.has(item.folder)) folderMap.set(item.folder, []);
+            if (!folderMap.has(item.folder)) folderMap.set(item.folder, []); // NOSONAR — guard init, no else needed
             folderMap.get(item.folder).push({ item, idx });
         } else {
             noFolder.push({ item, idx });
@@ -1046,7 +1054,7 @@ function createFolderElement(folderName, items) {
     header.className = 'folder-header';
     const _svg = (attrs, childTag, childAttrs) => {
         const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        Object.entries(attrs).forEach(([k, v]) => k === 'style' ? (el.style.cssText = v) : el.setAttribute(k, v));
+        Object.entries(attrs).forEach(([k, v]) => { if (k === 'style') { el.style.cssText = v; } else { el.setAttribute(k, v); } });
         if (childTag) {
             const ch = document.createElementNS('http://www.w3.org/2000/svg', childTag);
             Object.entries(childAttrs).forEach(([k, v]) => ch.setAttribute(k, v));
@@ -1157,8 +1165,8 @@ function loadItem(item) {
 
     if (item.auth) restoreAuth(item.auth);
     if (item.bodyType) restoreBody(item.bodyType, item);
-    if (item.preRequestScript && preReqEditor) preReqEditor.setValue(item.preRequestScript);
-    if (item.testsScript && testsEditor)       testsEditor.setValue(item.testsScript);
+    if (item.preRequestScript) preReqEditor?.setValue(item.preRequestScript);
+    if (item.testsScript)       testsEditor?.setValue(item.testsScript);
 }
 
 function restoreAuth(auth) {
@@ -1188,15 +1196,15 @@ function restoreBody(bodyType, item) {
         entries.forEach(r => formDataListObj.add(r.key, r.value, r.enabled !== false));
     }
     if (bodyType === 'graphql') {
-        if (graphqlQueryEditor && item.graphqlQuery) graphqlQueryEditor.setValue(item.graphqlQuery);
-        if (graphqlVarsEditor  && item.graphqlVars)  graphqlVarsEditor.setValue(item.graphqlVars);
+        if (item.graphqlQuery) graphqlQueryEditor?.setValue(item.graphqlQuery);
+        if (item.graphqlVars)  graphqlVarsEditor?.setValue(item.graphqlVars);
     }
 }
 
 // ─── Save to Collection ───────────────────────────────────────────────────────
 els.saveBtn.addEventListener('click', () => {
     const raw = prompt('Name this request:\n(Use "FolderName/RequestName" to save into a folder)');
-    if (!raw) return;
+    if (!raw) return; // NOSONAR — guard clause
     const slashIdx = raw.indexOf('/');
     let folder, name;
     if (slashIdx > 0 && slashIdx < raw.length - 1) {
@@ -1252,7 +1260,7 @@ els.importCollectionsFile.addEventListener('change', async (e) => {
             return showToast('Unrecognized format — supported: DevSuite JSON, Postman v2.x', 'error');
         }
 
-        if (!imported.length) return showToast('No requests found in file', 'error');
+        if (!imported.length) return showToast('No requests found in file', 'error'); // NOSONAR — guard clause
         if (!confirm(`Import ${imported.length} request(s) from ${formatLabel}?`)) return;
 
         if (collections.length && confirm(`Replace all ${collections.length} existing request(s)?\n\nOK = Replace all\nCancel = Merge (add to existing)`)) {
@@ -1277,11 +1285,11 @@ function updateInheritInfo() {
         return;
     }
     const fa = folderAuths[currentItemFolder];
-    if (!fa || fa.type === 'none') {
-        els.authInheritStatus.textContent = `Folder "${currentItemFolder}" has no auth set. Click the 🔒 icon on the folder in the sidebar to configure one.`;
-    } else {
+    if (fa && fa.type !== 'none') {
         const labels = { bearer: 'Bearer Token', basic: 'Basic Auth', 'api-key': 'API Key' };
         els.authInheritStatus.textContent = `Will use ${labels[fa.type] || fa.type} from folder "${currentItemFolder}".`;
+    } else {
+        els.authInheritStatus.textContent = `Folder "${currentItemFolder}" has no auth set. Click the 🔒 icon on the folder in the sidebar to configure one.`;
     }
 }
 
@@ -1477,7 +1485,7 @@ els.btnOpenapiImport.addEventListener('click', () => {
     }
 
     const imported = parseOpenApiSpec(spec);
-    if (!imported.length) {
+    if (!imported.length) { // NOSONAR — guard clause
         els.openapiImportStatus.textContent = 'No paths found in spec';
         els.openapiImportStatus.style.color = '#dc2626';
         return;
