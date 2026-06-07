@@ -1339,7 +1339,16 @@ els.btnSaveFolderAuth.addEventListener('click', async () => {
 
 // ─── Postman / Bruno Import ───────────────────────────────────────────────────
 function detectImportFormat(data) {
-    if (data.info?.schema?.includes('getpostman.com')) return 'postman';
+    const schemaUrl = data.info?.schema;
+    if (typeof schemaUrl === 'string') {
+        try {
+            const host = new URL(schemaUrl).hostname.toLowerCase();
+            const allowedPostmanHosts = ['schema.getpostman.com', 'www.getpostman.com'];
+            if (allowedPostmanHosts.includes(host)) return 'postman';
+        } catch (_) {
+            // Ignore invalid URL and continue with other format checks.
+        }
+    }
     if (Array.isArray(data) || data.items) return 'devsuite';
     return 'unknown';
 }
