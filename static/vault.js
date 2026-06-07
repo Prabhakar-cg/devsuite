@@ -575,29 +575,33 @@ function renderEntryList() {
 
     if (entries.length === 0) {
         empty.style.display = 'flex';
-        empty.textContent = '';
-        const iconEl = document.createElement('div');
-        iconEl.className = 'icon';
-        const pEl = document.createElement('p');
+        empty.replaceChildren();
+
+        const icon = document.createElement('div');
+        icon.className = 'icon';
+
+        const message = document.createElement('p');
+
         if (searchQuery) {
-            iconEl.textContent = '🔍';
-            pEl.textContent = 'No results for "';
+            icon.textContent = '🔍';
+            message.append('No results for "');
             const strong = document.createElement('strong');
             strong.textContent = searchQuery;
-            pEl.appendChild(strong);
-            pEl.appendChild(document.createTextNode('"'));
+            message.appendChild(strong);
+            message.append('"');
         } else {
-            iconEl.textContent = '🔐';
-            pEl.textContent = 'No secrets yet.';
-            pEl.appendChild(document.createElement('br'));
-            pEl.appendChild(document.createTextNode('Click '));
+            icon.textContent = '🔐';
+            message.append('No secrets yet.');
+            message.appendChild(document.createElement('br'));
+            message.append('Click ');
             const strong = document.createElement('strong');
             strong.textContent = 'New Secret';
-            pEl.appendChild(strong);
-            pEl.appendChild(document.createTextNode(' to add one.'));
+            message.appendChild(strong);
+            message.append(' to add one.');
         }
-        empty.appendChild(iconEl);
-        empty.appendChild(pEl);
+
+        empty.appendChild(icon);
+        empty.appendChild(message);
         return;
     }
 

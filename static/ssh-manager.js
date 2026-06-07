@@ -1315,25 +1315,35 @@ function updateDashboardGauges(metrics) {
                  wrap.style.background = 'var(--bg-3)';
                  wrap.style.display = 'flex';
                  wrap.style.flexDirection = 'column';
-                 
-                 const mountLabel = document.createElement('div');
-                 mountLabel.style.cssText = 'font-weight: 500; font-size: 0.85rem; margin-bottom: 0.5rem; text-align: center; color: var(--text-color);';
-                 mountLabel.textContent = disk.mount;
 
-                 const chartWrap = document.createElement('div');
-                 chartWrap.style.cssText = 'height: 100px; position: relative;';
+                 const title = document.createElement('div');
+                 title.style.fontWeight = '500';
+                 title.style.fontSize = '0.85rem';
+                 title.style.marginBottom = '0.5rem';
+                 title.style.textAlign = 'center';
+                 title.style.color = 'var(--text-color)';
+                 title.textContent = disk.mount == null ? '' : String(disk.mount);
+
+                 const canvasWrap = document.createElement('div');
+                 canvasWrap.style.height = '100px';
+                 canvasWrap.style.position = 'relative';
+
                  const canvas = document.createElement('canvas');
                  canvas.id = `${diskId}-canvas`;
-                 chartWrap.appendChild(canvas);
+                 canvasWrap.appendChild(canvas);
 
                  const subWrap = document.createElement('div');
-                 subWrap.style.cssText = 'text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);';
-                 const subSpan = document.createElement('span');
-                 subSpan.id = `${diskId}-sub`;
-                 subWrap.appendChild(subSpan);
+                 subWrap.style.textAlign = 'center';
+                 subWrap.style.marginTop = '0.5rem';
+                 subWrap.style.fontSize = '0.75rem';
+                 subWrap.style.color = 'var(--text-muted)';
 
-                 wrap.appendChild(mountLabel);
-                 wrap.appendChild(chartWrap);
+                 const sub = document.createElement('span');
+                 sub.id = `${diskId}-sub`;
+                 subWrap.appendChild(sub);
+
+                 wrap.appendChild(title);
+                 wrap.appendChild(canvasWrap);
                  wrap.appendChild(subWrap);
                  disksContainer.appendChild(wrap);
             }
