@@ -83,6 +83,49 @@ class ApiClient {
     }
 
     /**
+     * Returns true when targetUrl resolves to a different origin than the
+     * DevSuite page itself.  Same-origin requests never need the proxy.
+     */
+    static _isCrossOrigin(targetUrl) {
+        try {
+            return new URL(targetUrl).origin !== window.location.origin;
+        } catch {
+            return false; // relative URL or unparseable — treat as same-origin
+        }
+    }
+
+    /**
+     * Returns true when this request will definitely trigger a CORS preflight
+     * (OPTIONS) that a server without a CORS policy will reject before the
+     * actual request even goes out.
+     *
+     * Based on the Fetch spec "simple request" criteria:
+     *   • Method must be GET, HEAD, or POST
+     *   • Only CORS-safelisted headers are present
+     *   • Content-Type (if set) is one of the three simple values
+     *
+     * If any condition fails the browser sends a preflight → we skip the
+     * direct attempt and route through the proxy immediately.
+     */
+    static _willNeedPreflight(method, headers) {
+        if (!['GET', 'HEAD', 'POST'].includes(method.toUpperCase())) return true;
+
+        const SAFELISTED = new Set([
+            'accept', 'accept-language', 'content-language', 'content-type', 'range',
+        ]);
+        for (const [key] of headers.entries()) {
+            if (!SAFELISTED.has(key.toLowerCase())) return true;
+        }
+
+        const ct = (headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        if (ct && !['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'].includes(ct)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Serialises a fetch body to a plain string for proxy forwarding.
      */
     static _bodyToString(body) {
@@ -192,14 +235,40 @@ class ApiClient {
     }
 
     /**
-     * Executes the API Request
+     * Executes the API Request.
+     *
+     * Routing strategy (smart CORS handling):
+     *
+     *  1. Same-origin target  →  direct fetch only (no CORS involved).
+     *
+     *  2. Cross-origin + non-simple request (has Authorization header, custom
+     *     headers, JSON body, PUT/PATCH/DELETE, …)  →  the browser would send a
+     *     CORS preflight (OPTIONS) that almost certainly fails on APIs with no
+     *     CORS policy. Skip the doomed direct attempt; route through the local
+     *     proxy immediately. This eliminates one failing round-trip, the
+     *     "CORS blocked" error in browser DevTools, and the visible latency
+     *     spike before the proxy kicks in.
+     *
+     *  3. Cross-origin + simple request (bare GET/HEAD, POST with form body, no
+     *     custom headers)  →  try direct first. If the API returns
+     *     Access-Control-Allow-Origin the response succeeds without a proxy.
+     *     On any fetch error fall back to the proxy (isRetry path).
+     *
+     *  4. config.useProxy = true  →  always proxy (user override).
      */
     static async execute(config, isRetry = false) {
         const startTime = performance.now();
         const targetUrl = this.buildUrl(config.url, config.queryParams);
         const headers = this.buildHeaders(config);
         const body = this.buildBody(config);
-        const isProxied = config.useProxy || isRetry;
+
+        // Determine routing before the first network attempt.
+        const skipDirect = !config.useProxy
+            && !isRetry
+            && this._isCrossOrigin(targetUrl)
+            && this._willNeedPreflight(config.method, headers);
+
+        const isProxied = config.useProxy || isRetry || skipDirect;
 
         let fetchUrl = targetUrl;
         let fetchOptions = { method: config.method, headers: headers, body: body };
@@ -214,21 +283,24 @@ class ApiClient {
             const response = await fetch(fetchUrl, fetchOptions);
             return await this._parseResponse(response, startTime, isProxied);
         } catch (error) {
-            if (!isRetry && !config.useProxy) {
-                console.warn("Direct fetch failed (likely CORS). Retrying automatically via local proxy bypass...");
+            if (!isRetry && !isProxied) {
+                // Simple cross-origin request tried directly and failed — fall back to proxy.
+                console.warn('Direct fetch failed (likely CORS or network). Retrying via local proxy…');
                 return await this.execute(config, true);
             }
+            // Proxy path also failed — return a structured error response.
             const timeMs = Math.round(performance.now() - startTime);
             return {
                 status: 0,
                 statusText: 'Network Error',
                 headers: {},
                 body: null,
-                bodyText: error.message + '\n\n(A status of 0 often means a CORS error blocks this request, and DevSuite auto-bypass also failed.)',
+                bodyText: error.message
+                    + '\n\n(Status 0 — the target host may be unreachable, or the proxy could not connect.)',
                 timeMs: timeMs,
                 sizeBytes: 0,
                 error: error.message,
-                wasProxied: isProxied
+                wasProxied: isProxied,
             };
         }
     }

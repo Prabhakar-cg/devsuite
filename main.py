@@ -90,9 +90,15 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# SEC-3: explicit CORS allowlist — only the local DevSuite origin may make
-# cross-origin requests.  This is effectively a no-op for same-origin browser
-# requests but closes the gap for tools like curl or browser extensions.
+# Middleware registration order matters: in Starlette each add_middleware call wraps
+# the existing stack, so the LAST call becomes the OUTERMOST layer (first to handle
+# a request). Registration order here is inner-first, outer-last.
+
+# Inner: rate-limiting — applied after CORS so preflight OPTIONS are not rate-limited.
+app.add_middleware(SlowAPIMiddleware)
+
+# Outer (outermost): CORS — handles OPTIONS preflight before any other middleware runs.
+# SEC-3: explicit allowlist; only the local DevSuite origin may make cross-origin requests.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
@@ -100,9 +106,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Content-Type", "X-CSRF-Token"],
 )
-
-# SlowAPIMiddleware is the outermost layer — rate-limits before CSRF or route processing.
-app.add_middleware(SlowAPIMiddleware)
 
 
 # ─── Security-headers middleware ──────────────────────────────────────────────

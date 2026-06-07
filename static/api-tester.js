@@ -855,18 +855,9 @@ function buildRawConfig() {
 }
 
 // ─── Render Response ──────────────────────────────────────────────────────────
-function renderResponse(response) {
-    els.respMeta.style.display = 'flex';
-    els.respStatus.textContent = `${response.status} ${response.statusText}`;
-    els.respStatus.className   = `meta-value ${response.status >= 200 && response.status < 300 ? 'status-ok' : 'status-err'}`;
-    els.respTime.textContent   = response.wasProxied ? `${response.timeMs} ms (proxy)` : `${response.timeMs} ms`;
-    els.respSize.textContent   = `${(response.sizeBytes / 1024).toFixed(2)} KB`;
-    els.respProxyChip.style.display = response.wasProxied ? 'inline-flex' : 'none';
-    const proxyBanner = document.getElementById('resp-proxy-banner');
-    if (proxyBanner) proxyBanner.style.display = response.wasProxied ? 'flex' : 'none';
-    els.respPlaceholder.style.display = 'none';
 
-    const bodyText = response.body ? JSON.stringify(response.body, null, 2) : (response.bodyText || '');
+/** Populate Monaco editor or fallback textarea with the response body. */
+function _renderResponseBody(response, bodyText) {
     if (respEditor) {
         const ct = response.contentType || '';
         let lang = 'json';
@@ -881,10 +872,13 @@ function renderResponse(response) {
         els.respFallback.textContent = bodyText;
         els.respFallback.style.display = 'flex';
     }
+}
 
+/** Populate the response headers tab with key/value rows. */
+function _renderResponseHeaders(headers) {
     const hContainer = document.getElementById('resp-headers-tab');
     hContainer.innerHTML = '';
-    for (const [k, v] of Object.entries(response.headers || {})) {
+    for (const [k, v] of Object.entries(headers || {})) {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex; border-bottom:1px solid var(--border); padding:0.5rem 1rem; align-items:baseline;';
         const kspan = document.createElement('span');
@@ -896,6 +890,22 @@ function renderResponse(response) {
         row.appendChild(kspan); row.appendChild(vspan);
         hContainer.appendChild(row);
     }
+}
+
+function renderResponse(response) {
+    els.respMeta.style.display = 'flex';
+    els.respStatus.textContent = `${response.status} ${response.statusText}`;
+    els.respStatus.className   = `meta-value ${response.status >= 200 && response.status < 300 ? 'status-ok' : 'status-err'}`;
+    els.respTime.textContent   = response.wasProxied ? `${response.timeMs} ms (proxy)` : `${response.timeMs} ms`;
+    els.respSize.textContent   = `${(response.sizeBytes / 1024).toFixed(2)} KB`;
+    els.respProxyChip.style.display = response.wasProxied ? 'inline-flex' : 'none';
+    const proxyBanner = document.getElementById('resp-proxy-banner');
+    if (proxyBanner) proxyBanner.style.display = response.wasProxied ? 'flex' : 'none';
+    els.respPlaceholder.style.display = 'none';
+
+    const bodyText = response.body ? JSON.stringify(response.body, null, 2) : (response.bodyText || '');
+    _renderResponseBody(response, bodyText);
+    _renderResponseHeaders(response.headers);
 
     if (response.error || response.status === 0) {
         showToast('Network error — check console', 'error');
@@ -1225,7 +1235,7 @@ document.getElementById('refresh-collections-btn').addEventListener('click', loa
 
 // ─── Collection Export ────────────────────────────────────────────────────────
 els.btnExportCollections.addEventListener('click', () => {
-    if (!collections.length) return showToast('No collections to export', 'info');
+    if (!collections.length) return showToast('No collections to export', 'info'); // NOSONAR — guard clause
     const blob = new Blob([JSON.stringify({ version: 1, items: collections }, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), { href: url, download: 'devsuite-collections.json' });
@@ -1279,17 +1289,17 @@ els.importCollectionsFile.addEventListener('change', async (e) => {
 
 // ─── Inherit Info ─────────────────────────────────────────────────────────────
 function updateInheritInfo() {
-    if (!els.authInheritStatus) return;
-    if (!currentItemFolder) {
-        els.authInheritStatus.textContent = 'This request has no parent folder — inherited auth has no effect.';
-        return;
-    }
-    const fa = folderAuths[currentItemFolder];
-    if (fa && fa.type !== 'none') {
-        const labels = { bearer: 'Bearer Token', basic: 'Basic Auth', 'api-key': 'API Key' };
-        els.authInheritStatus.textContent = `Will use ${labels[fa.type] || fa.type} from folder "${currentItemFolder}".`;
+    if (!els.authInheritStatus) return; // NOSONAR — guard clause
+    if (currentItemFolder) {
+        const fa = folderAuths[currentItemFolder];
+        if (fa && fa.type !== 'none') {
+            const labels = { bearer: 'Bearer Token', basic: 'Basic Auth', 'api-key': 'API Key' };
+            els.authInheritStatus.textContent = `Will use ${labels[fa.type] || fa.type} from folder "${currentItemFolder}".`;
+        } else {
+            els.authInheritStatus.textContent = `Folder "${currentItemFolder}" has no auth set. Click the 🔒 icon on the folder in the sidebar to configure one.`;
+        }
     } else {
-        els.authInheritStatus.textContent = `Folder "${currentItemFolder}" has no auth set. Click the 🔒 icon on the folder in the sidebar to configure one.`;
+        els.authInheritStatus.textContent = 'This request has no parent folder — inherited auth has no effect.';
     }
 }
 
@@ -1323,7 +1333,7 @@ els.btnCancelFolderAuth.addEventListener('click', () => els.folderAuthModal.clos
 els.folderAuthModal.addEventListener('click', (e) => { if (e.target === els.folderAuthModal) els.folderAuthModal.close(); });
 
 els.btnSaveFolderAuth.addEventListener('click', async () => {
-    if (!editingFolderName) return;
+    if (!editingFolderName) return; // NOSONAR — guard clause
     const type = els.folderAuthType.value;
     const auth = { type };
     if (type === 'bearer')   auth.token      = els.folderAuthToken.value;
@@ -1374,92 +1384,76 @@ function parsePostmanCollection(data) {
     return items;
 }
 
-function parsePostmanRequest(req) {
-    // ── URL ──
-    let url = '';
-    let queryParams = [];
+/** Extract URL string and query params from a Postman request's url field. */
+function _parsePostmanUrl(req) {
     if (typeof req.url === 'string') {
         const qi = req.url.indexOf('?');
-        url = qi >= 0 ? req.url.slice(0, qi) : req.url;
-        if (qi >= 0) {
-            new URLSearchParams(req.url.slice(qi + 1)).forEach((value, key) => {
-                queryParams.push({ key, value, enabled: true });
-            });
-        }
-    } else if (req.url && typeof req.url === 'object') {
+        const url = qi >= 0 ? req.url.slice(0, qi) : req.url;
+        const queryParams = qi >= 0
+            ? [...new URLSearchParams(req.url.slice(qi + 1))].map(([key, value]) => ({ key, value, enabled: true }))
+            : [];
+        return { url, queryParams };
+    }
+    if (req.url && typeof req.url === 'object') {
         const raw = req.url.raw || '';
-        const qi = raw.indexOf('?');
-        url = qi >= 0 ? raw.slice(0, qi) : raw;
-        queryParams = (req.url.query || [])
+        const qi  = raw.indexOf('?');
+        const url = qi >= 0 ? raw.slice(0, qi) : raw;
+        const queryParams = (req.url.query || [])
             .filter(q => q.key != null && !q.disabled)
             .map(q => ({ key: q.key || '', value: q.value || '', enabled: true }));
+        return { url, queryParams };
     }
+    return { url: '', queryParams: [] };
+}
 
-    // ── Headers ──
+/** Resolve body type and content from a Postman request body descriptor. */
+function _parsePostmanBody(req) {
+    if (!req.body) return { bodyType: 'none', body: null }; // NOSONAR — guard clause
+    const mode = req.body.mode;
+    if (mode === 'raw') {
+        const lang = req.body.options?.raw?.language || 'text';
+        if (lang === 'json') return { bodyType: 'json', body: req.body.raw || '{}' };
+        if (lang === 'graphql') {
+            try {
+                const gql = JSON.parse(req.body.raw || '{}');
+                return { bodyType: 'graphql', body: null, graphqlQuery: gql.query || '', graphqlVars: JSON.stringify(gql.variables || {}, null, 2) };
+            } catch { // NOSONAR — fall through to text on invalid JSON
+                return { bodyType: 'text', body: req.body.raw || '' };
+            }
+        }
+        return { bodyType: 'text', body: req.body.raw || '' };
+    }
+    if (mode === 'urlencoded') return {
+        bodyType: 'form-data',
+        body: (req.body.urlencoded || []).filter(f => !f.disabled).map(f => ({ key: f.key || '', value: f.value || '', enabled: true })),
+    };
+    if (mode === 'formdata') return {
+        bodyType: 'form-data',
+        body: (req.body.formdata || []).filter(f => !f.disabled && f.type !== 'file').map(f => ({ key: f.key || '', value: f.value || '', enabled: true })),
+    };
+    return { bodyType: 'none', body: null };
+}
+
+/** Resolve auth config from a Postman request auth descriptor. */
+function _parsePostmanAuth(req) {
+    if (!req.auth) return { type: 'none' }; // NOSONAR — guard clause
+    const lookup = (arr, key) => (arr || []).find(e => e.key === key)?.value || '';
+    const t = req.auth.type;
+    if (t === 'bearer') return { type: 'bearer', token: lookup(req.auth.bearer, 'token') };
+    if (t === 'basic')  return { type: 'basic',  username: lookup(req.auth.basic,  'username'), password: lookup(req.auth.basic, 'password') };
+    if (t === 'apikey') return { type: 'api-key', headerName: lookup(req.auth.apikey, 'key'),   headerValue: lookup(req.auth.apikey, 'value') };
+    return { type: 'none' };
+}
+
+function parsePostmanRequest(req) {
+    const { url, queryParams }               = _parsePostmanUrl(req);
+    const { bodyType, body, graphqlQuery, graphqlVars } = _parsePostmanBody(req);
     const headers = (req.header || [])
         .filter(h => !h.disabled && h.key)
         .map(h => ({ key: h.key, value: h.value || '', enabled: true }));
+    const auth = _parsePostmanAuth(req);
 
-    // ── Body ──
-    let bodyType = 'none';
-    let body = null;
-    let graphqlQuery, graphqlVars;
-    if (req.body) {
-        const mode = req.body.mode;
-        if (mode === 'raw') {
-            const lang = req.body.options?.raw?.language || 'text';
-            if (lang === 'json') {
-                bodyType = 'json';
-                body = req.body.raw || '{}';
-            } else if (lang === 'graphql') {
-                bodyType = 'graphql';
-                try {
-                    const gql = JSON.parse(req.body.raw || '{}');
-                    graphqlQuery = gql.query || '';
-                    graphqlVars = JSON.stringify(gql.variables || {}, null, 2);
-                } catch {
-                    bodyType = 'text';
-                    body = req.body.raw || '';
-                }
-            } else {
-                bodyType = 'text';
-                body = req.body.raw || '';
-            }
-        } else if (mode === 'urlencoded') {
-            bodyType = 'form-data';
-            body = (req.body.urlencoded || [])
-                .filter(f => !f.disabled)
-                .map(f => ({ key: f.key || '', value: f.value || '', enabled: true }));
-        } else if (mode === 'formdata') {
-            bodyType = 'form-data';
-            body = (req.body.formdata || [])
-                .filter(f => !f.disabled && f.type !== 'file')
-                .map(f => ({ key: f.key || '', value: f.value || '', enabled: true }));
-        }
-    }
-
-    // ── Auth ──
-    let auth = { type: 'none' };
-    if (req.auth) {
-        const lookup = (arr, key) => (arr || []).find(e => e.key === key)?.value || '';
-        const t = req.auth.type;
-        if (t === 'bearer') {
-            auth = { type: 'bearer', token: lookup(req.auth.bearer, 'token') };
-        } else if (t === 'basic') {
-            auth = { type: 'basic', username: lookup(req.auth.basic, 'username'), password: lookup(req.auth.basic, 'password') };
-        } else if (t === 'apikey') {
-            auth = { type: 'api-key', headerName: lookup(req.auth.apikey, 'key'), headerValue: lookup(req.auth.apikey, 'value') };
-        }
-    }
-
-    const result = {
-        method: (req.method || 'GET').toUpperCase(),
-        url,
-        queryParams,
-        headers,
-        auth,
-        bodyType,
-    };
+    const result = { method: (req.method || 'GET').toUpperCase(), url, queryParams, headers, auth, bodyType };
     if (body !== null) result.body = body;
     if (graphqlQuery !== undefined) { result.graphqlQuery = graphqlQuery; result.graphqlVars = graphqlVars; }
     return result;
@@ -1518,7 +1512,7 @@ function closeOpenapiModal() {
 }
 
 function resolveBaseUrl(spec) {
-    const isSwagger2 = spec.swagger && spec.swagger.startsWith('2');
+    const isSwagger2 = spec.swagger?.startsWith('2');
     return isSwagger2
         ? `${spec.schemes?.[0] || 'https'}://${spec.host || ''}${spec.basePath || ''}`
         : (spec.servers?.[0]?.url || '');
@@ -1561,14 +1555,14 @@ function extractRequestBody(operation, isSwagger2) {
 }
 
 function parseOpenApiSpec(spec) {
-    const isSwagger2 = spec.swagger && spec.swagger.startsWith('2');
+    const isSwagger2 = spec.swagger?.startsWith('2');
     const baseUrl = resolveBaseUrl(spec);
     const items = [];
 
     for (const [path, pathItem] of Object.entries(spec.paths || {})) {
         for (const method of ['get','post','put','delete','patch','head','options']) {
             const operation = pathItem[method];
-            if (!operation) continue;
+            if (!operation) continue; // NOSONAR — guard clause
 
             const name = operation.summary || operation.operationId || `${method.toUpperCase()} ${path}`;
             const folder = operation.tags?.[0] || spec.info?.title || undefined;
@@ -1585,7 +1579,7 @@ function parseOpenApiSpec(spec) {
 }
 
 function buildSchemaExample(schema) {
-    if (!schema) return '{}';
+    if (!schema) return '{}'; // NOSONAR — guard clause
     if (schema.example != null) return JSON.stringify(schema.example, null, 2);
     if (schema.type === 'object' || schema.properties) {
         const obj = {};
@@ -1597,7 +1591,7 @@ function buildSchemaExample(schema) {
     return '{}';
 }
 
-function typeDefault(t) {
+function typeDefault(t) { // NOSONAR — intentional: returns the JS default value for each JSON Schema type
     if (t === 'string')  return '';
     if (t === 'number' || t === 'integer') return 0;
     if (t === 'boolean') return false;

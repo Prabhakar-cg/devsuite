@@ -90,7 +90,7 @@ async def _ssh_key_fingerprint(key_data: bytes, host: str, port: int) -> str:
     except asyncio.TimeoutError as exc:
         raise RuntimeError(f"ssh-keygen fingerprint timed out for {host}:{port}") from exc
     for token in kg_out.decode(errors="replace").split():
-        if token.startswith("SHA256:") or token.startswith("MD5:"):
+        if token.startswith(("SHA256:", "MD5:")):
             return token
     return ""
 

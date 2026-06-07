@@ -231,7 +231,8 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
   - **Postman v2.x** — detected via `info.schema` containing `getpostman.com`. Nested folders are flattened to a single folder level. Parses URL, query params, headers, body (raw/JSON/text/form-data/GraphQL), and auth (bearer, basic, API key). Compatible with Postman exports and Bruno "Export as Postman" collections.
 - Collection export as DevSuite native JSON.
 - OpenAPI 3.x / Swagger 2.x JSON import — each path×method becomes a collection request.
-- Local CORS Proxy (`/api/proxy`) to bypass browser CORS restrictions (targets any public host; private IPs blocked server-side).
+- Local CORS Proxy (`/api/proxy`) to bypass browser CORS restrictions (targets any host reachable from the DevSuite server, including LAN addresses; loopback and cloud-metadata/link-local addresses are blocked server-side).
+- **Smart CORS routing** (implemented in `ApiClient.execute`): cross-origin requests that will definitely trigger a CORS preflight (non-GET/HEAD/POST method, `Authorization` header, `Content-Type: application/json`, or any non-safelisted header) are routed through the proxy immediately — the doomed direct attempt is skipped entirely. Simple requests (bare GET/HEAD, form POST, no custom headers) are tried directly first; on failure they fall back to the proxy.
 - Frontend uses 8-hour session auth via `auth-guard.js`. Both `/api/collections` endpoints also call `require_unlocked` server-side — the backend enforces auth, not just the frontend.
 
 **Network notice:** The CORS proxy initiates outbound connections to the target host. This tool is not strictly offline.
@@ -409,7 +410,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 |---|---|---|
 | `POST` | `/api/proxy` | Forward request to any HTTP/HTTPS host |
 
-**Security:** The proxy is **not** allowlist-based — it accepts any public host. SSRF protection blocks requests that resolve to private, loopback, link-local, multicast, or reserved IP addresses (HTTP 403). Only `http` and `https` schemes are allowed. The URL is reconstructed from validated components before dispatch to prevent taint-flow from raw user input. **Redirects are followed only after re-validating each hop's resolved IP and scheme against the same private/reserved blocklist, so a public host cannot 3xx into an internal address (e.g. cloud metadata).** Responses are capped at 10 MB. Timeout: 15 s.
+**Security:** The proxy is **not** allowlist-based — it accepts any host reachable from the DevSuite server, including LAN/private-range addresses (e.g. `10.x.x.x`, `192.168.x.x`). DevSuite is a loopback-only local tool; testing LAN APIs through the proxy is a first-class use case. SSRF protection still blocks requests that resolve to loopback (`127.x.x.x`), link-local (`169.254.x.x` — cloud metadata), multicast, or IANA-reserved IP addresses (HTTP 403). Only `http` and `https` schemes are allowed. The URL is reconstructed from validated components before dispatch to prevent taint-flow from raw user input. **Redirects are followed only after re-validating each hop's resolved IP and scheme, so a remote host cannot 3xx into a loopback or cloud-metadata address.** Responses are capped at 10 MB. Timeout: 15 s.
 
 ### 5.10 HTTP Security Headers (every response)
 
@@ -705,7 +706,7 @@ These paths must have automated tests. Adding or changing any of them requires a
 - AES-GCM roundtrip: `decrypt(encrypt(plaintext, key), key) == plaintext`.
 - CSRF middleware: mutating requests without `X-CSRF-Token` → HTTP 403.
 - Rate limiting: 6th auth request within 60s → HTTP 429.
-- SSRF proxy block: private/loopback addresses → HTTP 403.
+- SSRF proxy block: loopback/link-local/reserved addresses → HTTP 403; LAN ranges allowed.
 - Session token hashing: raw token not present in `_sessions` dict.
 
 ### 10.3 Static Analysis
