@@ -1,5 +1,5 @@
 """
-DevSuite — FastAPI Backend  (v0.2.1)
+DevSuite — FastAPI Backend  (v0.2.2)
 ---------------------------------
 Serves the static frontend and provides REST/WebSocket APIs for all tools.
 
@@ -95,7 +95,7 @@ async def _lifespan(_application: FastAPI):
     # (cleanup goes here if needed in future)
 
 
-APP_VERSION = "0.2.1"
+APP_VERSION = "0.2.2"
 _DEV_MODE   = os.getenv("DEVSUITE_DEV",   "0") == "1"
 _HTTPS      = os.getenv("DEVSUITE_HTTPS", "0") == "1"
 

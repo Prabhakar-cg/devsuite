@@ -7,6 +7,12 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ## [Unreleased]
 
+---
+
+## [0.2.2] — 2026-06-07
+
+Security hardening release. No new user-facing features. Restores the zero-knowledge vault guarantee, strengthens client crypto, and closes all remaining P0–P2 security findings from the 2026-06-06 review.
+
 ### Security
 
 #### Vault zero-knowledge — domain-separated encryption + auth keys (`vault.js`, `auth-guard.js`, `main.py`)

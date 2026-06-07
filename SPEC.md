@@ -1,6 +1,6 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.2.1  
+> **Version:** 0.2.2  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Single source of truth for spec-driven development. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.
 
@@ -18,7 +18,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.2.1` — bumped simultaneously in `main.py` (FastAPI `version=`), `README.md`, and `CHANGELOG.md`.
+`0.2.2` — bumped simultaneously in `main.py` (FastAPI `version=`), `README.md`, and `CHANGELOG.md`.
 
 ---
 
@@ -880,4 +880,4 @@ Follows Semantic Versioning. Each release section includes: Security · Frontend
 
 ---
 
-*This spec reflects DevSuite v0.2.1. Update before implementing any new feature or changing existing behavior.*
+*This spec reflects DevSuite v0.2.2. Update before implementing any new feature or changing existing behavior.*
