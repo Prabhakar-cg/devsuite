@@ -314,7 +314,7 @@
         html[data-theme="vs"] .format-chip.server,
         html[data-theme="ios-glass"] .format-chip.server {
             background: rgba(234,179,8,0.15);
-            color: #92400e;
+            color: #92400e; /* NOSONAR — #92400e (lum 0.097) on composited rgba(234,179,8,0.15)+white ≈ 6.4:1 contrast */
             border-color: rgba(234,179,8,0.35);
         }
 

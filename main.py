@@ -94,18 +94,8 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # the existing stack, so the LAST call becomes the OUTERMOST layer (first to handle
 # a request). Registration order here is inner-first, outer-last.
 
-# Inner: rate-limiting — applied after CORS so preflight OPTIONS are not rate-limited.
+# Innermost: rate-limiting — applied after CORS so preflight OPTIONS are not rate-limited.
 app.add_middleware(SlowAPIMiddleware)
-
-# Outer (outermost): CORS — handles OPTIONS preflight before any other middleware runs.
-# SEC-3: explicit allowlist; only the local DevSuite origin may make cross-origin requests.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "X-CSRF-Token"],
-)
 
 
 # ─── Security-headers middleware ──────────────────────────────────────────────
@@ -129,6 +119,18 @@ async def add_security_headers(request, call_next):
     )
     response.headers["Content-Security-Policy"] = csp
     return response
+
+
+# Outermost: CORS — handles OPTIONS preflight before any other middleware runs.
+# SEC-3: explicit allowlist; only the local DevSuite origin may make cross-origin requests.
+# Must be last (outermost) so it processes requests before security-headers middleware.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Content-Type", "X-CSRF-Token"],
+)
 
 
 # ─── CSRF middleware ──────────────────────────────────────────────────────────

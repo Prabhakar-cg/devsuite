@@ -776,7 +776,8 @@ function addFieldRow(container, { label, value, secret, fieldId, clipLabel, isUr
         revBtn.className = 'field-action-btn js-reveal-btn';
         revBtn.title = 'Reveal / hide';
         const eyeIdAttr = fieldId ? ` id="eye-${fieldId}"` : '';
-        revBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"${eyeIdAttr}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`; // static SVG
+        const svgTag = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"${eyeIdAttr}>`;
+        revBtn.innerHTML = `${svgTag}<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`; // static SVG
         wrap.appendChild(revBtn);
     }
 

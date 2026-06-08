@@ -120,7 +120,7 @@
 
                     <!-- Params -->
                     <div id="tab-params" class="tab-content active req-tab-content" role="tabpanel">
-                        <div class="kv-table-head" aria-hidden="true">
+                        <div class="kv-table-head" role="presentation">
                             <span></span><span>Key</span><span>Value</span><span></span>
                         </div>
                         <div id="params-list"></div>
@@ -129,7 +129,7 @@
 
                     <!-- Headers -->
                     <div id="tab-headers" class="tab-content req-tab-content" role="tabpanel">
-                        <div class="kv-table-head" aria-hidden="true">
+                        <div class="kv-table-head" role="presentation">
                             <span></span><span>Key</span><span>Value</span><span></span>
                         </div>
                         <div id="headers-list"></div>
@@ -187,7 +187,7 @@
                             <label class="field-label" for="oauth2-scope">Scope <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
                             <input type="text" id="oauth2-scope" class="url-input" style="width:100%; margin-bottom:0.875rem;" placeholder="read write openid">
                             <div style="display:flex; align-items:center; gap:0.625rem; flex-wrap:wrap;">
-                                <button id="btn-fetch-oauth2" class="btn-small btn-accent" aria-label="Fetch Token — OAuth2 access token">Fetch Token</button>
+                                <button id="btn-fetch-oauth2" class="btn-small btn-accent">Fetch Token</button>
                                 <span id="oauth2-token-status" style="font-size:0.76rem; color:var(--text-muted);"></span>
                             </div>
                             <div id="oauth2-token-display" style="display:none; margin-top:0.75rem;">
@@ -219,7 +219,7 @@
                             <textarea id="req-text-body" class="text-body-area" placeholder="Raw text body"></textarea>
                         </div>
                         <div id="req-form-data-wrap" style="display:none; flex:1; overflow-y:auto;">
-                            <div class="kv-table-head" aria-hidden="true" style="margin:0.75rem 0.875rem 0;">
+                            <div class="kv-table-head" role="presentation" style="margin:0.75rem 0.875rem 0;">
                                 <span></span><span>Field</span><span>Value</span><span></span>
                             </div>
                             <div id="form-data-list" style="padding:0 0.875rem;"></div>

@@ -696,21 +696,23 @@ function expect(val) {
     return chain;
 }
 
+function _runTestCase(results, logs, name, fn) {
+    try {
+        fn();
+        results.push({ name, passed: true });
+        logs.push({ type: 'pass', text: `✓  ${name}` });
+    } catch (e) {
+        results.push({ name, passed: false, error: e.message });
+        logs.push({ type: 'fail', text: `✗  ${name}: ${e.message}` });
+    }
+}
+
 async function runTestScript(code, dsResponse) {
     const logs = [];
     const results = [];
     if (!code.trim()) return { logs, results };
 
-    function test(name, fn) {
-        try {
-            fn();
-            results.push({ name, passed: true });
-            logs.push({ type: 'pass', text: `✓  ${name}` });
-        } catch (e) {
-            results.push({ name, passed: false, error: e.message });
-            logs.push({ type: 'fail', text: `✗  ${name}: ${e.message}` });
-        }
-    }
+    const test = (name, fn) => _runTestCase(results, logs, name, fn);
 
     try {
         // eslint-disable-next-line no-new-func
@@ -822,6 +824,20 @@ function buildRequestConfig() {
     return config;
 }
 
+function _readRawAuthConfig(authType) {
+    const auth = { type: authType };
+    if (authType === 'bearer')   auth.token      = els.authToken.value;
+    if (authType === 'basic') {  auth.username   = els.authUsername.value; auth.password = els.authPassword.value; }
+    if (authType === 'api-key'){ auth.headerName = els.authApikeyHeader.value.trim(); auth.headerValue = els.authApikeyValue.value.trim(); }
+    if (authType === 'oauth2') {
+        auth.grantType = els.oauth2Grant.value;
+        auth.tokenUrl  = els.oauth2TokenUrl.value.trim();
+        auth.clientId  = els.oauth2ClientId.value.trim();
+        auth.scope     = els.oauth2Scope.value.trim();
+    }
+    return auth;
+}
+
 // Raw config (pre-interpolation) used for saving/history
 function buildRawConfig() {
     const bodyType = document.querySelector('input[name="bodyType"]:checked').value;
@@ -830,18 +846,9 @@ function buildRawConfig() {
         method:      els.method.value,
         queryParams: paramsListObj.getAll(),
         headers:     headersListObj.getAll(),
-        auth:        { type: els.authType.value },
+        auth:        _readRawAuthConfig(els.authType.value),
         bodyType,
     };
-    if (config.auth.type === 'bearer')   config.auth.token      = els.authToken.value;
-    if (config.auth.type === 'basic') {  config.auth.username   = els.authUsername.value; config.auth.password = els.authPassword.value; }
-    if (config.auth.type === 'api-key'){ config.auth.headerName = els.authApikeyHeader.value.trim(); config.auth.headerValue = els.authApikeyValue.value.trim(); }
-    if (config.auth.type === 'oauth2') {
-        config.auth.grantType    = els.oauth2Grant.value;
-        config.auth.tokenUrl     = els.oauth2TokenUrl.value.trim();
-        config.auth.clientId     = els.oauth2ClientId.value.trim();
-        config.auth.scope        = els.oauth2Scope.value.trim();
-    }
     if (bodyType === 'json'      && reqEditor)         config.body = reqEditor.getValue();
     if (bodyType === 'form-data')                      config.body = formDataListObj.getAll();
     if (bodyType === 'text')                           config.body = els.reqTextBody.value;
@@ -1056,24 +1063,27 @@ function renderCollections() {
     });
 }
 
+function _makeSvg(attrs, childTag, childAttrs) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    for (const [k, v] of Object.entries(attrs)) {
+        if (k === 'style') { el.style.cssText = v; } else { el.setAttribute(k, v); }
+    }
+    if (childTag) {
+        const ch = document.createElementNS('http://www.w3.org/2000/svg', childTag);
+        Object.entries(childAttrs).forEach(([k, v]) => ch.setAttribute(k, v));
+        el.appendChild(ch);
+    }
+    return el;
+}
+
 function createFolderElement(folderName, items) {
     const li = document.createElement('li');
     li.className = 'collection-folder';
 
     const header = document.createElement('div');
     header.className = 'folder-header';
-    const _svg = (attrs, childTag, childAttrs) => {
-        const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        Object.entries(attrs).forEach(([k, v]) => { if (k === 'style') { el.style.cssText = v; } else { el.setAttribute(k, v); } });
-        if (childTag) {
-            const ch = document.createElementNS('http://www.w3.org/2000/svg', childTag);
-            Object.entries(childAttrs).forEach(([k, v]) => ch.setAttribute(k, v));
-            el.appendChild(ch);
-        }
-        return el;
-    };
-    const arrowSvg = _svg({ class: 'folder-arrow', width: '10', height: '10', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linecap': 'round', 'aria-hidden': 'true' }, 'polyline', { points: '6 9 12 15 18 9' });
-    const folderSvg = _svg({ width: '12', height: '12', viewBox: '0 0 24 24', fill: 'currentColor', stroke: 'none', 'aria-hidden': 'true', style: 'color:var(--vio); opacity:0.7; flex-shrink:0;' }, 'path', { d: 'M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z' });
+    const arrowSvg = _makeSvg({ class: 'folder-arrow', width: '10', height: '10', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linecap': 'round', 'aria-hidden': 'true' }, 'polyline', { points: '6 9 12 15 18 9' });
+    const folderSvg = _makeSvg({ width: '12', height: '12', viewBox: '0 0 24 24', fill: 'currentColor', stroke: 'none', 'aria-hidden': 'true', style: 'color:var(--vio); opacity:0.7; flex-shrink:0;' }, 'path', { d: 'M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z' });
     const nameSpan = document.createElement('span');
     nameSpan.className = 'folder-name';
     nameSpan.textContent = folderName;
@@ -1591,12 +1601,12 @@ function buildSchemaExample(schema) {
     return '{}';
 }
 
-function typeDefault(t) { // NOSONAR — intentional: returns the JS default value for each JSON Schema type
+function typeDefault(t) {
     if (t === 'string')  return '';
     if (t === 'number' || t === 'integer') return 0;
     if (t === 'boolean') return false;
     if (t === 'array')   return [];
-    return null;
+    return {}; // object or unknown type — default to empty object
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
