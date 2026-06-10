@@ -17,6 +17,37 @@
  */
 'use strict';
 
+const MAX_SCRIPT_LENGTH = 50_000;
+const BLOCKED_SCRIPT_PATTERNS = [
+    /\bimportScripts\b/,
+    /\bself\.postMessage\b/,
+    /\bself\.onmessage\b/,
+    /\beval\s*\(/,
+    /\bFunction\s*\(/,
+    /\bnew\s+Function\b/,
+    /\bWebAssembly\b/,
+];
+
+function assertSafeScriptCode(code) {
+    if (typeof code !== 'string') {
+        throw new Error('Script must be a string.');
+    }
+    if (code.length > MAX_SCRIPT_LENGTH) {
+        throw new Error(`Script is too large (max ${MAX_SCRIPT_LENGTH} chars).`);
+    }
+    for (const pattern of BLOCKED_SCRIPT_PATTERNS) {
+        if (pattern.test(code)) {
+            throw new Error('Script contains disallowed constructs.');
+        }
+    }
+    return code;
+}
+
+function buildAsyncScriptBody(code) {
+    const safeCode = assertSafeScriptCode(code);
+    return `return (async()=>{\n${safeCode}\n})()`;
+}
+
 function jsonSafe(v) {
     try { return JSON.stringify(v); } catch { return String(v); }
 }
@@ -88,13 +119,15 @@ self.onmessage = async (e) => {
         if (kind === 'test') {
             const ds = makeDs(runtimeVars, envVars, mutations, { response });
             const test = (name, fn) => _runTestCase(results, logs, name, fn);
+            const scriptBody = buildAsyncScriptBody(code);
             // eslint-disable-next-line no-new-func
-            const fn = new Function('ds', 'test', 'expect', 'console', `return (async()=>{\n${code}\n})()`); // NOSONAR — the scripting sandbox itself; isolated worker, scoped CSP
+            const fn = new Function('ds', 'test', 'expect', 'console', scriptBody); // NOSONAR — the scripting sandbox itself; isolated worker, scoped CSP
             await fn(ds, test, expect, consoleObj); // NOSONAR
         } else {
             const ds = makeDs(runtimeVars, envVars, mutations);
+            const scriptBody = buildAsyncScriptBody(code);
             // eslint-disable-next-line no-new-func
-            const fn = new Function('ds', 'console', `return (async()=>{\n${code}\n})()`); // NOSONAR — the scripting sandbox itself; isolated worker, scoped CSP
+            const fn = new Function('ds', 'console', scriptBody); // NOSONAR — the scripting sandbox itself; isolated worker, scoped CSP
             await fn(ds, consoleObj); // NOSONAR
         }
     } catch (err) {
