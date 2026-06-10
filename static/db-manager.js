@@ -185,7 +185,11 @@ async function attemptUnlock() {
         toast('Access granted', 'success');
     } catch (e) {
         console.error(e);
-        errEl.textContent = 'Incorrect master password. Check the password and try again.';
+        // A wrong password makes CryptoJS throw "Malformed UTF-8 data" when
+        // decoding the verify blob; anything else is a network/server failure.
+        errEl.textContent = /malformed utf-8/i.test(e.message || '')
+            ? 'Incorrect master password. Check the password and try again.'
+            : 'Unable to unlock — network or server error. Try again later.';
         errEl.style.display = 'block';
     } finally {
         btn.disabled = false;
@@ -195,7 +199,7 @@ async function attemptUnlock() {
 
 // ── Load & render metadata ─────────────────────────────────────────────────────
 async function loadMeta() {
-    if (!_authenticated) return;
+    if (!_authenticated) return false;
     try {
         const r = await _authFetch('/api/db/meta');
         if (r.status === 401) {
@@ -203,15 +207,17 @@ async function loadMeta() {
             _authenticated = false;
             document.getElementById('lock-overlay').style.display = 'flex';
             toast('Session expired. Please unlock again.', 'warn');
-            return;
+            return false;
         }
         const data = await r.json();
         _meta = data;
         renderFileBanner(data);
         renderStores(data);
         updateEncryptionBadge(data.encrypted);
+        return true;
     } catch (err) {
         toast('Failed to load database info: ' + err.message, 'error');
+        return false;
     }
 }
 
@@ -402,8 +408,8 @@ async function doRefresh() {
     btn.disabled = true;
     const origText  = btn.textContent;
     btn.textContent = 'Refreshing…';
-    await loadMeta();
-    toast('Refreshed', 'success');
+    const ok = await loadMeta();
+    if (ok) toast('Refreshed', 'success');
     btn.disabled    = false;
     btn.textContent = origText;
 }

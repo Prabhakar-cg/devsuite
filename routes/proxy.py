@@ -49,6 +49,19 @@ def _filter_proxy_headers(headers: dict) -> dict:
     return {k: v for k, v in headers.items() if k.lower() not in _HOP_BY_HOP_HEADERS}
 
 
+def _collect_set_cookies(headers) -> list[str]:
+    """Every Set-Cookie header verbatim — ``dict(headers)`` collapses duplicates (SPEC §5.9).
+
+    The client-side cookie jar (SPEC §4.7.5) needs each cookie individually;
+    an API that sets a session cookie plus a CSRF cookie sends two Set-Cookie
+    headers, and only one would survive the dict() conversion.
+    """
+    try:
+        return headers.get_all("Set-Cookie") or []
+    except AttributeError:
+        return []
+
+
 class _SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
     """Re-validate every redirect hop so a public URL cannot 3xx into a private/reserved IP.
 
@@ -80,6 +93,7 @@ def _execute_proxy_request(request_obj) -> dict:
                 "proxy_response": True,
                 "status": resp.status,
                 "headers": dict(resp.headers),
+                "set_cookie": _collect_set_cookies(resp.headers),
                 "body": raw[:_MAX_PROXY_RESPONSE].decode("utf-8", errors="replace"),
                 "truncated": len(raw) > _MAX_PROXY_RESPONSE,
             }
@@ -88,7 +102,13 @@ def _execute_proxy_request(request_obj) -> dict:
             body = e.read(_MAX_PROXY_RESPONSE).decode("utf-8", errors="replace") if hasattr(e, "read") else ""
         except (OSError, ValueError):
             body = ""
-        return {"proxy_response": True, "status": e.code, "headers": dict(e.headers), "body": body}
+        return {
+            "proxy_response": True,
+            "status": e.code,
+            "headers": dict(e.headers),
+            "set_cookie": _collect_set_cookies(e.headers),
+            "body": body,
+        }
 
 
 def _resolve_target_ips(hostname: str, port: int | None, scheme: str) -> None:

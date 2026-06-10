@@ -1,6 +1,6 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.2.4  
+> **Version:** 0.3.0  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Single source of truth for spec-driven development. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.
 
@@ -18,7 +18,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.2.4` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md`, and `CHANGELOG.md`.
+`0.3.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md`, and `CHANGELOG.md`.
 
 ---
 
@@ -32,9 +32,9 @@ These are hard rules. No implementation may violate them.
 | **No CDN fonts** | Fonts are self-hosted in `/static/libs/fonts/`. Never import from `fonts.googleapis.com`. |
 | **No frameworks** | Vanilla HTML/CSS/JS only. No React, Vue, Svelte, Tailwind, or build tools. |
 | **No external DB** | All persistence via DevDB (`.dsb` binary). No SQLite, PostgreSQL, Redis, etc. |
-| **Self-hosted JS libs** | Third-party JS (crypto-js, xterm.js) served from `/static/`. Exception: Monaco Editor via RequireJS CDN only. |
+| **Self-hosted JS libs** | All third-party JS (crypto-js, xterm.js, RequireJS, Monaco Editor, and everything in `/static/libs/`) is served from `/static/`. No runtime CDN dependencies. |
 | **Client-side encryption only** | Vault and SSH profile blobs are encrypted in-browser. The backend is an opaque store — it never decrypts these. |
-| **CSP enforced** | HTTP security headers on every response. `unsafe-inline` is a known debt item (SEC-11) — do not add more inline scripts. `unsafe-eval` is **required** by the API Tester's pre-request/test scripting (`new Function()` in `api-tester.js`); removing it breaks that feature. Imported collections strip scripts on import (§4.7). |
+| **CSP enforced** | HTTP security headers on every response. `unsafe-inline` is a known debt item (SEC-11) — do not add more inline scripts. `unsafe-eval` is **absent from the document CSP** (closed as SEC-6 in v0.3.0): API Tester scripting runs inside a dedicated Web Worker (`static/script-sandbox-worker.js`) whose response carries its own scoped CSP permitting eval in that worker only (§4.7.1, §5.10). Do not reintroduce `unsafe-eval` on document responses. |
 
 ---
 
@@ -49,7 +49,7 @@ These are hard rules. No implementation may violate them.
 | Storage | DevDB — KeePass-style `.dsb` binary at `~/.devsuite/devdb.dsb` |
 | SSH/SFTP | `asyncssh` |
 | Terminal | xterm.js (self-hosted) |
-| Code Editor | Monaco Editor (RequireJS CDN) |
+| Code Editor | Monaco Editor (self-hosted via RequireJS, loaded from `/static/libs/vs`) |
 | Crypto (client) | CryptoJS v4.2.0 (self-hosted) |
 | Fonts | Inter + JetBrains Mono (self-hosted woff2) |
 
@@ -90,6 +90,10 @@ devsuite/
     ├── index.html / app.js            # Diff tool
     ├── json.html / yaml.html / regex.html / base64.html / crypto.html
     ├── api-tester.html / api-tester.js / api-tester.css / api-client.js
+    ├── script-sandbox-worker.js   # API Tester scripting sandbox (dedicated Worker, scoped CSP)
+    ├── curl-codegen.js            # cURL parse + cURL/fetch/HTTPie generation (pure, node-testable)
+    ├── cookie-jar.js              # Cookie parse/match/serialize logic (pure, node-testable)
+    ├── collection-utils.js        # Folder path rename/move/reorder logic (pure, node-testable)
     ├── ssh-manager.html / ssh-manager.js / ssh-manager.css
     ├── sftp-browser.html / sftp-browser.js / sftp-browser.css
     ├── xterm.js / xterm.css / xterm-addon-fit.js
@@ -99,7 +103,7 @@ devsuite/
     ├── file-converter.html
     └── libs/
         ├── fonts.css / fonts/   # Self-hosted Inter + JetBrains Mono (woff2)
-        ├── vs/                  # Monaco Editor (RequireJS CDN fallback only)
+        ├── vs/                  # Monaco Editor (self-hosted, loaded via RequireJS)
         ├── highlight.min.js
         ├── marked.min.js
         ├── papaparse.min.js
@@ -108,7 +112,7 @@ devsuite/
         └── require.min.js
 ```
 
-> **Note:** A Python backend test suite lives in `tests/python/` (run with `pytest`). Coverage currently focuses on the security-critical paths in §10.2; broader per-tool coverage remains a v1.0.0 milestone.
+> **Note:** A Python backend test suite lives in `tests/python/` (run with `pytest`). Coverage currently focuses on the security-critical paths in §10.2. A JavaScript unit suite for the pure modules (`curl-codegen.js`, `cookie-jar.js`, `collection-utils.js`) lives in `tests/javascript/` (run with `node tests/javascript/run.js`, zero dependencies). Browser/e2e coverage remains a v1.0.0 milestone.
 
 ### 3.3 HTML Serving Behavior
 
@@ -128,7 +132,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Regex Tester | `regex.html` | `linter.css` | `/regex` | — |
 | Base64 / JWT | `base64.html` | `linter.css` | `/base64` | — |
 | Crypto Suite | `crypto.html` | `linter.css`, `crypto-js.min.js` | `/crypto` | — |
-| API Tester | `api-tester.html` | `api-client.js`, `api-tester.js`, `api-tester.css` | `/api/proxy`, `/api/collections` | `collections` |
+| API Tester | `api-tester.html` | `api-client.js`, `api-tester.js`, `api-tester.css`, `script-sandbox-worker.js`, `curl-codegen.js`, `cookie-jar.js`, `collection-utils.js`, `libs/jszip.min.js` | `/api/proxy`, `/api/collections` | `collections` |
 | SSH Terminal | `ssh-manager.html` | `ssh-manager.js`, `ssh-manager.css`, `xterm.js` | `/api/ssh/*` WS, `/api/local/terminal` WS | `ssh_profiles` |
 | SFTP Browser | `sftp-browser.html` | `sftp-browser.js`, `sftp-browser.css` | `/api/sftp/*` | `ssh_profiles` |
 | Cron Visualizer | `cron.html` | `cron.js`, `cron.css` | `/cron` | — |
@@ -221,20 +225,71 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 **Behaviors:**
 - REST client supporting: GET, POST, PUT, DELETE, PATCH.
 - Custom headers and body.
-- Request Collections with folder organization — persisted in DevDB `collections`.
+- Request Collections with nested folder organization (§4.7.4) — persisted in DevDB `collections`.
 - Environment import from the Environment Manager modal — auto-detects format:
   - **DevSuite native** — `[{id, name, vars: {key: value}}]` array.
   - **Postman environment** — detected via `_postman_variable_scope: "environment"` or `{name, values: [{key, value, enabled}]}`. Disabled variables are skipped. Existing environments with the same name are replaced in-place.
-- Collection import auto-detects format from the uploaded JSON file:
+- Collection import auto-detects format from the uploaded file (`.json` or `.zip`, §4.7.6):
   - **DevSuite native** — `{ items: [...] }` (scripts stripped on import for safety).
-  - **Postman v2.x** — detected via `info.schema` containing `getpostman.com`. Nested folders are flattened to a single folder level. Parses URL, query params, headers, body (raw/JSON/text/form-data/GraphQL), and auth (bearer, basic, API key). Compatible with Postman exports and Bruno "Export as Postman" collections.
-- Collection export as DevSuite native JSON.
+  - **Postman v2.x** — detected via `info.schema` containing `getpostman.com`. Nested folders are preserved as `/`-separated folder paths (§4.7.4); `/` inside a single Postman folder name is replaced with `-` so it cannot act as a path separator. Parses URL, query params, headers, body (raw/JSON/text/form-data/GraphQL), and auth (bearer, basic, API key). Compatible with Postman exports and Bruno "Export as Postman" collections.
+- Collection export as DevSuite native JSON, or as a git-friendly zip (§4.7.6).
 - OpenAPI 3.x / Swagger 2.x JSON import — each path×method becomes a collection request.
 - Local CORS Proxy (`/api/proxy`) to bypass browser CORS restrictions (targets any host reachable from the DevSuite server, including LAN addresses; loopback and cloud-metadata/link-local addresses are blocked server-side).
-- **Smart CORS routing** (implemented in `ApiClient.execute`): cross-origin requests that will definitely trigger a CORS preflight (non-GET/HEAD/POST method, `Authorization` header, `Content-Type: application/json`, or any non-safelisted header) are routed through the proxy immediately — the doomed direct attempt is skipped entirely. Simple requests (bare GET/HEAD, form POST, no custom headers) are tried directly first; on failure they fall back to the proxy.
+- **Smart CORS routing** (implemented in `ApiClient.execute`): cross-origin requests that will definitely trigger a CORS preflight (non-GET/HEAD/POST method, `Authorization` header, `Content-Type: application/json`, or any non-safelisted header) are routed through the proxy immediately — the doomed direct attempt is skipped entirely. Simple requests (bare GET/HEAD, form POST, no custom headers) are tried directly first; on failure they fall back to the proxy. (Note: the document CSP's `connect-src 'self'` currently blocks the direct cross-origin attempt as well, so in practice the fallback always routes through the proxy — tracked as an open design decision, see §13 backlog.)
 - Frontend uses 8-hour session auth via `auth-guard.js`. Both `/api/collections` endpoints also call `require_unlocked` server-side — the backend enforces auth, not just the frontend.
 
 **Network notice:** The CORS proxy initiates outbound connections to the target host. This tool is not strictly offline.
+
+#### 4.7.1 Script sandbox (Web Worker)
+
+- Pre-request and test scripts execute inside a **dedicated Web Worker** (`static/script-sandbox-worker.js`), never on the main thread, and never via `new Function()` in the document context.
+- The worker has **no DOM, no cookies, and no network**: its response is served with a scoped CSP (`default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'`) while document responses carry **no `unsafe-eval`** (§5.10).
+- Script API inside the sandbox: `ds.setVar/getVar/setEnvVar/getEnvVar`, `console.log/info/warn/error`, and (tests only) `test(name, fn)`, `expect(val)` chain (`equal`, `include`, `property`, `status`, `ok`, `above`, `below`, `a`), `ds.response` (`status`, `statusText`, `headers`, `body`, `bodyText`, `timeMs`).
+- Variable writes are recorded as mutations in the worker and applied by the main thread after the script completes (`runtimeVars` and active-environment vars).
+- Top-level `await` is supported (script body is wrapped in an async function).
+- **Timeout:** scripts that run longer than 10 seconds are terminated (worker is killed and lazily recreated); the console reports the timeout. A hung script can no longer freeze the UI.
+
+#### 4.7.2 Collection runner
+
+- Run **all requests in a folder** (including its subfolders) or **the entire collection**, sequentially, in sidebar display order.
+- Per request: pre-request script → request (cookie jar applied, §4.7.5) → test script. Results render in the runner modal as rows: method, name, status code, duration, tests passed/failed.
+- `runtimeVars` persist **across the whole run** (unlike single Send, which resets them) — `ds.setVar` in one request's script is visible to later requests, enabling request chaining.
+- Summary footer: total requests, passed/failed test counts, total wall time.
+- **Stop** halts the run after the in-flight request completes.
+- Items using OAuth2 auth reuse the cached token if one was fetched; otherwise they run without auth (the runner never opens interactive prompts).
+
+#### 4.7.3 cURL import & code generation
+
+- **Code modal** generates, from the *resolved* current request (variables interpolated, auth applied): `cURL`, JavaScript `fetch`, and `HTTPie` snippets, each with a copy button.
+- **Paste cURL** imports a curl command line into the editor: method (`-X`), headers (`-H`), body (`-d`/`--data*`, `-F`), basic auth (`-u`), cookies (`-b`), URL query strings (split into the Params tab), `-G` query conversion. Unsupported flags are ignored; multi-line commands with `\` or `` ` `` continuations are accepted.
+- Implemented in `static/curl-codegen.js` — a pure module with no DOM dependencies, unit-tested in `tests/javascript/`.
+
+#### 4.7.4 Nested folders & sidebar management
+
+- `item.folder` is a `/`-separated **path** (e.g. `"payments/v2/refunds"`). Legacy single-segment values remain valid paths — no migration required.
+- The sidebar renders folders as a collapsible tree; folder header counts include all nested requests.
+- "Save Request" accepts `folder/subfolder/Name` — the **last** `/` separates the request name from its folder path.
+- **Folder auth inheritance**: `folderAuths` is keyed by full folder path. A request with auth `inherit` walks **up** its folder path and uses the nearest ancestor folder with a configured auth; the Auth tab's inherit panel names the ancestor that will apply.
+- **Request management** (context menu on each request row): Rename · Duplicate (deep copy inserted after the original, name suffixed `(copy)`) · Move to folder… (prompt; empty input moves to top level) · Delete (confirm required).
+- **Folder management** (context menu on each folder header): Rename folder — cascades the path-prefix change to all descendant requests **and** `folderAuths` keys; renaming onto an existing path merges into it. Delete folder — removes the folder, all nested requests, and their folder auth entries (confirm shows the request count).
+- **Drag & drop**: request rows are draggable. Drop on another request inserts before it (adopting its folder); drop on a folder header appends to that folder; drop on empty sidebar space moves to top level. Folders themselves are not draggable (move their requests, or rename the path).
+- Path/move/reorder logic lives in `static/collection-utils.js` — a pure module, unit-tested in `tests/javascript/`.
+
+#### 4.7.5 Cookie jar
+
+- Session-scoped, **in-memory only** — cookies are never persisted to DevDB, `localStorage`, or disk, and are gone on page reload.
+- Captures `Set-Cookie` headers from **proxied** responses (`set_cookie` list in the proxy response, §5.9). Direct (non-proxied) responses are cookie-managed by the browser itself and are not captured.
+- Before each request (Send and runner), matching cookies (domain suffix match, path prefix match, not expired, `Secure` only over https) are attached as a `Cookie` header — unless the request already sets one manually.
+- Cookies modal: list by domain (name, value, path, expiry), delete one, clear all.
+- Implemented in `static/cookie-jar.js` — a pure module, unit-tested in `tests/javascript/`.
+
+#### 4.7.6 Git-friendly zip export / import
+
+- **Export as zip**: one pretty-printed JSON file per request, directory tree mirroring the folder paths, plus a `collection.meta.json` manifest (`{format: "devsuite-collection-zip", version: 1, exportedAt}`). Built client-side with the vendored JSZip.
+- File names are the request names sanitized for filesystem safety (`/ \ : * ? " < > |` and control chars replaced with `-`); collisions get a numeric suffix.
+- **Folder auth configs are intentionally NOT exported** — they may contain tokens/passwords and the zip is designed to be committed to git.
+- **Import**: the existing collection-import button accepts `.zip`; each `*.json` entry (manifest excluded) becomes a request whose folder path is the file's directory path. Scripts in imported files are stripped by default; the user is offered a confirm to keep them (they execute only inside the sandbox worker, §4.7.1).
+- Export → import round-trips the collection (scripts included when the user opts in).
 
 ---
 
@@ -413,16 +468,20 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 
 **Security:** The proxy is **not** allowlist-based — it accepts any host reachable from the DevSuite server, including LAN/private-range addresses (e.g. `10.x.x.x`, `192.168.x.x`). DevSuite is a loopback-only local tool; testing LAN APIs through the proxy is a first-class use case. SSRF protection still blocks requests that resolve to loopback (`127.x.x.x`), link-local (`169.254.x.x` — cloud metadata), multicast, or IANA-reserved IP addresses (HTTP 403). Only `http` and `https` schemes are allowed. The URL is reconstructed from validated components before dispatch to prevent taint-flow from raw user input. **Redirects are followed only after re-validating each hop's resolved IP and scheme, so a remote host cannot 3xx into a loopback or cloud-metadata address.** Responses are capped at 10 MB. Timeout: 15 s.
 
+**Response shape:** `{proxy_response: true, status, headers, set_cookie, body, truncated?}`. `headers` is a plain dict (duplicate header names collapse); `set_cookie` is a **list** carrying every `Set-Cookie` header verbatim so the client-side cookie jar (§4.7.5) sees all of them.
+
 ### 5.10 HTTP Security Headers (every response)
 
 ```
 X-Frame-Options: DENY
 X-Content-Type-Options: nosniff
-X-XSS-Protection: 1; mode=block
+X-XSS-Protection: 0
 Referrer-Policy: strict-origin-when-cross-origin
 Content-Security-Policy: (see main.py — unsafe-inline is known debt, tracked as SEC-11)
 Strict-Transport-Security: (when served over HTTPS)
 ```
+
+**CSP split (SEC-6, v0.3.0):** document responses carry `script-src` **without** `unsafe-eval`. The single exception is `/static/script-sandbox-worker.js`, whose response carries its own locked-down policy — `default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'` — so user-authored API Tester scripts can be evaluated inside that worker and nowhere else, with no DOM, cookie, or network reach.
 
 ---
 
@@ -553,12 +612,12 @@ DevDB.getMeta()           // GET /api/db/meta
 
 | ID | Issue | Priority |
 |---|---|---|
-| SEC-11 | CSP nonces to replace `unsafe-inline`. Note: `unsafe-eval` is a hard dependency of the API Tester scripting feature (`new Function()`); it can only be dropped if that feature is removed or sandboxed in a Worker. | P2 |
+| SEC-11 | CSP nonces to replace `unsafe-inline`. (`unsafe-eval` was removed from document responses in v0.3.0 — SEC-6 — by sandboxing API Tester scripting in a Web Worker with its own scoped CSP; only `unsafe-inline` remains.) | P2 |
 | ~~SEC-14~~ | ~~WebSocket endpoints not session-gated.~~ **✅ Resolved (v0.2.4):** `_ws_require_session` enforces a valid `ds_session` cookie on all three WS endpoints once a master password is configured (see §5.8). | — |
 | SEC-12 | Localhost HTTPS (self-signed cert on first run) | P3 |
 | SEC-13 | Argon2id KDF to replace PBKDF2 | P3 |
 | SEC-3 | Explicit CORS allowlist (`localhost`, `127.0.0.1`) | XS |
-| SEC-5 | SRI hashes for CDN-loaded scripts | XS |
+| ~~SEC-5~~ | ~~SRI hashes for CDN-loaded scripts~~ — **obsolete**: all scripts are self-hosted under `/static/`; there are no CDN-loaded scripts to hash. | — |
 | SONAR | `main.py:1322,1327` — `secure=True` on cookies (S2092) | Minor |
 
 ---
@@ -693,12 +752,12 @@ Themes driven by `theme.js`. Custom event `devsuite-theme-changed` fires on togg
 
 ### 10.1 Test Suites
 
-> **Status:** The Python backend suite exists in `tests/python/` (`pytest`) and covers the §10.2 security-critical paths. A JavaScript suite is still a v1.0.0 deliverable.
+> **Status:** The Python backend suite exists in `tests/python/` (`pytest`) and covers the §10.2 security-critical paths. A zero-dependency JavaScript unit suite exists in `tests/javascript/` for the pure modules (`curl-codegen.js`, `cookie-jar.js`, `collection-utils.js`); browser/e2e coverage (Playwright) is still a v1.0.0 deliverable.
 
 | Suite | Location | Command |
 |---|---|---|
 | Python backend | `tests/python/` | `pytest tests/python/` |
-| JavaScript | `tests/javascript/` (planned) | `node tests/javascript/run.js` |
+| JavaScript (pure modules) | `tests/javascript/` | `node tests/javascript/run.js` |
 
 ### 10.2 Required Coverage (Security-Critical Paths)
 
@@ -711,6 +770,8 @@ These paths must have automated tests. Adding or changing any of them requires a
 - SSRF proxy block: loopback/link-local/reserved addresses → HTTP 403; LAN ranges allowed.
 - Session token hashing: raw token not present in `_sessions` dict.
 - WebSocket session gate: when a master password is configured, a session-less WS connect is closed (1008); a valid `ds_session` is accepted; connects before setup are allowed.
+- CSP split: document/page responses contain no `unsafe-eval`; the `/static/script-sandbox-worker.js` response carries the scoped worker CSP (`unsafe-eval` present, `connect-src 'none'`).
+- Proxy `Set-Cookie` passthrough: duplicate `Set-Cookie` headers are preserved in the `set_cookie` list of the proxy response.
 
 ### 10.3 Static Analysis
 
@@ -806,7 +867,37 @@ Follows Semantic Versioning. Each release section includes: Security · Frontend
 
 ## 13. Planned Roadmap
 
-### v0.3.0 — UX Foundation
+> **Strategic focus (decided 2026-06-10):** the API Tester is DevSuite's flagship — the one tool where the offline-first mission meets a proven market wedge (Bruno/Postman). Releases prioritize making it a daily driver before adding new commodity tools.
+
+### v0.3.0 — API Tester: Daily Driver ✅ (this release)
+
+- Script sandbox: pre-request/test scripts run in a dedicated Web Worker; `unsafe-eval` removed from the document CSP (closes SEC-6; SEC-7 partially — scripting isolated, with a 10 s timeout so scripts can't freeze the UI).
+- Collection runner: run a folder or the whole collection sequentially; per-request test results, pass/fail summary, stop button; runtime vars persist across the run for request chaining.
+- cURL import ("paste cURL") + code generation (copy as cURL / fetch / HTTPie).
+- Nested folders: `/`-separated folder paths; Postman import preserves hierarchy; folder auth inherits down the path.
+- Cookie jar: session-scoped, in-memory; captures `Set-Cookie` from proxied responses, auto-attaches matching cookies; Cookies manager modal.
+- Git-friendly export: collection as zip, one JSON file per request, folder tree mirrored (JSZip); zip import round-trips.
+- Sidebar management: rename/duplicate/move/delete requests, rename/delete folders (path cascade), drag-to-reorder and drag-into-folder (§4.7.4).
+- JS unit test suite bootstrap (`tests/javascript/run.js`, node, zero dependencies).
+
+### v0.3.x — API Tester follow-ups (Bruno gap-closure, in priority order)
+
+1. ~~Sidebar request management~~ ✅ shipped in v0.3.0 (§4.7.4): rename/duplicate/move/delete requests, rename/delete folders, drag-to-reorder and drag-into-folder.
+2. **"Honest proxy" slice** — per-request options: skip TLS verification (self-signed local APIs), timeout, redirect follow toggle; **multipart file upload** (proxy currently urlencodes form data only); **binary-safe responses** (base64 proxy mode, download-response button, image preview — today non-UTF-8 bodies are mangled by `errors="replace"`).
+3. **OAuth2 authorization-code + PKCE** — the missing grant for real-world providers (Auth0/Keycloak/Azure AD); needs a popup/redirect-capture flow.
+4. **CLI runner** — `python -m devsuite run <collection.zip> --env <name> --report junit.xml`; reuses runner semantics, makes the git-friendly zip a CI interchange format (Bruno's `bru run` equivalent).
+5. **Declarative assertions** — no-code assert rows (field / operator / value) compiled onto the existing sandbox `expect` engine.
+6. **Variable scopes** — collection- and folder-level variables (and folder-level cascading scripts), extending the folder-auth inheritance pattern.
+7. Masked environment secrets (`secret` flag per variable; masked in UI), later backed by the Secret Vault (cross-tool synergy — local equivalent of Postman's paid secret masking).
+8. **WebSocket tester** — browsers don't enforce CORS on WS, so this is mostly frontend; no proxy needed. (gRPC explicitly out of scope.)
+9. Cheap parity wins: Insomnia import · more code-gen targets (Python `requests`, axios, Go) · markdown docs field per request · collection-level default auth.
+10. Decide `connect-src` policy: keep `'self'` (all cross-origin traffic via proxy — current behavior) vs. relax to `http: https:` to enable the direct-first path in §4.7. Document the chosen trade-off.
+11. Response niceties: saved example responses, large-response handling.
+12. HTTP Mock Server (FEAT-5) — pairs with the runner; Postman's mocks are cloud-only, a local mock server is on-brand.
+
+> **Deliberate non-goals vs Bruno:** live file-based collections (conflicts with the DevDB-only constraint in §2 — the zip export + CLI runner cover the git/CI workflow instead) and gRPC (effort/value off-balance for a local suite).
+
+### v0.4.0 — UX Foundation
 
 - Persistent back-to-tools nav header on all tool pages.
 - Empty state screens for all tools (CSS `::before` placeholder).
@@ -816,14 +907,13 @@ Follows Semantic Versioning. Each release section includes: Security · Frontend
 - Recent + Pinned tools section on tools page.
 - Actionable error messages (what / why / how to fix).
 
-### v0.4.0 — Power User
+### v0.5.0 — Power User
 
 - Global command palette (`Ctrl+K`) with fuzzy search across all tools.
 - Loading / progress states for slow operations (file converter, SSH connect).
 - In-tool input history (last 5 inputs, auto-save to `localStorage`).
 - JWT Debugger: full decode + verify (HS256/RS256).
 - Cron Visualizer: real-time next-run countdown.
-- `Copy as cURL / fetch / HTTPie` in API Tester.
 - Vault clipboard auto-clear (30-second countdown).
 
 ### v1.0.0 — Production Ready
@@ -893,4 +983,4 @@ Follows Semantic Versioning. Each release section includes: Security · Frontend
 
 ---
 
-*This spec reflects DevSuite v0.2.4. Update before implementing any new feature or changing existing behavior.*
+*This spec reflects DevSuite v0.3.0. Update before implementing any new feature or changing existing behavior.*

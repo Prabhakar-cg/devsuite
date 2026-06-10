@@ -111,7 +111,7 @@ class ApiClient {
         if (!['GET', 'HEAD', 'POST'].includes(method.toUpperCase())) return true;
 
         const SAFELISTED = new Set([
-            'accept', 'accept-language', 'content-language', 'content-type', 'range',
+            'accept', 'accept-language', 'content-language', 'content-type',
         ]);
         for (const [key] of headers.entries()) {
             if (!SAFELISTED.has(key.toLowerCase())) return true;
@@ -161,6 +161,7 @@ class ApiClient {
                 status: proxyWrapper.status,
                 statusText: this._httpReasonPhrase(proxyWrapper.status),
                 headers: proxyWrapper.headers || {},
+                setCookies: proxyWrapper.set_cookie || [],
                 bodyText: proxyWrapper.body || '',
                 body: (() => { try { return JSON.parse(proxyWrapper.body); } catch { return null; } })(),
                 timeMs: timeMs,
@@ -202,6 +203,9 @@ class ApiClient {
             status: response.status,
             statusText: response.statusText,
             headers: responseHeaders,
+            // Direct responses: Set-Cookie is managed by the browser and not
+            // exposed to fetch; only proxied responses feed the cookie jar.
+            setCookies: [],
             body: responseJson,
             bodyText: bodyText,
             timeMs: timeMs,
@@ -294,6 +298,7 @@ class ApiClient {
                 status: 0,
                 statusText: 'Network Error',
                 headers: {},
+                setCookies: [],
                 body: null,
                 bodyText: error.message
                     + '\n\n(Status 0 — the target host may be unreachable, or the proxy could not connect.)',

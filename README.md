@@ -1,6 +1,6 @@
 # DevSuite — Developer Tools from Hell
 
-![Version](https://img.shields.io/badge/version-0.2.4-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 [![CodeQL](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml)
 [![Tests](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
@@ -50,9 +50,16 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - Navigate all panels via tab buttons; all operations are fully offline.
 
 ### 7. Local API Tester
-- **Local-first REST client** — a high-speed REST client for testing endpoints.
-- **Request Engine** — supports GET, POST, PUT, DELETE, PATCH, custom headers, and body.
-- **Local CORS Proxy** — built-in FastAPI proxy to bypass browser CORS restrictions.
+- **Local-first REST client** — a high-speed REST client for testing endpoints. No account, no cloud sync, no telemetry.
+- **Request Engine** — GET, POST, PUT, DELETE, PATCH, custom headers, JSON / form / text / GraphQL bodies, OAuth2.
+- **Collection Runner** — run a folder or the whole collection sequentially with per-request test results and a pass/fail summary; runtime variables persist across the run for request chaining.
+- **Sandboxed scripting** — pre-request and test scripts execute in a dedicated Web Worker with no page, cookie, or network access (and `unsafe-eval` removed from the page CSP).
+- **cURL in & out** — paste a curl command to import it; copy any request as cURL, fetch, or HTTPie.
+- **Nested folders** — `/`-separated folder paths with auth inheritance down the tree; Postman imports keep their hierarchy.
+- **Cookie jar** — session-scoped, in-memory; captures Set-Cookie from proxied responses and attaches matching cookies automatically.
+- **Git-friendly export** — export the collection as a zip with one JSON file per request (folder tree mirrored), ready to commit; zip import round-trips.
+- **Imports** — Postman v2.x collections & environments, OpenAPI 3.x / Swagger 2.x, DevSuite JSON/zip.
+- **Local CORS Proxy** — built-in FastAPI proxy to bypass browser CORS restrictions (SSRF-guarded).
 - **Persistent Collections** — saved in DevDB (`collections` store).
 
 ### 8. Secure Terminal & SFTP

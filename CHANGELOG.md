@@ -9,6 +9,81 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.3.0] — 2026-06-10 (API Tester: Daily Driver)
+
+Strategic release: the API Tester is now DevSuite's flagship (SPEC §13). Seven new capabilities close the daily-driver gap against Bruno/Postman, and the work doubles as a security release — the scripting engine moved into an isolated Web Worker, removing `unsafe-eval` from every document response (SEC-6 closed, SEC-7 partial).
+
+### Security
+
+#### Script sandbox — `unsafe-eval` removed from the document CSP (SEC-6 / SEC-7) (`main.py`, `static/script-sandbox-worker.js`, `static/api-tester.js`)
+- Pre-request/test scripts no longer execute via `new Function()` on the page. They run inside a dedicated Web Worker with **no DOM, no cookies, and no network** — the worker's response carries its own scoped CSP (`default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'`), applied by a path check in the security-headers middleware.
+- Document responses now carry `script-src` **without** `unsafe-eval` (was a hard CSP debt since the scripting feature shipped).
+- Scripts that run longer than 10 s are terminated (worker killed and lazily recreated) — a hung script can no longer freeze the tab.
+- Variable writes (`ds.setVar` / `ds.setEnvVar`) are returned as mutations and applied by the main thread after completion.
+- New tests: `tests/python/test_csp.py` (document vs. worker CSP split, security headers).
+
+#### Proxy `Set-Cookie` passthrough (`routes/proxy.py`)
+- `dict(resp.headers)` collapses duplicate headers, so multi-cookie responses (session + CSRF) lost cookies. The proxy response now includes a `set_cookie` list with every `Set-Cookie` header verbatim (SPEC §5.9). New tests: `tests/python/test_proxy_cookies.py`.
+
+#### `Referrer-Policy` header now actually sent (`main.py`)
+- SPEC §5.10 listed `Referrer-Policy: strict-origin-when-cross-origin` but the middleware never set it. Now sent on every response. (SPEC §5.10's `X-XSS-Protection` line also corrected to the `0` the code has sent since v0.2.2.)
+
+### Features
+
+#### Collection runner (SPEC §4.7.2)
+- Run a folder (including subfolders) or the entire collection sequentially, in sidebar order. Per-request rows show method, name, status, duration, and test pass counts; footer summarizes totals and wall time. **Stop** halts after the in-flight request.
+- `runtimeVars` persist across the whole run — `ds.setVar` in one request is visible to the next (request chaining). Single Send still resets them.
+- Saved requests execute without touching the form (`buildConfigFromItem` mirrors the Send pipeline, including folder-auth inheritance and the cookie jar).
+
+#### cURL import + code generation (SPEC §4.7.3, `static/curl-codegen.js`)
+- New **Code** button: copy the resolved current request (variables interpolated, auth applied) as **cURL**, **fetch**, or **HTTPie**.
+- **Paste cURL** imports a curl command into the editor — method, headers, `-d/--data*` bodies, `-F` forms, `-u` basic auth, `-b` cookies, `-G` query conversion, URL query strings, multi-line `\` / `` ` `` continuations. Unsupported flags are ignored.
+
+#### Nested folders (SPEC §4.7.4)
+- `item.folder` is now a `/`-separated path; the sidebar renders a collapsible tree (counts include nested requests). Legacy single-level folders remain valid — no migration.
+- "Save Request" accepts `folder/subfolder/Name` (last `/` separates the name).
+- **Postman import preserves folder hierarchy** (previously flattened to one level).
+- Folder auth is keyed by full path; requests with `inherit` walk **up** the path to the nearest configured ancestor, and the Auth tab names which folder will apply.
+- Per-folder **run** button added next to the folder-auth lock.
+
+#### Cookie jar (SPEC §4.7.5, `static/cookie-jar.js`)
+- Session-scoped, in-memory jar (never persisted). Captures `Set-Cookie` from proxied responses; attaches matching cookies (RFC 6265 domain/path/expiry/Secure matching) to Send and runner requests unless a manual `Cookie` header is set.
+- New **Cookies** modal: grouped by domain, per-cookie delete, clear all; header badge shows the live count.
+
+#### Git-friendly zip export / import (SPEC §4.7.6)
+- Export the collection as a zip with one pretty-printed JSON file per request, directories mirroring folder paths, plus a `collection.meta.json` manifest — built client-side with the already-vendored JSZip. Folder auth configs are deliberately **not** exported (they can contain secrets; the zip is meant for git).
+- The import button now also accepts `.zip` and round-trips the export. Scripts found in imported files are stripped by default with an opt-in confirm to keep them (they only run inside the sandbox worker).
+
+#### Sidebar request & folder management (SPEC §4.7.4)
+- Context menu per request row: **Rename · Duplicate · Move to folder… · Delete** (delete is now confirm-guarded; replaces the bare one-click ✕ button).
+- Context menu per folder header: **Rename folder** — the path-prefix change cascades to all descendant requests and `folderAuths` keys (renaming onto an existing path merges) — and **Delete folder**, with the nested request count shown in the confirm.
+- **Drag & drop**: drop a request on another request to insert before it (adopting its folder), on a folder header to file it there, or on empty sidebar space to move it to top level. Folders themselves are not draggable.
+- Reorder/rename/delete logic lives in `static/collection-utils.js` (pure module, browser/node dual export).
+
+### Bug Fixes
+
+#### JSZip load order killed the entire API Tester page
+- `jszip.min.js` (UMD) was initially added *after* `require.min.js`; with `define.amd` present, JSZip registered as an anonymous AMD module instead of setting `window.JSZip`, and RequireJS threw "Mismatched anonymous define()" on the page's first `require()` call — aborting `api-tester.js` before any event listener attached (every button and tab dead). JSZip now loads before RequireJS, matching the existing `index.html` ordering.
+- Regression guard added: `tests/python/test_asset_order.py` asserts UMD-before-RequireJS script order on `/api-tester` and `/diff`.
+
+### Frontend
+- API Tester header: **Cookies** button with count badge; request bar: **Code** button; sidebar: run-all and zip-export icon buttons (stroke SVG, per design system).
+- Script tab labels now state that scripts are sandboxed (no page or network access).
+- Inherit-auth helper text de-emoji'd (DX-9) and now names the ancestor folder providing auth.
+- Tool version chip bumped to V3.0.
+
+### Internal / Code Quality
+- **JS unit test suite bootstrapped** (`tests/javascript/run.js`, zero dependencies, node) — 41 tests covering `curl-codegen.js`, `cookie-jar.js`, and `collection-utils.js`. These modules use a browser/node dual export and contain no DOM access.
+- `escHtml()` dead code removed from `api-tester.js`.
+- Backend suite grown from 31 to 39 tests.
+
+### Documentation
+- `SPEC.md`: §4.7 expanded with §4.7.1–§4.7.6 behavioral specs; §5.9 proxy response shape; §5.10 CSP split; §13 roadmap reframed — v0.3.0 is "API Tester: Daily Driver", UX Foundation moved to v0.4.0, Power User to v0.5.0, new v0.3.x follow-ups section (masked env secrets, `connect-src` decision, mock server).
+- `CLAUDE.md`: gotchas updated (CSP split, in-memory cookie jar); JS test suite documented.
+- Known limitation documented in SPEC §4.7: the document CSP's `connect-src 'self'` blocks the direct cross-origin attempt of "smart CORS routing", so cross-origin requests effectively always use the proxy. Resolving this (relax CSP vs. simplify the client) is an explicit v0.3.x decision item.
+
+---
+
 ## [0.2.4] — 2026-06-10 (maintenance: decommission URL shortener, close WS auth gap, DX)
 
 Follow-up to the 2026-06-06/06-10 reviews (`claudefeedback.md §12`). One tool removed, the last open security item closed, and several developer-experience and documentation-accuracy fixes.

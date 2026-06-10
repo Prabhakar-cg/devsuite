@@ -100,6 +100,29 @@ app.add_middleware(SlowAPIMiddleware)
 
 # ─── Security-headers middleware ──────────────────────────────────────────────
 
+# Document policy: no unsafe-eval (SEC-6, closed v0.3.0). unsafe-inline remains
+# tracked as SEC-11. blob: in script-src / worker-src is required by Monaco.
+_DOCUMENT_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' blob:; "
+    "worker-src 'self' blob:; "
+    "style-src 'self' 'unsafe-inline'; "
+    "font-src 'self'; "
+    "img-src 'self' data:; "
+    "connect-src 'self';"
+)
+
+# Scoped policy for the API Tester scripting sandbox (SPEC §4.7.1 / §5.10):
+# a dedicated worker's CSP comes from its own response headers, so eval is
+# permitted ONLY inside this worker — which also has no DOM and no network.
+_SANDBOX_WORKER_PATH = "/static/script-sandbox-worker.js"
+_SANDBOX_WORKER_CSP = (
+    "default-src 'none'; "
+    "script-src 'self' 'unsafe-eval'; "
+    "connect-src 'none';"
+)
+
+
 @app.middleware("http")
 async def add_security_headers(request, call_next):
     """Attach a standard set of HTTP security headers to every outgoing response."""
@@ -108,16 +131,11 @@ async def add_security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     # X-XSS-Protection is deprecated; set to "0" to avoid legacy browser quirks.
     response.headers["X-XSS-Protection"] = "0"
-    csp = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; "
-        "worker-src 'self' blob:; "
-        "style-src 'self' 'unsafe-inline'; "
-        "font-src 'self'; "
-        "img-src 'self' data:; "
-        "connect-src 'self';"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    is_sandbox_worker = request.url.path == _SANDBOX_WORKER_PATH
+    response.headers["Content-Security-Policy"] = (
+        _SANDBOX_WORKER_CSP if is_sandbox_worker else _DOCUMENT_CSP
     )
-    response.headers["Content-Security-Policy"] = csp
     return response
 
 
