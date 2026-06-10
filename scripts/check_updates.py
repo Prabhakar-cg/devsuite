@@ -34,7 +34,6 @@ VENDORED_JS = [
     ("static/xterm.js",              "xterm",          "lib/xterm.js",           None),
     ("static/xterm-addon-fit.js",    "xterm-addon-fit","lib/xterm-addon-fit.js", None),
     ("static/crypto-js.min.js",      "crypto-js",      "crypto-js.min.js",       None),
-    ("static/bwip-js-min.js",        "bwip-js",        "bwip-js-min.js",         None),
     # highlight.js npm package no longer ships the minified build — use cdnjs
     ("static/libs/highlight.min.js", "highlight.js",   None,
      "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/{version}/highlight.min.js"),

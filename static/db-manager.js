@@ -5,13 +5,27 @@
    ================================================================ */
 'use strict';
 
+// ── Inline SVG icons (stroke-based, design-system compliant — no emoji) ──────────
+// Static, author-controlled markup only; never interpolated with user data.
+const _SVG_BASE = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+const ICON_LOCK     = `<svg ${_SVG_BASE}><rect x="3" y="11" width="18" height="11" rx="2"/>` +
+                      `<path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+const ICON_BRACES   = `<svg ${_SVG_BASE}><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/>` +
+                      `<path d="M16 21h1a2 2 0 0 0 2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></svg>`;
+const ICON_TERMINAL = `<svg ${_SVG_BASE}><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg>`;
+const ICON_SLIDERS  = `<svg ${_SVG_BASE}><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>` +
+                      `<line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>` +
+                      `<line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>` +
+                      `<line x1="2" y1="14" x2="6" y2="14"/><line x1="10" y1="8" x2="14" y2="8"/>` +
+                      `<line x1="18" y1="16" x2="22" y2="16"/></svg>`;
+
 // ── Store metadata ────────────────────────────────────────────────────────────
 const STORE_META = {
-    vault:        { icon: '🔐', label: 'Secret Vault',    locked: true,  desc: 'AES-256-GCM encrypted secrets' },
-    collections:  { icon: '📡', label: 'API Collections', locked: false, desc: 'API Tester saved collections' },
-    ssh_profiles: { icon: '🖥️', label: 'SSH Profiles',   locked: true,  desc: 'Encrypted SSH session profiles' },
-    url_db:       { icon: '🔗', label: 'URL Shortener',   locked: false, desc: 'Short URL mappings' },
-    app_prefs:    { icon: '⚙️', label: 'App Preferences', locked: false, desc: 'Global DevSuite settings' },
+    vault:        { icon: ICON_LOCK,     label: 'Secret Vault',    locked: true,  desc: 'AES-256-GCM encrypted secrets' },
+    collections:  { icon: ICON_BRACES,   label: 'API Collections', locked: false, desc: 'API Tester saved collections' },
+    ssh_profiles: { icon: ICON_TERMINAL, label: 'SSH Profiles',    locked: true,  desc: 'Encrypted SSH session profiles' },
+    app_prefs:    { icon: ICON_SLIDERS,  label: 'App Preferences', locked: false, desc: 'Global DevSuite settings' },
 };
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -71,7 +85,7 @@ function relTime(ms) {
 
 function storeEntryCount(name, count) {
     // Check name first so locked stores always show the lock marker
-    if (name === 'vault' || name === 'ssh_profiles') return '🔒'; // opaque
+    if (name === 'vault' || name === 'ssh_profiles') return ICON_LOCK; // opaque
     if (count === null || count === undefined) return null;
     return count;
 }
@@ -146,7 +160,7 @@ async function attemptUnlock() {
         const plaintext = dec.toString(CryptoJS.enc.Utf8);
 
         if (plaintext !== 'DEVSUITE_MASTER_OK') {
-            errEl.textContent = '❌ Incorrect master password.';
+            errEl.textContent = 'Incorrect master password. Check the password and try again.';
             errEl.style.display = 'block';
             return;
         }
@@ -158,7 +172,7 @@ async function attemptUnlock() {
             body: JSON.stringify({ key_hex: key.toString() }),
         });
         if (!sr.ok) {
-            errEl.textContent = '❌ Session exchange failed. Please try again.';
+            errEl.textContent = 'Session exchange failed. Please try again.';
             errEl.style.display = 'block';
             return;
         }
@@ -168,10 +182,10 @@ async function attemptUnlock() {
         _authenticated = true;
         document.getElementById('lock-pw-input').value = '';
         loadMeta();
-        toast('✅ Access granted', 'success');
+        toast('Access granted', 'success');
     } catch (e) {
         console.error(e);
-        errEl.textContent = '❌ Incorrect master password.';
+        errEl.textContent = 'Incorrect master password. Check the password and try again.';
         errEl.style.display = 'block';
     } finally {
         btn.disabled = false;
@@ -207,7 +221,7 @@ function renderFileBanner(data) {
     document.getElementById('db-modified').textContent = relTime(data.meta?.modified);
     document.getElementById('db-created').textContent  = fmtTs(data.meta?.created);
     document.getElementById('db-version').textContent  = `v${data.meta?.version || 1}`;
-    document.getElementById('db-enc-stat').textContent = data.encrypted ? '🔑 Encrypted' : '📄 Plaintext';
+    document.getElementById('db-enc-stat').textContent = data.encrypted ? 'Encrypted' : 'Plaintext';
     document.getElementById('db-enc-stat').className   = 'stat-value ' + (data.encrypted ? 'amber' : 'green');
 }
 
@@ -235,7 +249,7 @@ function renderStores(data) {
             <div class="store-card-name">${m.label}</div>
             <div class="store-card-size">${kb ? kb + ' used' : 'No data'}</div>
             ${entriesHtml}
-            ${m.locked ? '<div class="store-card-lock" title="Client-side encrypted">🔒</div>' : ''}
+            ${m.locked ? `<div class="store-card-lock" title="Client-side encrypted">${ICON_LOCK}</div>` : ''}
         `;
         grid.appendChild(card);
     });
@@ -244,10 +258,10 @@ function renderStores(data) {
 function updateEncryptionBadge(encrypted) {
     const badge = document.getElementById('enc-badge');
     if (encrypted) {
-        badge.textContent = '🔑 Server-Encrypted';
+        badge.textContent = 'Server-Encrypted';
         badge.className   = 'header-badge badge-enc';
     } else {
-        badge.textContent = '✅ Integrity-Checked';
+        badge.textContent = 'Integrity-Checked';
         badge.className   = 'header-badge badge-secure';
     }
 }
@@ -265,7 +279,7 @@ async function doExport() {
         a.download = `devdb-backup-${ts}.dsb`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
-        toast('💾 Database exported as .dsb file', 'success');
+        toast('Database exported as .dsb file', 'success');
     } catch (err) {
         toast('Export failed: ' + err.message, 'error');
     }
@@ -307,7 +321,7 @@ function setupImport() {
                 throw new Error(j.detail || `HTTP ${res.status}`);
             }
             const result = await res.json();
-            toast(`✅ Imported ${result.imported_stores?.length || 0} stores from ${file.name}`, 'success');
+            toast(`Imported ${result.imported_stores?.length || 0} stores from ${file.name}`, 'success');
             await loadMeta();
         } catch (err) {
             toast('Import failed: ' + err.message, 'error');
@@ -372,7 +386,7 @@ async function savePassword() {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.detail || `Server error ${res.status}`);
         }
-        toast('✅ Password updated successfully.', 'success');
+        toast('Password updated successfully.', 'success');
         closePasswordModal();
     } catch (err) {
         alert.textContent   = err.message;
@@ -389,7 +403,7 @@ async function doRefresh() {
     const origText  = btn.textContent;
     btn.textContent = 'Refreshing…';
     await loadMeta();
-    toast('✅ Refreshed', 'success');
+    toast('Refreshed', 'success');
     btn.disabled    = false;
     btn.textContent = origText;
 }

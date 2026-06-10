@@ -44,3 +44,16 @@ Before writing any code, read `SPEC.md` fully. Every feature, behavior, API cont
 - Do not run the server or browser tests without being asked.
 - Do not commit directly — propose the commit message and wait for approval.
 - Do not add third-party JS libraries without updating `SPEC.md §11` and `UPGRADE_PLAN.md`.
+
+## Running Tests
+
+- Backend suite: `pytest tests/python/` (31 tests, all should pass). Covers the SPEC §10.2 security-critical paths. **There is no JS test suite yet** (v1.0.0 deliverable).
+- CI runs the suite via `.github/workflows/tests.yml` (push/PR, Python 3.10 + 3.12). Still run it locally before claiming a change is verified.
+- DevSuite ships **12 tools**. The source of truth for the tool list is `routes/pages.py` (routes) + `static/tools.html` (cards) — not prose in README. Keep README/SPEC/`tools.html`/`home.html` counts in sync when adding or removing a tool.
+
+## Gotchas (as of 2026-06-10, v0.2.4)
+
+- **`unsafe-eval`** in the CSP is a hard dependency of the API Tester scripting feature (`new Function()`) — don't try to "harden" it away without removing that feature.
+- **WebSocket auth (SEC-14):** the SSH/dashboard/local-terminal sockets are gated by `_ws_require_session` only *once a master password is configured*. Before setup they're open (no-password local-terminal flow). Keep that carve-out if you touch `routes/ssh.py`.
+- **No emoji in UI chrome** (SPEC §9.8/§9.9) — use stroke-based inline SVG. `auth-guard.js` and the DevDB Manager (`db-manager.html` + `db-manager.js`) were converted in v0.2.4. Don't add new emoji; copy the existing inline-SVG pattern.
+- **`tools.html` filter counts** are recomputed from the DOM at runtime (`updateFilterCounts()`); the static HTML values are just the pre-JS paint — keep both correct.

@@ -25,7 +25,7 @@
 
         <!-- Not-setup notice (shown when no master password has ever been created) -->
         <div class="db-lock-notice" id="not-setup-notice" style="display:none;">
-            <span>⚠️</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0;color:#f59e0b" aria-hidden="true" focusable="false"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
             <span>No master password has been set up yet. Please open the
                 <a href="/vault" class="db-lock-link">Secret Vault</a> first and create a master password.</span>
         </div>
@@ -85,7 +85,9 @@
 
     <!-- File Info Banner -->
     <div class="file-banner">
-        <div class="file-banner-icon">🗄️</div>
+        <div class="file-banner-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:36px;height:36px;color:var(--accent)" aria-hidden="true" focusable="false"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </div>
         <div class="file-banner-info">
             <div class="file-banner-title">devdb.dsb</div>
             <div class="file-banner-path" id="db-path">Loading…</div>
@@ -116,7 +118,7 @@
 
     <!-- Stores Section -->
     <div>
-        <div class="section-title">📦 Data Stores</div>
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px" aria-hidden="true" focusable="false"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Data Stores</div>
         <div id="stores-grid" class="stores-grid">
             <!-- Populated by JS -->
             <div class="store-card">
@@ -139,13 +141,13 @@
 
     <!-- Actions Section -->
     <div>
-        <div class="section-title">⚡ Actions</div>
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:5px" aria-hidden="true" focusable="false"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Actions</div>
         <div class="actions-panel">
 
             <!-- Export -->
             <div class="action-card">
                 <div class="action-card-header">
-                    <div class="action-card-icon action-icon-blue">💾</div>
+                    <div class="action-card-icon action-icon-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;color:#6477ff" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
                     <div>
                         <div class="action-card-title">Export Database</div>
                     </div>
@@ -167,7 +169,7 @@
             <!-- Import -->
             <div class="action-card">
                 <div class="action-card-header">
-                    <div class="action-card-icon action-icon-green">📂</div>
+                    <div class="action-card-icon action-icon-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;color:#22c55e" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
                     <div>
                         <div class="action-card-title">Import / Restore</div>
                     </div>
@@ -193,7 +195,7 @@
             <!-- Encryption -->
             <div class="action-card">
                 <div class="action-card-header">
-                    <div class="action-card-icon action-icon-amber">🔑</div>
+                    <div class="action-card-icon action-icon-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;color:#f59e0b" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg></div>
                     <div>
                         <div class="action-card-title">Database Password</div>
                     </div>
@@ -214,7 +216,7 @@
             <!-- Refresh -->
             <div class="action-card">
                 <div class="action-card-header">
-                    <div class="action-card-icon action-icon-cyan">🔄</div>
+                    <div class="action-card-icon action-icon-cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;color:#06b6d4" aria-hidden="true" focusable="false"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
                     <div>
                         <div class="action-card-title">Refresh Stats</div>
                     </div>
@@ -237,7 +239,7 @@
 
     <!-- Security Info -->
     <div class="alert-bar alert-info">
-        <span>🛡️</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0" aria-hidden="true" focusable="false"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         <span>
             <strong>Security note:</strong> The Vault and SSH Profiles stores contain
             <em>client-side AES-256-GCM encrypted blobs</em> — the server never decrypts
@@ -248,7 +250,7 @@
     <!-- About / Format panel -->
     <div class="about-panel">
         <button class="about-toggle" id="about-toggle">
-            <span>📋 DevDB Binary Format Reference  (.dsb)</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>DevDB Binary Format Reference  (.dsb)</span>
             <span class="about-toggle-icon">›</span>
         </button>
         <div class="about-body" id="about-body">
@@ -292,7 +294,7 @@
 <!-- ── Password Modal ──────────────────────────────────────────────────────── -->
 <dialog class="modal-overlay" id="pw-modal" aria-labelledby="pw-modal-title">
     <div class="modal-box">
-        <h2 class="modal-title" id="pw-modal-title">🔑 Set Database Password</h2>
+        <h2 class="modal-title" id="pw-modal-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;vertical-align:-2px;margin-right:7px" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>Set Database Password</h2>
         <div class="modal-body">
             <p style="color:var(--text-muted);font-size:13px;line-height:1.6;">
                 Setting a password enables <strong>AES-256-GCM server-side encryption</strong>
@@ -311,7 +313,7 @@
             </div>
             <div class="alert-bar alert-warn" id="pw-modal-alert" style="display:none;"></div>
             <div class="alert-bar alert-info">
-                <span>ℹ️</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                 <span>A server restart is required for the password change to take effect.
                       The password must be provided to DevDB at startup (e.g., via environment variable).</span>
             </div>

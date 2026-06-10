@@ -45,7 +45,7 @@ _PTY_AVAILABLE = _pty_available  # compatibility alias for tests referencing mai
 logger = logging.getLogger("devsuite")
 
 # ─── App version and run-mode flags ──────────────────────────────────────────
-APP_VERSION = "0.2.3"
+APP_VERSION = "0.2.4"
 _DEV_MODE   = os.getenv("DEVSUITE_DEV",   "0") == "1"
 _HTTPS      = os.getenv("DEVSUITE_HTTPS", "0") == "1"
 
@@ -137,6 +137,29 @@ def _hash_token(token: str) -> str:
     return hashlib.blake2b(token.encode(), digest_size=32).hexdigest()
 
 
+def is_session_valid(token: str) -> bool:
+    """Return True if *token* maps to a live (non-expired) server-side session.
+
+    Expired entries are evicted as a side effect.  Shared by the HTTP
+    ``require_unlocked`` dependency and the WebSocket session gate.
+    """
+    token = (token or "").strip()
+    if not token:
+        return False
+    token_hash = _hash_token(token)
+    expiry = _sessions.get(token_hash)
+    if expiry is None or time.time() > expiry:
+        _sessions.pop(token_hash, None)
+        return False
+    return True
+
+
+def is_auth_configured() -> bool:
+    """Return True once a master password has been set up (auth is active)."""
+    prefs = _db.get_store("app_prefs") or {}
+    return bool(prefs.get("master_setup_done"))
+
+
 def require_unlocked(request: Request) -> None:
     """Raise 401 if the request does not carry a valid server-side session token."""
     token = request.cookies.get("ds_session", "").strip()
@@ -147,10 +170,7 @@ def require_unlocked(request: Request) -> None:
             status_code=401,
             detail="Session token required. Call POST /api/auth/session first.",
         )
-    token_hash = _hash_token(token)
-    expiry = _sessions.get(token_hash)
-    if expiry is None or time.time() > expiry:
-        _sessions.pop(token_hash, None)
+    if not is_session_valid(token):
         raise HTTPException(status_code=401, detail="Session expired or invalid.")
 
 

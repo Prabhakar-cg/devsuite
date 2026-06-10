@@ -9,6 +9,32 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.2.4] — 2026-06-10 (maintenance: decommission URL shortener, close WS auth gap, DX)
+
+Follow-up to the 2026-06-06/06-10 reviews (`claudefeedback.md §12`). One tool removed, the last open security item closed, and several developer-experience and documentation-accuracy fixes.
+
+### Removed
+- **Link & QR Studio (URL shortener)** — decommissioned. Removed the (already-absent) tool from all documentation, deleted the vendored `static/bwip-js-min.js` barcode library, dropped the `url_db` legacy-migration path from `devdb.py`, and removed `url_db` from the DevDB Manager store list. The tool was no longer wired up; this removes the dangling references. `tools.html`, `README.md`, and `SPEC.md` now consistently describe **12 tools**.
+
+### Security
+- **WebSocket session gating (SEC-14):** `/api/ssh/terminal`, `/api/ssh/dashboard`, and `/api/local/terminal` now validate the `ds_session` cookie during the handshake when a master password is configured. The no-master-password local-terminal flow is preserved (open until setup). Closes the last carried-over P2 item.
+
+### Frontend
+- **Tools hub:** filter counts (`All`, `Dev`, `Network`, …) are now computed from the DOM instead of hardcoded — they had drifted to `13/5/2` while 12 tools shipped.
+- **AuthGuard lock screen:** emoji chrome replaced with stroke-based inline SVG icons, per design system (SPEC §9.8/§9.9).
+- **DevDB Manager:** removed all emoji from `db-manager.html` + `db-manager.js` (store icons, action-card icons, status badges, section titles) in favour of stroke-based SVG; toast/error copy de-emoji'd and made actionable.
+
+### Internal / DX
+- **CI:** added `.github/workflows/tests.yml` — runs `pytest tests/python/` on push/PR.
+- **Run scripts:** `start.sh` / `start.ps1` now honour `$PORT` / `$HOST` and only enable `--reload` when `DEVSUITE_DEV=1` (matching `python main.py`).
+- **`.env.example`:** added `DEVDB_PASSWORD`, `PORT`, `HOST`; corrected the `DEVSUITE_DEV` description (it toggles `/docs`, `/redoc`, and reload — not rate limits or logging).
+
+### Documentation
+- `SPEC.md`: corrected File Converter upload limit (50 MB → 20 MB), documented the `unsafe-eval` CSP dependency, added SEC-14, closed the §4 numbering gap (now 4.1–4.12), refreshed the version footer.
+- `README.md`: project structure now reflects the `deps.py` + `routes/` split.
+
+---
+
 ## [0.2.3] — 2026-06-07 (patch: Sonar code-quality sweep)
 
 P3 refactoring release. All P3 items from the 2026-06-06 review are resolved (except the browser JS test suite, which requires new infrastructure). No behavior changes — pure structure, copy, and security-hygiene improvements.

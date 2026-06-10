@@ -1,7 +1,8 @@
 # DevSuite — Developer Tools from Hell
 
-![Version](https://img.shields.io/badge/version-0.2.3-blue)
+![Version](https://img.shields.io/badge/version-0.2.4-blue)
 [![CodeQL](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml)
+[![Tests](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=Prabhakar-cg_devsuite&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=Prabhakar-cg_devsuite)
@@ -48,19 +49,13 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **HMAC Sign & Verify** — SHA-256 and SHA-512.
 - Navigate all panels via tab buttons; all operations are fully offline.
 
-### 7. Link & QR Studio
-- **Local URL Shortener** — generates short `/r/<id>` links served from the local DevSuite instance. Short links persist across server restarts via DevDB.
-- **QR Code & Code128 Barcode** — generated on every shortened link using the original URL.
-- PNG download for both codes.
-- Recent links panel backed by `localStorage`.
-
-### 8. Local API Tester
+### 7. Local API Tester
 - **Local-first REST client** — a high-speed REST client for testing endpoints.
 - **Request Engine** — supports GET, POST, PUT, DELETE, PATCH, custom headers, and body.
 - **Local CORS Proxy** — built-in FastAPI proxy to bypass browser CORS restrictions.
 - **Persistent Collections** — saved in DevDB (`collections` store).
 
-### 9. Secure Terminal & SFTP
+### 8. Secure Terminal & SFTP
 - **Multi-tab SSH client** — open parallel sessions to different hosts, each in its own xterm.js tab.
 - **Password & Private Key auth** — PEM key import supported.
 - **Encrypted profiles** — session credentials stored in DevDB (`ssh_profiles` store), encrypted client-side with a Master Password.
@@ -69,7 +64,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Inline delete** — remove sessions from the sidebar with a single click (no modal needed).
 - **Network Notice**: Session profiles are stored locally (in DevDB / `ssh_profiles`, encrypted client-side). However, SSH/SFTP actions and the local CORS proxy initiate **outbound network connections** — backend endpoints such as `/api/proxy`, `/api/ssh/terminal`, and `/api/sftp/*` transmit data off-machine to the target host. The strictly-offline guarantee applies only to tools that perform no network I/O.
 
-### 10. Cron Visualizer
+### 9. Cron Visualizer
 - **4 dialect support** — Unix/Linux, Quartz/Spring, AWS EventBridge, GitHub Actions.
 - **Live expression parser** with per-field validation chips and plain-English human-readable description.
 - **Visual Field Builder** — click-to-toggle grids for Minute, Hour, Month, Day-of-Week; synced with the text input.
@@ -78,7 +73,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Preset Library** — curated common expressions per dialect (Unix, Quartz, AWS, GitHub), click-to-load.
 - **Export** — copy raw expression, YAML (K8s / GitHub Actions), or AWS EventBridge JSON.
 
-### 11. Secret Vault
+### 10. Secret Vault
 - **KeePass-style encrypted secret manager** — store tokens, passwords, SSH keys, and API credentials.
 - **AES-256 client-side encryption** — all secrets are encrypted in-browser before being sent to the backend. The server never sees plaintext.
 - **Master Password gate** — lock screen on every visit; password is never stored anywhere.
@@ -86,13 +81,13 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Categories** — organize secrets by type (Token, Password, SSH Key, API Key, Note, Other).
 - **Persistence** via DevDB (`vault` store) — survives server restarts.
 
-### 12. DevDB Manager
+### 11. DevDB Manager
 - **Unified encrypted database inspector** — view all DevDB stores, sizes, and metadata.
 - **Export / Import** — download or upload the full `.dsb` database file.
 - **Auth-gated** — requires the same Master Password used by the Secret Vault.
 - **Store viewer** — browse raw JSON content of any named store.
 
-### 13. File Format Converter
+### 12. File Format Converter
 - **Multi-format conversion engine** — convert between JSON, CSV, YAML, XML, TSV, XLSX, Markdown, HTML, DOCX, and PDF.
 - **Client-side conversions** — JSON ↔ YAML, JSON ↔ CSV, Markdown → HTML done entirely in-browser.
 - **Server-side conversions** — XLSX ↔ CSV/JSON, PDF → TXT, DOCX → TXT, and document → PDF via WeasyPrint.
@@ -113,16 +108,16 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Unified encrypted storage** — all persistent data lives in `~/.devsuite/devdb.dsb`, a KeePass-style binary container (AES-256-GCM, PBKDF2 key derivation, 200k iterations).
 - **Client-side encryption** — the vault and SSH profiles are encrypted in-browser before reaching the backend. The server never handles plaintext secrets.
 - **DOM XSS hardened** — all dynamic content is inserted using `textContent` / `createElement` APIs; no untrusted strings ever reach `innerHTML`.
-- **Self-hosted libraries** — `crypto-js` and `bwip-js` are served from `/static/` rather than an external CDN.
+- **Self-hosted libraries** — `crypto-js` and `xterm.js` are served from `/static/` rather than an external CDN.
 - **HTTP Security headers** — `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, and `Referrer-Policy` on every response.
 - **HttpOnly session cookie** — the server-side session token is delivered as an `HttpOnly; SameSite=Strict` cookie (`ds_session`). JavaScript cannot read or exfiltrate it.
 - **CSRF protection** — every mutating request (`POST/PUT/DELETE/PATCH`) must carry an `X-CSRF-Token` header matching the `ds_csrf` cookie, verified with a constant-time comparison.
 - **BLAKE2b session-token hashing** — only the BLAKE2b-32 digest of each session token is kept in server memory; a process-memory snapshot does not yield usable tokens.
 - **Auth endpoint rate limiting** — `/api/auth/challenge` and `/api/auth/session` accept at most 5 requests per minute per IP (HTTP 429 beyond that), preventing brute-force and timing attacks.
 - **Audit log** — sensitive operations (vault unlock, vault access, SSH connect) are recorded in an append-only `~/.devsuite/audit.log`. Secret values are never logged.
-- **URL validation** — the shortener backend validates scheme and host before storing any link.
+- **SSRF-hardened CORS proxy** — `/api/proxy` resolves and validates every target (and every redirect hop) before connecting, blocking loopback, link-local/cloud-metadata, and reserved IPs, and restricting schemes to `http`/`https`.
 
-> **Security scan coverage note:** Static analysis (SonarCloud, CodeQL, CodeRabbit & Snyk) excludes `static/libs/**` and all `*.min.js` / `*.min.css` files. These are third-party vendored bundles (Monaco Editor, xterm.js, crypto-js, bwip-js) and are not covered by automated security scanning. Keep them updated to their latest stable releases to manage upstream CVEs.
+> **Security scan coverage note:** Static analysis (SonarCloud, CodeQL, CodeRabbit & Snyk) excludes `static/libs/**` and all `*.min.js` / `*.min.css` files. These are third-party vendored bundles (Monaco Editor, xterm.js, crypto-js) and are not covered by automated security scanning. Keep them updated to their latest stable releases to manage upstream CVEs.
 
 ---
 
@@ -165,7 +160,9 @@ uvicorn main:app --port 8000 --reload
 
 ```text
 devsuite/
-├── main.py                  # FastAPI app — all routes, WebSocket SSH, SFTP, proxy, DevDB API
+├── main.py                  # Thin orchestrator — app factory, middleware, router inclusion
+├── deps.py                  # Shared singletons & helpers (DevDB, limiter, sessions, constants)
+├── routes/                  # APIRouter modules: auth, convert, db, pages, proxy, ssh, storage
 ├── devdb.py                 # Unified Storage Engine — KeePass-style .dsb binary format (AES-256-GCM)
 ├── requirements.txt         # fastapi, uvicorn, asyncssh, cryptography, openpyxl, pypdf, etc.
 ├── start.sh                 # One-shot virtual environment setup & run script
@@ -190,9 +187,6 @@ devsuite/
     │
     ├── crypto.html          # Crypto Suite (Hash, AES, RSA, HMAC)
     ├── crypto-js.min.js     # Self-hosted CryptoJS v4.2.0
-    │
-    ├── url-shortener.html   # Link & QR Studio
-    ├── bwip-js-min.js       # Self-hosted bwip-js v3.4.1 (barcode rendering)
     │
     ├── api-tester.html      # Local API Tester
     ├── api-tester.js        # API Tester UI logic (collection tree, request tabs, history)

@@ -186,11 +186,18 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ---------------------------------------------------------------------------
-# Start the FastAPI server
+# Start the FastAPI server — honour HOST/PORT env vars; --reload only in dev mode
 # ---------------------------------------------------------------------------
-Write-Host "`nStarting FastAPI server on http://localhost:8000..."
+$ServerHost = if ($env:HOST) { $env:HOST } else { "127.0.0.1" }
+$ServerPort = if ($env:PORT) { $env:PORT } else { "8000" }
+$UvicornArgs = @("main:app", "--host", $ServerHost, "--port", $ServerPort)
+if ($env:DEVSUITE_DEV -eq "1") {
+    $UvicornArgs += "--reload"
+}
+
+Write-Host "`nStarting FastAPI server on http://${ServerHost}:${ServerPort}..."
 if (Test-CommandAvailable uvicorn) {
-    uvicorn main:app --port 8000 --reload
+    uvicorn @UvicornArgs
 } else {
-    & $PYTHON_CMD -m uvicorn main:app --port 8000 --reload
+    & $PYTHON_CMD -m uvicorn @UvicornArgs
 }

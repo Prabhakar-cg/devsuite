@@ -1,5 +1,5 @@
 """
-DevSuite — FastAPI Backend  (v0.2.2)
+DevSuite — FastAPI Backend  (v0.2.4)
 -------------------------------------
 Thin orchestrator: creates the FastAPI app, registers middleware, mounts
 static files, and includes all route modules.

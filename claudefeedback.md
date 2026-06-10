@@ -242,3 +242,83 @@ As of **v0.2.3** all P0/P1/P2/P3 findings from the original review are closed. T
 What remains is one **P2 security item** (WebSocket session gating — deferred for UI coordination), the browser/JS test suite (Playwright or Vitest for WebCrypto vault path), and future-roadmap items (Argon2id, Docker).
 
 **This codebase is solid enough to open-source** once the WebSocket session gating is closed.
+
+---
+
+## 12. Follow-up review — 2026-06-10 (v0.2.3)
+
+> **Reviewer role:** Senior full-stack engineer · security engineer · UI/UX designer
+> **Scope this pass:** full backend re-read (`main.py`, `deps.py`, all of `routes/`, `devdb.py`), `auth-guard.js`, `components.js`; DX surface (`start.sh`, `start.ps1`, `.github/workflows/`, `.env.example`, `requirements.txt`, `pytest.ini`); doc accuracy sweep of `README.md`, `SPEC.md`, `tools.html`. Tests run locally: **28 passed** (`pytest tests/python/`). The doc reuses "27"; it is now 28.
+> **Headline:** the *code* is in good shape and the prior P0/P1 work holds up. The problems this pass are **documentation/code drift and developer-experience gaps** — exactly the things that bite a new contributor or a first-time `git clone`. Three findings are user-visible or could embarrass an open-source launch.
+
+### Status legend — same as above (✅ DONE · ⏳ PENDING · ℹ️ NOTE)
+
+### 12.1 Severity-ranked findings
+
+| ID | Sev | Area | Finding |
+|---|---|---|---|
+| **F-1** | High (DX/docs) | Docs ⇄ code | **Phantom tool.** `README.md §7 "Link & QR Studio"` (URL shortener + QR/Code128) is documented as a supported tool and listed in the project structure (`url-shortener.html`, `bwip-js-min.js`), but **it does not exist**: no `static/url-shortener.html`, no `/url-shortener` page route, no `/r/<id>` redirect, no shortener backend, and **no card in `tools.html`**. README advertises "13 tools"; **12** actually ship. A new user who reads the README and goes looking for it hits a dead end. |
+| **F-2** | Medium (UX bug) | Tools hub | **Hardcoded filter counts are wrong** in `tools.html`. Labels claim `All 13 · Dev 5 · Network 2`; the DOM actually renders `12 · 3 · 1` (Data/Security/Schedule are correct). Visible on first load. Fix: derive counts from `document.querySelectorAll('[data-category]')` instead of typing them in. |
+| **F-3** | Medium (DX) | CI | **Tests never run in CI.** The only workflow is `codeql.yml`. The 28-test `pytest` suite — the suite the whole §10.2 security story rests on — is not executed on push/PR. README shows CodeQL/Sonar/Snyk/CodeRabbit badges but **no test badge**, because there is no test job. High value / low effort: add a `pytest.yml` GitHub Action. |
+| **F-4** | Medium (security, still open) | WebSocket auth | **P2 carried over.** `/api/ssh/terminal`, `/api/ssh/dashboard`, `/api/local/terminal` are gated by `_ws_check_origin` only — **no `require_unlocked`**. `/api/local/terminal` forks a local shell with the server's privileges. Origin checks stop browsers, not a non-browser client on the loopback interface that sets `Origin: http://localhost:8000`. Concrete path forward below. |
+| **F-5** | Low (DX/docs) | `.env.example` | Incomplete **and** wrong. Documents only `DEVSUITE_HTTPS` + `DEVSUITE_DEV`; missing `DEVDB_PASSWORD`, `PORT`, `HOST` (all in SPEC §14.2). Worse, the `DEVSUITE_DEV` comment claims *"relaxed rate limits, verbose logging"* — code does neither; it only toggles `/docs`, `/redoc`, and `uvicorn --reload`. |
+| **F-6** | Low (DX) | start scripts | `start.sh:261` / `start.ps1:193,195` hardcode `uvicorn main:app --port 8000 --reload`. They ignore `PORT`/`HOST` (SPEC §14.2 claims both scripts honour `PORT`), and `--reload` (a dev-only feature) is **always on** — inconsistent with `python main.py`, which correctly gates `reload` to `DEVSUITE_DEV=1`. The documented Quick Start therefore always launches the auto-reload dev server. |
+| **F-7** | Low (design system) | `auth-guard.js` | The lock overlay is built **entirely from emoji** (`🔒 ✅ ⚠️ 🕐 ❌`). SPEC §9.8/§9.9 explicitly forbid emoji in UI chrome and mandate stroke-based SVG icons. The escaping/DOM work here is clean — it's a design-system violation, not a security one. |
+| **F-8** | Low (docs) | SPEC internal | §4.13 says File Converter "Max upload size: **50 MB**"; the backend constant is **20 MB** (`deps.py:75`, used by `/api/convert`) and §5.7 correctly says 20 MB. §4.13 contradicts both. |
+| **F-9** | Trivial (docs) | SPEC footer | Footer reads *"This spec reflects DevSuite v0.2.2"* while the header is `0.2.3`. The version-bump protocol (§12.1 / CLAUDE rule 6) didn't sweep the footer. §4 also skips `4.8` (the removed shortener) — cosmetic leftover. |
+| **F-10** | Trivial (cleanup) | dead code/deps | `bwip-js-min.js` is still vendored and listed in SPEC §3.1/§11.2, but its only consumer was the (now absent) shortener — it's dead weight. `devdb.py migrate_legacy` still migrates `url_db.json → "url_db"`, but `url_db` isn't in `_ALLOWED_STORES`, so the store is unreadable via the API. Both are harmless but should be pruned or re-justified. |
+
+### 12.2 What's still good (re-confirmed this pass)
+
+- **Backend security posture holds.** SSRF redirect re-validation (`routes/proxy.py:_SSRFSafeRedirectHandler`), domain-separated v2 keys (`Kenc` never sent), AES-256-GCM container with atomic writes and `BaseException` temp-file cleanup (`devdb.py:_write`), constant-time CSRF, BLAKE2b-hashed session tokens, host-key approval flow, WeasyPrint `url_fetcher` sandbox — all intact.
+- **The router split reads well.** `main.py` is a clean ~145-line orchestrator; `deps.py` is the single source for shared singletons; `routes/*` are focused. The test-compat re-export comments are genuinely helpful.
+- **Front-end auth hygiene is right.** Password/key in-memory only, re-acquire-server-session-on-fast-path, logout clears both cookies + memory.
+- **Tool pages already have a back-to-`/tools` link** — the v0.3.0 "persistent back-to-tools nav" roadmap item is largely done; worth re-checking the box.
+- `style.css` ships an `.empty-state` component — the v0.3.0 "empty states" item has a foundation.
+
+### 12.3 Recommended actions (ranked by value ÷ effort)
+
+| Priority | Action | Effort | Notes |
+|---|---|---|---|
+| **P1** | Reconcile the phantom URL shortener (F-1): either re-add the tool or strip §7 + the structure/badge claims from README, then make "12 tools" consistent across README/SPEC/`tools.html`. | S | README is owner-scoped — flagged here, not auto-edited. |
+| **P1** | Add a `pytest` CI workflow (F-3); add a test/coverage badge. | S | Unblocks confidence in every future PR. |
+| **P1** | Compute `tools.html` filter counts from the DOM (F-2). | XS | Kills a whole class of future drift. |
+| **P2** | Gate WebSocket endpoints with the session cookie (F-4). The `ds_session` cookie **is** sent on same-origin WS upgrades — validate it in the handshake. Carve-out: allow `/api/local/terminal` only when no master password is configured *or* once a session exists, and document the decision in SPEC §7. | S→M | Closes the last original-review security item. |
+| **P2** | Make `start.sh`/`start.ps1` honour `$PORT`/`$HOST` and only pass `--reload` when `DEVSUITE_DEV=1` (F-6); fix `.env.example` (F-5). | XS | Aligns scripts with `__main__` and SPEC §14.2. |
+| **P3** | Replace auth-overlay emoji with the project's SVG icon set (F-7). | S | Design-system compliance. |
+| **P3** | SPEC fixes F-8/F-9 done in this pass; prune bwip-js + `url_db` migration (F-10). | XS | — |
+
+### 12.4 Spec/doc edits applied in this pass
+
+- **SPEC.md §4.13** — corrected File Converter upload limit `50 MB → 20 MB` (matches code + §5.7).
+- **SPEC.md §2 + §7.8** — documented the `unsafe-eval` CSP dependency (API Tester `new Function()` scripting) that previously lived only in this review file.
+- **SPEC.md §14.2/§14.3** — noted that `start.sh`/`start.ps1` currently hardcode port `8000` and `--reload` (drift flagged, not silently "spec-matches-code"-ed).
+- **SPEC.md footer** — bumped `v0.2.2 → v0.2.3`.
+- **SPEC.md §11** — annotated `bwip-js` as currently unused (former Link & QR Studio).
+- **CLAUDE.md** — added a "Known drift / gotchas" note (README phantom tool, CI test gap, emoji-in-auth-overlay) and the canonical `pytest` command so future sessions don't re-discover them.
+- **README.md** is intentionally left untouched (outside the edit scope you gave me) — F-1 needs an owner decision (re-add vs remove the tool).
+
+### 12.5 Bottom line (this pass)
+
+The engineering is sound; the risk now is **presentation and trust**. An open-source visitor's first three touchpoints — the README tool list, the tools-hub counts, and a green CI check — are exactly the three things currently wrong (F-1, F-2, F-3). Fix those plus the WebSocket gating (F-4) and this is genuinely launch-ready. None of the four is more than a few hours of work.
+
+---
+
+### 12.6 Resolution log — 2026-06-10 (v0.2.4)
+
+All §12.1 findings actioned in a single maintenance release (`CHANGELOG.md [0.2.4]`). 31 backend tests pass.
+
+| ID | Status | Resolution |
+|---|---|---|
+| **F-1** | ✅ DONE | URL shortener decommissioned by owner. Removed all references from `README.md` (tool list + structure renumbered to 12), `SPEC.md`, `static/linter.css`, `static/db-manager.js` (`url_db` store), `static/devdb-client.js`; dropped the `url_db` migration path from `devdb.py`; deleted vendored `static/bwip-js-min.js` and its entries in `scripts/check_updates.py` + `UPGRADE_PLAN.md`. CHANGELOG keeps history + a "Removed" entry. |
+| **F-2** | ✅ DONE | Corrected the stale hardcoded counts in `tools.html` (`13/5/2` → `12/3/1`) and the "13 tools" copy in `home.html`/`tools.html`. `updateFilterCounts()` already recomputes from the DOM at runtime; the static values now match the pre-JS paint. |
+| **F-3** | ✅ DONE | Added `.github/workflows/tests.yml` (pytest on push/PR, Python 3.10 + 3.12) and a Tests badge in `README.md`. |
+| **F-4** | ✅ DONE | `_ws_require_session` added to `routes/ssh.py`; gates all three WS endpoints on a valid `ds_session` cookie once a master password is configured, preserving the no-password local-terminal flow. New `deps.is_session_valid` / `deps.is_auth_configured` helpers; `require_unlocked` refactored onto the former. Documented in SPEC §5.8/§7.8/§10.2; covered by `tests/python/test_ws_auth.py` (3 tests). |
+| **F-5** | ✅ DONE | `.env.example` now documents `DEVDB_PASSWORD`/`HOST`/`PORT` and correctly describes `DEVSUITE_DEV`. |
+| **F-6** | ✅ DONE | `start.sh`/`start.ps1` honour `$HOST`/`$PORT` and only pass `--reload` when `DEVSUITE_DEV=1`. SPEC §14.2 updated. |
+| **F-7** | ✅ DONE | `auth-guard.js` lock screen converted from emoji to stroke-based inline SVG (lock/check/alert/clock); error copy de-emoji'd and made actionable; `init(toolName, toolIcon)` → `init(toolName)`, call sites updated. **Follow-up:** the full DevDB Manager (`db-manager.html` + `db-manager.js`) was also de-emoji'd — store icons, action-card icons, status badges, section titles, and all toasts/errors now use SVG or plain text. |
+| **F-8** | ✅ DONE | SPEC §4.12 (was §4.13) upload limit corrected to 20 MB. |
+| **F-9** | ✅ DONE | SPEC footer/version bumped to 0.2.4; §4 renumbered to a gapless 4.1–4.12. |
+| **F-10** | ✅ DONE | bwip-js deleted; `url_db` migration removed (see F-1). |
+
+**Remaining known item:** the JS/WebCrypto browser test suite (Playwright/Vitest) is still a v1.0.0 deliverable. (The §9.8 emoji cleanup is now complete across `auth-guard.js` and the DevDB Manager.)

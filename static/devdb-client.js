@@ -41,7 +41,7 @@ const DevDB = (() => {
 
     /**
      * Read the named store from DevDB.
-     * @param {string} name  Store name (vault | collections | ssh_profiles | url_db | app_prefs)
+     * @param {string} name  Store name (vault | collections | ssh_profiles | app_prefs)
      * @returns {Promise<object>}
      */
     async function getStore(name) {

@@ -130,7 +130,7 @@ class DevDB:
     Quick start (no server-side encryption — default):
         db = DevDB(Path("~/.devsuite/devdb.dsb").expanduser())
         db.open()
-        db.set_store("url_db", {"abc123": "https://example.com"})
+        db.set_store("collections", {"items": []})
         db.save()
 
     With optional server-side encryption:
@@ -251,7 +251,7 @@ class DevDB:
     # ── Migration ───────────────────────────────────────────────────────────────
 
     @staticmethod
-    def migrate_legacy(db: "DevDB", db_dir: Path, url_db_path: Path | None = None) -> bool:
+    def migrate_legacy(db: "DevDB", db_dir: Path) -> bool:
         """
         One-time migration from legacy plain/encrypted JSON files into DevDB stores.
 
@@ -259,7 +259,6 @@ class DevDB:
           vault.json        → "vault" store
           collections.json  → "collections" store
           ssh_profiles.json → "ssh_profiles" store
-          url_db.json (beside main.py) → "url_db" store
 
         Each migrated file is renamed to *.json.bak so migration is not
         repeated on subsequent starts.
@@ -273,8 +272,6 @@ class DevDB:
             (db_dir / "collections.json",  "collections"),
             (db_dir / "ssh_profiles.json", "ssh_profiles"),
         ]
-        if url_db_path:
-            _legacy_files.append((url_db_path, "url_db"))
 
         for legacy_path, store_name in _legacy_files:
             # Skip if store already exists in DevDB (idempotent)

@@ -1,6 +1,6 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.2.3  
+> **Version:** 0.2.4  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Single source of truth for spec-driven development. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.
 
@@ -18,7 +18,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.2.3` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md`, and `CHANGELOG.md`.
+`0.2.4` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md`, and `CHANGELOG.md`.
 
 ---
 
@@ -32,9 +32,9 @@ These are hard rules. No implementation may violate them.
 | **No CDN fonts** | Fonts are self-hosted in `/static/libs/fonts/`. Never import from `fonts.googleapis.com`. |
 | **No frameworks** | Vanilla HTML/CSS/JS only. No React, Vue, Svelte, Tailwind, or build tools. |
 | **No external DB** | All persistence via DevDB (`.dsb` binary). No SQLite, PostgreSQL, Redis, etc. |
-| **Self-hosted JS libs** | Third-party JS (crypto-js, bwip-js, xterm.js) served from `/static/`. Exception: Monaco Editor via RequireJS CDN only. |
+| **Self-hosted JS libs** | Third-party JS (crypto-js, xterm.js) served from `/static/`. Exception: Monaco Editor via RequireJS CDN only. |
 | **Client-side encryption only** | Vault and SSH profile blobs are encrypted in-browser. The backend is an opaque store — it never decrypts these. |
-| **CSP enforced** | HTTP security headers on every response. `unsafe-inline` is a known debt item (SEC-11) — do not add more inline scripts. |
+| **CSP enforced** | HTTP security headers on every response. `unsafe-inline` is a known debt item (SEC-11) — do not add more inline scripts. `unsafe-eval` is **required** by the API Tester's pre-request/test scripting (`new Function()` in `api-tester.js`); removing it breaks that feature. Imported collections strip scripts on import (§4.7). |
 
 ---
 
@@ -51,7 +51,6 @@ These are hard rules. No implementation may violate them.
 | Terminal | xterm.js (self-hosted) |
 | Code Editor | Monaco Editor (RequireJS CDN) |
 | Crypto (client) | CryptoJS v4.2.0 (self-hosted) |
-| Barcode | bwip-js v3.4.1 (self-hosted) |
 | Fonts | Inter + JetBrains Mono (self-hosted woff2) |
 
 ### 3.2 Directory Layout
@@ -87,7 +86,7 @@ devsuite/
     ├── auth-guard.js     # 8-hour session auth for DevDB tools
     ├── devdb-client.js   # Fetch wrapper around /api/db/*
     ├── home.html / home.css
-    ├── tools.html        # Tools hub / dashboard (all 13 tool cards)
+    ├── tools.html        # Tools hub / dashboard (12 tool cards)
     ├── index.html / app.js            # Diff tool
     ├── json.html / yaml.html / regex.html / base64.html / crypto.html
     ├── api-tester.html / api-tester.js / api-tester.css / api-client.js
@@ -135,7 +134,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Cron Visualizer | `cron.html` | `cron.js`, `cron.css` | `/cron` | — |
 | Secret Vault | `vault.html` | `vault.js`, `vault.css`, `crypto-js.min.js` | `/api/vault`, `/api/auth/*` | `vault` |
 | DevDB Manager | `db-manager.html` | `db-manager.js`, `db-manager.css` | `/api/db/*` | — |
-| File Converter | `file-converter.html` | inline JS + CDN libs | `/api/convert` | — |
+| File Converter | `file-converter.html` | inline JS + self-hosted `js-yaml`, `papaparse`, `marked` (`/static/libs/`) | `/api/convert` | — |
 
 ---
 
@@ -239,7 +238,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 
 ---
 
-### 4.9 Secure Terminal & SFTP (`/ssh`)
+### 4.8 Secure Terminal & SFTP (`/ssh`)
 
 **Sub-tabs:** Terminal · SFTP Browser.
 
@@ -260,7 +259,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 
 ---
 
-### 4.10 Cron Visualizer (`/cron`)
+### 4.9 Cron Visualizer (`/cron`)
 
 **Dialect support:** Unix/Linux (5-field) · Quartz/Spring (6–7-field, `?`, `L`, `W`, `#`) · AWS EventBridge (6-field + year) · GitHub Actions.
 
@@ -277,7 +276,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 
 ---
 
-### 4.11 Secret Vault (`/vault`)
+### 4.10 Secret Vault (`/vault`)
 
 **Behaviors:**
 - KeePass-style encrypted secret manager.
@@ -290,7 +289,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 
 ---
 
-### 4.12 DevDB Manager (`/db-manager`)
+### 4.11 DevDB Manager (`/db-manager`)
 
 **Behaviors:**
 - View all DevDB stores: names, approximate sizes, metadata (created, modified timestamps).
@@ -301,7 +300,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 
 ---
 
-### 4.13 File Format Converter (`/file-converter`)
+### 4.12 File Format Converter (`/file-converter`)
 
 **Supported formats:** JSON · CSV · YAML · XML · TSV · XLSX · Markdown · HTML · DOCX · PDF.
 
@@ -312,7 +311,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 **Behaviors:**
 - Drag-and-drop upload zone or file picker.
 - Output displayed inline with download button.
-- Max upload size: 50 MB (enforced by backend).
+- Max upload size: **20 MB** (enforced by backend — `MAX_UPLOAD_SIZE` in `deps.py`; see §5.7). The `/upload` text-diff endpoint has a separate 50 MB limit.
 
 ---
 
@@ -323,7 +322,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Route | Tool |
 |---|---|
 | `GET /` | Homepage (`home.html`) |
-| `GET /tools` | Tools Hub — all 13 tool cards (`tools.html`) |
+| `GET /tools` | Tools Hub — 12 tool cards (`tools.html`) |
 | `GET /diff` | Diff Checker |
 | `GET /json` | JSON Linter |
 | `GET /yaml` | YAML Linter |
@@ -401,6 +400,8 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | `POST /api/sftp/download` | REST | Stream download of a remote file |
 | `POST /api/sftp/upload` | REST | Upload a file via multipart form (host, username, remote_path, file, port, password, private_key, approved_fingerprint fields) |
 | `GET /api/wsl/discover` | REST | Discover installed WSL distributions via `wsl.exe -l -q` |
+
+**WebSocket auth gate (SEC-14):** All three WebSocket endpoints (`/api/ssh/terminal`, `/api/ssh/dashboard`, `/api/local/terminal`) enforce, in order: (1) `_ws_check_origin` — exact `http(s)://<host>` origin match; (2) `_ws_require_session` — when a master password is configured, a valid `ds_session` cookie is required (the cookie is sent automatically on same-origin WS upgrades); the socket is closed with code `1008` before `accept()` otherwise. Before first-time master-password setup the auth system is dormant, so connections are allowed — this preserves the no-password local-terminal flow.
 
 **Host key handling:** For unknown hosts, the server fetches the key via `ssh-keyscan`, computes its SHA-256 fingerprint, and sends a `host_key_approval` WebSocket message to the browser. The browser must reply with `{type: "host_key_response", approve: true}` within 60 seconds.
 
@@ -552,7 +553,8 @@ DevDB.getMeta()           // GET /api/db/meta
 
 | ID | Issue | Priority |
 |---|---|---|
-| SEC-11 | CSP nonces to replace `unsafe-inline` | P2 |
+| SEC-11 | CSP nonces to replace `unsafe-inline`. Note: `unsafe-eval` is a hard dependency of the API Tester scripting feature (`new Function()`); it can only be dropped if that feature is removed or sandboxed in a Worker. | P2 |
+| ~~SEC-14~~ | ~~WebSocket endpoints not session-gated.~~ **✅ Resolved (v0.2.4):** `_ws_require_session` enforces a valid `ds_session` cookie on all three WS endpoints once a master password is configured (see §5.8). | — |
 | SEC-12 | Localhost HTTPS (self-signed cert on first run) | P3 |
 | SEC-13 | Argon2id KDF to replace PBKDF2 | P3 |
 | SEC-3 | Explicit CORS allowlist (`localhost`, `127.0.0.1`) | XS |
@@ -708,6 +710,7 @@ These paths must have automated tests. Adding or changing any of them requires a
 - Rate limiting: 6th auth request within 60s → HTTP 429.
 - SSRF proxy block: loopback/link-local/reserved addresses → HTTP 403; LAN ranges allowed.
 - Session token hashing: raw token not present in `_sessions` dict.
+- WebSocket session gate: when a master password is configured, a session-less WS connect is closed (1008); a valid `ds_session` is accepted; connects before setup are allowed.
 
 ### 10.3 Static Analysis
 
@@ -764,7 +767,6 @@ These paths must have automated tests. Adding or changing any of them requires a
 | `xterm.css` | xterm.js styles |
 | `xterm-addon-fit.js` | xterm-addon-fit |
 | `crypto-js.min.js` | CryptoJS |
-| `bwip-js-min.js` | bwip-js |
 
 ### 11.3 Vendored JavaScript (`static/libs/`)
 
@@ -875,8 +877,8 @@ Follows Semantic Versioning. Each release section includes: Security · Frontend
 | `DEVSUITE_DEV` | `0` | Set to `1` to enable `/docs` (Swagger UI) and `/redoc` |
 | `DEVSUITE_HTTPS` | `0` | Set to `1` to add `Secure` flag to `ds_session` and `ds_csrf` cookies (use when serving over HTTPS) |
 | `DEVDB_PASSWORD` | _(empty)_ | Server-side DevDB encryption password (leave blank to disable) |
-| `PORT` | `8000` | Port Uvicorn listens on — honoured by `__main__` and `start.sh`/`start.ps1` |
-| `HOST` | `127.0.0.1` | Bind host — honoured by `__main__`; `reload=True` is only set when `DEVSUITE_DEV=1` |
+| `PORT` | `8000` | Port Uvicorn listens on — honoured by `__main__` (`python main.py`) and by `start.sh`/`start.ps1`. |
+| `HOST` | `127.0.0.1` | Bind host — honoured by `__main__` and by `start.sh`/`start.ps1`. `--reload` is only enabled when `DEVSUITE_DEV=1` (in `__main__` and both start scripts). |
 
 ### 14.3 Upgrade Process Summary
 
@@ -891,4 +893,4 @@ Follows Semantic Versioning. Each release section includes: Security · Frontend
 
 ---
 
-*This spec reflects DevSuite v0.2.2. Update before implementing any new feature or changing existing behavior.*
+*This spec reflects DevSuite v0.2.4. Update before implementing any new feature or changing existing behavior.*

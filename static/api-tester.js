@@ -1612,7 +1612,7 @@ function typeDefault(t) {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function initApp() {
     updateMethodColor();
-    const guard = await AuthGuard.init('API Tester', '📡');
+    const guard = await AuthGuard.init('API Tester');
     if (guard !== null) {
         loadCollections();
         loadEnvironments();

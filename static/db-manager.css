@@ -186,7 +186,9 @@ body::before {
     transform: translateY(-1px);
 }
 
-.store-card-icon { font-size: 24px; }
+.store-card-icon { line-height: 0; color: var(--accent); }
+.store-card-icon svg { width: 26px; height: 26px; }
+.store-card-entries svg { width: 22px; height: 22px; color: var(--accent); vertical-align: middle; }
 .store-card-name { font-weight: 700; font-size: 14px; color: var(--text); }
 .store-card-size {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
@@ -200,8 +202,9 @@ body::before {
 }
 .store-card-lock {
     position: absolute; top: 12px; right: 12px;
-    font-size: 14px; opacity: 0.5;
+    line-height: 0; opacity: 0.5;
 }
+.store-card-lock svg { width: 14px; height: 14px; }
 
 /* Empty store placeholder */
 .store-card.empty .store-card-entries { color: var(--text-muted); }
