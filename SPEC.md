@@ -851,7 +851,7 @@ These paths must have automated tests. Adding or changing any of them requires a
 
 On every release, bump the version string in exactly these three places simultaneously:
 
-1. `main.py` — FastAPI `version="..."` parameter.
+1. `deps.py` — `APP_VERSION` constant (imported by `main.py` for the FastAPI `version=` parameter and used as the cache-busting fallback).
 2. `README.md` — version badge.
 3. `CHANGELOG.md` — new version heading.
 

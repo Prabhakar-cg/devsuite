@@ -24,7 +24,7 @@ Before writing any code, read `SPEC.md` fully. Every feature, behavior, API cont
 
 5. **Security paths require tests.** Any change to auth, CSRF, session tokens, rate limiting, PBKDF2, AES-GCM, or the CORS proxy must have a corresponding test in `tests/python/` or `tests/javascript/`.
 
-6. **Version bump protocol.** On every release, bump `APP_VERSION` in `main.py`, the badge in `README.md`, and the heading in `CHANGELOG.md` — all three, simultaneously. Then update the version in `SPEC.md §1.3`.
+6. **Version bump protocol.** On every release, bump `APP_VERSION` in `deps.py`, the badge in `README.md`, and the heading in `CHANGELOG.md` — all three, simultaneously. Then update the version in `SPEC.md §1.3`.
 
 ## Key Files
 

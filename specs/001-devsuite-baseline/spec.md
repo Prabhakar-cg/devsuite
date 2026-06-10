@@ -122,7 +122,7 @@ and confirm the master password is required again.
   sandbox worker with its scoped CSP, with a 10 s timeout (SPEC §4.7.1, §5.10).
 - **FR-008**: Security-relevant events MUST be appended to the JSON-lines audit log
   with no secret values (SPEC §7.6).
-- **FR-009**: Every release MUST bump the version simultaneously in `main.py`,
+- **FR-009**: Every release MUST bump the version simultaneously in `deps.py`,
   `README.md`, `CHANGELOG.md`, and `SPEC.md` §1.3 (Constitution VII, SPEC §12).
 - **FR-010**: All UI MUST follow the SPEC §9 design system (dual vocabulary, fixed
   fonts, semantic color tokens, no emoji in chrome, stroke-based SVG icons).

@@ -51,7 +51,7 @@ WebSocket session gate, or the CORS proxy must land with a corresponding test in
 
 ### VII. Versioning Discipline
 
-On every release the version is bumped simultaneously in `main.py` (`APP_VERSION`),
+On every release the version is bumped simultaneously in `deps.py` (`APP_VERSION`),
 the `README.md` badge, the `CHANGELOG.md` heading, and `SPEC.md` §1.3. Changelog
 follows Semantic Versioning with the section layout in SPEC §12.3. Cache busting is
 automatic via `_serve_html()` — manual version query strings in HTML are forbidden.
