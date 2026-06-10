@@ -71,11 +71,18 @@ function makeDs(runtimeVars, envVars, mutations, extra = {}) {
 }
 
 self.onmessage = async (e) => {
-    const { id, kind, code, runtimeVars = {}, envVars = {}, response = null } = e.data || {};
+    const { id, kind, code, runtimeVars = {}, envVars = {}, response = null, authToken } = e.data || {};
     const logs = [];
     const results = [];
     const mutations = { runtime: {}, env: {} };
     const consoleObj = makeCapturedConsole(logs);
+    const expectedToken = self.__DS_WORKER_TOKEN;
+
+    if (!expectedToken || authToken !== expectedToken) {
+        logs.push({ type: 'error', text: 'Unauthorized script execution request.' });
+        self.postMessage({ id, logs, results, mutations });
+        return;
+    }
 
     try {
         if (kind === 'test') {
