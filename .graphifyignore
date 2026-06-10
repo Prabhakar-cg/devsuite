@@ -1,0 +1,9 @@
+# Vendored third-party bundles — exclude from the knowledge graph.
+# Without this, Monaco/xterm minified symbols add ~20k noise nodes (95% of the graph).
+static/libs/
+static/xterm.js
+static/xterm.css
+static/xterm-addon-fit.js
+*.min.js
+__pycache__/
+.venv/
