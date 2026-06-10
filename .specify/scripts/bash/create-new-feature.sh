@@ -47,6 +47,10 @@ while [ $i -le $# ]; do
                 echo 'Error: --number requires a value' >&2
                 exit 1
             fi
+            if [[ ! "$next_arg" =~ ^0*[1-9][0-9]*$ ]]; then
+                echo "Error: --number requires a positive integer, got '$next_arg'" >&2
+                exit 1
+            fi
             BRANCH_NUMBER="$next_arg"
             ;;
         --timestamp)
@@ -69,6 +73,10 @@ while [ $i -le $# ]; do
             echo "  $0 'Implement OAuth2 integration for API' --number 5"
             echo "  $0 --timestamp --short-name 'user-auth' 'Add user authentication'"
             exit 0
+            ;;
+        --*)
+            echo "Error: Unknown option '$arg'" >&2
+            exit 1
             ;;
         *)
             ARGS+=("$arg")
@@ -204,6 +212,12 @@ else
     if [ -z "$BRANCH_NUMBER" ]; then
         HIGHEST=$(get_highest_from_specs "$SPECS_DIR")
         BRANCH_NUMBER=$((HIGHEST + 1))
+    fi
+
+    # Guard the arithmetic below even if BRANCH_NUMBER was set outside the parser
+    if [[ ! "$BRANCH_NUMBER" =~ ^0*[1-9][0-9]*$ ]]; then
+        echo "Error: branch number must be a positive integer, got '$BRANCH_NUMBER'" >&2
+        exit 1
     fi
 
     # Force base-10 interpretation to prevent octal conversion (e.g., 010 → 8 in octal, but should be 10 in decimal)

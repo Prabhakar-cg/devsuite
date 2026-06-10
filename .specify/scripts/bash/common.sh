@@ -118,6 +118,27 @@ _persist_feature_json() {
     fi
 }
 
+# Canonicalize a feature directory path and ensure it lives under
+# "$repo_root/specs". Prints the canonical path on success; prints an error
+# and returns 1 otherwise.
+_validate_feature_dir() {
+    local repo_root="$1"
+    local feature_dir="$2"
+    local canonical
+    if canonical=$(realpath -m -- "$feature_dir" 2>/dev/null); then
+        :
+    elif command -v python3 >/dev/null 2>&1; then
+        canonical=$(python3 -c 'import os,sys; print(os.path.normpath(sys.argv[1]))' "$feature_dir")
+    else
+        canonical="$feature_dir"
+    fi
+    if [[ "$canonical" != "$repo_root/specs" && "$canonical" != "$repo_root/specs/"* ]]; then
+        echo "ERROR: Feature directory '$feature_dir' must be inside '$repo_root/specs/'." >&2
+        return 1
+    fi
+    printf '%s\n' "$canonical"
+}
+
 get_feature_paths() {
     local repo_root=$(get_repo_root)
     local current_branch=$(get_current_branch)
@@ -131,6 +152,8 @@ get_feature_paths() {
         feature_dir="$SPECIFY_FEATURE_DIRECTORY"
         # Normalize relative paths to absolute under repo root
         [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
+        # Reject paths that escape the repo spec tree before persisting anything
+        feature_dir=$(_validate_feature_dir "$repo_root" "$feature_dir") || return 1
         # Persist to feature.json so future sessions without the env var still work
         _persist_feature_json "$repo_root" "$SPECIFY_FEATURE_DIRECTORY"
     elif [[ -f "$repo_root/.specify/feature.json" ]]; then
@@ -140,6 +163,8 @@ get_feature_paths() {
             feature_dir="$_fd"
             # Normalize relative paths to absolute under repo root
             [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
+            # Reject paths that escape the repo spec tree
+            feature_dir=$(_validate_feature_dir "$repo_root" "$feature_dir") || return 1
         else
             echo "ERROR: Feature directory not found. Set SPECIFY_FEATURE_DIRECTORY or ensure .specify/feature.json contains feature_directory." >&2
             return 1

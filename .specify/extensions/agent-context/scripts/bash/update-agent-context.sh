@@ -176,15 +176,17 @@ if os.path.exists(ctx_path):
         if end_of_marker < len(content) and content[end_of_marker] == "\n":
             end_of_marker += 1
         new_content = content[:s] + section + content[end_of_marker:]
-    elif s != -1:
-        new_content = content[:s] + section
-    elif e != -1:
-        end_of_marker = e + len(end)
-        if end_of_marker < len(content) and content[end_of_marker] == "\r":
-            end_of_marker += 1
-        if end_of_marker < len(content) and content[end_of_marker] == "\n":
-            end_of_marker += 1
-        new_content = section + content[end_of_marker:]
+    elif s != -1 or e != -1:
+        # Only one marker present — the block is corrupt. Never truncate user
+        # content: keep everything as-is and append a fresh guarded section.
+        print(
+            "agent-context: warning: found only one context marker; "
+            "preserving existing content and appending a fresh section.",
+            file=sys.stderr,
+        )
+        if not content.endswith("\n"):
+            content += "\n"
+        new_content = content + "\n" + section
     else:
         if content and not content.endswith("\n"):
             content += "\n"

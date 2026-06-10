@@ -216,13 +216,12 @@ if (Test-Path -LiteralPath $CtxPath) {
         if ($endOfMarker -lt $content.Length -and $content[$endOfMarker] -eq "`r") { $endOfMarker++ }
         if ($endOfMarker -lt $content.Length -and $content[$endOfMarker] -eq "`n") { $endOfMarker++ }
         $newContent = $content.Substring(0, $s) + $Section + $content.Substring($endOfMarker)
-    } elseif ($s -ge 0) {
-        $newContent = $content.Substring(0, $s) + $Section
-    } elseif ($e -ge 0) {
-        $endOfMarker = $e + $MarkerEnd.Length
-        if ($endOfMarker -lt $content.Length -and $content[$endOfMarker] -eq "`r") { $endOfMarker++ }
-        if ($endOfMarker -lt $content.Length -and $content[$endOfMarker] -eq "`n") { $endOfMarker++ }
-        $newContent = $Section + $content.Substring($endOfMarker)
+    } elseif ($s -ge 0 -or $e -ge 0) {
+        # Only one marker present — the block is corrupt. Never truncate user
+        # content: keep everything as-is and append a fresh guarded section.
+        Write-Warning 'agent-context: found only one context marker; preserving existing content and appending a fresh section.'
+        if (-not $content.EndsWith("`n")) { $content += "`n" }
+        $newContent = $content + "`n" + $Section
     } else {
         if ($content -and -not $content.EndsWith("`n")) { $content += "`n" }
         if ($content) { $newContent = $content + "`n" + $Section } else { $newContent = $Section }

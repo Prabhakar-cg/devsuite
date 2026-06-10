@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: User description: "$ARGUMENTS"
+**Input**: User description: "[ARGUMENTS]"
 
 ## User Scenarios & Testing *(mandatory)*
 
