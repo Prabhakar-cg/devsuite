@@ -2,7 +2,8 @@
 
 > **Version:** 0.3.0  
 > **Status:** Living document — updated with each release.  
-> **Purpose:** Single source of truth for spec-driven development. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.
+> **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
+> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; the requirements-level baseline is `specs/001-devsuite-baseline/spec.md`; new features get their own `specs/NNN-name/` via `/speckit-specify` and fold durable contracts back into this document when they ship. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable.
 
 ---
 
@@ -18,7 +19,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.3.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md`, and `CHANGELOG.md`.
+`0.3.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
 
 ---
 
@@ -849,11 +850,12 @@ These paths must have automated tests. Adding or changing any of them requires a
 
 ### 12.1 Version Bump Rule
 
-On every release, bump the version string in exactly these three places simultaneously:
+On every release, bump the version string in exactly these four places simultaneously:
 
-1. `main.py` — FastAPI `version="..."` parameter.
+1. `deps.py` — `APP_VERSION` constant (imported by `main.py` for the FastAPI `version=` parameter and used as the cache-busting fallback).
 2. `README.md` — version badge.
 3. `CHANGELOG.md` — new version heading.
+4. `specs/SPEC.md` — §1.3 current-version string.
 
 ### 12.2 Cache Busting
 
