@@ -2,7 +2,8 @@
 
 > **Version:** 0.3.0  
 > **Status:** Living document — updated with each release.  
-> **Purpose:** Single source of truth for spec-driven development. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.
+> **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
+> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; the requirements-level baseline is `specs/001-devsuite-baseline/spec.md`; new features get their own `specs/NNN-name/` via `/speckit-specify` and fold durable contracts back into this document when they ship. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable.
 
 ---
 

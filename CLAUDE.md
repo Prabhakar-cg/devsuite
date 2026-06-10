@@ -1,37 +1,29 @@
 # DevSuite — Claude Code Instructions
 
-## Spec-Driven Development
+## Spec-Driven Development (Spec Kit)
 
-**SPEC.md is the single source of truth for this project.**
+This project uses GitHub Spec Kit. **The spec-kit tree is the single source of truth:**
 
-Before writing any code, read `SPEC.md` fully. Every feature, behavior, API contract, constraint, and design rule is defined there.
+- `.specify/memory/constitution.md` — non-negotiable principles. Read first; every plan and implementation must comply.
+- `specs/SPEC.md` — the detailed master specification (routes, APIs, storage format, security model, design system). Code and tests cite it as `SPEC.md §<section>` — keep its § numbering stable.
+- `specs/001-devsuite-baseline/spec.md` — requirements-level baseline of the as-built system.
+- New features: `/speckit-specify` creates `specs/NNN-name/`, then `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`. When a feature ships, fold its durable contracts back into `specs/SPEC.md` in the same commit.
 
-### Rules
+Rules (full text in the constitution):
 
-1. **Spec first.** If a task requires changing behavior, API shape, UI, or adding a feature — update `SPEC.md` before writing implementation code. Do not implement anything that contradicts the spec without first getting approval to update it.
-
-2. **Verify against source.** When the spec and the code disagree, flag the discrepancy explicitly. Do not silently pick one — ask which is correct, then update the other.
-
-3. **No undocumented behavior.** Every route, endpoint, store, environment variable, auth contract, and security rule must be in `SPEC.md`. If you add something new, add it to the spec in the same commit.
-
-4. **Non-negotiable constraints** (from `SPEC.md §2`):
-   - No `innerHTML` with untrusted data — use `createElement` + `textContent`.
-   - No CDN fonts — always `@import '/static/libs/fonts.css'`.
-   - No frameworks — vanilla HTML/CSS/JS only.
-   - No external DB — all persistence via DevDB (`.dsb`).
-   - Client-side encryption only — backend never decrypts vault or ssh_profiles blobs.
-   - Do not add inline `<script>` tags — tracked as SEC-11 debt, do not worsen it.
-
-5. **Security paths require tests.** Any change to auth, CSRF, session tokens, rate limiting, PBKDF2, AES-GCM, or the CORS proxy must have a corresponding test in `tests/python/` or `tests/javascript/`.
-
-6. **Version bump protocol.** On every release, bump `APP_VERSION` in `deps.py`, the badge in `README.md`, and the heading in `CHANGELOG.md` — all three, simultaneously. Then update the version in `SPEC.md §1.3`.
+1. **Spec first.** Behavior/API/UI changes update the spec before implementation code.
+2. **Verify against source.** When spec and code disagree, flag the discrepancy explicitly — never silently pick one.
+3. **No undocumented behavior.** Every route, endpoint, store, env var, auth contract, and security rule must be in `specs/SPEC.md`, added in the same commit.
+4. **Security paths require tests** (auth, CSRF, sessions, rate limiting, PBKDF2, AES-GCM, CORS proxy) — in `tests/python/` or `tests/javascript/`.
+5. **Version bump protocol.** Bump `APP_VERSION` in `deps.py`, the `README.md` badge, the `CHANGELOG.md` heading, and `specs/SPEC.md` §1.3 simultaneously.
 
 ## Key Files
 
 | File | Role |
 |---|---|
-| `SPEC.md` | Single source of truth — read first |
-| `main.py` | Entire backend (routes, WebSocket, auth, proxy, DevDB REST API) |
+| `specs/SPEC.md` | Master specification — read first |
+| `main.py` | Backend orchestrator (app factory, middleware, routers) |
+| `deps.py` | Shared singletons, `APP_VERSION` |
 | `devdb.py` | Storage engine — KeePass-style `.dsb` binary |
 | `static/style.css` | Global design tokens — all CSS vars live here |
 | `static/theme.js` | Theme manager — 6 themes, fires `devsuite-theme-changed` |
@@ -43,7 +35,7 @@ Before writing any code, read `SPEC.md` fully. Every feature, behavior, API cont
 - Do not read `static/libs/**` or any `*.min.js` file — they are vendored bundles and will exhaust context.
 - Do not run the server or browser tests without being asked.
 - Do not commit directly — propose the commit message and wait for approval.
-- Do not add third-party JS libraries without updating `SPEC.md §11` and `UPGRADE_PLAN.md`.
+- Do not add third-party JS libraries without updating `specs/SPEC.md §11` and `UPGRADE_PLAN.md`.
 
 ## Running Tests
 
@@ -72,17 +64,7 @@ Rules:
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
 <!-- SPECKIT START -->
-## Spec Kit
-
-This project uses GitHub Spec Kit for spec-driven development, layered on top of
-the existing SPEC.md workflow:
-
-- `.specify/memory/constitution.md` — non-negotiable principles (migrated from
-  this file + SPEC.md §2/§7/§10/§12). Every plan and implementation must comply.
-- `specs/001-devsuite-baseline/spec.md` — requirements-level baseline of the
-  as-built v0.3.0 system. **SPEC.md remains the detailed single source of truth**;
-  the baseline spec references it by section.
-- New features: run `/speckit-specify` to create `specs/NNN-name/`, then
-  `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`. When a feature ships,
-  fold its durable contracts back into SPEC.md in the same commit (Rule 3 above).
+Spec-kit artifacts: constitution at `.specify/memory/constitution.md`, master spec at
+`specs/SPEC.md`, feature specs under `specs/NNN-name/`. See the Spec-Driven
+Development section above for the workflow.
 <!-- SPECKIT END -->

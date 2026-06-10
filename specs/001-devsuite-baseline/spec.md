@@ -6,11 +6,11 @@
 
 **Status**: Implemented (baseline conversion of the existing system)
 
-**Input**: Migration of the pre-spec-kit master specification (`SPEC.md` v0.3.0) into
+**Input**: Migration of the pre-spec-kit master specification (`specs/SPEC.md` v0.3.0) into
 the spec-kit structure. This document is the requirements-level baseline; **detailed
-behavioral, API, storage, and design contracts remain in `SPEC.md`** (referenced by
+behavioral, API, storage, and design contracts remain in `specs/SPEC.md`** (referenced by
 section throughout). New features get their own `specs/NNN-name/` directory via
-`/speckit-specify`; durable contracts fold back into `SPEC.md` on completion.
+`/speckit-specify`; durable contracts fold back into `specs/SPEC.md` on completion.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -123,7 +123,7 @@ and confirm the master password is required again.
 - **FR-008**: Security-relevant events MUST be appended to the JSON-lines audit log
   with no secret values (SPEC §7.6).
 - **FR-009**: Every release MUST bump the version simultaneously in `deps.py`,
-  `README.md`, `CHANGELOG.md`, and `SPEC.md` §1.3 (Constitution VII, SPEC §12).
+  `README.md`, `CHANGELOG.md`, and `specs/SPEC.md` §1.3 (Constitution VII, SPEC §12).
 - **FR-010**: All UI MUST follow the SPEC §9 design system (dual vocabulary, fixed
   fonts, semantic color tokens, no emoji in chrome, stroke-based SVG icons).
 
