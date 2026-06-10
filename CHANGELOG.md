@@ -28,6 +28,12 @@ Strategic release: the API Tester is now DevSuite's flagship (SPEC §13). Seven 
 #### `Referrer-Policy` header now actually sent (`main.py`)
 - SPEC §5.10 listed `Referrer-Policy: strict-origin-when-cross-origin` but the middleware never set it. Now sent on every response. (SPEC §5.10's `X-XSS-Protection` line also corrected to the `0` the code has sent since v0.2.2.)
 
+#### CORS proxy SSRF guard relaxed for LAN targets (`routes/proxy.py`)
+- `_check_ip_not_private` no longer blocks RFC-1918 private ranges (`10.x.x.x`, `192.168.x.x`, `172.16–31.x.x`) — DevSuite is a loopback-only local tool, and testing LAN APIs through the CORS proxy is a first-class use case. Loopback (`127.x` / `::1`), link-local / cloud-metadata (`169.254.x`), multicast, and IANA-reserved addresses remain blocked. SPEC §4.8/§5.9/§10.2 updated; new test `test_check_ip_allows_private_lan` in `tests/python/test_proxy_ssrf.py`.
+
+#### Middleware order fixed — CORS outermost (`main.py`)
+- `CORSMiddleware` is now registered last (Starlette wraps inner-first, outer-last), making it the outermost layer so `OPTIONS` preflights are answered before any other middleware runs. Previously `SlowAPIMiddleware` was outermost, so preflight requests counted against (and could be rejected by) the rate limiter.
+
 ### Features
 
 #### Collection runner (SPEC §4.7.2)
@@ -45,6 +51,9 @@ Strategic release: the API Tester is now DevSuite's flagship (SPEC §13). Seven 
 - **Postman import preserves folder hierarchy** (previously flattened to one level).
 - Folder auth is keyed by full path; requests with `inherit` walk **up** the path to the nearest configured ancestor, and the Auth tab names which folder will apply.
 - Per-folder **run** button added next to the folder-auth lock.
+
+#### Smart CORS routing (`static/api-client.js`)
+- New `_isCrossOrigin()` / `_willNeedPreflight()` helpers: cross-origin requests that would trigger a CORS preflight (custom headers such as `Authorization`, JSON bodies, `PUT`/`PATCH`/`DELETE`) now route straight to the local proxy instead of attempting a doomed direct fetch first — eliminating the double round-trip, the DevTools CORS error noise, and the visible latency spike. Simple requests (bare `GET`/`HEAD`, form `POST`, no custom headers) still try direct first and fall back to the proxy. (See the Documentation note below: the document CSP's `connect-src 'self'` currently forces the proxy path for all cross-origin requests — an explicit v0.3.x decision item.)
 
 #### Cookie jar (SPEC §4.7.5, `static/cookie-jar.js`)
 - Session-scoped, in-memory jar (never persisted). Captures `Set-Cookie` from proxied responses; attaches matching cookies (RFC 6265 domain/path/expiry/Secure matching) to Send and runner requests unless a manual `Cookie` header is set.
@@ -76,6 +85,8 @@ Strategic release: the API Tester is now DevSuite's flagship (SPEC §13). Seven 
 - **JS unit test suite bootstrapped** (`tests/javascript/run.js`, zero dependencies, node) — 41 tests covering `curl-codegen.js`, `cookie-jar.js`, and `collection-utils.js`. These modules use a browser/node dual export and contain no DOM access.
 - `escHtml()` dead code removed from `api-tester.js`.
 - Backend suite grown from 31 to 39 tests.
+- **Sonar minor sweep:** `parseInt` → `Number.parseInt` in `auth-guard.js` / `vault.js` (S7773); inverted `!currentItemFolder` block and `NOSONAR` on idiomatic guard clauses (S7735) and the intentional fall-through `catch` (S2486) in `api-tester.js`.
+- `SONAR_FINDINGS.md` deleted; replaced by a fresh SonarCloud scan report in `sonarfindings.md`; `.sonarcloud.properties` updated.
 
 ### Documentation
 - `SPEC.md`: §4.7 expanded with §4.7.1–§4.7.6 behavioral specs; §5.9 proxy response shape; §5.10 CSP split; §13 roadmap reframed — v0.3.0 is "API Tester: Daily Driver", UX Foundation moved to v0.4.0, Power User to v0.5.0, new v0.3.x follow-ups section (masked env secrets, `connect-src` decision, mock server).
