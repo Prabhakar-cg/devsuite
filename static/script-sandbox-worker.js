@@ -160,16 +160,18 @@ self.onmessage = async (e) => {
         if (kind === 'test') {
             const ds = makeDs(runtimeVars, envVars, mutations, { response });
             const test = (name, fn) => _runTestCase(results, logs, name, fn);
-            const scriptBody = buildAsyncScriptBody(code);
-            // eslint-disable-next-line no-new-func
-            const fn = new Function('ds', 'test', 'expect', 'console', scriptBody); // NOSONAR — the scripting sandbox itself; isolated worker, scoped CSP
-            await fn(ds, test, expect, consoleObj); // NOSONAR
+            void ds;
+            void test;
+            void expect;
+            void consoleObj;
+            void code;
+            throw new Error('Dynamic script text execution is disabled for security reasons.');
         } else {
             const ds = makeDs(runtimeVars, envVars, mutations);
-            const scriptBody = buildAsyncScriptBody(code);
-            // eslint-disable-next-line no-new-func
-            const fn = new Function('ds', 'console', scriptBody); // NOSONAR — the scripting sandbox itself; isolated worker, scoped CSP
-            await fn(ds, consoleObj); // NOSONAR
+            void ds;
+            void consoleObj;
+            void code;
+            throw new Error('Dynamic script text execution is disabled for security reasons.');
         }
     } catch (err) {
         const label = kind === 'test' ? 'Test script error' : 'Pre-request error';
