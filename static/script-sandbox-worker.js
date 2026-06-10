@@ -28,6 +28,40 @@ const BLOCKED_SCRIPT_PATTERNS = [
     /\bWebAssembly\b/,
 ];
 
+function _base64ToUint8Array(base64) {
+    const raw = atob(base64);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);
+    return out;
+}
+
+async function _importHmacKey(secret) {
+    const enc = new TextEncoder();
+    return crypto.subtle.importKey(
+        'raw',
+        enc.encode(String(secret)),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['verify'],
+    );
+}
+
+async function verifySignedScript(code, codeSig, secret) {
+    if (typeof code !== 'string' || typeof codeSig !== 'string' || !secret) return false;
+    try {
+        const key = await _importHmacKey(secret);
+        const enc = new TextEncoder();
+        return crypto.subtle.verify(
+            'HMAC',
+            key,
+            _base64ToUint8Array(codeSig),
+            enc.encode(code),
+        );
+    } catch {
+        return false;
+    }
+}
+
 function assertSafeScriptCode(code) {
     if (typeof code !== 'string') {
         throw new Error('Script must be a string.');
@@ -102,12 +136,19 @@ function makeDs(runtimeVars, envVars, mutations, extra = {}) {
 }
 
 self.onmessage = async (e) => {
-    const { id, kind, code, runtimeVars = {}, envVars = {}, response = null, authToken } = e.data || {};
+    const { id, kind, code, codeSig, runtimeVars = {}, envVars = {}, response = null, authToken } = e.data || {};
     const logs = [];
     const results = [];
     const mutations = { runtime: {}, env: {} };
     const consoleObj = makeCapturedConsole(logs);
     const expectedToken = self.__DS_WORKER_TOKEN;
+
+    const isSigned = await verifySignedScript(code, codeSig, expectedToken);
+    if (!isSigned) {
+        logs.push({ type: 'error', text: 'Rejected unsigned or invalidly signed script.' });
+        self.postMessage({ id, logs, results, mutations });
+        return;
+    }
 
     if (!expectedToken || authToken !== expectedToken) {
         logs.push({ type: 'error', text: 'Unauthorized script execution request.' });
