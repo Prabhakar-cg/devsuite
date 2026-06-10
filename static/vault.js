@@ -77,7 +77,7 @@ function decryptVault(ciphertext, iv, key) {
 
 function _hexToBytes(hex) {
     const b = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) b[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+    for (let i = 0; i < hex.length; i += 2) b[i / 2] = Number.parseInt(hex.slice(i, i + 2), 16);
     return b;
 }
 function _bytesToHex(bytes) {
@@ -775,7 +775,9 @@ function addFieldRow(container, { label, value, secret, fieldId, clipLabel, isUr
         const revBtn = document.createElement('button');
         revBtn.className = 'field-action-btn js-reveal-btn';
         revBtn.title = 'Reveal / hide';
-        revBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"${fieldId ? ` id="eye-${fieldId}"` : ''}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`; // static SVG
+        const eyeIdAttr = fieldId ? ` id="eye-${fieldId}"` : '';
+        const svgTag = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"${eyeIdAttr}>`;
+        revBtn.innerHTML = `${svgTag}<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`; // static SVG
         wrap.appendChild(revBtn);
     }
 
@@ -794,8 +796,8 @@ function addFieldRow(container, { label, value, secret, fieldId, clipLabel, isUr
     // escape single quotes, which made the old inline onclick an injection vector.
     const revealBtn = row.querySelector('.js-reveal-btn');
     if (revealBtn) revealBtn.addEventListener('click', () => toggleReveal(fieldId));
-    const copyBtn = row.querySelector('.js-copy-btn');
-    if (copyBtn) copyBtn.addEventListener('click', () => copyToClipboard(value, clipLabel || label));
+    // copyBtn was created above — use it directly rather than re-querying the DOM.
+    copyBtn.addEventListener('click', () => copyToClipboard(value, clipLabel || label));
 
     // Attach safe URL opener — validates scheme before opening
     if (isUrl) {

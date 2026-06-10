@@ -1023,7 +1023,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
     const filenameBadge = document.getElementById('b64-filename-badge');
 
     // Tracks the last operation so Download knows what to produce
-    let lastOp      = null;  // 'encode-text' | 'encode-file' | 'decode'
+    let lastOp      = null;  // one of: encode-text, encode-file, decode
     let uploadedFile = null;
 
     function isUrlSafe() {

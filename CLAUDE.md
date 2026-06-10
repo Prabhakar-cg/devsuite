@@ -44,3 +44,19 @@ Before writing any code, read `SPEC.md` fully. Every feature, behavior, API cont
 - Do not run the server or browser tests without being asked.
 - Do not commit directly — propose the commit message and wait for approval.
 - Do not add third-party JS libraries without updating `SPEC.md §11` and `UPGRADE_PLAN.md`.
+
+## Running Tests
+
+- Backend suite: `pytest tests/python/` (41 tests, all should pass). Covers the SPEC §10.2 security-critical paths.
+- JS unit suite: `node tests/javascript/run.js` (zero dependencies). Covers the pure modules `static/curl-codegen.js` and `static/cookie-jar.js`. Browser/e2e tests are still a v1.0.0 deliverable.
+- CI runs the suite via `.github/workflows/tests.yml` (push/PR, Python 3.10 + 3.12). Still run it locally before claiming a change is verified.
+- DevSuite ships **12 tools**. The source of truth for the tool list is `routes/pages.py` (routes) + `static/tools.html` (cards) — not prose in README. Keep README/SPEC/`tools.html`/`home.html` counts in sync when adding or removing a tool.
+
+## Gotchas (as of 2026-06-10, v0.3.0)
+
+- **CSP split (SEC-6):** document responses carry **no `unsafe-eval`**. API Tester scripting runs in `static/script-sandbox-worker.js`, whose response gets its own scoped CSP (`script-src 'self' 'unsafe-eval'; connect-src 'none'`) via a path check in `main.py`'s security-headers middleware. Don't add `unsafe-eval` back to the document policy, and don't rename the worker file without updating `_SANDBOX_WORKER_PATH` and `tests/python/test_csp.py`.
+- **Cookie jar is in-memory only** (SPEC §4.7.5) — never persist it to DevDB or `localStorage`; that's a deliberate security boundary, not an oversight.
+- **UMD bundles must load BEFORE `require.min.js`** (`jszip.min.js`, `crypto-js.min.js`). When `define.amd` exists, a UMD bundle registers as an anonymous AMD module instead of setting its global, and RequireJS then throws "Mismatched anonymous define()" on the page's next `require()` call — which kills the whole tool script (every button dead). Guarded by `tests/python/test_asset_order.py`.
+- **WebSocket auth (SEC-14):** the SSH/dashboard/local-terminal sockets are gated by `_ws_require_session` only *once a master password is configured*. Before setup they're open (no-password local-terminal flow). Keep that carve-out if you touch `routes/ssh.py`.
+- **No emoji in UI chrome** (SPEC §9.8/§9.9) — use stroke-based inline SVG. `auth-guard.js` and the DevDB Manager (`db-manager.html` + `db-manager.js`) were converted in v0.2.4. Don't add new emoji; copy the existing inline-SVG pattern.
+- **`tools.html` filter counts** are recomputed from the DOM at runtime (`updateFilterCounts()`); the static HTML values are just the pre-JS paint — keep both correct.

@@ -116,6 +116,34 @@ const els = {
     consoleBadge:       document.getElementById('console-badge'),
     consoleEntries:     document.getElementById('console-entries'),
     consolePlaceholder: document.getElementById('console-placeholder'),
+
+    btnExportZip:       document.getElementById('btn-export-zip'),
+    btnRunCollection:   document.getElementById('btn-run-collection'),
+    runnerModal:        document.getElementById('runner-modal'),
+    runnerScope:        document.getElementById('runner-scope'),
+    runnerList:         document.getElementById('runner-list'),
+    runnerSummary:      document.getElementById('runner-summary'),
+    btnRunnerStop:      document.getElementById('btn-runner-stop'),
+    btnRunnerClose:     document.getElementById('btn-runner-close'),
+    closeRunnerModal:   document.getElementById('close-runner-modal'),
+
+    btnCode:            document.getElementById('btn-code'),
+    codeModal:          document.getElementById('code-modal'),
+    closeCodeModal:     document.getElementById('close-code-modal'),
+    codeOutput:         document.getElementById('code-output'),
+    codeOutputWrap:     document.getElementById('code-output-wrap'),
+    codeImportWrap:     document.getElementById('code-import-wrap'),
+    codeImportInput:    document.getElementById('code-import-input'),
+    codeImportStatus:   document.getElementById('code-import-status'),
+    btnCodeImport:      document.getElementById('btn-code-import'),
+    btnCopyCode:        document.getElementById('btn-copy-code'),
+
+    btnCookies:         document.getElementById('btn-cookies'),
+    cookieCount:        document.getElementById('cookie-count'),
+    cookiesModal:       document.getElementById('cookies-modal'),
+    closeCookiesModal:  document.getElementById('close-cookies-modal'),
+    cookiesList:        document.getElementById('cookies-list'),
+    btnClearCookies:    document.getElementById('btn-clear-cookies'),
 };
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -473,6 +501,7 @@ els.envModal.addEventListener('click', (e) => { if (e.target === els.envModal) c
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+        closeContextMenu();
         if (els.envModal.open) closeEnvModal();
         if (els.openapiModal.open) closeOpenapiModal();
         if (els.folderAuthModal?.open) els.folderAuthModal.close();
@@ -641,89 +670,87 @@ function interpolateObj(obj) {
     return out;
 }
 
-// ─── Script Execution ─────────────────────────────────────────────────────────
-function makeCapturedConsole(logs) {
-    const fmt = (...args) => args.map(a => (typeof a === 'object' ? jsonSafe(a) : String(a))).join(' ');
-    return {
-        log:   (...args) => logs.push({ type: 'log',   text: fmt(...args) }),
-        warn:  (...args) => logs.push({ type: 'warn',  text: fmt(...args) }),
-        error: (...args) => logs.push({ type: 'error', text: fmt(...args) }),
-        info:  (...args) => logs.push({ type: 'info',  text: fmt(...args) }),
-    };
+// ─── Script Execution (sandboxed — SPEC §4.7.1) ───────────────────────────────
+// User scripts run in a dedicated Web Worker (script-sandbox-worker.js) whose
+// response carries its own scoped CSP; the document CSP has no unsafe-eval.
+// The worker has no DOM and no network. Variable writes come back as mutations
+// and are applied here after the script completes.
+let _sandboxWorker = null;
+let _sandboxSeq = 0;
+const SCRIPT_TIMEOUT_MS = 10000;
+
+function _getSandboxWorker() {
+    if (!_sandboxWorker) _sandboxWorker = new Worker('/static/script-sandbox-worker.js');
+    return _sandboxWorker;
 }
 
-function makeDs(extra = {}) {
-    return {
-        setVar:    (k, v) => { runtimeVars[k] = v; },
-        getVar:    (k)    => runtimeVars[k] ?? getEnvVar(k),
-        setEnvVar: (k, v) => {
-            const env = getActiveEnv();
-            if (env) { env.vars = env.vars || {}; env.vars[k] = v; saveEnvironments(); }
-        },
-        getEnvVar: (k) => getEnvVar(k),
-        ...extra,
-    };
+function _applyScriptMutations(mutations) {
+    Object.assign(runtimeVars, mutations.runtime || {});
+    const envWrites = Object.entries(mutations.env || {});
+    if (envWrites.length) {
+        const env = getActiveEnv();
+        if (env) {
+            env.vars = env.vars || {};
+            envWrites.forEach(([k, v]) => { env.vars[k] = v; });
+            saveEnvironments();
+        }
+    }
+}
+
+function runScriptSandboxed(kind, code, dsResponse = null, timeoutMs = SCRIPT_TIMEOUT_MS) {
+    return new Promise((resolve) => {
+        if (!code || !code.trim()) { resolve({ logs: [], results: [] }); return; }
+        let worker;
+        try {
+            worker = _getSandboxWorker();
+        } catch (e) {
+            resolve({ logs: [{ type: 'error', text: `Script sandbox unavailable: ${e.message}` }], results: [] });
+            return;
+        }
+        const id = ++_sandboxSeq;
+        let timer = null;
+
+        function cleanup() {
+            clearTimeout(timer);
+            worker.removeEventListener('message', onMessage);
+            worker.removeEventListener('error', onError);
+        }
+        function onMessage(ev) {
+            if (ev.data?.id !== id) return;
+            cleanup();
+            _applyScriptMutations(ev.data.mutations || {});
+            resolve({ logs: ev.data.logs || [], results: ev.data.results || [] });
+        }
+        function onError(ev) {
+            cleanup();
+            resolve({ logs: [{ type: 'error', text: `Script sandbox error: ${ev.message || 'worker failed to load'}` }], results: [] });
+        }
+
+        timer = setTimeout(() => {
+            cleanup();
+            worker.terminate();
+            _sandboxWorker = null; // recreated lazily on the next run
+            resolve({ logs: [{ type: 'error', text: `Script timed out after ${timeoutMs / 1000}s and was terminated` }], results: [] });
+        }, timeoutMs);
+
+        worker.addEventListener('message', onMessage);
+        worker.addEventListener('error', onError);
+        worker.postMessage({
+            id, kind, code,
+            runtimeVars: { ...runtimeVars },
+            envVars: { ...(getActiveEnv()?.vars || {}) },
+            response: dsResponse,
+        });
+    });
 }
 
 async function runPreRequestScript(code) {
-    const logs = [];
-    if (!code.trim()) return logs;
-    try {
-        // eslint-disable-next-line no-new-func
-        const fn = new Function('ds', 'console', `return (async()=>{\n${code}\n})()`); // NOSONAR — intentional scripting sandbox; code is user-authored in the Monaco editor
-        await fn(makeDs(), makeCapturedConsole(logs)); // NOSONAR
-    } catch (e) {
-        logs.push({ type: 'error', text: `Pre-request error: ${e.message}` });
-    }
-    return logs;
-}
-
-function expect(val) {
-    const assert = (pass, msg) => { if (!pass) throw new Error(msg); };
-    const handlers = {
-        equal:    (exp)  => assert(val === exp,                         `Expected ${jsonSafe(val)} to equal ${jsonSafe(exp)}`),
-        include:  (str)  => assert(String(val).includes(String(str)),   `Expected "${val}" to include "${str}"`),
-        property: (key)  => assert(val != null && key in Object(val),   `Expected object to have property "${key}"`),
-        status:   (code) => assert(val?.status === code,                `Expected status ${val?.status} to equal ${code}`),
-        ok:       ()     => assert(Boolean(val),                        `Expected ${jsonSafe(val)} to be truthy`),
-        above:    (n)    => assert(val > n,                             `Expected ${val} to be above ${n}`),
-        below:    (n)    => assert(val < n,                             `Expected ${val} to be below ${n}`),
-        a:        (t)    => assert(typeof val === t,                    `Expected typeof ${typeof val} to be ${t}`),
-    };
-    const chain = new Proxy({}, {
-        get(_, prop) { return handlers[prop] ?? chain; },
-    });
-    return chain;
+    const run = await runScriptSandboxed('pre', code);
+    return run.logs;
 }
 
 async function runTestScript(code, dsResponse) {
-    const logs = [];
-    const results = [];
-    if (!code.trim()) return { logs, results };
-
-    function test(name, fn) {
-        try {
-            fn();
-            results.push({ name, passed: true });
-            logs.push({ type: 'pass', text: `✓  ${name}` });
-        } catch (e) {
-            results.push({ name, passed: false, error: e.message });
-            logs.push({ type: 'fail', text: `✗  ${name}: ${e.message}` });
-        }
-    }
-
-    try {
-        // eslint-disable-next-line no-new-func
-        const fn = new Function('ds', 'test', 'expect', 'console', `return (async()=>{\n${code}\n})()`); // NOSONAR — intentional scripting sandbox; code is user-authored in the Monaco editor
-        await fn(makeDs({ response: dsResponse }), test, expect, makeCapturedConsole(logs)); // NOSONAR
-    } catch (e) {
-        logs.push({ type: 'error', text: `Test script error: ${e.message}` });
-    }
-    return { logs, results };
-}
-
-function jsonSafe(v) {
-    try { return JSON.stringify(v); } catch { return String(v); }
+    return runScriptSandboxed('test', code, dsResponse);
 }
 
 // ─── Console Rendering ────────────────────────────────────────────────────────
@@ -765,11 +792,22 @@ function renderConsole(preReqLogs, testLogs, testResults) {
 
 // ─── Build Request Config ─────────────────────────────────────────────────────
 
+/** Nearest ancestor folder (walking up the `/` path) with a configured auth — SPEC §4.7.4. */
+function resolveFolderAuth(folderPath) {
+    let p = folderPath || '';
+    while (p) {
+        const fa = folderAuths[p];
+        if (fa && fa.type !== 'none') return { auth: fa, source: p };
+        const i = p.lastIndexOf('/');
+        p = i > 0 ? p.slice(0, i) : '';
+    }
+    return { auth: { type: 'none' }, source: null };
+}
+
 /** Resolve auth credentials into config.auth (mutates config in-place). */
 function _resolveAuthConfig(config) {
     if (config.auth.type === 'inherit') {
-        const fa = currentItemFolder ? (folderAuths[currentItemFolder] || { type: 'none' }) : { type: 'none' };
-        config.auth = { ...fa };
+        config.auth = { ...resolveFolderAuth(currentItemFolder).auth };
     }
     if (config.auth.type === 'bearer') {
         config.auth.token = interpolate(config.auth.token ?? els.authToken.value);
@@ -822,6 +860,20 @@ function buildRequestConfig() {
     return config;
 }
 
+function _readRawAuthConfig(authType) {
+    const auth = { type: authType };
+    if (authType === 'bearer')   auth.token      = els.authToken.value;
+    if (authType === 'basic') {  auth.username   = els.authUsername.value; auth.password = els.authPassword.value; }
+    if (authType === 'api-key'){ auth.headerName = els.authApikeyHeader.value.trim(); auth.headerValue = els.authApikeyValue.value.trim(); }
+    if (authType === 'oauth2') {
+        auth.grantType = els.oauth2Grant.value;
+        auth.tokenUrl  = els.oauth2TokenUrl.value.trim();
+        auth.clientId  = els.oauth2ClientId.value.trim();
+        auth.scope     = els.oauth2Scope.value.trim();
+    }
+    return auth;
+}
+
 // Raw config (pre-interpolation) used for saving/history
 function buildRawConfig() {
     const bodyType = document.querySelector('input[name="bodyType"]:checked').value;
@@ -830,18 +882,9 @@ function buildRawConfig() {
         method:      els.method.value,
         queryParams: paramsListObj.getAll(),
         headers:     headersListObj.getAll(),
-        auth:        { type: els.authType.value },
+        auth:        _readRawAuthConfig(els.authType.value),
         bodyType,
     };
-    if (config.auth.type === 'bearer')   config.auth.token      = els.authToken.value;
-    if (config.auth.type === 'basic') {  config.auth.username   = els.authUsername.value; config.auth.password = els.authPassword.value; }
-    if (config.auth.type === 'api-key'){ config.auth.headerName = els.authApikeyHeader.value.trim(); config.auth.headerValue = els.authApikeyValue.value.trim(); }
-    if (config.auth.type === 'oauth2') {
-        config.auth.grantType    = els.oauth2Grant.value;
-        config.auth.tokenUrl     = els.oauth2TokenUrl.value.trim();
-        config.auth.clientId     = els.oauth2ClientId.value.trim();
-        config.auth.scope        = els.oauth2Scope.value.trim();
-    }
     if (bodyType === 'json'      && reqEditor)         config.body = reqEditor.getValue();
     if (bodyType === 'form-data')                      config.body = formDataListObj.getAll();
     if (bodyType === 'text')                           config.body = els.reqTextBody.value;
@@ -855,18 +898,9 @@ function buildRawConfig() {
 }
 
 // ─── Render Response ──────────────────────────────────────────────────────────
-function renderResponse(response) {
-    els.respMeta.style.display = 'flex';
-    els.respStatus.textContent = `${response.status} ${response.statusText}`;
-    els.respStatus.className   = `meta-value ${response.status >= 200 && response.status < 300 ? 'status-ok' : 'status-err'}`;
-    els.respTime.textContent   = response.wasProxied ? `${response.timeMs} ms (proxy)` : `${response.timeMs} ms`;
-    els.respSize.textContent   = `${(response.sizeBytes / 1024).toFixed(2)} KB`;
-    els.respProxyChip.style.display = response.wasProxied ? 'inline-flex' : 'none';
-    const proxyBanner = document.getElementById('resp-proxy-banner');
-    if (proxyBanner) proxyBanner.style.display = response.wasProxied ? 'flex' : 'none';
-    els.respPlaceholder.style.display = 'none';
 
-    const bodyText = response.body ? JSON.stringify(response.body, null, 2) : (response.bodyText || '');
+/** Populate Monaco editor or fallback textarea with the response body. */
+function _renderResponseBody(response, bodyText) {
     if (respEditor) {
         const ct = response.contentType || '';
         let lang = 'json';
@@ -881,10 +915,13 @@ function renderResponse(response) {
         els.respFallback.textContent = bodyText;
         els.respFallback.style.display = 'flex';
     }
+}
 
+/** Populate the response headers tab with key/value rows. */
+function _renderResponseHeaders(headers) {
     const hContainer = document.getElementById('resp-headers-tab');
     hContainer.innerHTML = '';
-    for (const [k, v] of Object.entries(response.headers || {})) {
+    for (const [k, v] of Object.entries(headers || {})) {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex; border-bottom:1px solid var(--border); padding:0.5rem 1rem; align-items:baseline;';
         const kspan = document.createElement('span');
@@ -896,6 +933,24 @@ function renderResponse(response) {
         row.appendChild(kspan); row.appendChild(vspan);
         hContainer.appendChild(row);
     }
+}
+
+function renderResponse(response) {
+    els.respMeta.style.display = 'flex';
+    els.respStatus.textContent = `${response.status} ${response.statusText}`;
+    els.respStatus.className   = `meta-value ${response.status >= 200 && response.status < 300 ? 'status-ok' : 'status-err'}`;
+    els.respTime.textContent   = response.wasProxied ? `${response.timeMs} ms (proxy)` : `${response.timeMs} ms`;
+    els.respSize.textContent   = `${(response.sizeBytes / 1024).toFixed(2)} KB`;
+    els.respProxyChip.style.display = response.wasProxied ? 'inline-flex' : 'none';
+    const proxyBanner = document.getElementById('resp-proxy-banner');
+    if (proxyBanner) proxyBanner.style.display = response.wasProxied ? 'flex' : 'none';
+    els.respPlaceholder.style.display = 'none';
+
+    const bodyText = (response.body !== undefined && response.body !== null)
+        ? JSON.stringify(response.body, null, 2)
+        : (response.bodyText || '');
+    _renderResponseBody(response, bodyText);
+    _renderResponseHeaders(response.headers);
 
     if (response.error || response.status === 0) {
         showToast('Network error — check console', 'error');
@@ -919,7 +974,7 @@ els.btnSend.addEventListener('click', async () => {
         preReqLogs = await runPreRequestScript(preCode);
 
         const config   = buildRequestConfig();
-        const response = await globalThis.ApiClient.execute(config);
+        const response = await executeWithJar(config);
 
         addToHistory({ ...buildRawConfig(), timestamp: Date.now() });
         renderResponse(response);
@@ -1019,63 +1074,202 @@ async function saveCollections() {
     }
 }
 
-// ─── Collections — Folder Rendering ──────────────────────────────────────────
+// ─── Collections — Nested Folder Rendering (SPEC §4.7.4) ─────────────────────
+
+/** Build a folder tree from `/`-separated item.folder paths. */
+function buildFolderTree() {
+    const root = { name: '', path: '', children: new Map(), items: [] };
+    collections.forEach((item, idx) => {
+        const segments = String(item.folder || '').split('/').map(s => s.trim()).filter(Boolean);
+        let node = root;
+        let acc = '';
+        for (const seg of segments) {
+            acc = acc ? `${acc}/${seg}` : seg;
+            if (!node.children.has(seg)) {
+                node.children.set(seg, { name: seg, path: acc, children: new Map(), items: [] });
+            }
+            node = node.children.get(seg);
+        }
+        node.items.push({ item, idx });
+    });
+    return root;
+}
+
+/** Total request count in a folder node, including all nested subfolders. */
+function countTreeItems(node) {
+    let n = node.items.length;
+    node.children.forEach(child => { n += countTreeItems(child); });
+    return n;
+}
+
+/** Flatten a folder node's requests in sidebar display order (items, then subfolders). */
+function collectTreeItems(node, out = []) {
+    node.items.forEach(entry => out.push(entry));
+    node.children.forEach(child => collectTreeItems(child, out));
+    return out;
+}
+
 function renderCollections() {
     els.collectionsList.innerHTML = '';
     const count = collections.length;
     if (els.collectionsCount) els.collectionsCount.textContent = `${count} request${count !== 1 ? 's' : ''}`;
 
-    // Group by folder
-    const folderMap = new Map();
-    const noFolder = [];
-
-    collections.forEach((item, idx) => {
-        if (item.folder) {
-            if (!folderMap.has(item.folder)) folderMap.set(item.folder, []); // NOSONAR — guard init, no else needed
-            folderMap.get(item.folder).push({ item, idx });
-        } else {
-            noFolder.push({ item, idx });
-        }
-    });
-
-    noFolder.forEach(({ item, idx }) => appendCollectionItem(els.collectionsList, item, idx));
-
-    folderMap.forEach((items, folderName) => {
-        const folderLi = createFolderElement(folderName, items);
-        els.collectionsList.appendChild(folderLi);
-    });
+    const root = buildFolderTree();
+    root.items.forEach(({ item, idx }) => appendCollectionItem(els.collectionsList, item, idx));
+    root.children.forEach(node => els.collectionsList.appendChild(createFolderElement(node)));
 }
 
-function createFolderElement(folderName, items) {
+function _makeSvg(attrs, childTag, childAttrs) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    for (const [k, v] of Object.entries(attrs)) {
+        if (k === 'style') { el.style.cssText = v; } else { el.setAttribute(k, v); }
+    }
+    if (childTag) {
+        const ch = document.createElementNS('http://www.w3.org/2000/svg', childTag);
+        Object.entries(childAttrs).forEach(([k, v]) => ch.setAttribute(k, v));
+        el.appendChild(ch);
+    }
+    return el;
+}
+
+function _makeKebabSvg() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', '12');
+    svg.setAttribute('height', '12');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'currentColor');
+    svg.setAttribute('aria-hidden', 'true');
+    ['5', '12', '19'].forEach(cy => {
+        const c = document.createElementNS(ns, 'circle');
+        c.setAttribute('cx', '12');
+        c.setAttribute('cy', cy);
+        c.setAttribute('r', '1.8');
+        svg.appendChild(c);
+    });
+    return svg;
+}
+
+// ─── Sidebar Context Menu & Request/Folder Management (SPEC §4.7.4) ──────────
+let _ctxMenu = null;
+
+function closeContextMenu() {
+    if (_ctxMenu) { _ctxMenu.remove(); _ctxMenu = null; }
+}
+
+function openContextMenu(anchor, entries) {
+    closeContextMenu();
+    const menu = document.createElement('div');
+    menu.className = 'ctx-menu';
+    menu.setAttribute('role', 'menu');
+    entries.forEach(({ label, danger, onClick }) => {
+        const btn = document.createElement('button');
+        btn.className = 'ctx-menu-item' + (danger ? ' danger' : '');
+        btn.setAttribute('role', 'menuitem');
+        btn.textContent = label;
+        btn.addEventListener('click', () => { closeContextMenu(); onClick(); });
+        menu.appendChild(btn);
+    });
+    document.body.appendChild(menu);
+    const r = anchor.getBoundingClientRect();
+    menu.style.top = `${Math.max(8, Math.min(r.bottom + 4, window.innerHeight - menu.offsetHeight - 8))}px`;
+    menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+    _ctxMenu = menu;
+}
+
+document.addEventListener('click', (e) => {
+    if (_ctxMenu && !_ctxMenu.contains(e.target)) closeContextMenu();
+});
+
+function renameRequest(idx) {
+    const item = collections[idx];
+    const name = prompt('Rename request:', item.name || '');
+    if (name === null) return; // NOSONAR — guard clause
+    item.name = name.trim() || item.name;
+    saveCollections();
+    renderCollections();
+}
+
+function duplicateRequest(idx) {
+    const copy = structuredClone(collections[idx]);
+    copy.name = `${copy.name || 'request'} (copy)`;
+    collections.splice(idx + 1, 0, copy);
+    saveCollections();
+    renderCollections();
+}
+
+function moveRequestToFolder(idx) {
+    const item = collections[idx];
+    const raw = prompt('Move to folder (use / for nesting, empty = top level):', item.folder || '');
+    if (raw === null) return; // NOSONAR — guard clause
+    const path = globalThis.CollectionUtils.normalizeFolderPath(raw);
+    if (path) { item.folder = path; } else { delete item.folder; }
+    saveCollections();
+    renderCollections();
+}
+
+function deleteRequest(idx) {
+    const item = collections[idx];
+    if (!confirm(`Delete request "${item.name || item.url}"?`)) return;
+    collections.splice(idx, 1);
+    saveCollections();
+    renderCollections();
+}
+
+function renameFolderPrompt(path) {
+    const raw = prompt('Rename folder (use / for nesting):', path);
+    if (raw === null) return; // NOSONAR — guard clause
+    const newPath = globalThis.CollectionUtils.normalizeFolderPath(raw);
+    if (!newPath || newPath === path) return;
+    const n = globalThis.CollectionUtils.renameFolder(collections, folderAuths, path, newPath);
+    saveCollections();
+    renderCollections();
+    showToast(`Renamed folder — ${n} request${n !== 1 ? 's' : ''} updated`, 'success');
+}
+
+function deleteFolderPrompt(path) {
+    const count = globalThis.CollectionUtils.countInFolder(collections, path);
+    if (!confirm(`Delete folder "${path}" and its ${count} request${count !== 1 ? 's' : ''}?`)) return;
+    const res = globalThis.CollectionUtils.deleteFolder(collections, folderAuths, path);
+    collections = res.items;
+    saveCollections();
+    renderCollections();
+    showToast(`Deleted folder "${path}" (${res.removed} request${res.removed !== 1 ? 's' : ''} removed)`, 'success');
+}
+
+function createFolderElement(node) {
     const li = document.createElement('li');
     li.className = 'collection-folder';
 
     const header = document.createElement('div');
     header.className = 'folder-header';
-    const _svg = (attrs, childTag, childAttrs) => {
-        const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        Object.entries(attrs).forEach(([k, v]) => { if (k === 'style') { el.style.cssText = v; } else { el.setAttribute(k, v); } });
-        if (childTag) {
-            const ch = document.createElementNS('http://www.w3.org/2000/svg', childTag);
-            Object.entries(childAttrs).forEach(([k, v]) => ch.setAttribute(k, v));
-            el.appendChild(ch);
-        }
-        return el;
-    };
-    const arrowSvg = _svg({ class: 'folder-arrow', width: '10', height: '10', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linecap': 'round', 'aria-hidden': 'true' }, 'polyline', { points: '6 9 12 15 18 9' });
-    const folderSvg = _svg({ width: '12', height: '12', viewBox: '0 0 24 24', fill: 'currentColor', stroke: 'none', 'aria-hidden': 'true', style: 'color:var(--vio); opacity:0.7; flex-shrink:0;' }, 'path', { d: 'M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z' });
+    const arrowSvg = _makeSvg({ class: 'folder-arrow', width: '10', height: '10', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2.5', 'stroke-linecap': 'round', 'aria-hidden': 'true' }, 'polyline', { points: '6 9 12 15 18 9' });
+    const folderSvg = _makeSvg({ width: '12', height: '12', viewBox: '0 0 24 24', fill: 'currentColor', stroke: 'none', 'aria-hidden': 'true', style: 'color:var(--vio); opacity:0.7; flex-shrink:0;' }, 'path', { d: 'M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z' });
     const nameSpan = document.createElement('span');
     nameSpan.className = 'folder-name';
-    nameSpan.textContent = folderName;
+    nameSpan.textContent = node.name;
+    nameSpan.title = node.path;
     const countSpan = document.createElement('span');
     countSpan.className = 'folder-count';
-    countSpan.textContent = items.length;
+    countSpan.textContent = countTreeItems(node);
+
+    const runBtn = document.createElement('button');
+    runBtn.className = 'btn-icon';
+    runBtn.title = 'Run folder';
+    runBtn.setAttribute('aria-label', `Run folder ${node.path}`);
+    runBtn.style.cssText = 'margin-left:auto; opacity:0.45;';
+    runBtn.appendChild(_makeSvg({ width: '10', height: '10', viewBox: '0 0 24 24', fill: 'currentColor', stroke: 'currentColor', 'stroke-width': '1', 'stroke-linejoin': 'round', 'aria-hidden': 'true' }, 'polygon', { points: '6 4 20 12 6 20 6 4' }));
+    runBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        runCollectionItems(collectTreeItems(node), `folder "${node.path}"`);
+    });
+
     const lockBtn = document.createElement('button');
     lockBtn.className = 'btn-icon';
     lockBtn.title = 'Configure folder auth';
-    lockBtn.setAttribute('aria-label', 'Configure folder auth');
-    const hasAuth = folderAuths[folderName] && folderAuths[folderName].type !== 'none';
-    lockBtn.style.cssText = `margin-left:auto; opacity:${hasAuth ? '1' : '0.28'}; color:${hasAuth ? 'var(--vio)' : 'inherit'};`;
+    lockBtn.setAttribute('aria-label', `Configure auth for folder ${node.path}`);
+    const hasAuth = folderAuths[node.path] && folderAuths[node.path].type !== 'none';
+    lockBtn.style.cssText = `opacity:${hasAuth ? '1' : '0.28'}; color:${hasAuth ? 'var(--vio)' : 'inherit'};`;
     const lockNS = 'http://www.w3.org/2000/svg';
     const lockSvg = document.createElementNS(lockNS, 'svg');
     lockSvg.setAttribute('width', '10'); lockSvg.setAttribute('height', '10');
@@ -1089,24 +1283,59 @@ function createFolderElement(folderName, items) {
     lockPath.setAttribute('d', 'M7 11V7a5 5 0 0 1 10 0v4');
     lockSvg.appendChild(lockRect); lockSvg.appendChild(lockPath);
     lockBtn.appendChild(lockSvg);
-    lockBtn.addEventListener('click', (e) => { e.stopPropagation(); openFolderAuthModal(folderName); });
+    lockBtn.addEventListener('click', (e) => { e.stopPropagation(); openFolderAuthModal(node.path); });
+
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'btn-icon';
+    moreBtn.title = 'Folder actions';
+    moreBtn.setAttribute('aria-label', `Actions for folder ${node.path}`);
+    moreBtn.setAttribute('aria-haspopup', 'menu');
+    moreBtn.appendChild(_makeKebabSvg());
+    moreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openContextMenu(moreBtn, [
+            { label: 'Rename folder', onClick: () => renameFolderPrompt(node.path) },
+            { label: 'Delete folder', danger: true, onClick: () => deleteFolderPrompt(node.path) },
+        ]);
+    });
 
     header.appendChild(arrowSvg);
     header.appendChild(folderSvg);
     header.appendChild(nameSpan);
     header.appendChild(countSpan);
+    header.appendChild(runBtn);
     header.appendChild(lockBtn);
+    header.appendChild(moreBtn);
 
     const content = document.createElement('ul');
     content.className = 'folder-content sidebar-content';
     content.style.cssText = 'padding:0.2rem 0 0.2rem 0.75rem; overflow:visible;';
-    items.forEach(({ item, idx }) => appendCollectionItem(content, item, idx));
+    node.items.forEach(({ item, idx }) => appendCollectionItem(content, item, idx));
+    node.children.forEach(child => content.appendChild(createFolderElement(child)));
 
     let open = true;
     header.addEventListener('click', () => {
         open = !open;
         content.style.display = open ? 'block' : 'none';
         header.classList.toggle('folder-collapsed', !open);
+    });
+
+    // Drop a request onto the folder header → append it to this folder (SPEC §4.7.4)
+    header.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        header.classList.add('drag-over');
+    });
+    header.addEventListener('dragleave', () => header.classList.remove('drag-over'));
+    header.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        header.classList.remove('drag-over');
+        const src = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        if (Number.isNaN(src)) return;
+        globalThis.CollectionUtils.moveItem(collections, src, collections.length, node.path);
+        saveCollections();
+        renderCollections();
     });
 
     li.appendChild(header);
@@ -1126,24 +1355,52 @@ function appendCollectionItem(parent, item, idx) {
     label.style.cssText = 'flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.82rem;';
     label.textContent = item.name || item.url;
 
-    const del = document.createElement('button');
-    del.textContent = '✕';
-    del.className = 'kv-remove';
-    del.title = 'Delete';
-    del.onclick = (e) => {
+    const more = document.createElement('button');
+    more.className = 'btn-icon';
+    more.title = 'Request actions';
+    more.setAttribute('aria-label', `Actions for ${item.name || item.url}`);
+    more.setAttribute('aria-haspopup', 'menu');
+    more.appendChild(_makeKebabSvg());
+    more.onclick = (e) => {
         e.stopPropagation();
-        collections.splice(idx, 1);
-        saveCollections();
-        renderCollections();
+        openContextMenu(more, [
+            { label: 'Rename', onClick: () => renameRequest(idx) },
+            { label: 'Duplicate', onClick: () => duplicateRequest(idx) },
+            { label: 'Move to folder…', onClick: () => moveRequestToFolder(idx) },
+            { label: 'Delete', danger: true, onClick: () => deleteRequest(idx) },
+        ]);
     };
 
-    li.appendChild(badge); li.appendChild(label); li.appendChild(del);
+    li.appendChild(badge); li.appendChild(label); li.appendChild(more);
     li.onclick = () => loadItem(item);
-    parent.appendChild(li);
-}
 
-function escHtml(s) {
-    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    // Drag to reorder / move between folders (SPEC §4.7.4). Indexes are valid
+    // because the whole sidebar re-renders after every collection change.
+    li.draggable = true;
+    li.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', String(idx));
+        e.dataTransfer.effectAllowed = 'move';
+        li.classList.add('dragging');
+    });
+    li.addEventListener('dragend', () => li.classList.remove('dragging'));
+    li.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        li.classList.add('drag-over');
+    });
+    li.addEventListener('dragleave', () => li.classList.remove('drag-over'));
+    li.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        li.classList.remove('drag-over');
+        const src = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        if (Number.isNaN(src) || src === idx) return;
+        globalThis.CollectionUtils.moveItem(collections, src, idx, item.folder);
+        saveCollections();
+        renderCollections();
+    });
+
+    parent.appendChild(li);
 }
 
 // ─── Load Item (restore request) ──────────────────────────────────────────────
@@ -1203,12 +1460,13 @@ function restoreBody(bodyType, item) {
 
 // ─── Save to Collection ───────────────────────────────────────────────────────
 els.saveBtn.addEventListener('click', () => {
-    const raw = prompt('Name this request:\n(Use "FolderName/RequestName" to save into a folder)');
+    const raw = prompt('Name this request:\n(Use "folder/subfolder/Name" to save into a nested folder)');
     if (!raw) return; // NOSONAR — guard clause
-    const slashIdx = raw.indexOf('/');
+    // The LAST slash separates the request name from its folder path (SPEC §4.7.4)
+    const slashIdx = raw.lastIndexOf('/');
     let folder, name;
     if (slashIdx > 0 && slashIdx < raw.length - 1) {
-        folder = raw.slice(0, slashIdx).trim();
+        folder = raw.slice(0, slashIdx).split('/').map(s => s.trim()).filter(Boolean).join('/');
         name   = raw.slice(slashIdx + 1).trim();
     } else {
         folder = undefined;
@@ -1223,9 +1481,23 @@ els.saveBtn.addEventListener('click', () => {
 
 document.getElementById('refresh-collections-btn').addEventListener('click', loadCollections);
 
+// Drop on empty sidebar space below the tree → move to top level (SPEC §4.7.4)
+els.collectionsList.addEventListener('dragover', (e) => {
+    if (e.target === els.collectionsList) e.preventDefault();
+});
+els.collectionsList.addEventListener('drop', (e) => {
+    if (e.target !== els.collectionsList) return; // NOSONAR — guard clause
+    e.preventDefault();
+    const src = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    if (Number.isNaN(src)) return;
+    globalThis.CollectionUtils.moveItem(collections, src, collections.length, undefined);
+    saveCollections();
+    renderCollections();
+});
+
 // ─── Collection Export ────────────────────────────────────────────────────────
 els.btnExportCollections.addEventListener('click', () => {
-    if (!collections.length) return showToast('No collections to export', 'info');
+    if (!collections.length) return showToast('No collections to export', 'info'); // NOSONAR — guard clause
     const blob = new Blob([JSON.stringify({ version: 1, items: collections }, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = Object.assign(document.createElement('a'), { href: url, download: 'devsuite-collections.json' });
@@ -1236,6 +1508,83 @@ els.btnExportCollections.addEventListener('click', () => {
     showToast(`Exported ${collections.length} request${collections.length !== 1 ? 's' : ''}`, 'success');
 });
 
+// ─── Collection Export — git-friendly zip (SPEC §4.7.6) ──────────────────────
+function sanitizeFileName(s) {
+    const cleaned = String(s || '').replace(/[/\\:*?"<>|\u0000-\u001f]/g, '-').trim();
+    return cleaned || 'request';
+}
+
+function _downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+els.btnExportZip.addEventListener('click', async () => {
+    if (!collections.length) return showToast('No collections to export', 'info'); // NOSONAR — guard clause
+    if (typeof JSZip === 'undefined') return showToast('JSZip is not loaded — zip export unavailable', 'error');
+    const zip = new JSZip();
+    zip.file('collection.meta.json', JSON.stringify({
+        format: 'devsuite-collection-zip',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+    }, null, 2));
+    // Folder auth configs are intentionally NOT exported — they can contain
+    // tokens/passwords and this zip is designed to be committed to git (SPEC §4.7.6).
+    const used = new Set();
+    collections.forEach(item => {
+        const dir = String(item.folder || '').split('/').map(sanitizeFileName).filter(Boolean).join('/');
+        const base = sanitizeFileName(item.name || `${item.method || 'GET'} request`);
+        let path = (dir ? `${dir}/` : '') + `${base}.json`;
+        let n = 2;
+        while (used.has(path)) path = (dir ? `${dir}/` : '') + `${base} (${n++}).json`;
+        used.add(path);
+        zip.file(path, JSON.stringify(item, null, 2) + '\n');
+    });
+    const blob = await zip.generateAsync({ type: 'blob' });
+    _downloadBlob(blob, 'devsuite-collection.zip');
+    showToast(`Exported ${collections.length} request${collections.length !== 1 ? 's' : ''} as zip`, 'success');
+});
+
+async function importCollectionsZip(file) {
+    if (typeof JSZip === 'undefined') return showToast('JSZip is not loaded — zip import unavailable', 'error');
+    const zip = await JSZip.loadAsync(file);
+    const entries = Object.values(zip.files).filter(f =>
+        !f.dir && f.name.toLowerCase().endsWith('.json') && !f.name.endsWith('collection.meta.json'));
+
+    const imported = [];
+    let scriptCount = 0;
+    for (const entry of entries) {
+        let item;
+        try { item = JSON.parse(await entry.async('string')); } catch { continue; }
+        if (!item || typeof item !== 'object' || Array.isArray(item) || (!item.url && !item.method)) continue;
+        const segments = entry.name.split('/');
+        const fileName = segments.pop();
+        const folder = segments.join('/');
+        if (folder) item.folder = folder; else delete item.folder;
+        if (!item.name) item.name = fileName.replace(/\.json$/i, '');
+        if (item.preRequestScript || item.testsScript) scriptCount++;
+        imported.push(item);
+    }
+
+    if (!imported.length) return showToast('No requests found in zip', 'error'); // NOSONAR — guard clause
+    if (!confirm(`Import ${imported.length} request(s) from "${file.name}"?`)) return;
+    if (scriptCount && !confirm(`${scriptCount} request(s) contain pre-request/test scripts.\n\nOK = Keep scripts (they only run inside the sandbox worker — no page or network access)\nCancel = Strip scripts`)) {
+        imported.forEach(it => { delete it.preRequestScript; delete it.testsScript; });
+    }
+    if (collections.length && confirm(`Replace all ${collections.length} existing request(s)?\n\nOK = Replace all\nCancel = Merge (add to existing)`)) {
+        collections = imported;
+    } else {
+        collections = [...collections, ...imported];
+    }
+    await saveCollections();
+    renderCollections();
+    showToast(`Imported ${imported.length} request(s) from zip`, 'success');
+}
+
 // ─── Collection Import ────────────────────────────────────────────────────────
 els.btnImportCollections.addEventListener('click', () => els.importCollectionsFile.click());
 
@@ -1243,6 +1592,11 @@ els.importCollectionsFile.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
+        if (file.name.toLowerCase().endsWith('.zip')) {
+            await importCollectionsZip(file);
+            e.target.value = '';
+            return;
+        }
         const text = await file.text();
         const data = JSON.parse(text);
 
@@ -1279,17 +1633,17 @@ els.importCollectionsFile.addEventListener('change', async (e) => {
 
 // ─── Inherit Info ─────────────────────────────────────────────────────────────
 function updateInheritInfo() {
-    if (!els.authInheritStatus) return;
-    if (!currentItemFolder) {
-        els.authInheritStatus.textContent = 'This request has no parent folder — inherited auth has no effect.';
-        return;
-    }
-    const fa = folderAuths[currentItemFolder];
-    if (fa && fa.type !== 'none') {
-        const labels = { bearer: 'Bearer Token', basic: 'Basic Auth', 'api-key': 'API Key' };
-        els.authInheritStatus.textContent = `Will use ${labels[fa.type] || fa.type} from folder "${currentItemFolder}".`;
+    if (!els.authInheritStatus) return; // NOSONAR — guard clause
+    if (currentItemFolder) {
+        const { auth: fa, source } = resolveFolderAuth(currentItemFolder);
+        if (fa.type !== 'none') {
+            const labels = { bearer: 'Bearer Token', basic: 'Basic Auth', 'api-key': 'API Key' };
+            els.authInheritStatus.textContent = `Will use ${labels[fa.type] || fa.type} from folder "${source}".`;
+        } else {
+            els.authInheritStatus.textContent = `No auth configured on "${currentItemFolder}" or any parent folder. Click the lock icon on a folder in the sidebar to set one.`;
+        }
     } else {
-        els.authInheritStatus.textContent = `Folder "${currentItemFolder}" has no auth set. Click the 🔒 icon on the folder in the sidebar to configure one.`;
+        els.authInheritStatus.textContent = 'This request has no parent folder — inherited auth has no effect.';
     }
 }
 
@@ -1323,7 +1677,7 @@ els.btnCancelFolderAuth.addEventListener('click', () => els.folderAuthModal.clos
 els.folderAuthModal.addEventListener('click', (e) => { if (e.target === els.folderAuthModal) els.folderAuthModal.close(); });
 
 els.btnSaveFolderAuth.addEventListener('click', async () => {
-    if (!editingFolderName) return;
+    if (!editingFolderName) return; // NOSONAR — guard clause
     const type = els.folderAuthType.value;
     const auth = { type };
     if (type === 'bearer')   auth.token      = els.folderAuthToken.value;
@@ -1359,8 +1713,10 @@ function parsePostmanCollection(data) {
     function processNodes(nodes, parentFolder) {
         for (const node of (nodes || [])) {
             if (Array.isArray(node.item)) {
-                // Folder node — flatten deep nesting to first-level folder name
-                processNodes(node.item, parentFolder || node.name);
+                // Folder node — hierarchy preserved as a /-separated path (SPEC §4.7.4).
+                // A / inside one Postman folder name would act as a separator, so it is replaced.
+                const segment = String(node.name || 'Folder').replaceAll('/', '-');
+                processNodes(node.item, parentFolder ? `${parentFolder}/${segment}` : segment);
             } else if (node.request) {
                 const parsed = parsePostmanRequest(node.request);
                 parsed.name = node.name || 'Unnamed';
@@ -1374,92 +1730,76 @@ function parsePostmanCollection(data) {
     return items;
 }
 
-function parsePostmanRequest(req) {
-    // ── URL ──
-    let url = '';
-    let queryParams = [];
+/** Extract URL string and query params from a Postman request's url field. */
+function _parsePostmanUrl(req) {
     if (typeof req.url === 'string') {
         const qi = req.url.indexOf('?');
-        url = qi >= 0 ? req.url.slice(0, qi) : req.url;
-        if (qi >= 0) {
-            new URLSearchParams(req.url.slice(qi + 1)).forEach((value, key) => {
-                queryParams.push({ key, value, enabled: true });
-            });
-        }
-    } else if (req.url && typeof req.url === 'object') {
+        const url = qi >= 0 ? req.url.slice(0, qi) : req.url;
+        const queryParams = qi >= 0
+            ? [...new URLSearchParams(req.url.slice(qi + 1))].map(([key, value]) => ({ key, value, enabled: true }))
+            : [];
+        return { url, queryParams };
+    }
+    if (req.url && typeof req.url === 'object') {
         const raw = req.url.raw || '';
-        const qi = raw.indexOf('?');
-        url = qi >= 0 ? raw.slice(0, qi) : raw;
-        queryParams = (req.url.query || [])
+        const qi  = raw.indexOf('?');
+        const url = qi >= 0 ? raw.slice(0, qi) : raw;
+        const queryParams = (req.url.query || [])
             .filter(q => q.key != null && !q.disabled)
             .map(q => ({ key: q.key || '', value: q.value || '', enabled: true }));
+        return { url, queryParams };
     }
+    return { url: '', queryParams: [] };
+}
 
-    // ── Headers ──
+/** Resolve body type and content from a Postman request body descriptor. */
+function _parsePostmanBody(req) {
+    if (!req.body) return { bodyType: 'none', body: null }; // NOSONAR — guard clause
+    const mode = req.body.mode;
+    if (mode === 'raw') {
+        const lang = req.body.options?.raw?.language || 'text';
+        if (lang === 'json') return { bodyType: 'json', body: req.body.raw || '{}' };
+        if (lang === 'graphql') {
+            try {
+                const gql = JSON.parse(req.body.raw || '{}');
+                return { bodyType: 'graphql', body: null, graphqlQuery: gql.query || '', graphqlVars: JSON.stringify(gql.variables || {}, null, 2) };
+            } catch { // NOSONAR — fall through to text on invalid JSON
+                return { bodyType: 'text', body: req.body.raw || '' };
+            }
+        }
+        return { bodyType: 'text', body: req.body.raw || '' };
+    }
+    if (mode === 'urlencoded') return {
+        bodyType: 'form-data',
+        body: (req.body.urlencoded || []).filter(f => !f.disabled).map(f => ({ key: f.key || '', value: f.value || '', enabled: true })),
+    };
+    if (mode === 'formdata') return {
+        bodyType: 'form-data',
+        body: (req.body.formdata || []).filter(f => !f.disabled && f.type !== 'file').map(f => ({ key: f.key || '', value: f.value || '', enabled: true })),
+    };
+    return { bodyType: 'none', body: null };
+}
+
+/** Resolve auth config from a Postman request auth descriptor. */
+function _parsePostmanAuth(req) {
+    if (!req.auth) return { type: 'none' }; // NOSONAR — guard clause
+    const lookup = (arr, key) => (arr || []).find(e => e.key === key)?.value || '';
+    const t = req.auth.type;
+    if (t === 'bearer') return { type: 'bearer', token: lookup(req.auth.bearer, 'token') };
+    if (t === 'basic')  return { type: 'basic',  username: lookup(req.auth.basic,  'username'), password: lookup(req.auth.basic, 'password') };
+    if (t === 'apikey') return { type: 'api-key', headerName: lookup(req.auth.apikey, 'key'),   headerValue: lookup(req.auth.apikey, 'value') };
+    return { type: 'none' };
+}
+
+function parsePostmanRequest(req) {
+    const { url, queryParams }               = _parsePostmanUrl(req);
+    const { bodyType, body, graphqlQuery, graphqlVars } = _parsePostmanBody(req);
     const headers = (req.header || [])
         .filter(h => !h.disabled && h.key)
         .map(h => ({ key: h.key, value: h.value || '', enabled: true }));
+    const auth = _parsePostmanAuth(req);
 
-    // ── Body ──
-    let bodyType = 'none';
-    let body = null;
-    let graphqlQuery, graphqlVars;
-    if (req.body) {
-        const mode = req.body.mode;
-        if (mode === 'raw') {
-            const lang = req.body.options?.raw?.language || 'text';
-            if (lang === 'json') {
-                bodyType = 'json';
-                body = req.body.raw || '{}';
-            } else if (lang === 'graphql') {
-                bodyType = 'graphql';
-                try {
-                    const gql = JSON.parse(req.body.raw || '{}');
-                    graphqlQuery = gql.query || '';
-                    graphqlVars = JSON.stringify(gql.variables || {}, null, 2);
-                } catch {
-                    bodyType = 'text';
-                    body = req.body.raw || '';
-                }
-            } else {
-                bodyType = 'text';
-                body = req.body.raw || '';
-            }
-        } else if (mode === 'urlencoded') {
-            bodyType = 'form-data';
-            body = (req.body.urlencoded || [])
-                .filter(f => !f.disabled)
-                .map(f => ({ key: f.key || '', value: f.value || '', enabled: true }));
-        } else if (mode === 'formdata') {
-            bodyType = 'form-data';
-            body = (req.body.formdata || [])
-                .filter(f => !f.disabled && f.type !== 'file')
-                .map(f => ({ key: f.key || '', value: f.value || '', enabled: true }));
-        }
-    }
-
-    // ── Auth ──
-    let auth = { type: 'none' };
-    if (req.auth) {
-        const lookup = (arr, key) => (arr || []).find(e => e.key === key)?.value || '';
-        const t = req.auth.type;
-        if (t === 'bearer') {
-            auth = { type: 'bearer', token: lookup(req.auth.bearer, 'token') };
-        } else if (t === 'basic') {
-            auth = { type: 'basic', username: lookup(req.auth.basic, 'username'), password: lookup(req.auth.basic, 'password') };
-        } else if (t === 'apikey') {
-            auth = { type: 'api-key', headerName: lookup(req.auth.apikey, 'key'), headerValue: lookup(req.auth.apikey, 'value') };
-        }
-    }
-
-    const result = {
-        method: (req.method || 'GET').toUpperCase(),
-        url,
-        queryParams,
-        headers,
-        auth,
-        bodyType,
-    };
+    const result = { method: (req.method || 'GET').toUpperCase(), url, queryParams, headers, auth, bodyType };
     if (body !== null) result.body = body;
     if (graphqlQuery !== undefined) { result.graphqlQuery = graphqlQuery; result.graphqlVars = graphqlVars; }
     return result;
@@ -1518,7 +1858,7 @@ function closeOpenapiModal() {
 }
 
 function resolveBaseUrl(spec) {
-    const isSwagger2 = spec.swagger && spec.swagger.startsWith('2');
+    const isSwagger2 = spec.swagger?.startsWith('2');
     return isSwagger2
         ? `${spec.schemes?.[0] || 'https'}://${spec.host || ''}${spec.basePath || ''}`
         : (spec.servers?.[0]?.url || '');
@@ -1561,14 +1901,14 @@ function extractRequestBody(operation, isSwagger2) {
 }
 
 function parseOpenApiSpec(spec) {
-    const isSwagger2 = spec.swagger && spec.swagger.startsWith('2');
+    const isSwagger2 = spec.swagger?.startsWith('2');
     const baseUrl = resolveBaseUrl(spec);
     const items = [];
 
     for (const [path, pathItem] of Object.entries(spec.paths || {})) {
         for (const method of ['get','post','put','delete','patch','head','options']) {
             const operation = pathItem[method];
-            if (!operation) continue;
+            if (!operation) continue; // NOSONAR — guard clause
 
             const name = operation.summary || operation.operationId || `${method.toUpperCase()} ${path}`;
             const folder = operation.tags?.[0] || spec.info?.title || undefined;
@@ -1585,7 +1925,7 @@ function parseOpenApiSpec(spec) {
 }
 
 function buildSchemaExample(schema) {
-    if (!schema) return '{}';
+    if (!schema) return '{}'; // NOSONAR — guard clause
     if (schema.example != null) return JSON.stringify(schema.example, null, 2);
     if (schema.type === 'object' || schema.properties) {
         const obj = {};
@@ -1602,13 +1942,351 @@ function typeDefault(t) {
     if (t === 'number' || t === 'integer') return 0;
     if (t === 'boolean') return false;
     if (t === 'array')   return [];
-    return null;
+    return {}; // object or unknown type — default to empty object
 }
+
+// ─── Cookie Jar (SPEC §4.7.5) ─────────────────────────────────────────────────
+// In-memory only — never persisted to DevDB, localStorage, or disk.
+const cookieJar = [];
+
+function updateCookieCount() {
+    globalThis.CookieJar.prune(cookieJar);
+    if (!els.cookieCount) return; // NOSONAR — guard clause
+    els.cookieCount.textContent = cookieJar.length;
+    els.cookieCount.style.display = cookieJar.length ? 'inline-flex' : 'none';
+}
+
+/** Send via ApiClient with the cookie jar applied (Send button and runner both use this). */
+async function executeWithJar(config) {
+    const hasManualCookie = Object.keys(config.headers || {}).some(k => k.toLowerCase() === 'cookie');
+    const cookieHeader = globalThis.CookieJar.headerFor(cookieJar, config.url);
+    if (cookieHeader && !hasManualCookie) config.headers['Cookie'] = cookieHeader;
+
+    const response = await globalThis.ApiClient.execute(config);
+
+    (response.setCookies || []).forEach(sc => {
+        const cookie = globalThis.CookieJar.parse(sc, config.url);
+        if (cookie) globalThis.CookieJar.upsert(cookieJar, cookie);
+    });
+    updateCookieCount();
+    return response;
+}
+
+function renderCookiesModal() {
+    globalThis.CookieJar.prune(cookieJar);
+    els.cookiesList.innerHTML = '';
+
+    if (!cookieJar.length) {
+        const empty = document.createElement('div');
+        empty.className = 'cookies-empty';
+        empty.textContent = 'No cookies captured yet. Cookies arrive via Set-Cookie headers on proxied responses.';
+        els.cookiesList.appendChild(empty);
+        return;
+    }
+
+    const byDomain = new Map();
+    cookieJar.forEach(c => {
+        if (!byDomain.has(c.domain)) byDomain.set(c.domain, []);
+        byDomain.get(c.domain).push(c);
+    });
+
+    byDomain.forEach((cookies, domain) => {
+        const head = document.createElement('div');
+        head.className = 'cookie-domain';
+        head.textContent = domain;
+        els.cookiesList.appendChild(head);
+
+        cookies.forEach(c => {
+            const row = document.createElement('div');
+            row.className = 'cookie-row';
+
+            const nameVal = document.createElement('span');
+            nameVal.className = 'cookie-namevalue';
+            nameVal.textContent = `${c.name}=${c.value}`;
+            nameVal.title = `${c.name}=${c.value}`;
+
+            const meta = document.createElement('span');
+            meta.className = 'cookie-meta';
+            const expiry = c.expires === null ? 'session' : new Date(c.expires).toLocaleString();
+            meta.textContent = `${c.path} · ${expiry}${c.secure ? ' · secure' : ''}`;
+
+            const del = document.createElement('button');
+            del.className = 'kv-remove';
+            del.textContent = '✕';
+            del.title = 'Delete cookie';
+            del.setAttribute('aria-label', `Delete cookie ${c.name}`);
+            del.onclick = () => {
+                const i = cookieJar.indexOf(c);
+                if (i >= 0) cookieJar.splice(i, 1);
+                updateCookieCount();
+                renderCookiesModal();
+            };
+
+            row.appendChild(nameVal);
+            row.appendChild(meta);
+            row.appendChild(del);
+            els.cookiesList.appendChild(row);
+        });
+    });
+}
+
+els.btnCookies.addEventListener('click', () => { renderCookiesModal(); els.cookiesModal.showModal(); });
+els.closeCookiesModal.addEventListener('click', () => els.cookiesModal.close());
+els.cookiesModal.addEventListener('click', (e) => { if (e.target === els.cookiesModal) els.cookiesModal.close(); });
+els.btnClearCookies.addEventListener('click', () => {
+    cookieJar.length = 0;
+    updateCookieCount();
+    renderCookiesModal();
+});
+
+// ─── Collection Runner (SPEC §4.7.2) ─────────────────────────────────────────
+let runnerActive = false;
+let runnerStopRequested = false;
+
+/** Entry arrays ([{key,value,enabled}]) or legacy objects → enabled-only plain object. */
+function entriesToObj(v) {
+    if (Array.isArray(v)) {
+        const o = {};
+        v.forEach(r => { if (r.key && r.enabled !== false) o[r.key] = r.value ?? ''; });
+        return o;
+    }
+    return { ...(v || {}) };
+}
+
+/**
+ * Build an execute-config from a saved item without touching the form —
+ * mirrors buildRequestConfig/_resolveAuthConfig/_applyBodyConfig semantics.
+ */
+function buildConfigFromItem(item) {
+    const config = {
+        url:         interpolate(item.url || ''),
+        method:      item.method || 'GET',
+        queryParams: interpolateObj(entriesToObj(item.queryParams)),
+        headers:     interpolateObj(entriesToObj(item.headers)),
+        auth:        { ...(item.auth || { type: 'none' }) },
+        bodyType:    item.bodyType || 'none',
+    };
+    if (config.auth.type === 'inherit') config.auth = { ...resolveFolderAuth(item.folder).auth };
+    if (config.auth.type === 'bearer') config.auth.token = interpolate(config.auth.token || '');
+    if (config.auth.type === 'basic') {
+        config.auth.username = interpolate(config.auth.username || '');
+        config.auth.password = interpolate(config.auth.password || '');
+    }
+    if (config.auth.type === 'api-key') {
+        const h = interpolate(config.auth.headerName || '');
+        const v = interpolate(config.auth.headerValue || '');
+        if (h && v) config.headers[h] = v;
+    }
+    if (config.auth.type === 'oauth2') {
+        // The runner never opens interactive prompts — reuse a cached token or run without auth.
+        config.auth = oauth2Token ? { type: 'bearer', token: oauth2Token } : { type: 'none' };
+    }
+
+    if (config.bodyType === 'json') {
+        config.body = interpolate(typeof item.body === 'string' ? item.body : JSON.stringify(item.body ?? {}));
+    }
+    if (config.bodyType === 'form-data') config.body = interpolateObj(entriesToObj(item.body));
+    if (config.bodyType === 'text')      config.body = interpolate(item.body || '');
+    if (config.bodyType === 'graphql') {
+        let vars = {};
+        try { vars = JSON.parse(item.graphqlVars || '{}'); } catch { /* ignore — empty vars */ }
+        config.body = JSON.stringify({ query: item.graphqlQuery || '', variables: vars });
+        config.bodyType = 'json';
+        if (!config.headers['Content-Type']) config.headers['Content-Type'] = 'application/json';
+    }
+    return config;
+}
+
+function _createRunnerRow(item) {
+    const li = document.createElement('li');
+    li.className = 'runner-row';
+
+    const badge = document.createElement('span');
+    badge.className = `method-badge ${item.method || 'GET'}`;
+    badge.textContent = item.method || 'GET';
+
+    const name = document.createElement('span');
+    name.className = 'runner-name';
+    name.textContent = item.name || item.url;
+    name.title = item.url || '';
+
+    const tests = document.createElement('span');
+    tests.className = 'runner-tests';
+    tests.textContent = '';
+
+    const status = document.createElement('span');
+    status.className = 'runner-status';
+    status.textContent = 'pending';
+
+    li.appendChild(badge);
+    li.appendChild(name);
+    li.appendChild(tests);
+    li.appendChild(status);
+
+    return {
+        li,
+        setRunning() { status.textContent = 'running…'; status.className = 'runner-status running'; },
+        setSkipped() { status.textContent = 'skipped'; status.className = 'runner-status skipped'; },
+        setError(msg) {
+            status.textContent = 'error';
+            status.className = 'runner-status err';
+            status.title = msg;
+        },
+        setDone(response, passedCount, failedCount) {
+            status.textContent = `${response.status || 'ERR'} · ${response.timeMs} ms`;
+            const reqOk = response.status >= 200 && response.status < 400;
+            status.className = `runner-status ${reqOk && !failedCount ? 'ok' : 'err'}`;
+            if (passedCount + failedCount > 0) {
+                tests.textContent = `tests ${passedCount}/${passedCount + failedCount}`;
+                tests.className = `runner-tests ${failedCount ? 'err' : 'ok'}`;
+            }
+        },
+    };
+}
+
+async function _runOneItem(item, row) {
+    row.setRunning();
+    const preRun = await runScriptSandboxed('pre', item.preRequestScript || '');
+    const preError = preRun.logs.find(l => l.type === 'error');
+
+    const config = buildConfigFromItem(item);
+    const response = await executeWithJar(config);
+
+    const testRun = await runScriptSandboxed('test', item.testsScript || '', {
+        status: response.status, statusText: response.statusText,
+        headers: response.headers, body: response.body,
+        bodyText: response.bodyText, timeMs: response.timeMs,
+    });
+    const passedCount = testRun.results.filter(r => r.passed).length;
+    const failedCount = testRun.results.length - passedCount;
+    row.setDone(response, passedCount, failedCount);
+    // A pre-request script error doesn't cancel the request (matching single
+    // Send); surface it as a tooltip without hiding the response status.
+    if (preError) row.li.title = preError.text;
+    return { passedCount, failedCount, requestOk: response.status > 0 };
+}
+
+async function runCollectionItems(entries, scopeLabel) {
+    if (runnerActive) return showToast('A run is already in progress', 'info'); // NOSONAR — guard clause
+    const runnable = entries.filter(({ item }) => item.url);
+    if (!runnable.length) return showToast('No runnable requests in this scope', 'info');
+
+    runnerActive = true;
+    runnerStopRequested = false;
+    runtimeVars = {}; // fresh run — but vars persist ACROSS requests for chaining (SPEC §4.7.2)
+
+    els.runnerScope.textContent = scopeLabel;
+    els.runnerList.innerHTML = '';
+    els.runnerSummary.textContent = `0 of ${runnable.length}`;
+    els.btnRunnerStop.style.display = '';
+    if (!els.runnerModal.open) els.runnerModal.showModal();
+
+    const rows = runnable.map(({ item }) => _createRunnerRow(item));
+    rows.forEach(r => els.runnerList.appendChild(r.li));
+
+    const t0 = performance.now();
+    let done = 0;
+    let testsPassed = 0;
+    let testsFailed = 0;
+    let requestsFailed = 0;
+
+    for (let i = 0; i < runnable.length; i++) {
+        if (runnerStopRequested) {
+            rows.slice(i).forEach(r => r.setSkipped());
+            break;
+        }
+        try {
+            const r = await _runOneItem(runnable[i].item, rows[i]);
+            testsPassed += r.passedCount;
+            testsFailed += r.failedCount;
+            if (!r.requestOk) requestsFailed++;
+        } catch (e) {
+            requestsFailed++;
+            rows[i].setError(e.message);
+        }
+        done++;
+        els.runnerSummary.textContent = `${done} of ${runnable.length}`;
+    }
+
+    const secs = ((performance.now() - t0) / 1000).toFixed(1);
+    const parts = [`${done} of ${runnable.length} requests in ${secs}s`];
+    if (testsPassed + testsFailed > 0) parts.push(`${testsPassed} tests passed${testsFailed ? `, ${testsFailed} failed` : ''}`);
+    if (requestsFailed) parts.push(`${requestsFailed} request${requestsFailed !== 1 ? 's' : ''} errored`);
+    els.runnerSummary.textContent = parts.join(' · ');
+    els.btnRunnerStop.style.display = 'none';
+    runnerActive = false;
+}
+
+els.btnRunCollection.addEventListener('click', () => {
+    runCollectionItems(collectTreeItems(buildFolderTree()), 'all requests');
+});
+els.btnRunnerStop.addEventListener('click', () => { runnerStopRequested = true; });
+els.btnRunnerClose.addEventListener('click', () => { runnerStopRequested = true; els.runnerModal.close(); });
+els.closeRunnerModal.addEventListener('click', () => { runnerStopRequested = true; els.runnerModal.close(); });
+els.runnerModal.addEventListener('cancel', () => { runnerStopRequested = true; });
+
+// ─── Code Modal — cURL / fetch / HTTPie / import (SPEC §4.7.3) ───────────────
+function setActiveCodeTab(kind) {
+    document.querySelectorAll('.code-tab').forEach(btn => {
+        const active = btn.dataset.codeKind === kind;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', String(active));
+    });
+    const importing = kind === 'import';
+    els.codeImportWrap.style.display = importing ? 'flex' : 'none';
+    els.codeOutputWrap.style.display = importing ? 'none' : 'flex';
+    if (importing) return; // NOSONAR — guard clause
+
+    let text = '';
+    try {
+        const config = buildRequestConfig();
+        if (kind === 'curl')   text = globalThis.CurlCodegen.buildCurl(config);
+        if (kind === 'fetch')  text = globalThis.CurlCodegen.buildFetch(config);
+        if (kind === 'httpie') text = globalThis.CurlCodegen.buildHttpie(config);
+    } catch (e) {
+        text = `Could not generate snippet: ${e.message}`;
+    }
+    els.codeOutput.textContent = text;
+}
+
+document.querySelectorAll('.code-tab').forEach(btn => {
+    btn.addEventListener('click', () => setActiveCodeTab(btn.dataset.codeKind));
+});
+
+els.btnCode.addEventListener('click', () => {
+    els.codeImportStatus.textContent = '';
+    setActiveCodeTab(els.url.value.trim() ? 'curl' : 'import');
+    els.codeModal.showModal();
+});
+els.closeCodeModal.addEventListener('click', () => els.codeModal.close());
+els.codeModal.addEventListener('click', (e) => { if (e.target === els.codeModal) els.codeModal.close(); });
+
+els.btnCopyCode.addEventListener('click', async () => {
+    try {
+        await navigator.clipboard.writeText(els.codeOutput.textContent);
+        showToast('Copied to clipboard', 'success');
+    } catch {
+        showToast('Clipboard unavailable — select and copy manually', 'error');
+    }
+});
+
+els.btnCodeImport.addEventListener('click', () => {
+    els.codeImportStatus.textContent = '';
+    try {
+        const item = globalThis.CurlCodegen.parseCurl(els.codeImportInput.value);
+        loadItem(item);
+        els.codeModal.close();
+        els.codeImportInput.value = '';
+        showToast('curl command imported into the editor', 'success');
+    } catch (e) {
+        els.codeImportStatus.textContent = e.message;
+    }
+});
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function initApp() {
     updateMethodColor();
-    const guard = await AuthGuard.init('API Tester', '📡');
+    const guard = await AuthGuard.init('API Tester');
     if (guard !== null) {
         loadCollections();
         loadEnvironments();

@@ -44,7 +44,6 @@
 | `static/xterm.js` | xterm.js | unknown | [npmjs xterm](https://www.npmjs.com/package/xterm) |
 | `static/xterm-addon-fit.js` | xterm-addon-fit | unknown | [npmjs xterm-addon-fit](https://www.npmjs.com/package/xterm-addon-fit) |
 | `static/crypto-js.min.js` | CryptoJS | unknown | [npmjs crypto-js](https://www.npmjs.com/package/crypto-js) |
-| `static/bwip-js-min.js` | bwip-js | unknown | [npmjs bwip-js](https://www.npmjs.com/package/bwip-js) |
 
 ### Vendored JavaScript — `static/libs/`
 

@@ -1,5 +1,5 @@
 """
-DevSuite — FastAPI Backend  (v0.2.2)
+DevSuite — FastAPI Backend  (v0.2.4)
 -------------------------------------
 Thin orchestrator: creates the FastAPI app, registers middleware, mounts
 static files, and includes all route modules.
@@ -90,22 +90,38 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# SEC-3: explicit CORS allowlist — only the local DevSuite origin may make
-# cross-origin requests.  This is effectively a no-op for same-origin browser
-# requests but closes the gap for tools like curl or browser extensions.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "X-CSRF-Token"],
-)
+# Middleware registration order matters: in Starlette each add_middleware call wraps
+# the existing stack, so the LAST call becomes the OUTERMOST layer (first to handle
+# a request). Registration order here is inner-first, outer-last.
 
-# SlowAPIMiddleware is the outermost layer — rate-limits before CSRF or route processing.
+# Innermost: rate-limiting — applied after CORS so preflight OPTIONS are not rate-limited.
 app.add_middleware(SlowAPIMiddleware)
 
 
 # ─── Security-headers middleware ──────────────────────────────────────────────
+
+# Document policy: no unsafe-eval (SEC-6, closed v0.3.0). unsafe-inline remains
+# tracked as SEC-11. blob: in script-src / worker-src is required by Monaco.
+_DOCUMENT_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' blob:; "
+    "worker-src 'self' blob:; "
+    "style-src 'self' 'unsafe-inline'; "
+    "font-src 'self'; "
+    "img-src 'self' data:; "
+    "connect-src 'self';"
+)
+
+# Scoped policy for the API Tester scripting sandbox (SPEC §4.7.1 / §5.10):
+# a dedicated worker's CSP comes from its own response headers, so eval is
+# permitted ONLY inside this worker — which also has no DOM and no network.
+_SANDBOX_WORKER_PATH = "/static/script-sandbox-worker.js"
+_SANDBOX_WORKER_CSP = (
+    "default-src 'none'; "
+    "script-src 'self' 'unsafe-eval'; "
+    "connect-src 'none';"
+)
+
 
 @app.middleware("http")
 async def add_security_headers(request, call_next):
@@ -115,17 +131,24 @@ async def add_security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     # X-XSS-Protection is deprecated; set to "0" to avoid legacy browser quirks.
     response.headers["X-XSS-Protection"] = "0"
-    csp = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; "
-        "worker-src 'self' blob:; "
-        "style-src 'self' 'unsafe-inline'; "
-        "font-src 'self'; "
-        "img-src 'self' data:; "
-        "connect-src 'self';"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    is_sandbox_worker = request.url.path == _SANDBOX_WORKER_PATH
+    response.headers["Content-Security-Policy"] = (
+        _SANDBOX_WORKER_CSP if is_sandbox_worker else _DOCUMENT_CSP
     )
-    response.headers["Content-Security-Policy"] = csp
     return response
+
+
+# Outermost: CORS — handles OPTIONS preflight before any other middleware runs.
+# SEC-3: explicit allowlist; only the local DevSuite origin may make cross-origin requests.
+# Must be last (outermost) so it processes requests before security-headers middleware.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Content-Type", "X-CSRF-Token"],
+)
 
 
 # ─── CSRF middleware ──────────────────────────────────────────────────────────

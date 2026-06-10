@@ -36,6 +36,8 @@ from deps import (
     _WSL_EXE,
     _audit_log,
     fcntl,
+    is_auth_configured,
+    is_session_valid,
     logger,
     pty,
     termios,
@@ -90,7 +92,7 @@ async def _ssh_key_fingerprint(key_data: bytes, host: str, port: int) -> str:
     except asyncio.TimeoutError as exc:
         raise RuntimeError(f"ssh-keygen fingerprint timed out for {host}:{port}") from exc
     for token in kg_out.decode(errors="replace").split():
-        if token.startswith("SHA256:") or token.startswith("MD5:"):
+        if token.startswith(("SHA256:", "MD5:")):
             return token
     return ""
 
@@ -159,6 +161,22 @@ async def _ws_check_origin(websocket: WebSocket) -> bool:
         await websocket.close(code=1008, reason=_ERR_ORIGIN_NOT_ALLOWED)
         return False
     return True
+
+
+async def _ws_require_session(websocket: WebSocket) -> bool:
+    """Gate a WebSocket connect behind a valid server-side session (SEC-14).
+
+    When no master password is configured the auth system is dormant, so the
+    socket is allowed through — this preserves the no-password local-terminal
+    flow.  Once a master password exists, a valid ``ds_session`` cookie is
+    required; otherwise the socket is closed with 1008 before ``accept()``.
+    """
+    if not is_auth_configured():
+        return True
+    if is_session_valid(websocket.cookies.get("ds_session", "")):
+        return True
+    await websocket.close(code=1008, reason="Authentication required")
+    return False
 
 
 def _build_ssh_connect_kwargs(
@@ -260,6 +278,8 @@ async def _run_ssh_terminal_session(websocket: WebSocket, conn) -> None:
 async def ssh_terminal(websocket: WebSocket):
     """WebSocket endpoint: interactive SSH terminal session."""
     if not await _ws_check_origin(websocket):
+        return
+    if not await _ws_require_session(websocket):
         return
 
     await websocket.accept()
@@ -664,6 +684,8 @@ async def ssh_dashboard(websocket: WebSocket):
     """WebSocket endpoint: real-time SSH server metrics dashboard."""
     if not await _ws_check_origin(websocket):
         return
+    if not await _ws_require_session(websocket):
+        return
 
     await websocket.accept()
     try:
@@ -760,6 +782,8 @@ async def _run_local_pty_loop(websocket: WebSocket, fd: int) -> None:
 async def local_terminal(websocket: WebSocket):
     """WebSocket endpoint: local PTY terminal (Linux/macOS only)."""
     if not await _ws_check_origin(websocket):
+        return
+    if not await _ws_require_session(websocket):
         return
 
     if not _PTY_AVAILABLE:

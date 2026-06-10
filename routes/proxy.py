@@ -22,23 +22,44 @@ _MAX_PROXY_RESPONSE = 10 * 1024 * 1024  # 10 MB response cap
 
 
 def _check_ip_not_private(ip_str: str) -> None:
-    """Raise HTTPException 403 if the IP is private/reserved/loopback."""
+    """Raise HTTPException 403 if the IP is loopback, link-local, multicast, or reserved.
+
+    LAN / RFC-1918 private ranges (10.x.x.x, 192.168.x.x, 172.16-31.x.x) are
+    intentionally allowed — DevSuite is a loopback-only local tool and testing
+    LAN APIs through the CORS proxy is a first-class use case.
+
+    We still block:
+      - Loopback (127.x.x.x / ::1)  — prevents proxy-loop to local services
+      - Link-local (169.254.x.x)     — cloud-metadata endpoints (AWS/GCP/Azure)
+      - Multicast / IANA-reserved    — no legitimate target for an HTTP API
+    """
     try:
         ip_obj = ipaddress.ip_address(ip_str)
-        if (ip_obj.is_loopback or ip_obj.is_private or ip_obj.is_link_local
+        if (ip_obj.is_loopback or ip_obj.is_link_local
                 or ip_obj.is_multicast or ip_obj.is_reserved):
             raise HTTPException(
                 status_code=403,
-                detail=f"Access to private/reserved IP addresses is forbidden: {ip_str}",
+                detail=f"Access to loopback, link-local, or reserved IP addresses is forbidden: {ip_str}",
             )
-        # Note: the `169.254.x.x` cloud-metadata range is already covered by
-        # ip_obj.is_link_local above — no separate branch needed.
     except ValueError:
-        pass  # intentionally ignored: non-IP strings (hostnames) are not checked
+        pass  # intentionally ignored: non-IP strings (hostnames) are not checked here
 
 
 def _filter_proxy_headers(headers: dict) -> dict:
     return {k: v for k, v in headers.items() if k.lower() not in _HOP_BY_HOP_HEADERS}
+
+
+def _collect_set_cookies(headers) -> list[str]:
+    """Every Set-Cookie header verbatim — ``dict(headers)`` collapses duplicates (SPEC §5.9).
+
+    The client-side cookie jar (SPEC §4.7.5) needs each cookie individually;
+    an API that sets a session cookie plus a CSRF cookie sends two Set-Cookie
+    headers, and only one would survive the dict() conversion.
+    """
+    try:
+        return headers.get_all("Set-Cookie") or []
+    except AttributeError:
+        return []
 
 
 class _SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -72,6 +93,7 @@ def _execute_proxy_request(request_obj) -> dict:
                 "proxy_response": True,
                 "status": resp.status,
                 "headers": dict(resp.headers),
+                "set_cookie": _collect_set_cookies(resp.headers),
                 "body": raw[:_MAX_PROXY_RESPONSE].decode("utf-8", errors="replace"),
                 "truncated": len(raw) > _MAX_PROXY_RESPONSE,
             }
@@ -80,7 +102,13 @@ def _execute_proxy_request(request_obj) -> dict:
             body = e.read(_MAX_PROXY_RESPONSE).decode("utf-8", errors="replace") if hasattr(e, "read") else ""
         except (OSError, ValueError):
             body = ""
-        return {"proxy_response": True, "status": e.code, "headers": dict(e.headers), "body": body}
+        return {
+            "proxy_response": True,
+            "status": e.code,
+            "headers": dict(e.headers),
+            "set_cookie": _collect_set_cookies(e.headers),
+            "body": body,
+        }
 
 
 def _resolve_target_ips(hostname: str, port: int | None, scheme: str) -> None:
@@ -116,12 +144,12 @@ class ProxyRequest(BaseModel):
     summary="Bypass CORS for API Tester",
     responses={
         400: {"description": "Invalid URL or DNS failure"},
-        403: {"description": "Target IP is private or reserved"},
+        403: {"description": "Target IP is loopback, link-local, or reserved"},
         500: {"description": "Proxy request failed"},
     },
 )
 async def proxy_request(req: ProxyRequest):
-    """Provides a local CORS bypass proxy using urllib for the API tester tool."""
+    """Local CORS bypass proxy for the API tester. LAN/private IPs are permitted; loopback and link-local are not."""
     try:
         parsed = urllib.parse.urlparse(req.url)
         if parsed.scheme not in ('http', 'https'):

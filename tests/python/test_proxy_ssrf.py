@@ -1,8 +1,9 @@
 """CORS proxy SSRF protection.
 
-Covers SPEC.md §5.9 / §10.2 — private/reserved IPs blocked, schemes restricted,
-and (the previously-missing protection) redirects re-validated so a public host
-cannot 3xx into a private/reserved IP such as the cloud-metadata endpoint.
+Covers SPEC.md §5.9 / §10.2 — loopback/link-local/reserved IPs blocked, schemes
+restricted, and redirects re-validated so a remote host cannot 3xx into a loopback
+or cloud-metadata address.  LAN / RFC-1918 ranges are intentionally *allowed*
+(DevSuite is a local tool; testing 10.x.x.x APIs is a first-class use case).
 """
 import pytest
 from fastapi import HTTPException
@@ -36,6 +37,13 @@ def test_check_ip_blocks_link_local_metadata():
 
 def test_check_ip_allows_public():
     main._check_ip_not_private("8.8.8.8")  # must not raise
+
+
+def test_check_ip_allows_private_lan():
+    """LAN addresses must be allowed — local-tool use case (SPEC.md §5.9)."""
+    main._check_ip_not_private("10.0.0.1")       # RFC-1918 class A
+    main._check_ip_not_private("192.168.1.100")  # RFC-1918 class C
+    main._check_ip_not_private("172.16.0.1")     # RFC-1918 class B
 
 
 def test_redirect_handler_blocks_private_target():

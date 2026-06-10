@@ -187,7 +187,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
 
 // Boot: run auth-guard first, then unlock profiles with the master password
 (async () => { // NOSONAR — top-level await requires ES module; script loads in non-module context
-    const pwd = await AuthGuard.init('Secure Terminal', '🖥️');
+    const pwd = await AuthGuard.init('Secure Terminal');
     if (pwd) {
         await _applyMasterKey(pwd);
     } else {

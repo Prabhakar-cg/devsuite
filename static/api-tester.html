@@ -9,10 +9,18 @@
     <link rel="stylesheet" href="/static/linter.css?v=2">
     <link rel="stylesheet" href="/static/api-tester.css?v=10">
     <script src="/static/crypto-js.min.js"></script>
+    <!-- jszip is UMD: it must load BEFORE require.min.js, otherwise it registers
+         as an anonymous AMD module (no window.JSZip) and RequireJS throws
+         "Mismatched anonymous define()" on the next require() call, killing the
+         page. Same ordering rule as index.html (Folder Diff). -->
+    <script src="/static/libs/jszip.min.js"></script>
     <script src="/static/libs/require.min.js"></script>
     <script src="/static/theme.js?v=2"></script>
     <script src="/static/auth-guard.js?v=1"></script>
     <script src="/static/api-client.js?v=4"></script>
+    <script src="/static/cookie-jar.js"></script>
+    <script src="/static/curl-codegen.js"></script>
+    <script src="/static/collection-utils.js"></script>
 </head>
 <body>
 
@@ -27,7 +35,7 @@
                     </svg>
                 </div>
                 <span class="tool-name">API <span class="tool-accent" style="color:#7c3aed;">Tester</span></span>
-                <span class="tool-version">V2.0</span>
+                <span class="tool-version">V3.0</span>
             </div>
         </div>
         <div class="header-controls">
@@ -38,6 +46,7 @@
                 </select>
                 <button id="btn-manage-envs" class="btn-small" aria-label="Manage environments">Manage</button>
             </div>
+            <button id="btn-cookies" class="btn-small" aria-label="Manage cookies">Cookies<span id="cookie-count" class="cookie-count-badge" style="display:none;"></span></button>
             <button id="save-collection-btn" class="btn-small btn-accent" aria-label="Save request to collection">Save Request</button>
         </div>
     </header>
@@ -55,14 +64,20 @@
                 <div class="sidebar-panel-header">
                     <span id="collections-count" class="sidebar-count">0 requests</span>
                     <div style="display:flex; gap:0.1rem;">
+                        <button id="btn-run-collection" class="btn-icon" title="Run all requests" aria-label="Run all requests">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+                        </button>
                         <button id="btn-import-openapi" class="btn-icon" title="Import OpenAPI spec" aria-label="Import OpenAPI spec">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                         </button>
-                        <button id="btn-import-collections" class="btn-icon" title="Import collections (DevSuite JSON / Postman v2.x)" aria-label="Import collections">
+                        <button id="btn-import-collections" class="btn-icon" title="Import collections (DevSuite JSON / Postman v2.x / DevSuite zip)" aria-label="Import collections">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
                         </button>
                         <button id="btn-export-collections" class="btn-icon" title="Export collections (JSON)" aria-label="Export collections">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="21" x2="12" y2="9"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
+                        </button>
+                        <button id="btn-export-zip" class="btn-icon" title="Export as zip — one JSON file per request, git-friendly" aria-label="Export collections as zip">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
                         </button>
                         <button id="refresh-collections-btn" class="btn-icon" aria-label="Refresh collections" title="Sync from server">↺</button>
                     </div>
@@ -95,6 +110,7 @@
                 </select>
                 <label for="req-url" class="sr-only">Request URL</label>
                 <input type="text" id="req-url" class="url-input" placeholder="https://api.example.com/v1/users  —  use {{variable}} for env vars" aria-label="Request URL">
+                <button id="btn-code" class="btn-small" aria-label="Code snippets — copy as cURL, fetch, or HTTPie, or import a curl command" title="Copy as cURL / fetch / HTTPie — or paste a curl command">Code</button>
                 <button id="btn-send" class="send-btn" aria-label="Send HTTP request">Send</button>
             </div>
 
@@ -120,7 +136,7 @@
 
                     <!-- Params -->
                     <div id="tab-params" class="tab-content active req-tab-content" role="tabpanel">
-                        <div class="kv-table-head" aria-hidden="true">
+                        <div class="kv-table-head" role="presentation">
                             <span></span><span>Key</span><span>Value</span><span></span>
                         </div>
                         <div id="params-list"></div>
@@ -129,7 +145,7 @@
 
                     <!-- Headers -->
                     <div id="tab-headers" class="tab-content req-tab-content" role="tabpanel">
-                        <div class="kv-table-head" aria-hidden="true">
+                        <div class="kv-table-head" role="presentation">
                             <span></span><span>Key</span><span>Value</span><span></span>
                         </div>
                         <div id="headers-list"></div>
@@ -187,7 +203,7 @@
                             <label class="field-label" for="oauth2-scope">Scope <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
                             <input type="text" id="oauth2-scope" class="url-input" style="width:100%; margin-bottom:0.875rem;" placeholder="read write openid">
                             <div style="display:flex; align-items:center; gap:0.625rem; flex-wrap:wrap;">
-                                <button id="btn-fetch-oauth2" class="btn-small btn-accent" aria-label="Fetch Token — OAuth2 access token">Fetch Token</button>
+                                <button id="btn-fetch-oauth2" class="btn-small btn-accent">Fetch Token</button>
                                 <span id="oauth2-token-status" style="font-size:0.76rem; color:var(--text-muted);"></span>
                             </div>
                             <div id="oauth2-token-display" style="display:none; margin-top:0.75rem;">
@@ -219,7 +235,7 @@
                             <textarea id="req-text-body" class="text-body-area" placeholder="Raw text body"></textarea>
                         </div>
                         <div id="req-form-data-wrap" style="display:none; flex:1; overflow-y:auto;">
-                            <div class="kv-table-head" aria-hidden="true" style="margin:0.75rem 0.875rem 0;">
+                            <div class="kv-table-head" role="presentation" style="margin:0.75rem 0.875rem 0;">
                                 <span></span><span>Field</span><span>Value</span><span></span>
                             </div>
                             <div id="form-data-list" style="padding:0 0.875rem;"></div>
@@ -242,7 +258,7 @@
                     <!-- Pre-Request Script -->
                     <div id="tab-pre-request" class="tab-content req-tab-content" role="tabpanel">
                         <div class="script-reference">
-                            <span class="ref-label">Runs before request &nbsp;·&nbsp; Available:</span>
+                            <span class="ref-label">Runs before request &nbsp;·&nbsp; Sandboxed (no page or network access) &nbsp;·&nbsp; Available:</span>
                             <div class="ref-chips">
                                 <code class="ref-chip">ds.setVar(key, val)</code>
                                 <code class="ref-chip">ds.getVar(key)</code>
@@ -259,7 +275,7 @@
                     <!-- Tests -->
                     <div id="tab-tests" class="tab-content req-tab-content" role="tabpanel">
                         <div class="script-reference">
-                            <span class="ref-label">Runs after response &nbsp;·&nbsp; Available:</span>
+                            <span class="ref-label">Runs after response &nbsp;·&nbsp; Sandboxed (no page or network access) &nbsp;·&nbsp; Available:</span>
                             <div class="ref-chips">
                                 <code class="ref-chip">test('name', fn)</code>
                                 <code class="ref-chip">expect(val).to.equal(n)</code>
@@ -333,7 +349,7 @@
 
     </div>
 
-    <input type="file" id="import-collections-file" accept=".json" style="display:none;" tabindex="-1">
+    <input type="file" id="import-collections-file" accept=".json,.zip" style="display:none;" tabindex="-1">
     <input type="file" id="import-env-file" accept=".json" style="display:none;" tabindex="-1">
     <input type="file" id="openapi-file-input" accept=".json" style="display:none;" tabindex="-1">
 
@@ -434,6 +450,77 @@
                 <div style="display:flex; gap:0.5rem; padding-top:0.25rem; border-top:1px solid var(--border);">
                     <button id="btn-save-folder-auth" class="btn-small btn-accent" style="flex:1;">Save</button>
                     <button id="btn-cancel-folder-auth" class="btn-small">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Code Modal (cURL / fetch / HTTPie / import) -->
+    <dialog id="code-modal" class="modal" aria-label="Code snippets">
+        <div class="modal-content" style="min-width:460px; max-width:640px;">
+            <div class="modal-header">
+                <span class="modal-title">Code</span>
+                <button id="close-code-modal" class="btn-icon" aria-label="Close">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="code-modal-body">
+                <div class="code-tabs" role="tablist" aria-label="Snippet language">
+                    <button class="code-tab active" data-code-kind="curl" role="tab" aria-selected="true">cURL</button>
+                    <button class="code-tab" data-code-kind="fetch" role="tab" aria-selected="false">fetch</button>
+                    <button class="code-tab" data-code-kind="httpie" role="tab" aria-selected="false">HTTPie</button>
+                    <button class="code-tab" data-code-kind="import" role="tab" aria-selected="false">Import cURL</button>
+                </div>
+                <div id="code-output-wrap" class="code-output-wrap">
+                    <pre id="code-output" class="code-output"></pre>
+                    <button id="btn-copy-code" class="btn-small btn-accent" style="align-self:flex-start;">Copy</button>
+                </div>
+                <div id="code-import-wrap" class="code-import-wrap" style="display:none;">
+                    <p class="code-hint">Paste a curl command — method, headers, body, basic auth, cookies, and query strings are imported into the editor. Unsupported flags are ignored.</p>
+                    <textarea id="code-import-input" class="code-import-textarea" placeholder="curl -X POST https://api.example.com/v1/users -H 'Content-Type: application/json' -d '{&quot;name&quot;:&quot;Ada&quot;}'"></textarea>
+                    <div style="display:flex; align-items:center; gap:0.625rem;">
+                        <button id="btn-code-import" class="btn-small btn-accent">Import into editor</button>
+                        <span id="code-import-status" style="font-size:0.78rem; color:#dc2626;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Collection Runner Modal -->
+    <dialog id="runner-modal" class="modal" aria-label="Collection runner">
+        <div class="modal-content" style="min-width:480px; max-width:680px;">
+            <div class="modal-header">
+                <span class="modal-title">Collection runner — <span id="runner-scope"></span></span>
+                <button id="close-runner-modal" class="btn-icon" aria-label="Close">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="runner-body">
+                <ul id="runner-list" class="runner-list"></ul>
+                <div class="runner-footer">
+                    <span id="runner-summary" class="runner-summary" aria-live="polite"></span>
+                    <button id="btn-runner-stop" class="btn-small btn-danger">Stop</button>
+                    <button id="btn-runner-close" class="btn-small">Close</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Cookies Modal -->
+    <dialog id="cookies-modal" class="modal" aria-label="Cookie jar">
+        <div class="modal-content" style="min-width:460px; max-width:640px;">
+            <div class="modal-header">
+                <span class="modal-title">Cookies</span>
+                <button id="close-cookies-modal" class="btn-icon" aria-label="Close">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="cookies-modal-body">
+                <p class="code-hint">Session-scoped cookie jar — captured from proxied responses, attached automatically to matching requests, never written to disk. Cleared on page reload.</p>
+                <div id="cookies-list" class="cookies-list"></div>
+                <div style="display:flex; gap:0.5rem; padding-top:0.5rem; border-top:1px solid var(--border);">
+                    <button id="btn-clear-cookies" class="btn-small btn-danger">Clear all</button>
                 </div>
             </div>
         </div>

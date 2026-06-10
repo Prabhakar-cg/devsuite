@@ -255,10 +255,17 @@ pip_run() {
 echo "Installing Python dependencies..."
 pip_run install -r requirements.txt
 
-# Start the server
-echo -e "\nStarting FastAPI server on http://localhost:8000..."
+# Start the server — honour HOST/PORT env vars; enable --reload only in dev mode.
+SERVER_HOST="${HOST:-127.0.0.1}"
+SERVER_PORT="${PORT:-8000}"
+RELOAD_ARGS=()
+if [[ "${DEVSUITE_DEV:-0}" = "1" ]]; then
+    RELOAD_ARGS+=(--reload)
+fi
+
+echo -e "\nStarting FastAPI server on http://${SERVER_HOST}:${SERVER_PORT}..."
 if command_exists uvicorn; then
-    uvicorn main:app --port 8000 --reload
+    uvicorn main:app --host "$SERVER_HOST" --port "$SERVER_PORT" "${RELOAD_ARGS[@]}"
 else
-    "$PYTHON_CMD" -m uvicorn main:app --port 8000 --reload
+    "$PYTHON_CMD" -m uvicorn main:app --host "$SERVER_HOST" --port "$SERVER_PORT" "${RELOAD_ARGS[@]}"
 fi

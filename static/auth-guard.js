@@ -5,7 +5,7 @@
    this module is for API Tester, SSH Manager, and similar tools.
 
    Usage:
-       const pwd = await AuthGuard.init('Tool Name', '🔧');
+       const pwd = await AuthGuard.init('Tool Name');
        // pwd is the verified master password; use it for decryption
    ================================================================ */
 
@@ -24,6 +24,17 @@ const AuthGuard = (() => {
     // closure, so it's gone on page unload (re-prompt is the safe default).
     let _sessionPwd    = null;   // master password, cleared on unload/lock
     let _sessionKeyHex = null;   // PBKDF2-derived auth key, used to re-acquire server session
+
+    // ── Inline SVG icons (stroke-based, design-system compliant — no emoji) ──────
+    // Static, author-controlled markup only; never interpolated with user data.
+    const _SVG_ATTRS = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+                       'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+    const _SVG_LOCK  = `<svg ${_SVG_ATTRS}><rect x="3" y="11" width="18" height="11" rx="2"/>` +
+                       `<path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+    const _SVG_CHECK = `<svg ${_SVG_ATTRS}><path d="M20 6 9 17l-5-5"/></svg>`;
+    const _SVG_ALERT = `<svg ${_SVG_ATTRS}><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3` +
+                       `L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`;
+    const _SVG_CLOCK = `<svg ${_SVG_ATTRS}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`;
 
     // ── Inject styles (once) ──────────────────────────────────────
     const _css = `
@@ -49,7 +60,9 @@ const AuthGuard = (() => {
             from { opacity:0; transform:translateY(18px); }
             to   { opacity:1; transform:translateY(0); }
         }
-        .ag-icon  { font-size: 2.4rem; line-height:1; filter: drop-shadow(0 0 16px rgba(100,119,255,0.4)); }
+        .ag-icon  { line-height:0; color:#6477ff; filter: drop-shadow(0 0 16px rgba(100,119,255,0.4)); }
+        .ag-icon svg { width: 40px; height: 40px; }
+        .ag-session-badge svg, .ag-notice svg, .ag-hint svg { width: 13px; height: 13px; flex-shrink: 0; }
         .ag-title { font-size: 20px; font-weight: 700; color: #e2e8f0; margin: 0; }
         .ag-desc  { font-size: 13px; color: #64748b; text-align: center; line-height: 1.6; margin: 0; }
         .ag-notice {
@@ -78,7 +91,8 @@ const AuthGuard = (() => {
             border-radius: 8px; padding: 8px 12px;
             font-size: 13px; color: #ef4444;
         }
-        .ag-hint { font-size: 11px; color: #64748b; text-align: center; margin: 0; }
+        .ag-hint { font-size: 11px; color: #64748b; margin: 0;
+                   display: flex; align-items: center; justify-content: center; gap: 6px; }
         .ag-btn {
             width: 100%; padding: 12px;
             background: #6477ff; border: none; border-radius: 8px;
@@ -137,7 +151,7 @@ const AuthGuard = (() => {
     // ── Hex helpers ───────────────────────────────────────────────
     function _hexToBytes(hex) {
         const b = new Uint8Array(hex.length / 2);
-        for (let i = 0; i < hex.length; i += 2) b[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+        for (let i = 0; i < hex.length; i += 2) b[i / 2] = Number.parseInt(hex.slice(i, i + 2), 16);
         return b;
     }
     function _bytesToHex(bytes) {
@@ -220,10 +234,10 @@ const AuthGuard = (() => {
     }
 
     // ── Overlay HTML ──────────────────────────────────────────────
-    // Built with DOM methods (not innerHTML) so toolName/toolIcon — though
-    // currently static call-site literals — cannot become an injection vector
-    // if future callers pass dynamic content (SPEC.md §2 / CLAUDE.md rule 4).
-    function _buildOverlay(toolName, toolIcon, sessionInfo) {
+    // User-controlled text (toolName) is set via textContent and can never reach
+    // innerHTML.  innerHTML is used ONLY for the static, author-controlled SVG
+    // icon constants above (SPEC.md §2 / CLAUDE.md rule 4).
+    function _buildOverlay(toolName, sessionInfo) {
         if (document.getElementById('ag-overlay')) return;
 
         const overlay = document.createElement('div');
@@ -232,10 +246,10 @@ const AuthGuard = (() => {
         const card = document.createElement('div');
         card.className = 'ag-card';
 
-        // Icon
+        // Icon (static SVG lock)
         const iconEl = document.createElement('div');
         iconEl.className = 'ag-icon';
-        iconEl.textContent = toolIcon || '🔒';
+        iconEl.innerHTML = _SVG_LOCK;
 
         // Title
         const titleEl = document.createElement('h2');
@@ -249,7 +263,12 @@ const AuthGuard = (() => {
         if (sessionInfo) {
             const badge = document.createElement('div');
             badge.className = 'ag-session-badge';
-            badge.textContent = `✅ Session active · expires in ${sessionInfo}`;
+            const badgeIcon = document.createElement('span');
+            badgeIcon.innerHTML = _SVG_CHECK;
+            const badgeText = document.createElement('span');
+            badgeText.textContent = `Session active · expires in ${sessionInfo}`;
+            badge.appendChild(badgeIcon);
+            badge.appendChild(badgeText);
             card.appendChild(badge);
         }
 
@@ -266,7 +285,7 @@ const AuthGuard = (() => {
         notSetup.className = 'ag-notice';
         notSetup.style.display = 'none';
         const nsIcon = document.createElement('span');
-        nsIcon.textContent = '⚠️';
+        nsIcon.innerHTML = _SVG_ALERT;
         const nsText = document.createElement('span');
         nsText.textContent = 'No master password configured yet. Visit ';
         const nsLink = document.createElement('a');
@@ -300,7 +319,12 @@ const AuthGuard = (() => {
 
         const hint = document.createElement('p');
         hint.className = 'ag-hint';
-        hint.textContent = '🕐 Your session will be remembered for 8 hours.';
+        const hintIcon = document.createElement('span');
+        hintIcon.innerHTML = _SVG_CLOCK;
+        const hintText = document.createElement('span');
+        hintText.textContent = 'Your session will be remembered for 8 hours.';
+        hint.appendChild(hintIcon);
+        hint.appendChild(hintText);
 
         const btn = document.createElement('button');
         btn.id = 'ag-btn';
@@ -329,12 +353,11 @@ const AuthGuard = (() => {
     /**
      * Gate a tool behind master-password auth with an 8-hour session.
      * @param {string} toolName  Display name shown on the lock card
-     * @param {string} toolIcon  Emoji shown at the top of the lock card
      * @returns {Promise<string>} Resolves with the master password once verified.
      *                            If master password is not set up, resolves with null
      *                            (caller should handle gracefully).
      */
-    async function init(toolName, toolIcon) {
+    async function init(toolName) {
         _injectStyle();
 
         // Fast path: session still valid in this page's lifetime (password is in-memory).
@@ -347,7 +370,7 @@ const AuthGuard = (() => {
 
         // Need to show the overlay
         const sessionInfo = _sessionValid() ? _sessionExpiresIn() : null;
-        _buildOverlay(toolName, toolIcon || '🔒', sessionInfo);
+        _buildOverlay(toolName, sessionInfo);
         const overlay = document.getElementById('ag-overlay');
         overlay.style.display = 'flex';
 
@@ -386,14 +409,14 @@ const AuthGuard = (() => {
                 try {
                     const { ok, keyHex } = await _verify(pw);
                     if (!ok) {
-                        err.textContent = '❌ Incorrect master password.';
+                        err.textContent = 'Incorrect master password. Check the password and try again.';
                         err.style.display = 'block';
                         return;
                     }
                     if (keyHex) {
                         const ok = await _acquireServerSession(keyHex);
                         if (!ok) {
-                            err.textContent = '❌ Session could not be established — server may be unreachable.';
+                            err.textContent = 'Session could not be established — the DevSuite server may be unreachable. Confirm it is running and retry.';
                             err.style.display = 'block';
                             return;
                         }
@@ -402,7 +425,7 @@ const AuthGuard = (() => {
                     overlay.style.display = 'none';
                     resolve(pw);
                 } catch {
-                    err.textContent = '❌ Verification failed — server may be unreachable.';
+                    err.textContent = 'Verification failed — the DevSuite server may be unreachable. Confirm it is running and retry.';
                     err.style.display = 'block';
                 } finally {
                     btn.disabled = false;
