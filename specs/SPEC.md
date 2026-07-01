@@ -83,7 +83,7 @@ devsuite/
     ├── linter.css        # Two-pane layout for linter/tester/crypto tools
     ├── toast.css         # Toast notification styles
     ├── theme.js          # Theme manager (6 themes)
-    ├── components.js     # Toast utility, Monaco init helper
+    ├── components.js     # DevSuite global: csrfToken helper, toast utility, Monaco init helper
     ├── auth-guard.js     # 8-hour session auth for DevDB tools
     ├── devdb-client.js   # Fetch wrapper around /api/db/*
     ├── home.html / home.css
@@ -137,7 +137,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | SSH Terminal | `ssh-manager.html` | `ssh-manager.js`, `ssh-manager.css`, `xterm.js` | `/api/ssh/*` WS, `/api/local/terminal` WS | `ssh_profiles` |
 | SFTP Browser | `sftp-browser.html` | `sftp-browser.js`, `sftp-browser.css` | `/api/sftp/*` | `ssh_profiles` |
 | Cron Visualizer | `cron.html` | `cron.js`, `cron.css` | `/cron` | — |
-| Secret Vault | `vault.html` | `vault.js`, `vault.css`, `crypto-js.min.js` | `/api/vault`, `/api/auth/*` | `vault` |
+| Secret Vault | `vault.html` | `vault.js`, `vault.css`, `crypto-js.min.js`, `components.js` (defines `DevSuite.csrfToken`) | `/api/vault`, `/api/auth/*` | `vault` |
 | DevDB Manager | `db-manager.html` | `db-manager.js`, `db-manager.css` | `/api/db/*` | — |
 | File Converter | `file-converter.html` | inline JS + self-hosted `js-yaml`, `papaparse`, `marked` (`/static/libs/`) | `/api/convert` | — |
 
@@ -861,9 +861,15 @@ On every release, bump the version string in exactly these four places simultane
 
 Cache busting is **automatic**. `_serve_html()` in `main.py` rewrites every `/static/*.css` and `/static/*.js` URL at serve-time, appending `?v=<8-char MD5>` derived from the file's current content. Fallback: `APP_VERSION`. Manual version bumps in HTML templates are not required and will be overwritten.
 
-### 12.3 Changelog Format
+### 12.3 Changelog Format & Flow
 
-Follows Semantic Versioning. Each release section includes: Security · Frontend · Features · Bug Fixes · Internal/Code Quality · Dependencies.
+Follows Semantic Versioning. Each release section includes, in this order: Security · Frontend · Features · Bug Fixes · Internal/Code Quality · Documentation · Dependencies (omit any that are empty).
+
+**Flow — every change is logged the same way:**
+
+1. **Land under `## [Unreleased]`.** In the same commit as the code/spec change, add an entry to the `## [Unreleased]` section at the top of `CHANGELOG.md`, under the appropriate category heading above. Never commit a behavior, bug-fix, or documentation change without a matching `[Unreleased]` entry.
+2. **Entry shape.** `#### <Short title> (`<file(s) touched>`)` followed by bullet(s) describing the *why* and the *fix*, and — for security/behavioral paths — the regression test added (per constitution rule 4).
+3. **On release, promote.** Rename `## [Unreleased]` to `## [X.Y.Z] — <date> (<theme>)`, add a fresh empty `## [Unreleased]` above it, and perform the §12.1 four-place version bump in the same commit.
 
 ---
 
