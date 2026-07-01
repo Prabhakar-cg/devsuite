@@ -37,3 +37,23 @@ def test_diff_page_umd_bundles_load_before_requirejs(client):
     r = client.get("/diff")
     assert r.status_code == 200
     _assert_umd_before_require(r.text, "/diff")
+
+
+def test_vault_page_loads_components_before_vault_script(client):
+    """Regression: vault.js calls DevSuite.csrfToken() (defined in components.js)
+    on the master-password setup path. If components.js is missing or loads after
+    vault.js, setting a vault password throws "DevSuite is not defined" and the
+    setup fails silently (regression shipped briefly during v0.3.0).
+
+    Rule: components.js must appear before vault.js on the Vault page.
+    """
+    r = client.get("/vault")
+    assert r.status_code == 200
+    order = _script_order(r.text)
+    assert "/static/components.js" in order, (
+        "/vault: components.js not loaded — DevSuite is undefined, so setting a "
+        "vault password throws 'DevSuite is not defined'"
+    )
+    assert order.index("/static/components.js") < order.index("/static/vault.js"), (
+        "/vault: components.js must load before vault.js (defines DevSuite.csrfToken)"
+    )

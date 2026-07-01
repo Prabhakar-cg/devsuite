@@ -7,6 +7,12 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ## [Unreleased]
 
+### Bug Fixes
+
+#### Secret Vault master-password setup threw "DevSuite is not defined" (`static/vault.html`)
+- `vault.html` loaded `theme.js`, `crypto-js.min.js`, and `vault.js`, but never `components.js` — the file that defines the `DevSuite` global. On the master-password setup path, `vault.js` calls `_csrfToken()` → `DevSuite.csrfToken()`, which threw `ReferenceError: DevSuite is not defined`, so setting a new vault password failed. Added `<script src="/static/components.js">` before `vault.js`, matching every other DevSuite-dependent page.
+- Regression guard extended: `tests/python/test_asset_order.py` now asserts `/vault` serves `components.js` before `vault.js`. `SPEC.md` §3.4 Module-to-File Map and the `components.js` file descriptions in `SPEC.md`/`README.md` updated to list the `DevSuite.csrfToken` dependency.
+
 ---
 
 ## [0.3.0] — 2026-06-10 (API Tester: Daily Driver)

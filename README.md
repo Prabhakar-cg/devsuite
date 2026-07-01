@@ -180,7 +180,7 @@ devsuite/
     ├── style.css            # Global design system and component CSS (tokens, glassmorphism)
     ├── linter.css           # Shared two-pane layout for linter/tester/crypto tools
     ├── theme.js             # Theme manager (Dark, Light, HC, Frosted Glass)
-    ├── components.js        # Shared UI utilities — toast notifications, Monaco init helper
+    ├── components.js        # Shared UI utilities — DevSuite global: CSRF token helper, toast notifications, Monaco init helper
     ├── auth-guard.js        # 8-hour session auth guard for DevDB-backed tools
     ├── devdb-client.js      # Thin fetch wrapper around /api/db/* endpoints
     │
