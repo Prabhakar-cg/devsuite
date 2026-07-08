@@ -7,6 +7,12 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ## [Unreleased]
 
+### Features
+
+#### Cron Visualizer: Day-of-Month grid in the Visual Field Builder (`static/cron.js`)
+- The Field Builder previously rendered only Minute, Hour, Month, and Day-of-Week grids; day-of-month could only be edited by typing in the expression. Added a click-to-toggle Day-of-Month grid (1–31, 8 columns), rendered between Hour and Month to match cron field order, for all four dialects.
+- Clicking a cell when the field is the Quartz/AWS `?` wildcard now behaves like `*`: it selects only the clicked value instead of expanding into a 30-value list. `SPEC.md` §4.9 updated.
+
 ### Bug Fixes
 
 #### Secret Vault master-password setup threw "DevSuite is not defined" (`static/vault.html`)

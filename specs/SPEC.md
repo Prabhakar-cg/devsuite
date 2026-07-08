@@ -323,7 +323,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 - Live expression parser with per-field tokenization and color-coded field chips.
 - ✓/✗ validity status pill.
 - Human-readable description (e.g., *"Every 15 minutes, between 9:00 AM and 5:00 PM, Monday–Friday"*).
-- Visual Field Builder: click-to-toggle grids for Minute (0–59), Hour (0–23), Month, Day-of-Week; bidirectionally synced with text input.
+- Visual Field Builder: click-to-toggle grids for Minute (0–59), Hour (0–23), Day-of-Month (1–31), Month, Day-of-Week; bidirectionally synced with text input.
 - Next 10 Run Times: brute-force minute-iteration scheduler; shows locale date, time, relative countdown.
 - 28-Day Activity Heatmap: CSS grid calendar with teal intensity shading; hover tooltip per day.
 - Preset Library: curated expressions per dialect, click-to-load.

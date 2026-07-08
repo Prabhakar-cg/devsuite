@@ -961,10 +961,10 @@ class CronVisualizer {
     this.builderContainer.innerHTML = '';
 
     const d = DIALECTS[this.currentDialect];
-    // Only render minute, hour, month, dow grids (dom grid is too large, per UX)
     const renderFields = [
       { key: 'minute', label: 'Minute', idx: d.fields.indexOf('minute'), min: 0, max: 59, cols: 12 },
       { key: 'hour',   label: 'Hour',   idx: d.fields.indexOf('hour'),   min: 0, max: 23, cols: 6 },
+      { key: 'dom',    label: 'Day of Month', idx: d.fields.indexOf('dom'), min: 1, max: 31, cols: 8 },
       { key: 'month',  label: 'Month',  idx: d.fields.indexOf('month'),  min: 1, max: 12, cols: 6, names: MONTH_NAMES },
       { key: 'dow',    label: 'Day of Week', idx: d.fields.indexOf('dow'), min: 0, max: 6, cols: 7, names: DOW_NAMES },
     ].filter(f => f.idx !== -1);
@@ -1014,7 +1014,7 @@ class CronVisualizer {
     const parsedField = this.parser._parseField(currentToken, def.idx, DIALECTS[this.currentDialect].fields[def.idx]);
     const currentSet = this.parser.expandField(parsedField, range);
 
-    if (currentToken === '*') {
+    if (currentToken === '*' || currentToken === '?') {
       // Switch from wildcard: select only this value
       parts[def.idx] = String(value);
     } else {
