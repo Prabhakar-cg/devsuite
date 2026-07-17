@@ -8,6 +8,8 @@ This project uses GitHub Spec Kit. **The spec-kit tree is the single source of t
 - `specs/SPEC.md` — the detailed master specification (routes, APIs, storage format, security model, design system). Code and tests cite it as `SPEC.md §<section>` — keep its § numbering stable.
 - `specs/001-devsuite-baseline/spec.md` — requirements-level baseline of the as-built system.
 - New features: `/speckit-specify` creates `specs/NNN-name/`, then `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`. When a feature ships, fold its durable contracts back into `specs/SPEC.md` in the same commit.
+- If implementation stalls or drifts from the spec, `/speckit-converge` audits the codebase against the feature's spec/plan/tasks and appends the remaining unbuilt work to `tasks.md` so `/speckit-implement` can finish it.
+- Every plan must fill in the Constitution Check gates in `plan-template.md` — including the spec/security baseline and the new-tool cross-cutting checklist — before Phase 0 research.
 
 Rules (full text in the constitution):
 

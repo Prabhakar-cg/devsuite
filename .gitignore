@@ -16,7 +16,10 @@ __pycache__/
 .DS_Store
 .cursorignore
 .cursorindexingignore
-.claude/
+# Claude Code: commit .claude/skills/**, ignore only local state
+.claude/settings.local.json
+.claude/*.local.json
+.claude/worktrees/
 
 # OS generated files
 Thumbs.db

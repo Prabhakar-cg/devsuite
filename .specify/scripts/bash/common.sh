@@ -24,9 +24,42 @@ find_specify_root() {
     return 1
 }
 
+# Resolve an explicit SPECIFY_INIT_DIR project override (the directory that
+# *contains* .specify/), for non-interactive / CI use — e.g. running a Spec Kit
+# command against a member project from a monorepo root without cd.
+#
+# Precondition: SPECIFY_INIT_DIR is non-empty. Echoes the validated absolute
+# project root, or prints an error and returns 1. Strict by design: the path
+# must exist and contain .specify/, with no silent fallback to cwd or the
+# script-location default (which would silently write to the wrong project).
+#
+# This is the single resolver: bundled extensions inherit it by sourcing core
+# (e.g. the git extension's create-new-feature-branch) rather than duplicating it.
+resolve_specify_init_dir() {
+    local init_root
+    # Normalize: relative paths resolve against $(pwd); a trailing slash collapses.
+    # CDPATH="" so a relative value cannot be resolved against the caller's CDPATH
+    # (which would also echo to stdout and corrupt the captured path).
+    if ! init_root="$(CDPATH="" cd -- "$SPECIFY_INIT_DIR" 2>/dev/null && pwd)"; then
+        echo "ERROR: SPECIFY_INIT_DIR does not point to an existing directory: $SPECIFY_INIT_DIR" >&2
+        return 1
+    fi
+    if [[ ! -d "$init_root/.specify" ]]; then
+        echo "ERROR: SPECIFY_INIT_DIR is not a Spec Kit project (no .specify/ directory): $init_root" >&2
+        return 1
+    fi
+    printf '%s\n' "$init_root"
+}
+
 # Get repository root, prioritizing .specify directory
 # This prevents using a parent repository when spec-kit is initialized in a subdirectory
 get_repo_root() {
+    # Explicit project override wins (see resolve_specify_init_dir).
+    if [[ -n "${SPECIFY_INIT_DIR:-}" ]]; then
+        resolve_specify_init_dir
+        return
+    fi
+
     # First, look for .specify directory (spec-kit's own marker)
     local specify_root
     if specify_root=$(find_specify_root); then
@@ -140,8 +173,21 @@ _validate_feature_dir() {
 }
 
 get_feature_paths() {
-    local repo_root=$(get_repo_root)
-    local current_branch=$(get_current_branch)
+    # Read-only callers (e.g. check-prerequisites.sh --paths-only) pass
+    # --no-persist so pure path resolution never writes .specify/feature.json,
+    # which would dirty the working tree or overwrite a pinned value (issue #3025).
+    local no_persist=false
+    if [[ "${1:-}" == "--no-persist" ]]; then
+        no_persist=true
+        shift
+    fi
+
+    # Split decl/assignment so a SPECIFY_INIT_DIR validation failure in
+    # get_repo_root propagates as a hard error instead of being masked by `local`.
+    local repo_root
+    repo_root=$(get_repo_root) || return 1
+    local current_branch
+    current_branch=$(get_current_branch)
 
     # Resolve feature directory.  Priority:
     #   1. SPECIFY_FEATURE_DIRECTORY env var (explicit override)
@@ -154,8 +200,11 @@ get_feature_paths() {
         [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
         # Reject paths that escape the repo spec tree before persisting anything
         feature_dir=$(_validate_feature_dir "$repo_root" "$feature_dir") || return 1
-        # Persist to feature.json so future sessions without the env var still work
-        _persist_feature_json "$repo_root" "$SPECIFY_FEATURE_DIRECTORY"
+        # Persist to feature.json so future sessions without the env var still
+        # work — unless the caller opted out for read-only resolution (#3025).
+        if [[ "$no_persist" != true ]]; then
+            _persist_feature_json "$repo_root" "$SPECIFY_FEATURE_DIRECTORY"
+        fi
     elif [[ -f "$repo_root/.specify/feature.json" ]]; then
         local _fd
         _fd=$(read_feature_json_feature_directory "$repo_root")
