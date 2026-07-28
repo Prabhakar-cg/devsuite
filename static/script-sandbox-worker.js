@@ -8,9 +8,16 @@
  * responses carry no `unsafe-eval` (SPEC §5.10, SEC-6).
  *
  * Protocol (postMessage):
- *   in:  { id, kind: 'pre'|'test', code, runtimeVars, envVars, response }
+ *   in:  { kind: 'init', token }                    — sent once per worker instance
+ *   in:  { id, kind: 'pre'|'test', code, codeSig, authToken, runtimeVars, envVars, response }
  *   out: { id, logs: [{type, text}], results: [{name, passed, error?}],
  *          mutations: { runtime: {…}, env: {…} } }
+ *
+ * `codeSig` is an HMAC-SHA256(code) under `token`, freshly signed per call by the
+ * main thread (see `_signScript` in api-tester.js); `authToken` must equal the
+ * token this worker instance was initialized with. Both checks exist so that a
+ * co-loaded/compromised third-party script — which cannot read this worker's
+ * closed-over token — cannot inject work into an already-running sandbox.
  *
  * Variable writes are recorded as mutations and applied by the main thread
  * after the script completes — the worker never touches page state directly.
@@ -136,7 +143,16 @@ function makeDs(runtimeVars, envVars, mutations, extra = {}) {
 }
 
 self.onmessage = async (e) => {
-    const { id, kind, code, codeSig, runtimeVars = {}, envVars = {}, response = null, authToken } = e.data || {};
+    const { id, kind, code, codeSig, runtimeVars = {}, envVars = {}, response = null, authToken, token } = e.data || {};
+
+    if (kind === 'init') {
+        // One-time per-worker-instance secret (SPEC §4.7.1): scripts must be
+        // HMAC-signed with this token to run, so a co-loaded/compromised
+        // third-party script without the token cannot inject work here.
+        self.__DS_WORKER_TOKEN = token;
+        return;
+    }
+
     const logs = [];
     const results = [];
     const mutations = { runtime: {}, env: {} };
@@ -160,18 +176,12 @@ self.onmessage = async (e) => {
         if (kind === 'test') {
             const ds = makeDs(runtimeVars, envVars, mutations, { response });
             const test = (name, fn) => _runTestCase(results, logs, name, fn);
-            void ds;
-            void test;
-            void expect;
-            void consoleObj;
-            void code;
-            throw new Error('Dynamic script text execution is disabled for security reasons.');
+            const run = new Function('ds', 'test', 'expect', 'console', buildAsyncScriptBody(code));
+            await run(ds, test, expect, consoleObj);
         } else {
             const ds = makeDs(runtimeVars, envVars, mutations);
-            void ds;
-            void consoleObj;
-            void code;
-            throw new Error('Dynamic script text execution is disabled for security reasons.');
+            const run = new Function('ds', 'expect', 'console', buildAsyncScriptBody(code));
+            await run(ds, expect, consoleObj);
         }
     } catch (err) {
         const label = kind === 'test' ? 'Test script error' : 'Pre-request error';

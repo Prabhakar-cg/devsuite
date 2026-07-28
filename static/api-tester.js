@@ -676,12 +676,29 @@ function interpolateObj(obj) {
 // The worker has no DOM and no network. Variable writes come back as mutations
 // and are applied here after the script completes.
 let _sandboxWorker = null;
+let _sandboxToken = null;
 let _sandboxSeq = 0;
 const SCRIPT_TIMEOUT_MS = 10000;
 
 function _getSandboxWorker() {
-    if (!_sandboxWorker) _sandboxWorker = new Worker('/static/script-sandbox-worker.js');
+    if (!_sandboxWorker) {
+        _sandboxToken = crypto.randomUUID();
+        _sandboxWorker = new Worker('/static/script-sandbox-worker.js');
+        _sandboxWorker.postMessage({ kind: 'init', token: _sandboxToken });
+    }
     return _sandboxWorker;
+}
+
+// HMAC-SHA256(code) under the per-worker session token, so a script message can
+// only have come from this page (not a co-loaded/compromised third-party script
+// that lacks the token) — verified worker-side in verifySignedScript().
+async function _signScript(code, token) {
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+        'raw', enc.encode(String(token)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+    );
+    const sigBuf = await crypto.subtle.sign('HMAC', key, enc.encode(code));
+    return btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
 }
 
 function _applyScriptMutations(mutations) {
@@ -730,16 +747,21 @@ function runScriptSandboxed(kind, code, dsResponse = null, timeoutMs = SCRIPT_TI
             cleanup();
             worker.terminate();
             _sandboxWorker = null; // recreated lazily on the next run
+            _sandboxToken = null;
             resolve({ logs: [{ type: 'error', text: `Script timed out after ${timeoutMs / 1000}s and was terminated` }], results: [] });
         }, timeoutMs);
 
         worker.addEventListener('message', onMessage);
         worker.addEventListener('error', onError);
-        worker.postMessage({
-            id, kind, code,
-            runtimeVars: { ...runtimeVars },
-            envVars: { ...(getActiveEnv()?.vars || {}) },
-            response: dsResponse,
+
+        const token = _sandboxToken;
+        _signScript(code, token).then((codeSig) => {
+            worker.postMessage({
+                id, kind, code, codeSig, authToken: token,
+                runtimeVars: { ...runtimeVars },
+                envVars: { ...(getActiveEnv()?.vars || {}) },
+                response: dsResponse,
+            });
         });
     });
 }

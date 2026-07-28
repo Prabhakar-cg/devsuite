@@ -3,7 +3,7 @@
 > **Version:** 0.3.0  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
-> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; the requirements-level baseline is `specs/001-devsuite-baseline/spec.md`; new features get their own `specs/NNN-name/` via `/speckit-specify` and fold durable contracts back into this document when they ship. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable.
+> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 12 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `014-`.
 
 ---
 
@@ -143,231 +143,29 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 
 ---
 
-## 4. Tools — Behavioral Specifications
+## 4. Tools — Index
 
-### 4.1 Diff Checker (`/diff`)
+Each tool's behavioral spec, requirements, plan, task history, research decisions, data model,
+quickstart, and API contracts now live in their own spec-kit folder under `specs/`, following the
+same `spec.md` → `plan.md` → `tasks.md` structure `/speckit-specify` produces for any new feature.
+This section is an index only — **do not add tool behavior prose here**; put it in the linked
+spec and, if it's a durable cross-cutting contract (route, store, security rule), also fold it
+into §5–§12 below.
 
-**Inputs:** Two text panels (left / right); file upload per panel; folder picker for folder mode.
-
-**Modes:** Side-by-side (default) · Inline.
-
-**Behaviors:**
-- `Ctrl/Cmd+Enter` triggers comparison.
-- Merge arrows copy individual hunks left→right and right→left.
-- Live Diff Stats Bar: additions, removals, hunk count.
-- Export as `.patch` or copy unified diff to clipboard.
-- Line-count badge per panel, updated on every keystroke.
-- **Folder Diff tab** (`/diff?tab=folder-diff`): compares directory trees; filter chips: All / Modified / Added / Removed.
-
-**Constraints:**
-- Folder picker `<input type="file">` must be outside any `display:none` ancestor.
-- File-path sort: `localeCompare()` for deterministic locale-aware order.
-
----
-
-### 4.2 JSON Linter & Formatter (`/json`)
-
-**Input:** Monaco Editor pane.
-
-**Behaviors:**
-- Real-time validation — exact line/column error pointers.
-- Actions: Pretty-print · Minify · Sort keys alphabetically.
-- Bulk operations (format, minify, sort) must push a snapshot to a manual undo stack before replacing content, so `Ctrl+Z` restores the previous value.
-
----
-
-### 4.3 YAML Linter & Validator (`/yaml`)
-
-**Input:** Monaco Editor pane.
-
-**Behaviors:**
-- Parse and validate YAML (Kubernetes, Docker Compose, GitHub Actions targets).
-- Actions: Format YAML · Convert to JSON.
-
----
-
-### 4.4 Regex Tester (`/regex`)
-
-**Input:** Pattern field + Monaco Editor test-string panel.
-
-**Behaviors:**
-- Real-time match highlighting inside Monaco.
-- Named and numbered group capture display.
-- Flag toggles: `g`, `i`, `m`, `s` — each button syncs `aria-pressed`.
-
----
-
-### 4.5 Base64 Encoder / Decoder (`/base64`)
-
-**Input:** Text field.
-
-**Behaviors:**
-- Encode/Decode with full UTF-8 support.
-- URL-safe mode toggle (`+`↔`-`, `/`↔`_`).
-- JWT Inspector panel: splits header · payload · signature; pretty-prints JSON sections; shows expiry status.
-
----
-
-### 4.6 Crypto Suite (`/crypto`)
-
-**Tabs:** Hash Generator · AES · RSA · HMAC.
-
-**Behaviors:**
-- Hash: MD5, SHA-1, SHA-256, SHA-512 — all computed simultaneously; per-hash copy button.
-- AES: Encrypt/Decrypt via CryptoJS; mode selection: CBC, ECB, CTR.
-- RSA: Generate 2048/4096-bit keypairs in-browser; encrypt/decrypt with generated keys.
-- HMAC: Sign & Verify using SHA-256 or SHA-512; visual OK/INVALID banner.
-- All operations fully offline via self-hosted `crypto-js.min.js`.
-
----
-
-### 4.7 Local API Tester (`/api-tester`)
-
-**Behaviors:**
-- REST client supporting: GET, POST, PUT, DELETE, PATCH.
-- Custom headers and body.
-- Request Collections with nested folder organization (§4.7.4) — persisted in DevDB `collections`.
-- Environment import from the Environment Manager modal — auto-detects format:
-  - **DevSuite native** — `[{id, name, vars: {key: value}}]` array.
-  - **Postman environment** — detected via `_postman_variable_scope: "environment"` or `{name, values: [{key, value, enabled}]}`. Disabled variables are skipped. Existing environments with the same name are replaced in-place.
-- Collection import auto-detects format from the uploaded file (`.json` or `.zip`, §4.7.6):
-  - **DevSuite native** — `{ items: [...] }` (scripts stripped on import for safety).
-  - **Postman v2.x** — detected via `info.schema` containing `getpostman.com`. Nested folders are preserved as `/`-separated folder paths (§4.7.4); `/` inside a single Postman folder name is replaced with `-` so it cannot act as a path separator. Parses URL, query params, headers, body (raw/JSON/text/form-data/GraphQL), and auth (bearer, basic, API key). Compatible with Postman exports and Bruno "Export as Postman" collections.
-- Collection export as DevSuite native JSON, or as a git-friendly zip (§4.7.6).
-- OpenAPI 3.x / Swagger 2.x JSON import — each path×method becomes a collection request.
-- Local CORS Proxy (`/api/proxy`) to bypass browser CORS restrictions (targets any host reachable from the DevSuite server, including LAN addresses; loopback and cloud-metadata/link-local addresses are blocked server-side).
-- **Smart CORS routing** (implemented in `ApiClient.execute`): cross-origin requests that will definitely trigger a CORS preflight (non-GET/HEAD/POST method, `Authorization` header, `Content-Type: application/json`, or any non-safelisted header) are routed through the proxy immediately — the doomed direct attempt is skipped entirely. Simple requests (bare GET/HEAD, form POST, no custom headers) are tried directly first; on failure they fall back to the proxy. (Note: the document CSP's `connect-src 'self'` currently blocks the direct cross-origin attempt as well, so in practice the fallback always routes through the proxy — tracked as an open design decision, see §13 backlog.)
-- Frontend uses 8-hour session auth via `auth-guard.js`. Both `/api/collections` endpoints also call `require_unlocked` server-side — the backend enforces auth, not just the frontend.
-
-**Network notice:** The CORS proxy initiates outbound connections to the target host. This tool is not strictly offline.
-
-#### 4.7.1 Script sandbox (Web Worker)
-
-- Pre-request and test scripts execute inside a **dedicated Web Worker** (`static/script-sandbox-worker.js`), never on the main thread, and never via `new Function()` in the document context.
-- The worker has **no DOM, no cookies, and no network**: its response is served with a scoped CSP (`default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'`) while document responses carry **no `unsafe-eval`** (§5.10).
-- Script API inside the sandbox: `ds.setVar/getVar/setEnvVar/getEnvVar`, `console.log/info/warn/error`, and (tests only) `test(name, fn)`, `expect(val)` chain (`equal`, `include`, `property`, `status`, `ok`, `above`, `below`, `a`), `ds.response` (`status`, `statusText`, `headers`, `body`, `bodyText`, `timeMs`).
-- Variable writes are recorded as mutations in the worker and applied by the main thread after the script completes (`runtimeVars` and active-environment vars).
-- Top-level `await` is supported (script body is wrapped in an async function).
-- **Timeout:** scripts that run longer than 10 seconds are terminated (worker is killed and lazily recreated); the console reports the timeout. A hung script can no longer freeze the UI.
-
-#### 4.7.2 Collection runner
-
-- Run **all requests in a folder** (including its subfolders) or **the entire collection**, sequentially, in sidebar display order.
-- Per request: pre-request script → request (cookie jar applied, §4.7.5) → test script. Results render in the runner modal as rows: method, name, status code, duration, tests passed/failed.
-- `runtimeVars` persist **across the whole run** (unlike single Send, which resets them) — `ds.setVar` in one request's script is visible to later requests, enabling request chaining.
-- Summary footer: total requests, passed/failed test counts, total wall time.
-- **Stop** halts the run after the in-flight request completes.
-- Items using OAuth2 auth reuse the cached token if one was fetched; otherwise they run without auth (the runner never opens interactive prompts).
-
-#### 4.7.3 cURL import & code generation
-
-- **Code modal** generates, from the *resolved* current request (variables interpolated, auth applied): `cURL`, JavaScript `fetch`, and `HTTPie` snippets, each with a copy button.
-- **Paste cURL** imports a curl command line into the editor: method (`-X`), headers (`-H`), body (`-d`/`--data*`, `-F`), basic auth (`-u`), cookies (`-b`), URL query strings (split into the Params tab), `-G` query conversion. Unsupported flags are ignored; multi-line commands with `\` or `` ` `` continuations are accepted.
-- Implemented in `static/curl-codegen.js` — a pure module with no DOM dependencies, unit-tested in `tests/javascript/`.
-
-#### 4.7.4 Nested folders & sidebar management
-
-- `item.folder` is a `/`-separated **path** (e.g. `"payments/v2/refunds"`). Legacy single-segment values remain valid paths — no migration required.
-- The sidebar renders folders as a collapsible tree; folder header counts include all nested requests.
-- "Save Request" accepts `folder/subfolder/Name` — the **last** `/` separates the request name from its folder path.
-- **Folder auth inheritance**: `folderAuths` is keyed by full folder path. A request with auth `inherit` walks **up** its folder path and uses the nearest ancestor folder with a configured auth; the Auth tab's inherit panel names the ancestor that will apply.
-- **Request management** (context menu on each request row): Rename · Duplicate (deep copy inserted after the original, name suffixed `(copy)`) · Move to folder… (prompt; empty input moves to top level) · Delete (confirm required).
-- **Folder management** (context menu on each folder header): Rename folder — cascades the path-prefix change to all descendant requests **and** `folderAuths` keys; renaming onto an existing path merges into it. Delete folder — removes the folder, all nested requests, and their folder auth entries (confirm shows the request count).
-- **Drag & drop**: request rows are draggable. Drop on another request inserts before it (adopting its folder); drop on a folder header appends to that folder; drop on empty sidebar space moves to top level. Folders themselves are not draggable (move their requests, or rename the path).
-- Path/move/reorder logic lives in `static/collection-utils.js` — a pure module, unit-tested in `tests/javascript/`.
-
-#### 4.7.5 Cookie jar
-
-- Session-scoped, **in-memory only** — cookies are never persisted to DevDB, `localStorage`, or disk, and are gone on page reload.
-- Captures `Set-Cookie` headers from **proxied** responses (`set_cookie` list in the proxy response, §5.9). Direct (non-proxied) responses are cookie-managed by the browser itself and are not captured.
-- Before each request (Send and runner), matching cookies (domain suffix match, path prefix match, not expired, `Secure` only over https) are attached as a `Cookie` header — unless the request already sets one manually.
-- Cookies modal: list by domain (name, value, path, expiry), delete one, clear all.
-- Implemented in `static/cookie-jar.js` — a pure module, unit-tested in `tests/javascript/`.
-
-#### 4.7.6 Git-friendly zip export / import
-
-- **Export as zip**: one pretty-printed JSON file per request, directory tree mirroring the folder paths, plus a `collection.meta.json` manifest (`{format: "devsuite-collection-zip", version: 1, exportedAt}`). Built client-side with the vendored JSZip.
-- File names are the request names sanitized for filesystem safety (`/ \ : * ? " < > |` and control chars replaced with `-`); collisions get a numeric suffix.
-- **Folder auth configs are intentionally NOT exported** — they may contain tokens/passwords and the zip is designed to be committed to git.
-- **Import**: the existing collection-import button accepts `.zip`; each `*.json` entry (manifest excluded) becomes a request whose folder path is the file's directory path. Scripts in imported files are stripped by default; the user is offered a confirm to keep them (they execute only inside the sandbox worker, §4.7.1).
-- Export → import round-trips the collection (scripts included when the user opts in).
-
----
-
-### 4.8 Secure Terminal & SFTP (`/ssh`)
-
-**Sub-tabs:** Terminal · SFTP Browser.
-
-**Terminal behaviors:**
-- Multi-tab SSH client — parallel sessions, each in its own xterm.js instance.
-- Auth modes: Password · Private Key (PEM import).
-- Session profiles encrypted client-side with Master Password, stored in DevDB `ssh_profiles`.
-- Sidebar: tree-style, collapsible group folders, quick-search/filter, inline delete (no modal).
-- Terminal resize events propagated to remote PTY.
-- WSL / Local Terminal: auto-discovers installed WSL distributions; spawns local PTY shells.
-
-**SFTP behaviors:**
-- Browse, navigate, and inspect remote filesystems.
-- Grid view with file type icons, sizes, up/back navigation, refresh, disconnect.
-- Standalone deep-link: `/sftp`.
-
-**Network notice:** SSH/SFTP actions transmit data off-machine to the target host. Not strictly offline.
-
----
-
-### 4.9 Cron Visualizer (`/cron`)
-
-**Dialect support:** Unix/Linux (5-field) · Quartz/Spring (6–7-field, `?`, `L`, `W`, `#`) · AWS EventBridge (6-field + year) · GitHub Actions.
-
-**Behaviors:**
-- Live expression parser with per-field tokenization and color-coded field chips.
-- ✓/✗ validity status pill.
-- Human-readable description (e.g., *"Every 15 minutes, between 9:00 AM and 5:00 PM, Monday–Friday"*).
-- Visual Field Builder: click-to-toggle grids for Minute (0–59), Hour (0–23), Day-of-Month (1–31), Month, Day-of-Week; bidirectionally synced with text input.
-- Next 10 Run Times: brute-force minute-iteration scheduler; shows locale date, time, relative countdown.
-- 28-Day Activity Heatmap: CSS grid calendar with teal intensity shading; hover tooltip per day.
-- Preset Library: curated expressions per dialect, click-to-load.
-- Export: raw expression · GitHub Actions / Kubernetes CronJob YAML · AWS EventBridge JSON.
-- All computation is client-side — no backend required.
-
----
-
-### 4.10 Secret Vault (`/vault`)
-
-**Behaviors:**
-- KeePass-style encrypted secret manager.
-- AES-256 client-side encryption via CryptoJS — the server never sees plaintext.
-- Lock screen on every visit. Master Password is never stored.
-- CRUD: add · view (reveal/hide) · copy to clipboard · edit · delete.
-- Categories: Token · Password · SSH Key · API Key · Note · Other.
-- Persistence via DevDB `vault` store.
-- Clipboard auto-clear: after copying a secret, show a 30-second countdown and clear automatically.
-
----
-
-### 4.11 DevDB Manager (`/db-manager`)
-
-**Behaviors:**
-- View all DevDB stores: names, approximate sizes, metadata (created, modified timestamps).
-- Export full `.dsb` database file.
-- Import `.dsb` file.
-- Store viewer: browse raw JSON content of any named store.
-- Auth-gated — always-ask Master Password (does not use 8-hour session cache).
-
----
-
-### 4.12 File Format Converter (`/file-converter`)
-
-**Supported formats:** JSON · CSV · YAML · XML · TSV · XLSX · Markdown · HTML · DOCX · PDF.
-
-**Client-side (in-browser):** JSON ↔ YAML · JSON ↔ CSV · JSON → XML · YAML → JSON · Markdown → HTML.
-
-**Server-side (Python):** XLSX ↔ CSV/JSON · PDF → TXT · DOCX → TXT · DOCX/HTML/Markdown → PDF (WeasyPrint).
-
-**Behaviors:**
-- Drag-and-drop upload zone or file picker.
-- Output displayed inline with download button.
-- Max upload size: **20 MB** (enforced by backend — `MAX_UPLOAD_SIZE` in `deps.py`; see §5.7). The `/upload` text-diff endpoint has a separate 50 MB limit.
+| # | Tool | Route(s) | Spec |
+|---|---|---|---|
+| 4.1 | Diff Checker | `/diff` | [specs/002-diff-checker/spec.md](002-diff-checker/spec.md) |
+| 4.2 | JSON Linter & Formatter | `/json` | [specs/003-json-linter/spec.md](003-json-linter/spec.md) |
+| 4.3 | YAML Linter & Validator | `/yaml` | [specs/004-yaml-linter/spec.md](004-yaml-linter/spec.md) |
+| 4.4 | Regex Tester | `/regex` | [specs/005-regex-tester/spec.md](005-regex-tester/spec.md) |
+| 4.5 | Base64 Encoder / Decoder | `/base64` | [specs/006-base64-encoder/spec.md](006-base64-encoder/spec.md) |
+| 4.6 | Crypto Suite | `/crypto` | [specs/007-crypto-suite/spec.md](007-crypto-suite/spec.md) |
+| 4.7 | Local API Tester | `/api-tester` | [specs/008-api-tester/spec.md](008-api-tester/spec.md) |
+| 4.8 | Secure Terminal & SFTP | `/ssh`, `/sftp` | [specs/009-secure-terminal-sftp/spec.md](009-secure-terminal-sftp/spec.md) |
+| 4.9 | Cron Visualizer | `/cron` | [specs/010-cron-visualizer/spec.md](010-cron-visualizer/spec.md) |
+| 4.10 | Secret Vault | `/vault` | [specs/011-secret-vault/spec.md](011-secret-vault/spec.md) |
+| 4.11 | DevDB Manager | `/db-manager` | [specs/012-db-manager/spec.md](012-db-manager/spec.md) |
+| 4.12 | File Format Converter | `/file-converter` | [specs/013-file-converter/spec.md](013-file-converter/spec.md) |
 
 ---
 
@@ -627,7 +425,7 @@ DevDB.getMeta()           // GET /api/db/meta
 
 | Tool | Auth model |
 |---|---|
-| Diff, JSON, YAML, Regex, Base64, Crypto, Cron | No auth required |
+| Diff, JSON, YAML, Regex, Base64, Crypto, Cron, File Converter | No auth required |
 | API Tester | 8-hour session cache (`auth-guard.js`) |
 | SSH Terminal / SFTP | 8-hour session cache (`auth-guard.js`) |
 | Secret Vault | Always-ask lock screen on every visit |
@@ -940,7 +738,6 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 - ID Generator: UUID, ULID, CUID bulk generation.
 - Markdown Lab: Monaco → rendered HTML preview.
 - HTTP Mock Server: define local mock endpoints.
-- File Converter: image format conversion (PNG ↔ JPG ↔ WebP), XML ↔ JSON.
 - Folder Diff streaming zip (fflate + File System Access API).
 - Dockerfile + docker-compose.
 - PyPI packaging (`pip install devsuite`).
@@ -960,13 +757,17 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 ### 14.1 Adding a New Tool
 
-1. Create `static/mytool.html` — import `style.css`, `theme.js`, `auth-guard.js` (if DevDB-backed).
-2. Create `static/mytool.js` and `static/mytool.css` if needed.
-3. Add route in `main.py`: `@app.get("/mytool", response_class=HTMLResponse)`.
-4. Add a `tool-card` entry in `static/tools.html` with `data-category` attribute.
-5. Add the new tool to the section 3.4 module-to-file map in this spec.
-6. Add tests in `tests/python/` and/or `tests/javascript/`.
-7. Update version, `README.md`, and `CHANGELOG.md`.
+1. Run `/speckit-specify` to create `specs/NNN-tool-slug/` (next number after the highest existing
+   one — see §4's index), then `/speckit-plan` → `/speckit-tasks` before implementing.
+2. Create `static/mytool.html` — import `style.css`, `theme.js`, `auth-guard.js` (if DevDB-backed).
+3. Create `static/mytool.js` and `static/mytool.css` if needed.
+4. Add route in `main.py`: `@app.get("/mytool", response_class=HTMLResponse)`.
+5. Add a `tool-card` entry in `static/tools.html` with `data-category` attribute.
+6. Add the new tool to the section 3.4 module-to-file map and the §4 index in this spec.
+7. Add tests in `tests/python/` and/or `tests/javascript/`.
+8. Update version, `README.md`, and `CHANGELOG.md`.
+9. Fold durable contracts (routes, stores, security rules) from the new tool's spec back into
+   this document (§1 rule) in the same commit that ships the feature.
 
 ### 14.2 Environment Variables
 
