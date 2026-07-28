@@ -27,10 +27,10 @@
         <h1>Secret <span>Vault</span></h1>
         <p id="lock-setup-desc">Your secrets are encrypted with AES-256. Enter your master password to unlock.</p>
         <div class="lock-error" id="lock-error"></div>
-        <input type="password" class="lock-input" id="master-pw-input"
+        <input type="password" class="lock-input" id="master-pw-input" aria-label="Master password"
                placeholder="Master Password" autocomplete="off" spellcheck="false">
         <div id="master-pw-confirm-wrap" style="display:none; width:100%; margin-top:10px;">
-            <input type="password" class="lock-input" id="master-pw-confirm"
+            <input type="password" class="lock-input" id="master-pw-confirm" aria-label="Confirm master password"
                    placeholder="Confirm Master Password" autocomplete="off" spellcheck="false"
                    style="margin-top:0;">
         </div>
@@ -84,7 +84,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
-                <input type="text" class="search-input" id="search-input" placeholder="Search secrets…">
+                <input type="text" class="search-input" id="search-input" aria-label="Search secrets" placeholder="Search secrets…">
             </div>
         </div>
 
