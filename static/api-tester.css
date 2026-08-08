@@ -212,6 +212,8 @@
     padding: 0.5rem 1rem;
     font-family: var(--font-mono);
     font-size: 0.84rem;
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
     outline: none;
     transition: var(--transition);
     min-width: 0;

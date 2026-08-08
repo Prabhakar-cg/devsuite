@@ -9,6 +9,10 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ### Features
 
+#### Secret Vault: encrypted export/restore backup (`static/vault.html`, `static/vault.js`, `static/vault.css`)
+- New "Backup" / "Restore" controls in the vault header (BACKLOG SEC-9). Backup re-encrypts the current in-memory entries with the session's key and downloads a self-contained `devsuite-vault-backup-<date>.json` — no new server endpoint; the file holds only AES-256-GCM ciphertext plus its salt/IV, never plaintext.
+- Restore reads a chosen backup file, derives the decryption key from a user-supplied password and the backup's own embedded salt (same v2 PBKDF2-SHA256/310k scheme as normal unlock), then re-persists the recovered entries under the *current* session's key via the existing `POST /api/vault` — so a backup can be restored into a vault protected by a different current master password. Wrong password or a malformed/foreign file is rejected without touching the current vault. `specs/011-secret-vault/spec.md` updated (US7, FR-017/018, SC-006, Key Entities, Assumptions).
+
 #### Cron Visualizer: Day-of-Month grid in the Visual Field Builder (`static/cron.js`)
 - The Field Builder previously rendered only Minute, Hour, Month, and Day-of-Week grids; day-of-month could only be edited by typing in the expression. Added a click-to-toggle Day-of-Month grid (1–31, 8 columns), rendered between Hour and Month to match cron field order, for all four dialects.
 - Clicking a cell when the field is the Quartz/AWS `?` wildcard now behaves like `*`: it selects only the clicked value instead of expanding into a 30-value list. `SPEC.md` §4.9 updated.

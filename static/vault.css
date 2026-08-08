@@ -207,6 +207,16 @@ html, body {
 .lock-now-btn:hover { background: rgba(255,159,10,0.14); border-color: rgba(255,159,10,0.4); }
 .lock-now-btn svg { width: 13px; height: 13px; }
 
+.header-btn {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.78rem; font-weight: 600; color: var(--text-mid);
+    background: var(--bg-secondary); border: 1px solid var(--border-mid);
+    border-radius: 980px; padding: 0.32rem 0.9rem; cursor: pointer;
+    transition: var(--transition);
+}
+.header-btn:hover { background: var(--bg); border-color: var(--text-muted); }
+.header-btn svg { width: 13px; height: 13px; }
+
 /* ================================================================
    MAIN LAYOUT
    ================================================================ */

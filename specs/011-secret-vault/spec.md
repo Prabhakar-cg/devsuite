@@ -179,6 +179,52 @@ while the decrypted entries are unchanged.
 
 ---
 
+### User Story 7 - Export and restore an encrypted backup (Priority: P2)
+
+A user wants a portable, disaster-recovery copy of their vault — independent of whole-DevDB
+backups — that they can save externally and restore later, whether into the same install or a
+fresh one protected by the same (or a different) master password.
+
+**Why this priority**: Losing the DevDB file (disk failure, accidental deletion, machine
+migration) currently means losing every secret with no recovery path; this closes that gap
+without weakening the zero-knowledge guarantee (US5).
+
+**Independent Test**: With an unlocked vault containing entries, click "Backup" — a `.json` file
+downloads containing AES-256-GCM ciphertext (no plaintext). Click "Restore", pick that file,
+enter the master password it was encrypted with, confirm — the vault's entries are replaced with
+the backup's decrypted contents and re-persisted.
+
+**Acceptance Scenarios**:
+
+1. **Given** an unlocked vault, **When** the user clicks "Backup", **Then** the client
+   re-encrypts the current in-memory `vaultEntries` with the session's `masterKenc` (no server
+   round-trip) and downloads `devsuite-vault-backup-<date>.json` containing
+   `{app: "devsuite-vault-backup", backup_version: 1, exported_at, vault: {encrypted_blob, iv,
+   salt, version: 2}}`.
+2. **Given** the downloaded file, **When** inspected, **Then** it contains no plaintext secret
+   data — only opaque ciphertext plus the salt/IV needed to re-derive the key from a password.
+3. **Given** an unlocked vault, **When** the user clicks "Restore" and selects a file, **Then** a
+   modal asks for the master password the backup was encrypted with and warns that continuing
+   replaces every entry currently in the vault.
+4. **Given** the correct backup password, **When** the user confirms, **Then** the client derives
+   `Kenc` from that password + the backup's embedded salt (WebCrypto PBKDF2-SHA256/310k, matching
+   US5), decrypts the backup's ciphertext, replaces `vaultEntries`, and calls `persistVault()` —
+   which re-encrypts under the *current* session's `masterKenc` and saves via the existing
+   `POST /api/vault`. A backup restored under a different current master password is therefore
+   transparently re-encrypted to match it.
+5. **Given** an incorrect backup password or a corrupted/foreign file, **When** the user confirms,
+   **Then** decryption fails and the modal shows "Incorrect backup password, or the file is
+   corrupted." without altering the current vault.
+6. **Given** a file that isn't a DevSuite vault backup (wrong `app` field, or missing
+   `vault.encrypted_blob`/`iv`/`salt`), **When** selected, **Then** the modal shows "Not a valid
+   DevSuite vault backup file." and the Restore button stays disabled.
+7. **Given** the vault is locked, **When** the page renders, **Then** the Backup/Restore controls
+   are unreachable — they sit in the header behind the always-on lock overlay (US1/FR-001), so
+   restoring requires unlocking first; there is no pre-setup restore path in this version (see
+   Assumptions).
+
+---
+
 ### Edge Cases
 
 - **Auto-lock after inactivity**: if the page is hidden (tab switched/minimized) for more than 5
@@ -234,6 +280,14 @@ while the decrypted entries are unchanged.
   permanently unavailable (HTTP 409) once `POST /api/auth/setup` has been called.
 - **FR-016**: All dynamic secret content MUST render via `textContent`/`createElement`, never
   `innerHTML` with untrusted data (SPEC §7.7).
+- **FR-017**: An unlocked vault MUST be able to export a JSON backup file containing only
+  AES-256-GCM ciphertext plus its salt/IV — never plaintext secrets — built entirely client-side
+  with no new server endpoint (reuses the existing opaque `POST /api/vault` shape).
+- **FR-018**: An unlocked vault MUST be able to restore from such a backup file by deriving the
+  decryption key from a user-supplied password and the backup's embedded salt (same v2 KDF as
+  US5/FR-004), then re-persist the recovered entries under the current session's key via the
+  existing `POST /api/vault`. An incorrect password or malformed file MUST leave the current
+  vault unchanged.
 
 ### Key Entities
 
@@ -247,6 +301,10 @@ while the decrypted entries are unchanged.
   DevDB `vault` store (SPEC §6.4); `version: 2` = AES-256-GCM, absent/`1` = legacy AES-CBC.
 - **Master-Password Challenge** (in `app_prefs`): `{master_setup_done, master_salt,
   master_verify_blob, master_verify_nonce (v2) | master_verify_iv (v1), challenge_version}`.
+- **Backup File**: `{app: "devsuite-vault-backup", backup_version, exported_at, vault:
+  {encrypted_blob, iv, salt, version}}` — a plaintext JSON envelope around a still-encrypted,
+  opaque vault blob; decryptable only with the master password used at export time. Downloaded
+  client-side, never uploaded anywhere by the app itself.
 
 ## Success Criteria *(mandatory)*
 
@@ -263,6 +321,9 @@ while the decrypted entries are unchanged.
   action (30s timer + execution slack).
 - **SC-005**: A v1 vault unlocks correctly and is re-encrypted as v2 on the very next unlock,
   with zero entries lost (byte-for-byte JSON round-trip of the decrypted array).
+- **SC-006**: A vault backup exported from one install restores into any DevSuite install (same
+  or different current master password) with zero entries lost — a byte-for-byte JSON round-trip
+  of the entries array — provided the correct backup password is supplied.
 
 ## Assumptions
 
@@ -291,3 +352,9 @@ while the decrypted entries are unchanged.
 - Non-fatal migration-retry design (US6 scenario 3) is treated as intentional: the code comment
   says "Non-fatal: vault is decrypted in memory; migration can retry on next unlock" — this spec
   takes that at face value rather than flagging it as a defect.
+- **No pre-setup restore path (US7)**: the Backup/Restore header controls sit behind the
+  always-on lock overlay (FR-001), and restore reuses `persistVault()` / `encryptVaultGCM()`,
+  which require an active `masterKenc`. Restoring a backup into a wiped/fresh install therefore
+  requires completing normal master-password setup first, then restoring from the unlocked
+  vault — there is no "restore during onboarding" shortcut. This is an intentional v1 scope
+  boundary for the feature, not a defect.
