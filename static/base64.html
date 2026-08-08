@@ -171,7 +171,10 @@
         <section class="jwt-section" id="jwt-section" aria-label="JWT decoded breakdown" aria-live="polite">
             <div class="jwt-header-bar">
                 <span>JWT Decoded</span>
-                <button onclick="document.getElementById('jwt-section').classList.remove('visible')" class="btn btn-ghost" style="padding:1px 6px;font-size:0.7rem;" aria-label="Close JWT panel">✕</button>
+                <span style="display:flex;align-items:center;gap:0.5rem;">
+                    <a href="/crypto?tab=jwt" class="btn btn-ghost" style="padding:1px 8px;font-size:0.7rem;" title="Verify this token's signature in Crypto Suite">Verify signature →</a>
+                    <button onclick="document.getElementById('jwt-section').classList.remove('visible')" class="btn btn-ghost" style="padding:1px 6px;font-size:0.7rem;" aria-label="Close JWT panel">✕</button>
+                </span>
             </div>
             <div class="jwt-parts">
                 <div class="jwt-part">
@@ -344,7 +347,7 @@
 
                 document.getElementById('jwt-header').textContent  = JSON.stringify(header, null, 2);
                 document.getElementById('jwt-payload').textContent = JSON.stringify(payload, null, 2);
-                document.getElementById('jwt-sig').textContent     = parts[2] + '\n(signature — verify server-side)';
+                document.getElementById('jwt-sig').textContent     = parts[2] + '\n(signature — decode only; use Crypto Suite’s JWT Inspector to verify)';
                 document.getElementById('jwt-section').classList.add('visible');
                 setStatus('valid', 'JWT decoded');
                 toast('JWT decoded!', 'success');

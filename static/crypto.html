@@ -288,8 +288,9 @@
         .jwt-chip .chip-lbl { color:var(--cs-text-label); font-size:0.6rem; text-transform:uppercase; letter-spacing:0.06em; }
         .jwt-verify-bar { flex-shrink:0; border-top:1px solid var(--cs-border); padding:0.55rem 1rem; background:var(--cs-bg-controls); display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
         .jwt-verify-result { margin:0 1rem 0.5rem; border-radius:8px; padding:0.5rem 1rem; font-size:0.78rem; font-weight:600; display:none; }
-        .jwt-verify-result.ok  { display:block; background:var(--crypto-green-soft); color:var(--crypto-green); }
-        .jwt-verify-result.err { display:block; background:var(--crypto-red-soft);   color:var(--crypto-red); }
+        .jwt-verify-result.ok   { display:block; background:var(--crypto-green-soft);  color:var(--crypto-green); }
+        .jwt-verify-result.err  { display:block; background:var(--crypto-red-soft);    color:var(--crypto-red); }
+        .jwt-verify-result.warn { display:block; background:var(--crypto-purple-soft); color:var(--crypto-purple); }
 
         /* Small copy icon */
         .copy-icon { width:13px;height:13px;display:inline-block;vertical-align:middle; }
@@ -639,14 +640,19 @@ function toast(msg, type='info', ms=2800) {
 }
 
 // ── Tab switching ──
+function activateCryptoTab(tab) {
+    const btn = document.querySelector(`.crypto-tab[data-tab="${tab}"]`);
+    if (!btn) return;
+    document.querySelectorAll('.crypto-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.crypto-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+}
 document.querySelectorAll('.crypto-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.crypto-tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.crypto-panel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-    });
+    btn.addEventListener('click', () => activateCryptoTab(btn.dataset.tab));
 });
+const initialCryptoTab = new URLSearchParams(location.search).get('tab');
+if (initialCryptoTab) activateCryptoTab(initialCryptoTab);
 
 // ── Theme select ──
 document.querySelectorAll('.global-theme-select').forEach(sel => {
@@ -1234,10 +1240,20 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
         return el;
     }
 
+    const SUPPORTED_JWT_ALGS = ['HS256', 'HS384', 'HS512', 'RS256'];
+
     function buildClaimsBar(header, payload) {
         claimsBar.innerHTML = '';
         claimsBar.style.display = 'flex';
-        if (header.alg)  claimsBar.appendChild(makeChip('alg', header.alg, 'var(--cs-text-algo)'));
+        const algSupported = header.alg && SUPPORTED_JWT_ALGS.includes(header.alg);
+        if (header.alg) {
+            claimsBar.appendChild(makeChip('alg', header.alg, algSupported ? 'var(--cs-text-algo)' : 'var(--crypto-purple)'));
+            if (!algSupported) {
+                const badge = document.createElement('span');
+                badge.className = 'badge-info'; badge.textContent = 'UNSUPPORTED';
+                claimsBar.appendChild(badge);
+            }
+        }
         if (payload.iss) claimsBar.appendChild(makeChip('iss', payload.iss, ''));
         if (payload.sub) claimsBar.appendChild(makeChip('sub', payload.sub, ''));
         if (payload.aud) {
@@ -1261,14 +1277,29 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
                 claimsBar.appendChild(badge);
             }
         }
-        if (header.alg && ['HS256','HS384','HS512','RS256'].includes(header.alg)) {
+        const verifyBtn = document.getElementById('jwt-verify-btn');
+        const verifyKeyInput = document.getElementById('jwt-verify-key');
+        if (algSupported) {
             document.getElementById('jwt-verify-algo').value = header.alg;
+            verifyBtn.disabled = false;
+            verifyKeyInput.disabled = false;
+            verifyResult.className = 'jwt-verify-result';
+        } else {
+            verifyBtn.disabled = true;
+            verifyKeyInput.disabled = true;
+            verifyResult.className = 'jwt-verify-result warn';
+            verifyResult.textContent = `⚠ Algorithm "${header.alg || '(missing)'}" is not supported for client-side verification — supported: ${SUPPORTED_JWT_ALGS.join(', ')}.`;
         }
+    }
+
+    function resetVerifyControls() {
+        document.getElementById('jwt-verify-btn').disabled = false;
+        document.getElementById('jwt-verify-key').disabled = false;
     }
 
     function decodeJwt(raw) {
         const parts = (raw || '').trim().split('.');
-        if (parts.length !== 3) { decodedGrid.style.display = 'none'; claimsBar.style.display = 'none'; return; }
+        if (parts.length !== 3) { decodedGrid.style.display = 'none'; claimsBar.style.display = 'none'; resetVerifyControls(); return; }
         try {
             const header  = JSON.parse(b64urlStr(parts[0]));
             const payload = JSON.parse(b64urlStr(parts[1]));
@@ -1281,6 +1312,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
             console.error('JWT decode error:', e);
             decodedGrid.style.display = 'none';
             claimsBar.style.display = 'none';
+            resetVerifyControls();
         }
     }
 
@@ -1299,6 +1331,7 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
         decodedGrid.style.display = 'none';
         claimsBar.style.display = 'none';
         verifyResult.className = 'jwt-verify-result';
+        resetVerifyControls();
     });
 
     document.getElementById('jwt-copy-btn').addEventListener('click', async () => {
@@ -1338,6 +1371,11 @@ document.getElementById('hmac-copy-sig').addEventListener('click', async () => {
                     false, ['verify']
                 );
                 ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', cryptoKey, sigBytes, message);
+            } else {
+                verifyResult.className = 'jwt-verify-result warn';
+                verifyResult.textContent = `⚠ Algorithm "${algo}" is not supported for client-side verification.`;
+                toast('Unsupported algorithm', 'warning');
+                return;
             }
             verifyResult.className = `jwt-verify-result ${ok ? 'ok' : 'err'}`;
             verifyResult.textContent = ok

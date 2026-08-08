@@ -172,10 +172,13 @@ Verify, and confirm a "VALID" result; enter a wrong secret and confirm "INVALID"
    clicks Verify, **Then** `crypto.subtle.verify` runs with the matching algorithm/hash and
    renders a VALID/INVALID banner with an explanatory sentence
    (`static/crypto.html:1310-1349`).
-4. **Given** an unsupported `alg` value (e.g. `none`, `ES256`), **When** the user attempts to
-   verify, **Then** verification silently does not run (`ok` stays `false`, `if/else if` chain
-   has no matching branch) — reported to the user as "INVALID" rather than "unsupported
-   algorithm"; noted here as a minor UX gap, not a security issue (it fails closed).
+4. **Given** an unsupported `alg` value (e.g. `none`, `ES256`), **When** the token is decoded,
+   **Then** the claims bar flags the `alg` chip with an "UNSUPPORTED" badge, the Verify key input
+   and button are disabled, and the verify-result banner proactively explains that the algorithm
+   isn't supported for client-side verification — rather than letting the user click Verify and
+   receive a misleading generic "INVALID" (`static/crypto.html:1237-1288`, fixed post-launch; see
+   Edge Cases). The verify-button click handler also has a defensive `else` branch reporting the
+   same explicit message if reached directly.
 
 ### Edge Cases
 
@@ -186,8 +189,9 @@ Verify, and confirm a "VALID" result; enter a wrong secret and confirm "INVALID"
   (`static/crypto.html:822`) rather than reporting false success.
 - RSA encrypt/decrypt is disabled until a keypair exists in this session — no persisted/imported
   key support (generate-only).
-- JWT `alg: none` or an algorithm outside `{HS256,HS384,HS512,RS256}`: verify fails closed
-  (reported INVALID, never a false positive).
+- JWT `alg: none` or an algorithm outside `{HS256,HS384,HS512,RS256}`: verify fails closed and is
+  now reported explicitly as "not supported for client-side verification" (an "UNSUPPORTED" chip
+  badge plus a disabled Verify control), not a generic INVALID — never a false positive either way.
 - All six tabs share one page and one inline `<script>`; switching tabs does not clear other
   tabs' state (e.g. an RSA keypair generated on the RSA tab remains available if the user
   switches away and back).
@@ -233,7 +237,9 @@ Verify, and confirm a "VALID" result; enter a wrong secret and confirm "INVALID"
   expiry badge) as the user types, and MUST verify the signature against a user-supplied secret
   (HS256/384/512) or PEM public key (RS256), rendering a clear VALID/INVALID result.
 - **FR-008**: JWT verification MUST fail closed for any algorithm outside the supported set
-  rather than falsely reporting success.
+  rather than falsely reporting success, and MUST surface this explicitly (a distinct
+  "unsupported algorithm" state, not a generic INVALID) so the user isn't misled into thinking a
+  verification attempt actually ran.
 
 **Cross-cutting**
 
@@ -276,7 +282,10 @@ Verify, and confirm a "VALID" result; enter a wrong secret and confirm "INVALID"
 - The Base64 and JWT Inspector tabs are treated here as first-class, spec-worthy capabilities of
   this tool (not folded into `specs/006-base64-encoder/`) because they are separately implemented
   in `crypto.html` and, for JWT, materially more capable (real verification) than the standalone
-  tool. SPEC.md should be updated to list all six tabs — flagged as a follow-up, not resolved by
-  this spec-only change (CLAUDE.md rule 2).
+  tool. SPEC.md §4 is index-only (points here for tool behavior) so no six-tab enumeration is
+  needed there; this spec.md is the source of truth for tab-level detail. Previously, the tools
+  grid card for Crypto Suite (`static/tools.html`) also didn't mention JWT or Base64 at all — it
+  was fixed alongside the closure of `BACKLOG.md` FEAT-4 and the removal of the stale "Coming
+  Soon → JWT Inspector" roadmap card that duplicated this already-shipped capability.
 - "100% In-Browser" badge in the header (`static/crypto.html` header-right) is accurate for every
   tab verified in this spec — confirmed no tab makes a network call.

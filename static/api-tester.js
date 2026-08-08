@@ -20,6 +20,7 @@ let oauth2Token = null;
 const els = {
     method:             document.getElementById('req-method'),
     url:                document.getElementById('req-url'),
+    proxyMode:          document.getElementById('req-proxy-mode'),
     btnSend:            document.getElementById('btn-send'),
 
     authType:           document.getElementById('auth-type'),
@@ -875,6 +876,7 @@ function buildRequestConfig() {
         queryParams: interpolateObj(paramsListObj.get()),
         headers:     interpolateObj(headersListObj.get()),
         auth:        { type: els.authType.value },
+        proxyMode:   els.proxyMode ? els.proxyMode.value : 'auto',
         bodyType,
     };
     _resolveAuthConfig(config);
@@ -905,6 +907,7 @@ function buildRawConfig() {
         queryParams: paramsListObj.getAll(),
         headers:     headersListObj.getAll(),
         auth:        _readRawAuthConfig(els.authType.value),
+        proxyMode:   els.proxyMode ? els.proxyMode.value : 'auto',
         bodyType,
     };
     if (bodyType === 'json'      && reqEditor)         config.body = reqEditor.getValue();
@@ -1431,6 +1434,7 @@ function loadItem(item) {
     els.method.value = item.method || 'GET';
     updateMethodColor();
     els.url.value    = item.url || '';
+    if (els.proxyMode) els.proxyMode.value = item.proxyMode || 'auto';
 
     paramsListObj.clear();
     headersListObj.clear();
@@ -2086,6 +2090,7 @@ function buildConfigFromItem(item) {
         queryParams: interpolateObj(entriesToObj(item.queryParams)),
         headers:     interpolateObj(entriesToObj(item.headers)),
         auth:        { ...(item.auth || { type: 'none' }) },
+        proxyMode:   item.proxyMode || 'auto',
         bodyType:    item.bodyType || 'none',
     };
     if (config.auth.type === 'inherit') config.auth = { ...resolveFolderAuth(item.folder).auth };

@@ -13,6 +13,18 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 - The Field Builder previously rendered only Minute, Hour, Month, and Day-of-Week grids; day-of-month could only be edited by typing in the expression. Added a click-to-toggle Day-of-Month grid (1–31, 8 columns), rendered between Hour and Month to match cron field order, for all four dialects.
 - Clicking a cell when the field is the Quartz/AWS `?` wildcard now behaves like `*`: it selects only the clicked value instead of expanding into a 30-value list. `SPEC.md` §4.9 updated.
 
+### Improvements
+
+#### API Tester: manual Proxy Mode override (`static/api-client.js`, `static/api-tester.js`, `static/api-tester.html`)
+- Previously the direct-vs-proxy routing decision was fully automatic — no way to force one path or the other. Added a "Proxy mode" selector in the request bar: **Auto** (existing smart routing, unchanged default), **Force Direct** (always attempt directly, and — unlike Auto — never silently retry through the proxy on failure, so a real CORS/network error renders as-is, matching what an actual browser client would see), and **Force Proxy** (always route through `/api/proxy`, skipping a known-doomed direct attempt).
+- `proxyMode` is persisted per request alongside auth/body/headers (history, saved collection items, collection runner) and defaults to `auto` for requests saved before this field existed. `specs/008-api-tester/spec.md` updated (US1 scenarios 7–8, FR-004b, Key Entities).
+
+#### JWT experience consolidated and made discoverable (`static/crypto.html`, `static/base64.html`, `static/tools.html`, `static/home.html`)
+- The marketing site's "Coming Soon" roadmap advertised a "JWT Inspector" that had, in fact, already shipped — better — as a tab in Crypto Suite (decode + live claims/expiry + real HS256/384/512 & RS256 signature verification via `crypto.subtle`). Removed the stale roadmap card from `tools.html` and the `home.html` teaser; the Crypto Suite tool card now names JWT and Base64 explicitly instead of only listing Hash/AES/RSA.
+- The standalone Base64 tool's JWT panel is decode-only by design and previously labeled its signature segment "(signature — verify server-side)" — misleading, since no server-side JWT verify endpoint exists anywhere in DevSuite. Copy fixed, and the panel now links directly to Crypto Suite's JWT tab (`/crypto?tab=jwt`, new lightweight `?tab=` deep-link support in `crypto.html`) for anyone who needs real verification.
+- Crypto Suite's JWT tab previously reported an unsupported `alg` (e.g. `none`, `ES256`) as a generic "Signature INVALID", indistinguishable from a real failed verification. It now flags the `alg` chip with an "UNSUPPORTED" badge, disables the Verify control, and shows an explicit "not supported for client-side verification" message instead.
+- `BACKLOG.md` FEAT-4 closed (was tracking a "JWT Debugger" that already existed under a different name). `specs/007-crypto-suite/spec.md` and `specs/006-base64-encoder/spec.md` updated to reflect the fixes.
+
 ### Bug Fixes
 
 #### Secret Vault master-password setup threw "DevSuite is not defined" (`static/vault.html`)

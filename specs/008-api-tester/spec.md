@@ -85,6 +85,18 @@ endpoint with no CORS policy and confirm it still succeeds (proxied) rather than
 6. **Given** a target redirects (3xx) toward a private/reserved IP, **When** the proxy follows the
    redirect, **Then** each hop is re-validated and the same-address-class block applies
    (`_SSRFSafeRedirectHandler`) — a public host cannot bounce the proxy into cloud metadata.
+7. **Given** the request-bar "Proxy mode" selector (`#req-proxy-mode`, default `Auto`), **When**
+   the user sets it to **Force Direct**, **Then** the request is always attempted directly (even
+   if it would otherwise trigger a doomed preflight) and, unlike Auto, a failure is **not**
+   silently retried through the proxy — the raw CORS/network failure renders as the response, so
+   the user sees exactly what their real browser client would experience
+   (`ApiClient.execute`, `forceDirect`).
+8. **Given** the same selector set to **Force Proxy**, **When** the user sends the request,
+   **Then** DevSuite skips the direct attempt entirely and always routes through `/api/proxy`,
+   even for a same-origin-friendly or CORS-enabled target — useful to skip a known-doomed direct
+   round trip. `proxyMode` is persisted on save/history alongside the rest of the request
+   (`buildRawConfig`, `loadItem`, `buildConfigFromItem`) and defaults to `auto` for requests saved
+   before this field existed.
 
 ---
 
@@ -379,6 +391,12 @@ and confirm a round trip with no data loss.
   while permitting RFC-1918 LAN addresses.
 - **FR-004**: The proxy response MUST preserve every `Set-Cookie` header individually (not
   collapsed) so the cookie jar can process each one.
+- **FR-004b**: The system MUST let the user override the automatic direct/proxy routing per
+  request via a `proxyMode` selector (`auto` | `direct` | `proxy`, default `auto`). `direct` MUST
+  disable the proxy fallback-on-failure so a genuine CORS/network error is surfaced rather than
+  masked; `proxy` MUST skip the direct attempt entirely. Same-origin targets always go direct
+  regardless of `proxyMode`, since no proxy is needed there. The value MUST be persisted with the
+  request (history, saved collection items) the same way `auth`/`body`/`headers` are.
 
 **Collections & folders (US2)**
 
@@ -437,7 +455,8 @@ and confirm a round trip with no data loss.
 
 - **Collection Item**: one saved request — method, URL, query params, headers, auth config, body
   (typed by `bodyType`), optional GraphQL query/vars, optional folder path, optional
-  pre-request/tests scripts, optional name.
+  pre-request/tests scripts, optional name, optional `proxyMode` (`auto`|`direct`|`proxy`,
+  defaults to `auto` when absent — legacy items predate this field).
 - **Folder** *(implicit, derived)*: not a stored entity — a folder is any distinct prefix that
   appears in one or more items' `folder` paths; the sidebar tree is rebuilt from item paths on
   every render (`buildFolderTree`).

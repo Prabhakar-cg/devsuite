@@ -125,11 +125,13 @@ the input panel; use Swap to exchange input/output; use Paste to read the clipbo
   separately rendered, pretty-printed header/payload JSON panels plus a raw signature segment,
   and MUST NOT attempt signature verification (no key material is available client-side; SPEC
   §4.5 scopes this as inspection only).
-  - **Discrepancy**: SPEC.md §4.5 does not mention it, but `static/base64.html:347` explicitly
-    labels the signature "(signature — verify server-side)" — the UI hints at a verification
-    capability that does not exist anywhere in DevSuite (no server-side JWT verify endpoint).
-    This spec treats JWT inspection as decode-only and flags the misleading copy as a documentation
-    debt item rather than removing it, since fixing UI copy is outside a spec-only change.
+  - **Fixed (previously a discrepancy)**: `static/base64.html` used to label the signature
+    "(signature — verify server-side)", hinting at a verification capability that doesn't exist
+    anywhere in DevSuite (no server-side JWT verify endpoint). The copy now reads "(signature —
+    decode only; use Crypto Suite's JWT Inspector to verify)" and the JWT panel header bar has a
+    "Verify signature →" link to `/crypto?tab=jwt`, which deep-links straight to the tab that
+    actually performs verification (`specs/007-crypto-suite/spec.md` US6). This tool remains
+    decode-only by design; the fix is honest copy plus a real handoff, not new verify logic here.
 - **FR-004**: The system MUST support loading input from a local file (text content only) and
   from the clipboard, and MUST support swapping input/output content and clearing all state.
 - **FR-005**: Decode failures (malformed Base64, malformed JWT parts) MUST surface as inline
@@ -158,9 +160,10 @@ the input panel; use Swap to exchange input/output; use Paste to read the clipbo
 
 ## Assumptions
 
-- JWT signature verification is explicitly out of scope client-side (no trusted key material is
-  available in the browser); the misleading "verify server-side" hint in the UI is a pre-existing
-  copy issue, not a missing feature to build against.
+- JWT signature verification remains explicitly out of scope for this tool — it isn't that
+  verification is impossible client-side (Crypto Suite's JWT Inspector does it with WebCrypto),
+  it's that this tool intentionally stays decode-only and links out to Crypto Suite instead of
+  duplicating that logic. The formerly-misleading "verify server-side" copy is fixed (see FR-003).
 - "File upload" here means reading a file's text content into the input panel — there is no
   binary Base64 file-encoding mode (e.g. encoding an image to a data URI) in the current build.
 - Standard `atob`/`btoa` are Latin1-only; the tool works around this by using
