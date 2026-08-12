@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XML Linter & Validator — DevSuite</title>
+    <meta name="description" content="Validate, format and minify XML locally. Zero data leaves your machine.">
+        <link rel="stylesheet" href="/static/libs/fonts.css">
+    <link rel="stylesheet" href="/static/linter.css">
+    <script src="/static/theme.js?v=2"></script>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- ====================================================
+     HEADER
+     ==================================================== -->
+<header class="tool-header" aria-label="XML Linter toolbar">
+    <div class="header-left">
+        <a href="/tools" class="back-link" aria-label="Back to DevSuite tools">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            DevSuite
+        </a>
+        <div class="tool-identity">
+            <div class="tool-icon" style="background:linear-gradient(135deg,#c2410c,#f97316);box-shadow:0 0 14px rgba(249,115,22,0.4);" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                </svg>
+            </div>
+            <span class="tool-name">XML <span class="tool-accent">Linter</span></span>
+            <span class="tool-version">Validator v1.0</span>
+        </div>
+    </div>
+    <div class="header-right">
+        <span id="char-count" class="line-badge" aria-live="polite" aria-atomic="true">0 chars</span>
+    </div>
+</header>
+
+<!-- ====================================================
+     ACTION TOOLBAR
+     ==================================================== -->
+<div class="action-toolbar" role="toolbar" aria-label="XML actions">
+    <output id="status-pill" class="status-pill idle" aria-live="polite" aria-atomic="true">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="status-text">Ready</span>
+    </output>
+    <div class="toolbar-sep" aria-hidden="true"></div>
+    <button id="btn-validate" class="btn btn-primary" title="Validate XML (Ctrl+Enter)" aria-label="Validate XML (Ctrl+Enter)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        Validate
+    </button>
+    <button id="btn-format" class="btn btn-ghost" title="Pretty-print with 2-space indent" aria-label="Format XML with 2-space indent">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+        Format
+    </button>
+    <button id="btn-minify" class="btn btn-ghost" title="Strip insignificant whitespace" aria-label="Minify XML — remove insignificant whitespace">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 8 2 5 5 2"/><line x1="2" y1="5" x2="12" y2="5"/><polyline points="19 16 22 19 19 22"/><line x1="22" y1="19" x2="12" y2="19"/></svg>
+        Minify
+    </button>
+    <div class="toolbar-sep" aria-hidden="true"></div>
+    <button id="btn-clear" class="btn btn-ghost" title="Clear editor" aria-label="Clear — clear editor">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        Clear
+    </button>
+    <div class="toolbar-spacer" aria-hidden="true"></div>
+    <button id="btn-copy-output" class="btn btn-ghost" disabled title="Copy output to clipboard" aria-label="Copy output to clipboard">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy Output
+    </button>
+</div>
+
+<!-- ====================================================
+     SPLIT PANE
+     ==================================================== -->
+<main class="tool-main">
+    <div class="split-pane">
+
+        <!-- Input (Editor) -->
+        <div class="pane-editor">
+            <div class="pane-header">
+                <span class="pane-label" id="input-editor-label">Input XML</span>
+                <div class="pane-actions">
+                    <span id="line-count" class="line-badge" aria-live="polite" aria-atomic="true">0 lines</span>
+                    <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="Paste from clipboard">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:3px;"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2" ry="2"/></svg>
+                        Paste
+                    </button>
+                </div>
+            </div>
+            <div id="input-editor" class="monaco-host" aria-label="XML input editor"></div>
+            <!-- Error panel sits at bottom of input pane -->
+            <div id="error-panel" class="error-panel" role="alert" aria-live="assertive" aria-atomic="true">
+                <svg class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#ff3b30;flex-shrink:0;margin-top:1px;">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div class="error-body">
+                    <div id="error-message" class="error-message"></div>
+                    <div id="error-hint"   class="error-hint"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output -->
+        <div class="pane-output">
+            <div class="pane-header">
+                <span class="pane-label" id="output-label">Output</span>
+                <div class="pane-actions">
+                    <span id="output-line-count" class="line-badge" style="display:none;" aria-live="polite" aria-atomic="true">0 lines</span>
+                </div>
+            </div>
+            <div id="output-empty" class="output-empty" aria-label="Output area — empty">
+                <span class="output-empty-icon" aria-hidden="true">&lt;/&gt;</span>
+                <span>Run Validate, Format or Minify to see output</span>
+            </div>
+            <section id="output-editor" class="output-monaco-host" style="display:none;" aria-label="XML output" aria-live="polite"></section>
+        </div>
+
+    </div>
+</main>
+
+<script src="/static/libs/require.min.js"></script>
+<script src="/static/components.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    const toast = DevSuite.toast;
+    const XHTML_NS = 'http://www.w3.org/1999/xhtml';
+
+    /* ── Parse: native DOMParser, no vendored XML library ──
+       DOMParser never throws on malformed input — it embeds a namespaced
+       <parsererror> element in the returned Document instead. */
+    function parseXml(raw) {
+        const doc = new DOMParser().parseFromString(raw, 'application/xml');
+        const errs = doc.getElementsByTagNameNS(XHTML_NS, 'parsererror');
+        if (errs.length > 0) {
+            return { ok: false, message: errs[0].textContent.trim() };
+        }
+        return { ok: true, doc };
+    }
+
+    /* ── Format: reindent structural elements only.
+       An element whose direct children are entirely markup (no significant
+       text, no CDATA) gets its whitespace-only text nodes replaced with
+       fresh 2-space-per-level indentation. Any element carrying real text
+       or a CDATA section — i.e. mixed content or a leaf value — is left
+       byte-for-byte untouched so meaning can never be corrupted. ── */
+    function formatXmlDoc(doc) {
+        const INDENT = '  ';
+
+        function isWhitespaceText(node) {
+            return node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '';
+        }
+
+        function reindent(el, depth) {
+            const children = Array.from(el.childNodes);
+            const hasSignificantContent = children.some(n =>
+                (n.nodeType === Node.TEXT_NODE && n.textContent.trim() !== '') ||
+                n.nodeType === Node.CDATA_SECTION_NODE
+            );
+            const elementChildren = children.filter(n => n.nodeType === Node.ELEMENT_NODE);
+            if (hasSignificantContent || elementChildren.length === 0) return;
+
+            children.forEach(n => { if (isWhitespaceText(n)) el.removeChild(n); });
+
+            Array.from(el.childNodes).forEach(child => {
+                el.insertBefore(doc.createTextNode('\n' + INDENT.repeat(depth + 1)), child);
+                if (child.nodeType === Node.ELEMENT_NODE) reindent(child, depth + 1);
+            });
+            el.appendChild(doc.createTextNode('\n' + INDENT.repeat(depth)));
+        }
+
+        reindent(doc.documentElement, 0);
+        return new XMLSerializer().serializeToString(doc);
+    }
+
+    /* ── Minify: strip only whitespace-only text nodes sitting between
+       sibling tags. Any text node with real content, and CDATA/comments,
+       are left untouched — so mixed content can never be corrupted. ── */
+    function minifyXmlDoc(doc) {
+        function hasElementChild(el) {
+            return Array.from(el.childNodes).some(n => n.nodeType === Node.ELEMENT_NODE);
+        }
+        const walker = doc.createTreeWalker(doc, NodeFilter.SHOW_TEXT, null);
+        const toRemove = [];
+        let node;
+        while ((node = walker.nextNode())) {
+            if (node.textContent.trim() === '' && node.parentNode && hasElementChild(node.parentNode)) {
+                toRemove.push(node);
+            }
+        }
+        toRemove.forEach(n => n.parentNode && n.parentNode.removeChild(n));
+        return new XMLSerializer().serializeToString(doc);
+    }
+
+    DevSuite.initMonaco(() => {
+
+        let inputEditor;
+        let outputModel;
+        let lastOutput = '';
+
+        /* ── Create input editor ── */
+        inputEditor = monaco.editor.create(document.getElementById('input-editor'), {
+            value: '',
+            language: 'xml',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 22, minimap: { enabled: false },
+            scrollBeyondLastLine: false, padding: { top: 12, bottom: 12 },
+            wordWrap: 'on',
+        });
+
+        /* ── Create output editor (read-only) ── */
+        outputModel = monaco.editor.createModel('', 'xml');
+        monaco.editor.create(document.getElementById('output-editor'), {
+            model: outputModel,
+            theme: 'vs-dark',
+            readOnly: true,
+            automaticLayout: true,
+            fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 22, minimap: { enabled: false },
+            scrollBeyondLastLine: false, padding: { top: 12, bottom: 12 },
+            wordWrap: 'on',
+        });
+
+        /* ── Helpers ── */
+        const statusPill = document.getElementById('status-pill');
+        const statusText = document.getElementById('status-text');
+        const charCount  = document.getElementById('char-count');
+        const lineCount  = document.getElementById('line-count');
+        const errorPanel = document.getElementById('error-panel');
+        const errorMsg   = document.getElementById('error-message');
+        const errorHint  = document.getElementById('error-hint');
+        const outputEmpty       = document.getElementById('output-empty');
+        const outputEditorEl    = document.getElementById('output-editor');
+        const outputLineCount   = document.getElementById('output-line-count');
+        const outputLabel       = document.getElementById('output-label');
+        const copyBtn           = document.getElementById('btn-copy-output');
+
+        function setStatus(s, text) {
+            statusPill.className = `status-pill ${s}`;
+            statusText.textContent = text;
+        }
+
+        function updateCounts() {
+            const v = inputEditor.getValue();
+            charCount.textContent = v.length.toLocaleString() + ' chars';
+            const lines = v ? v.split('\n').length : 0;
+            lineCount.textContent = lines + ' line' + (lines === 1 ? '' : 's');
+        }
+
+        function showError(msg, hint = '') {
+            errorMsg.textContent = msg;
+            errorHint.textContent = hint;
+            errorPanel.classList.add('visible');
+            setStatus('invalid', 'Invalid XML');
+        }
+
+        function clearError() {
+            errorPanel.classList.remove('visible');
+        }
+
+        function showOutput(text, label = 'Output') {
+            const lines = text.split('\n').length;
+            outputModel.setValue(text);
+            outputEmpty.style.display = 'none';
+            outputEditorEl.style.display = '';
+            outputLineCount.style.display = '';
+            outputLineCount.textContent = lines + ' lines';
+            outputLabel.textContent = label;
+            lastOutput = text;
+            copyBtn.disabled = false;
+        }
+
+        /* ── Input changes → live validation ── */
+        let liveTimer;
+        inputEditor.onDidChangeModelContent(() => {
+            updateCounts();
+            clearTimeout(liveTimer);
+            liveTimer = setTimeout(liveValidate, 600);
+        });
+
+        function liveValidate() {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { setStatus('idle', 'Ready'); clearError(); return; }
+            const r = parseXml(raw);
+            if (r.ok) { setStatus('valid', 'Valid XML'); clearError(); }
+            else { showError(r.message, 'Check tag matching, attribute quoting, and root element count'); }
+        }
+
+        /* ── VALIDATE ── */
+        document.getElementById('btn-validate').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Editor is empty — paste some XML first', 'warning'); return; }
+            const r = parseXml(raw);
+            if (r.ok) {
+                setStatus('valid', 'Valid XML ✓');
+                clearError();
+                const preview = new XMLSerializer().serializeToString(r.doc);
+                showOutput(preview, 'Validated — Preview');
+                toast('XML is valid!', 'success', 2500);
+            } else {
+                showError(r.message, 'Check tag matching, attribute quoting, and root element count');
+                toast('Invalid XML — see error below', 'error');
+            }
+        });
+
+        /* ── FORMAT ── */
+        document.getElementById('btn-format').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to format', 'warning'); return; }
+            const r = parseXml(raw);
+            if (!r.ok) { showError(r.message, 'Fix XML errors before formatting'); toast('Cannot format invalid XML', 'error'); return; }
+            const formatted = formatXmlDoc(r.doc);
+            showOutput(formatted, 'Formatted XML');
+            setStatus('valid', 'Valid XML');
+            clearError();
+            toast('XML formatted!', 'success', 2000);
+        });
+
+        /* ── MINIFY ── */
+        document.getElementById('btn-minify').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to minify', 'warning'); return; }
+            const r = parseXml(raw);
+            if (!r.ok) { showError(r.message, 'Fix XML errors before minifying'); toast('Cannot minify invalid XML', 'error'); return; }
+            const minified = minifyXmlDoc(r.doc);
+            showOutput(minified, 'Minified XML');
+            setStatus('valid', 'Valid XML');
+            clearError();
+            toast('XML minified!', 'success', 2000);
+        });
+
+        /* ── CLEAR ── */
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            inputEditor.setValue('');
+            outputModel.setValue('');
+            outputEmpty.style.display = '';
+            outputEditorEl.style.display = 'none';
+            outputLineCount.style.display = 'none';
+            outputLabel.textContent = 'Output';
+            copyBtn.disabled = true;
+            lastOutput = '';
+            clearError();
+            setStatus('idle', 'Ready');
+        });
+
+        /* ── PASTE ── */
+        document.getElementById('btn-paste').addEventListener('click', async () => {
+            try {
+                const txt = await navigator.clipboard.readText();
+                inputEditor.setValue(txt);
+                toast('Pasted from clipboard', 'success', 2000);
+            } catch { toast('Clipboard access denied — paste manually (Ctrl+V)', 'warning'); }
+        });
+
+        /* ── COPY OUTPUT ── */
+        copyBtn.addEventListener('click', async () => {
+            if (!lastOutput) return;
+            try {
+                await navigator.clipboard.writeText(lastOutput);
+                toast('Copied to clipboard!', 'success', 2000);
+            } catch { toast('Failed to copy', 'error'); }
+        });
+
+        /* ── Keyboard shortcut: Ctrl+Enter ── */
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('btn-validate').click();
+            }
+        });
+
+        updateCounts();
+    });
+})();
+</script>
+</body>
+</html>

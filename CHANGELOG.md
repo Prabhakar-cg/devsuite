@@ -9,6 +9,11 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ### Features
 
+#### New tool: XML Linter & Validator (`static/xml.html`, `routes/pages.py`)
+- Adds a 13th tool at `/xml`, following the existing JSON/YAML Linter pattern (`static/json.html`, `static/yaml.html`): a two-pane Monaco editor validating XML well-formedness live (600ms debounce) and on demand (Validate button / `Ctrl+Cmd+Enter`), plus Format (2-space pretty-print) and Minify actions. No schema/XSD/DTD validation, no XPath/XSLT, no XML↔JSON conversion (that stays with the File Format Converter) — scope is well-formedness only.
+- Parses with the browser's native `DOMParser`/`XMLSerializer` — no new third-party library is vendored, so no `SPEC.md §11`/`UPGRADE_PLAN.md` update was needed. Malformed-XML detection uses the standard `parsererror` DOM check (`DOMParser` never throws). Format and Minify both special-case mixed content and CDATA so meaningful text is never altered — only whitespace-only text nodes between tags are touched.
+- `specs/015-xml-linter/` (spec, plan, research, data-model, contracts, quickstart, tasks) added; `specs/SPEC.md` §3.2/§3.4/§4/§5.1 updated with the new route and module-map row; tool count moved 12 → 13 across `static/tools.html`, `static/home.html`, and `README.md`.
+
 #### Secret Vault: encrypted export/restore backup (`static/vault.html`, `static/vault.js`, `static/vault.css`)
 - New "Backup" / "Restore" controls in the vault header (BACKLOG SEC-9). Backup re-encrypts the current in-memory entries with the session's key and downloads a self-contained `devsuite-vault-backup-<date>.json` — no new server endpoint; the file holds only AES-256-GCM ciphertext plus its salt/IV, never plaintext.
 - Restore reads a chosen backup file, derives the decryption key from a user-supplied password and the backup's own embedded salt (same v2 PBKDF2-SHA256/310k scheme as normal unlock), then re-persists the recovered entries under the *current* session's key via the existing `POST /api/vault` — so a backup can be restored into a vault protected by a different current master password. Wrong password or a malformed/foreign file is rejected without touching the current vault. `specs/011-secret-vault/spec.md` updated (US7, FR-017/018, SC-006, Key Entities, Assumptions).

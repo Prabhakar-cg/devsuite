@@ -106,6 +106,12 @@ def read_file_converter_tool():
     return _serve_html("file-converter.html")
 
 
+@router.get("/xml", response_class=HTMLResponse, summary="Serve XML linter tool")
+def read_xml_tool():
+    """Serve the XML Linter & Validator tool."""
+    return _serve_html("xml.html")
+
+
 # ─── Text file upload for diff tool ──────────────────────────────────────────
 
 async def _read_upload_stream(file: UploadFile, max_size: int) -> tuple[bytearray, bool]:

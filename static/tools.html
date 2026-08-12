@@ -286,7 +286,7 @@
             <div class="qa-stats-strip">
                 <span class="qa-stat">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-                    12 tools
+                    13 tools
                 </span>
                 <span class="qa-divider">·</span>
                 <span class="qa-stat">100% offline</span>
@@ -295,7 +295,7 @@
                 <div class="qa-spacer"></div>
                 <div class="qa-jump-chips">
                     <button class="qa-chip" data-jump="dev">Dev <span>3</span></button>
-                    <button class="qa-chip" data-jump="data">Data <span>4</span></button>
+                    <button class="qa-chip" data-jump="data">Data <span>5</span></button>
                     <button class="qa-chip" data-jump="security">Security <span>3</span></button>
                     <button class="qa-chip" data-jump="network">Network <span>1</span></button>
                     <button class="qa-chip" data-jump="time">Schedule <span>1</span></button>
@@ -377,11 +377,11 @@
 
             <div class="filter-tabs" role="radiogroup" aria-label="Filter tools by category">
                 <input type="radio" name="tool-filter" id="filter-all"      class="filter-radio" value="all"      checked tabindex="0">
-                <label  class="filter-tab active" for="filter-all"      data-filter="all"     >All      <span class="filter-count">12</span></label>
+                <label  class="filter-tab active" for="filter-all"      data-filter="all"     >All      <span class="filter-count">13</span></label>
                 <input type="radio" name="tool-filter" id="filter-dev"      class="filter-radio" value="dev"      tabindex="-1">
                 <label  class="filter-tab"        for="filter-dev"      data-filter="dev"     >Dev      <span class="filter-count">3</span></label>
                 <input type="radio" name="tool-filter" id="filter-data"     class="filter-radio" value="data"     tabindex="-1">
-                <label  class="filter-tab"        for="filter-data"     data-filter="data"    >Data     <span class="filter-count">4</span></label>
+                <label  class="filter-tab"        for="filter-data"     data-filter="data"    >Data     <span class="filter-count">5</span></label>
                 <input type="radio" name="tool-filter" id="filter-security" class="filter-radio" value="security" tabindex="-1">
                 <label  class="filter-tab"        for="filter-security" data-filter="security">Security <span class="filter-count">3</span></label>
                 <input type="radio" name="tool-filter" id="filter-network"  class="filter-radio" value="network"  tabindex="-1">
@@ -644,6 +644,27 @@
                         <span class="tag-chip">Data</span>
                         <span class="tag-chip">Documents</span>
                         <span class="tag-chip">Images</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- XML Linter -->
+                <a class="tool-card active-tool" href="/xml" data-category="data"
+                   style="--card-glow:rgba(194,65,12,0.18);--card-border-hover:rgba(249,115,22,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#c2410c,#f97316);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">XML Linter &amp; Validator</div>
+                        <div class="card-desc">Validate XML well-formedness with precise parser errors. Pretty-print or minify — mixed content and CDATA always preserved.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">Validate</span>
+                        <span class="tag-chip">Format</span>
+                        <span class="tag-chip">Minify</span>
                         <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     </div>
                 </a>

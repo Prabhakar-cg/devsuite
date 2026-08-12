@@ -100,6 +100,10 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Server-side conversions** — XLSX ↔ CSV/JSON, PDF → TXT, DOCX → TXT, and document → PDF via WeasyPrint.
 - **Drag-and-drop upload** — supports drag-and-drop or file picker.
 
+### 13. XML Linter & Validator
+- Validate XML well-formedness with the browser's native parser — no schema/XSD/DTD validation.
+- Pretty-print (2-space indent) or minify, with mixed content, CDATA, and comments always preserved untouched.
+
 ---
 
 ## Premium UI

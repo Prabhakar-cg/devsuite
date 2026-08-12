@@ -3,7 +3,7 @@
 > **Version:** 0.3.0  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
-> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 12 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `014-`.
+> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 13 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `015-xml-linter`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that spec was drafted but never planned/implemented, so it is not a shipped tool and is not counted above. This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `016-`.
 
 ---
 
@@ -87,9 +87,9 @@ devsuite/
     ├── auth-guard.js     # 8-hour session auth for DevDB tools
     ├── devdb-client.js   # Fetch wrapper around /api/db/*
     ├── home.html / home.css
-    ├── tools.html        # Tools hub / dashboard (12 tool cards)
+    ├── tools.html        # Tools hub / dashboard (13 tool cards)
     ├── index.html / app.js            # Diff tool
-    ├── json.html / yaml.html / regex.html / base64.html / crypto.html
+    ├── json.html / yaml.html / xml.html / regex.html / base64.html / crypto.html
     ├── api-tester.html / api-tester.js / api-tester.css / api-client.js
     ├── script-sandbox-worker.js   # API Tester scripting sandbox (dedicated Worker, scoped CSP)
     ├── curl-codegen.js            # cURL parse + cURL/fetch/HTTPie generation (pure, node-testable)
@@ -130,6 +130,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Diff | `index.html` | `app.js`, `linter.css` | `/upload` | — |
 | JSON Linter | `json.html` | `app.js`, `linter.css` | `/json` | — |
 | YAML Linter | `yaml.html` | `app.js`, `linter.css` | `/yaml` | — |
+| XML Linter | `xml.html` | `linter.css` (inline `<script>`, no vendored parser — native `DOMParser`/`XMLSerializer`) | `/xml` | — |
 | Regex Tester | `regex.html` | `linter.css` | `/regex` | — |
 | Base64 / JWT | `base64.html` | `linter.css` | `/base64` | — |
 | Crypto Suite | `crypto.html` | `linter.css`, `crypto-js.min.js` | `/crypto` | — |
@@ -166,6 +167,7 @@ into §5–§12 below.
 | 4.10 | Secret Vault | `/vault` | [specs/011-secret-vault/spec.md](011-secret-vault/spec.md) |
 | 4.11 | DevDB Manager | `/db-manager` | [specs/012-db-manager/spec.md](012-db-manager/spec.md) |
 | 4.12 | File Format Converter | `/file-converter` | [specs/013-file-converter/spec.md](013-file-converter/spec.md) |
+| 4.13 | XML Linter & Validator | `/xml` | [specs/015-xml-linter/spec.md](015-xml-linter/spec.md) |
 
 ---
 
@@ -176,7 +178,7 @@ into §5–§12 below.
 | Route | Tool |
 |---|---|
 | `GET /` | Homepage (`home.html`) |
-| `GET /tools` | Tools Hub — 12 tool cards (`tools.html`) |
+| `GET /tools` | Tools Hub — 13 tool cards (`tools.html`) |
 | `GET /diff` | Diff Checker |
 | `GET /json` | JSON Linter |
 | `GET /yaml` | YAML Linter |
@@ -190,6 +192,7 @@ into §5–§12 below.
 | `GET /vault` | Secret Vault |
 | `GET /db-manager` | DevDB Manager |
 | `GET /file-converter` | File Format Converter |
+| `GET /xml` | XML Linter |
 
 ### 5.2 Auth Endpoints
 
