@@ -110,6 +110,12 @@
                 </select>
                 <label for="req-url" class="sr-only">Request URL</label>
                 <input type="text" id="req-url" class="url-input" placeholder="https://api.example.com/v1/users  —  use {{variable}} for env vars" aria-label="Request URL">
+                <label for="req-proxy-mode" class="sr-only">Proxy mode</label>
+                <select id="req-proxy-mode" class="proxy-mode-select" aria-label="Proxy mode" title="Auto: try a direct browser request first, fall back to DevSuite's local proxy only if CORS blocks it.&#10;Force Direct: never use the proxy — see the real CORS/network error a browser client would get, with no fallback.&#10;Force Proxy: skip the direct attempt and go straight through the local proxy.">
+                    <option value="auto" selected>Auto</option>
+                    <option value="direct">Force Direct</option>
+                    <option value="proxy">Force Proxy</option>
+                </select>
                 <button id="btn-code" class="btn-small" aria-label="Code snippets — copy as cURL, fetch, or HTTPie, or import a curl command" title="Copy as cURL / fetch / HTTPie — or paste a curl command">Code</button>
                 <button id="btn-send" class="send-btn" aria-label="Send HTTP request">Send</button>
             </div>

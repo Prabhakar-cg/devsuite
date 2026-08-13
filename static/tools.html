@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevSuite — All Tools</title>
-    <meta name="description" content="13 powerful developer tools — locally hosted, zero cloud, zero tracking. Diff files, lint JSON/YAML, test APIs, manage secrets and more.">
+    <meta name="description" content="11 powerful developer tools — locally hosted, zero cloud, zero tracking. Diff files, lint JSON/YAML/XML, test APIs, manage secrets and more.">
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/home.css">
     <script src="/static/theme.js"></script>
@@ -286,7 +286,7 @@
             <div class="qa-stats-strip">
                 <span class="qa-stat">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-                    12 tools
+                    11 tools
                 </span>
                 <span class="qa-divider">·</span>
                 <span class="qa-stat">100% offline</span>
@@ -295,7 +295,7 @@
                 <div class="qa-spacer"></div>
                 <div class="qa-jump-chips">
                     <button class="qa-chip" data-jump="dev">Dev <span>3</span></button>
-                    <button class="qa-chip" data-jump="data">Data <span>4</span></button>
+                    <button class="qa-chip" data-jump="data">Data <span>3</span></button>
                     <button class="qa-chip" data-jump="security">Security <span>3</span></button>
                     <button class="qa-chip" data-jump="network">Network <span>1</span></button>
                     <button class="qa-chip" data-jump="time">Schedule <span>1</span></button>
@@ -321,12 +321,12 @@
                     <svg class="qa-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </a>
 
-                <a class="qa-card" href="/json">
+                <a class="qa-card" href="/data-linter">
                     <div class="qa-icon" style="background:linear-gradient(135deg,#064e3b,#059669);">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 00-2 2v5a2 2 0 01-2 2 2 2 0 012 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 002-2v-5c0-1.1.9-2 2-2a2 2 0 01-2-2V5a2 2 0 00-2-2h-1"/></svg>
                     </div>
                     <div class="qa-info">
-                        <div class="qa-name">JSON Linter</div>
+                        <div class="qa-name">Data Format Linter</div>
                         <div class="qa-cat">Data</div>
                     </div>
                     <svg class="qa-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -377,11 +377,11 @@
 
             <div class="filter-tabs" role="radiogroup" aria-label="Filter tools by category">
                 <input type="radio" name="tool-filter" id="filter-all"      class="filter-radio" value="all"      checked tabindex="0">
-                <label  class="filter-tab active" for="filter-all"      data-filter="all"     >All      <span class="filter-count">12</span></label>
+                <label  class="filter-tab active" for="filter-all"      data-filter="all"     >All      <span class="filter-count">11</span></label>
                 <input type="radio" name="tool-filter" id="filter-dev"      class="filter-radio" value="dev"      tabindex="-1">
                 <label  class="filter-tab"        for="filter-dev"      data-filter="dev"     >Dev      <span class="filter-count">3</span></label>
                 <input type="radio" name="tool-filter" id="filter-data"     class="filter-radio" value="data"     tabindex="-1">
-                <label  class="filter-tab"        for="filter-data"     data-filter="data"    >Data     <span class="filter-count">4</span></label>
+                <label  class="filter-tab"        for="filter-data"     data-filter="data"    >Data     <span class="filter-count">3</span></label>
                 <input type="radio" name="tool-filter" id="filter-security" class="filter-radio" value="security" tabindex="-1">
                 <label  class="filter-tab"        for="filter-security" data-filter="security">Security <span class="filter-count">3</span></label>
                 <input type="radio" name="tool-filter" id="filter-network"  class="filter-radio" value="network"  tabindex="-1">
@@ -433,8 +433,8 @@
                     </div>
                 </a>
 
-                <!-- JSON Linter -->
-                <a class="tool-card active-tool" href="/json" data-category="data"
+                <!-- Data Format Linter -->
+                <a class="tool-card active-tool" href="/data-linter" data-category="data"
                    style="--card-glow:rgba(5,150,105,0.14);--card-border-hover:rgba(5,150,105,0.45);">
                     <div class="card-header">
                         <div class="card-icon-wrap card-icon-emerald">
@@ -443,34 +443,14 @@
                         <span class="badge badge-live">Live</span>
                     </div>
                     <div>
-                        <div class="card-title">JSON Linter &amp; Formatter</div>
-                        <div class="card-desc">Validate, pretty-print, minify, and sort keys. Real-time syntax error detection with line and column pointers.</div>
+                        <div class="card-title">Data Format Linter</div>
+                        <div class="card-desc">Validate, format, and convert between JSON, YAML, XML, and TOON — switch formats instantly with a tab strip, no page reload.</div>
                     </div>
                     <div class="card-footer">
-                        <span class="tag-chip">Validate</span>
-                        <span class="tag-chip">Format</span>
-                        <span class="tag-chip">Minify</span>
-                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                    </div>
-                </a>
-
-                <!-- YAML Linter -->
-                <a class="tool-card active-tool" href="/yaml" data-category="data"
-                   style="--card-glow:rgba(217,119,6,0.14);--card-border-hover:rgba(245,158,11,0.45);">
-                    <div class="card-header">
-                        <div class="card-icon-wrap card-icon-amber">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                        </div>
-                        <span class="badge badge-live">Live</span>
-                    </div>
-                    <div>
-                        <div class="card-title">YAML Linter &amp; Validator</div>
-                        <div class="card-desc">Parse and validate YAML configs for K8s, Docker Compose, GitHub Actions. Format and convert YAML → JSON.</div>
-                    </div>
-                    <div class="card-footer">
-                        <span class="tag-chip">Validate</span>
-                        <span class="tag-chip">Format</span>
-                        <span class="tag-chip">→ JSON</span>
+                        <span class="tag-chip">JSON</span>
+                        <span class="tag-chip">YAML</span>
+                        <span class="tag-chip">XML</span>
+                        <span class="tag-chip">TOON</span>
                         <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     </div>
                 </a>
@@ -507,12 +487,12 @@
                     </div>
                     <div>
                         <div class="card-title">Crypto Suite</div>
-                        <div class="card-desc">Hash Generator (MD5, SHA-256, SHA-512), AES-256 Encrypt/Decrypt, RSA Keygen, and HMAC Signing. 100% in-browser.</div>
+                        <div class="card-desc">Hash Generator, AES-256, RSA Keygen, HMAC Signing, Base64, and a JWT Inspector with real HS256/384/512 &amp; RS256 signature verification. 100% in-browser.</div>
                     </div>
                     <div class="card-footer">
                         <span class="tag-chip">Hash</span>
                         <span class="tag-chip">AES</span>
-                        <span class="tag-chip">RSA</span>
+                        <span class="tag-chip">JWT</span>
                         <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     </div>
                 </a>
@@ -638,7 +618,7 @@
                     </div>
                     <div>
                         <div class="card-title">File Converter</div>
-                        <div class="card-desc">Convert between JSON, CSV, YAML, XML, XLSX, Markdown, HTML, PDF, DOCX, and images (PNG, JPG, WebP, SVG…). Runs locally.</div>
+                        <div class="card-desc">Convert between JSON, CSV, YAML, XML, TOON, XLSX, Markdown, HTML, PDF, DOCX, and images (PNG, JPG, WebP, SVG…). Runs locally.</div>
                     </div>
                     <div class="card-footer">
                         <span class="tag-chip">Data</span>
@@ -675,24 +655,6 @@
                 </div>
 
                 <div class="tools-grid roadmap-grid">
-
-                    <div class="tool-card coming-soon">
-                        <div class="card-header">
-                            <div class="card-icon-wrap" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            </div>
-                            <span class="badge badge-soon">Soon</span>
-                        </div>
-                        <div>
-                            <div class="card-title">JWT Inspector</div>
-                            <div class="card-desc">Decode, validate, and inspect JWT tokens locally. View header, payload, expiry, and verify against public keys.</div>
-                        </div>
-                        <div class="card-footer">
-                            <span class="tag-chip">Decode</span>
-                            <span class="tag-chip">Verify</span>
-                            <span class="tag-chip">Offline</span>
-                        </div>
-                    </div>
 
                     <div class="tool-card coming-soon">
                         <div class="card-header">

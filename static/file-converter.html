@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Format Converter — DevSuite</title>
-    <meta name="description" content="Convert between JSON, CSV, YAML, XML, TSV, XLSX, Markdown, HTML, images and more. All conversions run locally — zero data leaves your machine.">
+    <meta name="description" content="Convert between JSON, CSV, YAML, XML, TOON, TSV, XLSX, Markdown, HTML, images and more. All conversions run locally — zero data leaves your machine.">
         <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/linter.css">
     <script src="/static/libs/js-yaml.min.js"></script>
     <script src="/static/libs/papaparse.min.js"></script>
     <script src="/static/libs/marked.min.js"></script>
+    <script src="/static/toon.js"></script>
     <script src="/static/theme.js?v=2"></script>
     <style>
         /* ── Converter-specific layout ── */
@@ -419,7 +420,7 @@
                 <line x1="12" y1="5" x2="12" y2="17"/>
             </svg>
             <div class="drop-title">Drop a file here or click to browse</div>
-            <div class="drop-sub">JSON · CSV · YAML · XML · TSV · XLSX · Markdown · HTML · PNG · JPG · WebP · SVG · PDF · DOCX · and more</div>
+            <div class="drop-sub">JSON · CSV · YAML · XML · TOON · TSV · XLSX · Markdown · HTML · PNG · JPG · WebP · SVG · PDF · DOCX · and more</div>
         </div>
 
         <!-- File Info (shown after file selected) -->
@@ -454,6 +455,7 @@
                     <option value="tsv">TSV</option>
                     <option value="yaml">YAML</option>
                     <option value="xml">XML</option>
+                    <option value="toon">TOON</option>
                     <option value="xlsx">XLSX (Excel)</option>
                 </optgroup>
                 <optgroup label="Documents">
@@ -564,6 +566,13 @@
                     <span class="format-chip">TSV→CSV</span>
                     <span class="format-chip">TSV→JSON</span>
                     <span class="format-chip">JSON→TSV</span>
+                    <span class="format-chip">YAML→XML</span>
+                    <span class="format-chip">CSV→XML</span>
+                    <span class="format-chip">XML→YAML</span>
+                    <span class="format-chip">JSON→TOON</span>
+                    <span class="format-chip">TOON→JSON</span>
+                    <span class="format-chip">YAML→TOON</span>
+                    <span class="format-chip">TOON↔XML/CSV/TSV</span>
                 </div>
             </div>
             <div class="format-category">
@@ -620,25 +629,44 @@ const CONV_MAP = {
         { label: 'TSV',      value: 'tsv',  server: false },
         { label: 'YAML',     value: 'yaml', server: false },
         { label: 'XML',      value: 'xml',  server: false },
+        { label: 'TOON',     value: 'toon', server: false },
         { label: 'XLSX',     value: 'xlsx', server: true  },
     ],
     csv: [
         { label: 'JSON',     value: 'json', server: false },
         { label: 'TSV',      value: 'tsv',  server: false },
         { label: 'YAML',     value: 'yaml', server: false },
+        { label: 'XML',      value: 'xml',  server: false },
+        { label: 'TOON',     value: 'toon', server: false },
         { label: 'XLSX',     value: 'xlsx', server: true  },
     ],
     tsv: [
         { label: 'CSV',      value: 'csv',  server: false },
         { label: 'JSON',     value: 'json', server: false },
         { label: 'YAML',     value: 'yaml', server: false },
+        { label: 'XML',      value: 'xml',  server: false },
+        { label: 'TOON',     value: 'toon', server: false },
     ],
     yaml: [
         { label: 'JSON',     value: 'json', server: false },
         { label: 'CSV',      value: 'csv',  server: false },
+        { label: 'TSV',      value: 'tsv',  server: false },
+        { label: 'XML',      value: 'xml',  server: false },
+        { label: 'TOON',     value: 'toon', server: false },
     ],
     xml: [
         { label: 'JSON',     value: 'json', server: false },
+        { label: 'CSV',      value: 'csv',  server: false },
+        { label: 'TSV',      value: 'tsv',  server: false },
+        { label: 'YAML',     value: 'yaml', server: false },
+        { label: 'TOON',     value: 'toon', server: false },
+    ],
+    toon: [
+        { label: 'JSON',     value: 'json', server: false },
+        { label: 'CSV',      value: 'csv',  server: false },
+        { label: 'TSV',      value: 'tsv',  server: false },
+        { label: 'YAML',     value: 'yaml', server: false },
+        { label: 'XML',      value: 'xml',  server: false },
     ],
     xlsx: [
         { label: 'CSV',      value: 'csv',  server: true  },
@@ -694,6 +722,7 @@ const MIME = {
     tsv: 'text/tab-separated-values',
     yaml: 'application/x-yaml',
     xml: 'application/xml',
+    toon: 'text/x-toon',
     html: 'text/html',
     md: 'text/markdown',
     txt: 'text/plain',
@@ -860,6 +889,7 @@ function convertJsonText(text, to) {
     if (to === 'tsv')  return { output: jsonToCsv(data, '\t') };
     if (to === 'yaml') return { output: jsyaml.dump(data, { indent: 2, lineWidth: 120 }) };
     if (to === 'xml')  return { output: jsonToXml(data, 'root') };
+    if (to === 'toon') return { output: Toon.encode(data) };
     return null;
 }
 
@@ -870,6 +900,8 @@ function convertCsvText(text, to) {
     if (to === 'json') return { output: JSON.stringify(rows, null, 2) };
     if (to === 'tsv')  return { output: jsonToCsv(rows, '\t') };
     if (to === 'yaml') return { output: jsyaml.dump(rows, { indent: 2 }) };
+    if (to === 'xml')  return { output: jsonToXml(rows, 'root') };
+    if (to === 'toon') return { output: Toon.encode(rows) };
     return null;
 }
 
@@ -880,6 +912,8 @@ function convertTsvText(text, to) {
     if (to === 'csv')  return { output: jsonToCsv(rows, ',') };
     if (to === 'json') return { output: JSON.stringify(rows, null, 2) };
     if (to === 'yaml') return { output: jsyaml.dump(rows, { indent: 2 }) };
+    if (to === 'xml')  return { output: jsonToXml(rows, 'root') };
+    if (to === 'toon') return { output: Toon.encode(rows) };
     return null;
 }
 
@@ -887,14 +921,33 @@ function convertYamlText(text, to) {
     const data = jsyaml.load(text);
     if (to === 'json') return { output: JSON.stringify(data, null, 2) };
     if (to === 'csv')  return { output: jsonToCsv(Array.isArray(data) ? data : [data]) };
+    if (to === 'tsv')  return { output: jsonToCsv(Array.isArray(data) ? data : [data], '\t') };
+    if (to === 'xml')  return { output: jsonToXml(data, 'root') };
+    if (to === 'toon') return { output: Toon.encode(data) };
     return null;
 }
 
-function convertXmlText(text) {
+function convertXmlText(text, to) {
     const doc = new DOMParser().parseFromString(text, 'text/xml');
     const parserErr = doc.querySelector('parsererror');
     if (parserErr) throw new Error('Invalid XML: ' + parserErr.textContent);
-    return { output: JSON.stringify(xmlToJson(doc.documentElement), null, 2) };
+    const data = xmlToJson(doc.documentElement);
+    if (to === 'json') return { output: JSON.stringify(data, null, 2) };
+    if (to === 'csv')  return { output: jsonToCsv(Array.isArray(data) ? data : [data]) };
+    if (to === 'tsv')  return { output: jsonToCsv(Array.isArray(data) ? data : [data], '\t') };
+    if (to === 'yaml') return { output: jsyaml.dump(data, { indent: 2, lineWidth: 120 }) };
+    if (to === 'toon') return { output: Toon.encode(data) };
+    return null;
+}
+
+function convertToonText(text, to) {
+    const data = Toon.decode(text);
+    if (to === 'json') return { output: JSON.stringify(data, null, 2) };
+    if (to === 'yaml') return { output: jsyaml.dump(data, { indent: 2, lineWidth: 120 }) };
+    if (to === 'csv')  return { output: jsonToCsv(Array.isArray(data) ? data : [data]) };
+    if (to === 'tsv')  return { output: jsonToCsv(Array.isArray(data) ? data : [data], '\t') };
+    if (to === 'xml')  return { output: jsonToXml(data, 'root') };
+    return null;
 }
 
 function convertMarkdownText(text, to) {
@@ -928,7 +981,8 @@ async function convertInBrowser(from, to) {
     else if (from === 'csv')                result = convertCsvText(text, to);
     else if (from === 'tsv')                result = convertTsvText(text, to);
     else if (from === 'yaml')               result = convertYamlText(text, to);
-    else if (from === 'xml')                result = convertXmlText(text);
+    else if (from === 'xml')                result = convertXmlText(text, to);
+    else if (from === 'toon')               result = convertToonText(text, to);
     else if (from === 'md' || from === 'markdown') result = convertMarkdownText(text, to);
     else if (from === 'html')               result = convertHtmlText(text, to);
     else if (from === 'txt')                { result = { output: text }; outputExt = 'md'; }
@@ -1101,16 +1155,25 @@ function jsonToCsv(rows, sep = ',') {
     return lines.join('\n');
 }
 
+/* Named array fields are wrapped in their own tag with repeated <item>
+ * children — {"roles":["a","b"]} -> <roles><item>a</item><item>b</item></roles> —
+ * so the field name survives the round trip. (Fixes a bug where an array
+ * value dropped the tag it was called with entirely, emitting bare <item>
+ * siblings under the parent instead; see specs/013-file-converter research.md.) */
 function jsonToXml(obj, tag) {
     const clean = t => t.replaceAll(/[^a-zA-Z0-9_\-:.]/g, '_');
+    const safeTag = clean(tag);
     if (Array.isArray(obj)) {
-        return obj.map(item => jsonToXml(item, 'item')).join('\n');
+        if (obj.length === 0) return `<${safeTag}/>`;
+        return `<${safeTag}>\n${obj.map(item => jsonToXml(item, 'item')).join('\n')}\n</${safeTag}>`;
     }
     if (typeof obj === 'object' && obj !== null) {
-        const children = Object.entries(obj).map(([k, v]) => jsonToXml(v, clean(k))).join('\n');
-        return `<${clean(tag)}>\n${children}\n</${clean(tag)}>`;
+        const keys = Object.keys(obj);
+        if (keys.length === 0) return `<${safeTag}/>`;
+        return `<${safeTag}>\n${keys.map(k => jsonToXml(obj[k], k)).join('\n')}\n</${safeTag}>`;
     }
-    return `<${clean(tag)}>${escHtml(String(obj ?? ''))}</${clean(tag)}>`;
+    if (obj === null || obj === undefined) return `<${safeTag}/>`;
+    return `<${safeTag}>${escHtml(String(obj))}</${safeTag}>`;
 }
 
 function processXmlChild(obj, child) {
@@ -1136,6 +1199,17 @@ function xmlToJson(node) {
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return null;
 
+    /* Decode this tool's own <tag><item>...</item></tag> array convention
+     * back into a real array. Only applies when there are no attributes to
+     * preserve, so it never fires on arbitrary/foreign XML that happens to
+     * repeat an <item> tag for its own unrelated reasons combined with
+     * attributes — those still fall through to the generic @attributes/
+     * repeated-sibling handling below, unchanged from before this fix. */
+    const elementChildren = Array.from(node.children);
+    if (!node.attributes.length && elementChildren.length > 0 && elementChildren.every(c => c.tagName === 'item')) {
+        return elementChildren.map(c => xmlToJsonArrayItem(c));
+    }
+
     const obj = {};
     if (node.attributes.length) {
         obj['@attributes'] = {};
@@ -1143,6 +1217,21 @@ function xmlToJson(node) {
     }
     for (const child of node.childNodes) processXmlChild(obj, child);
     return obj;
+}
+
+/* Array items produced by this tool's own jsonToXml are either a plain
+ * scalar leaf (<item>admin</item>) or a nested object/array (<item><id>1
+ * </id>...</item>). A plain leaf decodes straight to a typed scalar
+ * (reusing Toon's null/true/false/number inference) instead of the
+ * generic {"#text": ...} wrapper, so a string/number array round-trips
+ * cleanly; a structured item still recurses through the normal xmlToJson
+ * so its own fields keep the standard @attributes/#text handling. */
+function xmlToJsonArrayItem(node) {
+    if (node.children.length === 0 && !node.attributes.length) {
+        const t = node.textContent.trim();
+        return t === '' ? null : Toon.inferScalarFromText(t);
+    }
+    return xmlToJson(node);
 }
 
 function _walkInlineTag(tag, inner, node) {

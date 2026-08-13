@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Format Linter — DevSuite</title>
+    <meta name="description" content="Validate, format, and convert JSON, YAML, and XML in one tool. Zero data leaves your machine.">
+        <link rel="stylesheet" href="/static/libs/fonts.css">
+    <link rel="stylesheet" href="/static/linter.css">
+    <style>
+        /* Tab strip — scoped to this page only, reuses linter.css tokens */
+        .tab-strip { display: flex; align-items: center; gap: 2px; margin-left: 0.5rem;
+            background: var(--bg-secondary); border-radius: var(--radius-sm); padding: 3px; }
+        .tab-strip .tab-btn { border: none; background: transparent; color: var(--text-muted);
+            font-family: var(--font); font-size: 0.78rem; font-weight: 500;
+            padding: 4px 12px; border-radius: 7px; cursor: pointer; transition: var(--transition); }
+        .tab-strip .tab-btn:hover { color: var(--text); }
+        .tab-strip .tab-btn.active { background: var(--bg); color: var(--blue); box-shadow: var(--shadow-xs); }
+    </style>
+    <!-- js-yaml must load BEFORE require.js to avoid AMD registration conflicts -->
+    <script src="/static/libs/js-yaml.min.js"></script>
+    <script src="/static/theme.js?v=2"></script>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- ====================================================
+     HEADER
+     ==================================================== -->
+<header class="tool-header" aria-label="Data Format Linter toolbar">
+    <div class="header-left">
+        <a href="/tools" class="back-link" aria-label="Back to DevSuite tools">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            DevSuite
+        </a>
+        <div class="tool-identity">
+            <div class="tool-icon" style="background:linear-gradient(135deg,#0c4a6e,#0ea5e9);box-shadow:0 0 14px rgba(14,165,233,0.4);" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 3H7a2 2 0 00-2 2v5a2 2 0 01-2 2 2 2 0 012 2v5c0 1.1.9 2 2 2h1"/>
+                    <path d="M16 21h1a2 2 0 002-2v-5c0-1.1.9-2 2-2a2 2 0 01-2-2V5a2 2 0 00-2-2h-1"/>
+                </svg>
+            </div>
+            <span class="tool-name">Data Format <span class="tool-accent">Linter</span></span>
+            <span class="tool-version">v1.0</span>
+        </div>
+        <div class="tab-strip" role="tablist" aria-label="Format tabs">
+            <button type="button" class="tab-btn active" id="tab-json" data-tab="json" role="tab" aria-selected="true">JSON</button>
+            <button type="button" class="tab-btn" id="tab-yaml" data-tab="yaml" role="tab" aria-selected="false">YAML</button>
+            <button type="button" class="tab-btn" id="tab-xml" data-tab="xml" role="tab" aria-selected="false">XML</button>
+            <button type="button" class="tab-btn" id="tab-toon" data-tab="toon" role="tab" aria-selected="false">TOON</button>
+        </div>
+    </div>
+    <div class="header-right">
+        <span id="char-count" class="line-badge" aria-live="polite" aria-atomic="true">0 chars</span>
+    </div>
+</header>
+
+<!-- ====================================================
+     ACTION TOOLBAR
+     ==================================================== -->
+<div class="action-toolbar" role="toolbar" aria-label="Data Format Linter actions">
+    <output id="status-pill" class="status-pill idle" aria-live="polite" aria-atomic="true">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="status-text">Ready</span>
+    </output>
+    <div class="toolbar-sep" aria-hidden="true"></div>
+    <button id="btn-validate" class="btn btn-primary" data-tabs="json yaml xml toon" title="Validate (Ctrl+Enter)" aria-label="Validate (Ctrl+Enter)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        Validate
+    </button>
+    <button id="btn-format" class="btn btn-ghost" data-tabs="json yaml xml toon" title="Pretty-print with 2-space indent" aria-label="Format with 2-space indent">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+        Format
+    </button>
+    <button id="btn-minify" class="btn btn-ghost" data-tabs="json xml" title="Compact single-line / strip insignificant whitespace" aria-label="Minify">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 8 2 5 5 2"/><line x1="2" y1="5" x2="12" y2="5"/><polyline points="19 16 22 19 19 22"/><line x1="22" y1="19" x2="12" y2="19"/></svg>
+        Minify
+    </button>
+    <button id="btn-sort-keys" class="btn btn-ghost" data-tabs="json" title="Sort all object keys alphabetically" aria-label="Sort Keys — sort JSON keys alphabetically">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Sort Keys
+    </button>
+    <div class="toolbar-sep" aria-hidden="true"></div>
+    <button id="btn-convert-json" class="btn btn-ghost btn-convert" data-target-format="json" title="Convert to JSON" aria-label="Convert to JSON">→ JSON</button>
+    <button id="btn-convert-yaml" class="btn btn-ghost btn-convert" data-target-format="yaml" title="Convert to YAML" aria-label="Convert to YAML">→ YAML</button>
+    <button id="btn-convert-xml" class="btn btn-ghost btn-convert" data-target-format="xml" title="Convert to XML" aria-label="Convert to XML">→ XML</button>
+    <button id="btn-convert-toon" class="btn btn-ghost btn-convert" data-target-format="toon" title="Convert to TOON" aria-label="Convert to TOON">→ TOON</button>
+    <div class="toolbar-sep" aria-hidden="true"></div>
+    <button id="btn-clear" class="btn btn-ghost" data-tabs="json yaml xml toon" title="Clear editor" aria-label="Clear — clear editor">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        Clear
+    </button>
+    <div class="toolbar-spacer" aria-hidden="true"></div>
+    <button id="btn-copy-output" class="btn btn-ghost" disabled data-tabs="json yaml xml toon" title="Copy output to clipboard" aria-label="Copy output to clipboard">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copy Output
+    </button>
+</div>
+
+<!-- ====================================================
+     SPLIT PANE
+     ==================================================== -->
+<main class="tool-main">
+    <div class="split-pane">
+
+        <!-- Input (Editor) -->
+        <div class="pane-editor">
+            <div class="pane-header">
+                <span class="pane-label" id="input-editor-label">Input JSON</span>
+                <div class="pane-actions">
+                    <span id="line-count" class="line-badge" aria-live="polite" aria-atomic="true">0 lines</span>
+                    <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="Paste from clipboard">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:3px;"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2" ry="2"/></svg>
+                        Paste
+                    </button>
+                    <button id="btn-detect" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" title="Auto-detect format from the current content" aria-label="Auto-detect format from the current content">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:3px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Detect
+                    </button>
+                </div>
+            </div>
+            <div id="input-editor" class="monaco-host" aria-label="Data input editor"></div>
+            <!-- Error panel sits at bottom of input pane -->
+            <div id="error-panel" class="error-panel" role="alert" aria-live="assertive" aria-atomic="true">
+                <svg class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:#ff3b30;flex-shrink:0;margin-top:1px;">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div class="error-body">
+                    <div id="error-message" class="error-message"></div>
+                    <div id="error-hint"   class="error-hint"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output -->
+        <div class="pane-output">
+            <div class="pane-header">
+                <span class="pane-label" id="output-label">Output</span>
+                <div class="pane-actions">
+                    <span id="output-line-count" class="line-badge" style="display:none;" aria-live="polite" aria-atomic="true">0 lines</span>
+                </div>
+            </div>
+            <div id="output-empty" class="output-empty" aria-label="Output area — empty">
+                <span class="output-empty-icon" aria-hidden="true">{ }</span>
+                <span>Run Validate, Format, Minify, or Convert to see output</span>
+            </div>
+            <section id="output-editor" class="output-monaco-host" style="display:none;" aria-label="Data output" aria-live="polite"></section>
+        </div>
+
+    </div>
+</main>
+
+<script src="/static/libs/require.min.js"></script>
+<script src="/static/components.js"></script>
+<script src="/static/toon.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    const toast = DevSuite.toast;
+    const XHTML_NS = 'http://www.w3.org/1999/xhtml';
+
+    /* ── JSON parsing/transforms (ported from 003-json-linter, near-verbatim) ── */
+    function parseJson(raw) {
+        try {
+            return { ok: true, data: JSON.parse(raw) };
+        } catch (e) {
+            return { ok: false, error: e, message: e.message };
+        }
+    }
+
+    function sortKeysDeep(obj) {
+        if (Array.isArray(obj)) return obj.map(sortKeysDeep);
+        if (obj !== null && typeof obj === 'object') {
+            return Object.fromEntries(
+                Object.keys(obj).sort().map(k => [k, sortKeysDeep(obj[k])])
+            );
+        }
+        return obj;
+    }
+
+    /* ── YAML parsing/transforms (ported from 004-yaml-linter, near-verbatim) ── */
+    function parseYaml(raw) {
+        try {
+            const docs = [];
+            jsyaml.loadAll(raw, doc => docs.push(doc));
+            return { ok: true, data: docs.length === 1 ? docs[0] : docs };
+        } catch (e) {
+            return { ok: false, error: e, message: e.message };
+        }
+    }
+
+    /* ── XML parsing/transforms (ported from 015-xml-linter, near-verbatim) ──
+       DOMParser never throws on malformed input — it embeds a namespaced
+       <parsererror> element in the returned Document instead. */
+    function parseXml(raw) {
+        const doc = new DOMParser().parseFromString(raw, 'application/xml');
+        const errs = doc.getElementsByTagNameNS(XHTML_NS, 'parsererror');
+        if (errs.length > 0) {
+            return { ok: false, message: errs[0].textContent.trim() };
+        }
+        return { ok: true, doc };
+    }
+
+    function formatXmlDoc(doc) {
+        const INDENT = '  ';
+
+        function isWhitespaceText(node) {
+            return node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '';
+        }
+
+        function reindent(el, depth) {
+            const children = Array.from(el.childNodes);
+            const hasSignificantContent = children.some(n =>
+                (n.nodeType === Node.TEXT_NODE && n.textContent.trim() !== '') ||
+                n.nodeType === Node.CDATA_SECTION_NODE
+            );
+            const elementChildren = children.filter(n => n.nodeType === Node.ELEMENT_NODE);
+            if (hasSignificantContent || elementChildren.length === 0) return;
+
+            children.forEach(n => { if (isWhitespaceText(n)) el.removeChild(n); });
+
+            Array.from(el.childNodes).forEach(child => {
+                el.insertBefore(doc.createTextNode('\n' + INDENT.repeat(depth + 1)), child);
+                if (child.nodeType === Node.ELEMENT_NODE) reindent(child, depth + 1);
+            });
+            el.appendChild(doc.createTextNode('\n' + INDENT.repeat(depth)));
+        }
+
+        reindent(doc.documentElement, 0);
+        return new XMLSerializer().serializeToString(doc);
+    }
+
+    function minifyXmlDoc(doc) {
+        function hasElementChild(el) {
+            return Array.from(el.childNodes).some(n => n.nodeType === Node.ELEMENT_NODE);
+        }
+        const walker = doc.createTreeWalker(doc, NodeFilter.SHOW_TEXT, null);
+        const toRemove = [];
+        let node;
+        while ((node = walker.nextNode())) {
+            if (node.textContent.trim() === '' && node.parentNode && hasElementChild(node.parentNode)) {
+                toRemove.push(node);
+            }
+        }
+        toRemove.forEach(n => n.parentNode && n.parentNode.removeChild(n));
+        return new XMLSerializer().serializeToString(doc);
+    }
+
+    /* ── TOON codec now lives in the shared static/toon.js module (loaded
+       above), used identically by 013-file-converter — see
+       specs/016-data-linter/research.md R11. Thin aliases keep the call
+       sites below unchanged. ── */
+    const toonEncode = Toon.encode;
+    const toonDecode = Toon.decode;
+    const looksLikeToonHeader = Toon.looksLikeToonHeader;
+    const inferScalarFromText = Toon.inferScalarFromText;
+
+    function isPlainObject(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
+
+    /* ── Plain-JS-value <-> XML bridge (used by the conversion hub below).
+       Named arrays are wrapped in a tag so the field name survives the
+       round trip: {roles:["a","b"]} -> <roles><item>a</item><item>b</item></roles>. ── */
+    function escXml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function cleanXmlTag(t) { return t.replace(/[^a-zA-Z0-9_\-:.]/g, '_'); }
+
+    function jsonToXmlEl(value, tag) {
+        const safeTag = cleanXmlTag(tag);
+        if (Array.isArray(value)) {
+            if (value.length === 0) return `<${safeTag}/>`;
+            return `<${safeTag}>\n${value.map(item => jsonToXmlEl(item, 'item')).join('\n')}\n</${safeTag}>`;
+        }
+        if (isPlainObject(value)) {
+            const keys = Object.keys(value);
+            if (keys.length === 0) return `<${safeTag}/>`;
+            return `<${safeTag}>\n${keys.map(k => jsonToXmlEl(value[k], k)).join('\n')}\n</${safeTag}>`;
+        }
+        if (value === null || value === undefined) return `<${safeTag}/>`;
+        return `<${safeTag}>${escXml(String(value))}</${safeTag}>`;
+    }
+
+    function xmlToJsonValue(el) {
+        const children = Array.from(el.children);
+        if (children.length === 0) {
+            const text = el.textContent.trim();
+            return text === '' ? null : inferScalarFromText(text);
+        }
+        if (children.every(c => c.tagName === 'item')) return children.map(xmlToJsonValue);
+        const obj = {};
+        for (const child of children) {
+            const val = xmlToJsonValue(child);
+            if (Object.prototype.hasOwnProperty.call(obj, child.tagName)) {
+                if (!Array.isArray(obj[child.tagName])) obj[child.tagName] = [obj[child.tagName]];
+                obj[child.tagName].push(val);
+            } else {
+                obj[child.tagName] = val;
+            }
+        }
+        return obj;
+    }
+
+    /* ── Conversion hub: every tab's raw text -> plain JS value -> every
+       other format's text. This is the one place a shared abstraction
+       earns its keep (research.md R1 rejected a plugin abstraction for
+       per-format UI actions, but a 4-way any-to-any matrix is exactly
+       the case a shared canonical value avoids 12 bespoke converters). ── */
+    function toCanonicalValue(tab, raw) {
+        if (tab === 'json') { const r = parseJson(raw); return r.ok ? { ok: true, value: r.data } : { ok: false, message: r.message }; }
+        if (tab === 'yaml') { const r = parseYaml(raw); return r.ok ? { ok: true, value: r.data } : { ok: false, message: r.message }; }
+        if (tab === 'xml') {
+            const r = parseXml(raw);
+            return r.ok ? { ok: true, value: xmlToJsonValue(r.doc.documentElement) } : { ok: false, message: r.message };
+        }
+        try { return { ok: true, value: toonDecode(raw) }; } catch (e) { return { ok: false, message: e.message }; }
+    }
+
+    function fromCanonicalValue(format, value) {
+        if (format === 'json') return JSON.stringify(value, null, 2);
+        if (format === 'yaml') return jsyaml.dump(value, { indent: 2, lineWidth: 120 });
+        if (format === 'toon') return toonEncode(value);
+        const rawXml = jsonToXmlEl(value, 'root');
+        return formatXmlDoc(new DOMParser().parseFromString(rawXml, 'application/xml'));
+    }
+
+    /* ── Format auto-detection (paste / Detect button) — manual tab
+       selection always remains available and authoritative; this only
+       offers to switch, it never locks the tab or blocks typing.
+       looksLikeToonHeader() is the Toon.looksLikeToonHeader alias above. ── */
+    function detectFormat(raw) {
+        const trimmed = raw.trim();
+        if (!trimmed) return null;
+
+        /* XML has an unambiguous leading marker — check first. */
+        if (/^</.test(trimmed) && parseXml(trimmed).ok) return 'xml';
+
+        /* TOON's one syntax marker no other format shares is the
+           array-length bracket header ("key[N]" / "[N]"); a plain
+           "key: value" document is valid TOON *and* valid YAML (see
+           below) with no way to tell them apart, so only the bracket
+           form is treated as a confident TOON signal here. */
+        if (looksLikeToonHeader(trimmed)) {
+            try { toonDecode(trimmed); return 'toon'; } catch { /* not actually TOON; fall through */ }
+        }
+
+        /* JSON's literal syntax (quotes/braces/true|false|null/digits) is
+           always a deliberate signal, so a successful strict parse wins
+           immediately — even though any valid JSON is also valid YAML. */
+        if (parseJson(trimmed).ok) return 'json';
+
+        /* YAML's plain-scalar grammar accepts almost any bare text (e.g.
+           "hello world" parses to the string "hello world"), which is too
+           permissive to be a real signal — only count it when the parsed
+           result is an actual mapping/sequence. */
+        const yamlResult = parseYaml(trimmed);
+        if (yamlResult.ok && isStructuredValue(yamlResult.data)) return 'yaml';
+
+        try {
+            const toonVal = toonDecode(trimmed);
+            if (isStructuredValue(toonVal)) return 'toon';
+        } catch { /* not TOON either */ }
+
+        if (parseXml(trimmed).ok) return 'xml';
+
+        return null;
+    }
+
+    function isStructuredValue(v) { return v !== null && typeof v === 'object'; }
+
+    /* ── Per-tab parser dispatch (research.md R1 — three concrete function
+       sets, no plugin abstraction) ── */
+    const PARSERS = {
+        json: parseJson,
+        yaml: parseYaml,
+        xml: parseXml,
+        toon: raw => { try { return { ok: true, data: toonDecode(raw) }; } catch (e) { return { ok: false, message: e.message }; } },
+    };
+    function getActiveParser() {
+        return PARSERS[activeTab];
+    }
+
+    function resolveInitialTab() {
+        const path = location.pathname;
+        let tab = path === '/yaml' ? 'yaml' : path === '/xml' ? 'xml' : 'json';
+        const params = new URLSearchParams(location.search);
+        const q = params.get('tab');
+        if (q === 'json' || q === 'yaml' || q === 'xml' || q === 'toon') tab = q;
+        return tab;
+    }
+
+    let activeTab = 'json';
+
+    DevSuite.initMonaco(() => {
+
+        let inputEditor;
+        let outputModel;
+        let lastOutput = '';
+
+        /* ── Create input editor (single shared model across all three tabs) ── */
+        inputEditor = monaco.editor.create(document.getElementById('input-editor'), {
+            value: '',
+            language: 'json',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 22, minimap: { enabled: false },
+            scrollBeyondLastLine: false, padding: { top: 12, bottom: 12 },
+            wordWrap: 'on',
+        });
+
+        /* ── Create output editor (read-only) ── */
+        outputModel = monaco.editor.createModel('', 'json');
+        monaco.editor.create(document.getElementById('output-editor'), {
+            model: outputModel,
+            theme: 'vs-dark',
+            readOnly: true,
+            automaticLayout: true,
+            fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 22, minimap: { enabled: false },
+            scrollBeyondLastLine: false, padding: { top: 12, bottom: 12 },
+            wordWrap: 'on',
+        });
+
+        /* ── Helpers ── */
+        const statusPill = document.getElementById('status-pill');
+        const statusText = document.getElementById('status-text');
+        const charCount  = document.getElementById('char-count');
+        const lineCount  = document.getElementById('line-count');
+        const errorPanel = document.getElementById('error-panel');
+        const errorMsg   = document.getElementById('error-message');
+        const errorHint  = document.getElementById('error-hint');
+        const outputEmpty       = document.getElementById('output-empty');
+        const outputEditorEl    = document.getElementById('output-editor');
+        const outputLineCount   = document.getElementById('output-line-count');
+        const outputLabel       = document.getElementById('output-label');
+        const copyBtn           = document.getElementById('btn-copy-output');
+        const inputLabel        = document.getElementById('input-editor-label');
+
+        const INVALID_LABEL = { json: 'Invalid JSON', yaml: 'Invalid YAML', xml: 'Invalid XML', toon: 'Invalid TOON' };
+        const VALID_LABEL   = { json: 'Valid JSON', yaml: 'Valid YAML', xml: 'Valid XML', toon: 'Valid TOON' };
+
+        function setStatus(s, text) {
+            statusPill.className = `status-pill ${s}`;
+            statusText.textContent = text;
+        }
+
+        function updateCounts() {
+            const v = inputEditor.getValue();
+            charCount.textContent = v.length.toLocaleString() + ' chars';
+            const lines = v ? v.split('\n').length : 0;
+            lineCount.textContent = lines + ' line' + (lines === 1 ? '' : 's');
+        }
+
+        function showError(msg, hint = '') {
+            errorMsg.textContent = msg;
+            errorHint.textContent = hint;
+            errorPanel.classList.add('visible');
+            setStatus('invalid', INVALID_LABEL[activeTab]);
+        }
+
+        function clearError() {
+            errorPanel.classList.remove('visible');
+        }
+
+        function showOutput(text, label = 'Output', lang) {
+            if (!lang) lang = MONACO_LANG[activeTab];
+            const lines = text.split('\n').length;
+            monaco.editor.setModelLanguage(outputModel, lang);
+            outputModel.setValue(text);
+            outputEmpty.style.display = 'none';
+            outputEditorEl.style.display = '';
+            outputLineCount.style.display = '';
+            outputLineCount.textContent = lines + ' lines';
+            outputLabel.textContent = label;
+            lastOutput = text;
+            copyBtn.disabled = false;
+        }
+
+        /* ── resetOutput: factored out so both Clear and setActiveTab share it
+           (research.md R5) ── */
+        function resetOutput() {
+            outputModel.setValue('');
+            outputEmpty.style.display = '';
+            outputEditorEl.style.display = 'none';
+            outputLineCount.style.display = 'none';
+            outputLabel.textContent = 'Output';
+            copyBtn.disabled = true;
+            lastOutput = '';
+        }
+
+        /* ── Live validation (debounced 600ms, restarts on tab switch) ── */
+        let liveTimer;
+        function scheduleLiveValidate() {
+            clearTimeout(liveTimer);
+            liveTimer = setTimeout(liveValidate, 600);
+        }
+
+        function liveValidate() {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { setStatus('idle', 'Ready'); clearError(); return; }
+            const r = getActiveParser()(raw);
+            if (r.ok) { setStatus('valid', VALID_LABEL[activeTab]); clearError(); }
+            else {
+                const hint = activeTab === 'json' ? 'Fix the error above and re-validate'
+                    : activeTab === 'yaml' ? 'Check indentation and special characters'
+                    : activeTab === 'xml' ? 'Check tag matching, attribute quoting, and root element count'
+                    : 'Check indentation, array length headers, and quoting';
+                showError(r.message || (r.error && r.error.message), hint);
+            }
+        }
+
+        inputEditor.onDidChangeModelContent(() => {
+            updateCounts();
+            scheduleLiveValidate();
+        });
+
+        /* ── Tab strip: mechanical switch (language mode, button visibility)
+           extended with output reset + re-validate (US1) ── */
+        const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
+        const actionButtons = Array.from(document.querySelectorAll('[data-tabs]'));
+        const convertButtons = Array.from(document.querySelectorAll('.btn-convert'));
+        const INPUT_LABELS = { json: 'Input JSON', yaml: 'Input YAML', xml: 'Input XML', toon: 'Input TOON' };
+        /* Monaco ships no TOON language mode; 'yaml' gives the closest-fit
+           highlighting for its indentation/key-value syntax (coloring only,
+           no diagnostics — safe to reuse without a custom Monarch tokenizer). */
+        const MONACO_LANG = { json: 'json', yaml: 'yaml', xml: 'xml', toon: 'yaml' };
+
+        function setActiveTab(tab) {
+            activeTab = tab;
+            tabButtons.forEach(btn => {
+                const isActive = btn.dataset.tab === tab;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', String(isActive));
+            });
+            monaco.editor.setModelLanguage(inputEditor.getModel(), MONACO_LANG[tab]);
+            inputLabel.textContent = INPUT_LABELS[tab];
+            actionButtons.forEach(btn => {
+                const tabs = btn.dataset.tabs.split(' ');
+                btn.style.display = tabs.includes(tab) ? '' : 'none';
+            });
+            convertButtons.forEach(btn => {
+                btn.style.display = btn.dataset.targetFormat === tab ? 'none' : '';
+            });
+            resetOutput();
+            clearError();
+            clearTimeout(liveTimer);
+            liveValidate();
+        }
+
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+        });
+
+        /* ── VALIDATE ── */
+        document.getElementById('btn-validate').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Editor is empty — paste some data first', 'warning'); return; }
+            const r = getActiveParser()(raw);
+            if (r.ok) {
+                setStatus('valid', VALID_LABEL[activeTab] + ' ✓');
+                clearError();
+                let preview;
+                if (activeTab === 'json') preview = JSON.stringify(r.data, null, 2);
+                else if (activeTab === 'yaml') preview = jsyaml.dump(r.data, { indent: 2, lineWidth: 120 });
+                else if (activeTab === 'xml') preview = new XMLSerializer().serializeToString(r.doc);
+                else preview = toonEncode(r.data);
+                showOutput(preview, 'Validated — Preview');
+                toast(activeTab.toUpperCase() + ' is valid!', 'success', 2500);
+            } else {
+                const hint = activeTab === 'json' ? 'Check the error and try again'
+                    : activeTab === 'yaml' ? 'Fix the error and re-run'
+                    : activeTab === 'xml' ? 'Check tag matching, attribute quoting, and root element count'
+                    : 'Check indentation, array length headers, and quoting';
+                showError(r.message || (r.error && r.error.message), hint);
+                toast('Invalid ' + activeTab.toUpperCase() + ' — see error below', 'error');
+            }
+        });
+
+        /* ── FORMAT (all three tabs) ── */
+        document.getElementById('btn-format').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to format', 'warning'); return; }
+            const r = getActiveParser()(raw);
+            if (!r.ok) {
+                showError(r.message || (r.error && r.error.message), 'Fix errors before formatting');
+                toast('Cannot format invalid ' + activeTab.toUpperCase(), 'error');
+                return;
+            }
+            let formatted;
+            if (activeTab === 'json') formatted = JSON.stringify(r.data, null, 2);
+            else if (activeTab === 'yaml') formatted = jsyaml.dump(r.data, { indent: 2, lineWidth: 120, quotingType: '"' });
+            else if (activeTab === 'xml') formatted = formatXmlDoc(r.doc);
+            else formatted = toonEncode(r.data);
+            showOutput(formatted, 'Formatted ' + activeTab.toUpperCase());
+            setStatus('valid', VALID_LABEL[activeTab]);
+            clearError();
+            toast(activeTab.toUpperCase() + ' formatted!', 'success', 2000);
+        });
+
+        /* ── MINIFY (json, xml) ── */
+        document.getElementById('btn-minify').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to minify', 'warning'); return; }
+            const r = getActiveParser()(raw);
+            if (!r.ok) {
+                showError(r.message || (r.error && r.error.message), 'Fix errors before minifying');
+                toast('Cannot minify invalid ' + activeTab.toUpperCase(), 'error');
+                return;
+            }
+            const minified = activeTab === 'json' ? JSON.stringify(r.data) : minifyXmlDoc(r.doc);
+            showOutput(minified, 'Minified ' + activeTab.toUpperCase());
+            setStatus('valid', VALID_LABEL[activeTab]);
+            clearError();
+            toast(activeTab.toUpperCase() + ' minified!', 'success', 2000);
+        });
+
+        /* ── SORT KEYS (json only) ── */
+        document.getElementById('btn-sort-keys').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Nothing to sort', 'warning'); return; }
+            const r = parseJson(raw);
+            if (!r.ok) { showError(r.message, 'Fix JSON errors before sorting'); toast('Cannot sort invalid JSON', 'error'); return; }
+            const sorted = JSON.stringify(sortKeysDeep(r.data), null, 2);
+            showOutput(sorted, 'Sorted Keys');
+            setStatus('valid', 'Valid JSON');
+            clearError();
+            toast('Keys sorted alphabetically!', 'success', 2000);
+        });
+
+        /* ── CONVERT TO <format> (any tab -> any other format, via the
+           canonical-value hub above) ── */
+        convertButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.dataset.targetFormat;
+                const raw = inputEditor.getValue().trim();
+                if (!raw) { toast('Nothing to convert', 'warning'); return; }
+                const r = toCanonicalValue(activeTab, raw);
+                if (!r.ok) {
+                    showError(r.message, 'Fix errors before converting');
+                    toast('Cannot convert invalid ' + activeTab.toUpperCase(), 'error');
+                    return;
+                }
+                let out;
+                try {
+                    out = fromCanonicalValue(target, r.value);
+                } catch (e) {
+                    showError(e.message, target.toUpperCase() + ' conversion failed');
+                    toast('Conversion error', 'error');
+                    return;
+                }
+                showOutput(out, 'Converted → ' + target.toUpperCase(), MONACO_LANG[target]);
+                setStatus('valid', VALID_LABEL[activeTab]);
+                clearError();
+                toast('Converted to ' + target.toUpperCase() + '!', 'success', 2000);
+            });
+        });
+
+        /* ── CLEAR (shared) ── */
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            inputEditor.setValue('');
+            resetOutput();
+            clearError();
+            setStatus('idle', 'Ready');
+        });
+
+        /* ── PASTE (shared) ── */
+        document.getElementById('btn-paste').addEventListener('click', async () => {
+            try {
+                const txt = await navigator.clipboard.readText();
+                inputEditor.setValue(txt);
+                const { detected, switched } = detectAndSwitch(txt);
+                if (switched) toast('Pasted — detected ' + detected.toUpperCase() + ', switched tab', 'success', 2200);
+                else toast('Pasted from clipboard', 'success', 2000);
+            } catch { toast('Clipboard access denied — paste manually (Ctrl+V)', 'warning'); }
+        });
+
+        /* ── AUTO-DETECT FORMAT (paste — both the button above and native
+           Ctrl+V — and the explicit Detect button). Only ever offers to
+           switch tabs; manual tab clicks remain fully available and are
+           never overridden while the user is just typing. ── */
+        function detectAndSwitch(text) {
+            const detected = detectFormat(text);
+            if (!detected) return { detected: null, switched: false };
+            const switched = detected !== activeTab;
+            if (switched) setActiveTab(detected);
+            return { detected, switched };
+        }
+
+        inputEditor.onDidPaste(() => {
+            const { detected, switched } = detectAndSwitch(inputEditor.getValue());
+            if (switched) toast('Detected ' + detected.toUpperCase() + ' — switched tab', 'success', 2200);
+        });
+
+        document.getElementById('btn-detect').addEventListener('click', () => {
+            const raw = inputEditor.getValue().trim();
+            if (!raw) { toast('Editor is empty — nothing to detect', 'warning'); return; }
+            const { detected, switched } = detectAndSwitch(raw);
+            if (!detected) { toast('Could not confidently auto-detect a format', 'warning'); return; }
+            if (switched) toast('Detected ' + detected.toUpperCase() + ' — switched tab', 'success', 2200);
+            else toast('Already on ' + detected.toUpperCase() + ' — detection confirmed', 'success', 2000);
+        });
+
+        /* ── COPY OUTPUT (shared) ── */
+        copyBtn.addEventListener('click', async () => {
+            if (!lastOutput) return;
+            try {
+                await navigator.clipboard.writeText(lastOutput);
+                toast('Copied to clipboard!', 'success', 2000);
+            } catch { toast('Failed to copy', 'error'); }
+        });
+
+        /* ── Keyboard shortcut: Ctrl+Enter (shared) ── */
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('btn-validate').click();
+            }
+        });
+
+        /* ── Initial tab resolution (route/query param, FR-007) ── */
+        setActiveTab(resolveInitialTab());
+        updateCounts();
+    });
+})();
+</script>
+</body>
+</html>

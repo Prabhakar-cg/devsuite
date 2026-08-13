@@ -25,31 +25,32 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Folder Diff** — compare entire directory trees with filter chips (All / Modified / Added / Removed).
 - Export as `.patch` or copy unified diff to clipboard.
 
-### 2. JSON Linter & Formatter
-- Validate JSON with real-time exact line/column error pointers.
-- Pretty-print, minify, and sort keys alphabetically.
+### 2. Data Format Linter
+- **JSON / YAML / XML / TOON tab strip** — switch formats instantly, in-page, no reload; input text is preserved across switches, output resets.
+- **JSON tab** — Validate, Format (2-space pretty-print), Minify, Sort Keys (recursive alphabetical).
+- **YAML tab** — Validate, Format (2-space/120-column/double-quote re-dump). Supports Kubernetes, Docker Compose, GitHub Actions configs.
+- **XML tab** — Validate (well-formedness only, via the browser's native parser), Format (2-space structural reindent), Minify — mixed content, CDATA, and comments always preserved untouched.
+- **TOON tab** — Validate/Format against a first-party implementation of [Token-Oriented Object Notation](https://github.com/toon-format/spec), a compact indentation-based format with tabular arrays, designed to cut token count in LLM prompts.
+- **Convert to any other format** — every tab has a "→ <format>" button for each of the other three, routed through a shared canonical value so JSON/YAML/XML/TOON all interconvert; named array fields survive an XML round trip via an `<item>`-wrapped element.
+- Legacy routes `/json`, `/yaml`, `/xml` keep working (each opens the matching tab); the primary route is `/data-linter` (`?tab=toon` for TOON, which has no bare legacy route).
 
-### 3. YAML Linter & Validator
-- Parse and validate YAML configs (Kubernetes, Docker Compose, Actions).
-- Format clean YAML or convert directly to JSON.
-
-### 4. Regex Tester
+### 3. Regex Tester
 - Real-time match highlighting inside the Monaco Editor.
 - Group captures and named group display.
 - `g`, `i`, `m`, `s` flag toggles.
 
-### 5. Base64 Encoder / Decoder
+### 4. Base64 Encoder / Decoder
 - Encode/Decode strings with full UTF-8 support.
 - URL-safe mode and JWT decoding panel (splits header, payload, signature).
 
-### 6. Crypto Suite
+### 5. Crypto Suite
 - **Hash Generator** — MD5, SHA-1, SHA-256, SHA-512 in one shot.
 - **AES Encrypt / Decrypt** — CBC, ECB, and CTR modes via CryptoJS (self-hosted).
 - **RSA Key Pair** — generate 2048/4096-bit keypairs, encrypt, and decrypt in-browser.
 - **HMAC Sign & Verify** — SHA-256 and SHA-512.
 - Navigate all panels via tab buttons; all operations are fully offline.
 
-### 7. Local API Tester
+### 6. Local API Tester
 - **Local-first REST client** — a high-speed REST client for testing endpoints. No account, no cloud sync, no telemetry.
 - **Request Engine** — GET, POST, PUT, DELETE, PATCH, custom headers, JSON / form / text / GraphQL bodies, OAuth2.
 - **Collection Runner** — run a folder or the whole collection sequentially with per-request test results and a pass/fail summary; runtime variables persist across the run for request chaining.
@@ -62,7 +63,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Local CORS Proxy** — built-in FastAPI proxy to bypass browser CORS restrictions (SSRF-guarded).
 - **Persistent Collections** — saved in DevDB (`collections` store).
 
-### 8. Secure Terminal & SFTP
+### 7. Secure Terminal & SFTP
 - **Multi-tab SSH client** — open parallel sessions to different hosts, each in its own xterm.js tab.
 - **Password & Private Key auth** — PEM key import supported.
 - **Encrypted profiles** — session credentials stored in DevDB (`ssh_profiles` store), encrypted client-side with a Master Password.
@@ -71,7 +72,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Inline delete** — remove sessions from the sidebar with a single click (no modal needed).
 - **Network Notice**: Session profiles are stored locally (in DevDB / `ssh_profiles`, encrypted client-side). However, SSH/SFTP actions and the local CORS proxy initiate **outbound network connections** — backend endpoints such as `/api/proxy`, `/api/ssh/terminal`, and `/api/sftp/*` transmit data off-machine to the target host. The strictly-offline guarantee applies only to tools that perform no network I/O.
 
-### 9. Cron Visualizer
+### 8. Cron Visualizer
 - **4 dialect support** — Unix/Linux, Quartz/Spring, AWS EventBridge, GitHub Actions.
 - **Live expression parser** with per-field validation chips and plain-English human-readable description.
 - **Visual Field Builder** — click-to-toggle grids for Minute, Hour, Month, Day-of-Week; synced with the text input.
@@ -80,7 +81,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Preset Library** — curated common expressions per dialect (Unix, Quartz, AWS, GitHub), click-to-load.
 - **Export** — copy raw expression, YAML (K8s / GitHub Actions), or AWS EventBridge JSON.
 
-### 10. Secret Vault
+### 9. Secret Vault
 - **KeePass-style encrypted secret manager** — store tokens, passwords, SSH keys, and API credentials.
 - **AES-256 client-side encryption** — all secrets are encrypted in-browser before being sent to the backend. The server never sees plaintext.
 - **Master Password gate** — lock screen on every visit; password is never stored anywhere.
@@ -88,15 +89,15 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Categories** — organize secrets by type (Token, Password, SSH Key, API Key, Note, Other).
 - **Persistence** via DevDB (`vault` store) — survives server restarts.
 
-### 11. DevDB Manager
+### 10. DevDB Manager
 - **Unified encrypted database inspector** — view all DevDB stores, sizes, and metadata.
 - **Export / Import** — download or upload the full `.dsb` database file.
 - **Auth-gated** — requires the same Master Password used by the Secret Vault.
 - **Store viewer** — browse raw JSON content of any named store.
 
-### 12. File Format Converter
-- **Multi-format conversion engine** — convert between JSON, CSV, YAML, XML, TSV, XLSX, Markdown, HTML, DOCX, and PDF.
-- **Client-side conversions** — JSON ↔ YAML, JSON ↔ CSV, Markdown → HTML done entirely in-browser.
+### 11. File Format Converter
+- **Multi-format conversion engine** — convert between JSON, CSV, YAML, XML, TOON, TSV, XLSX, Markdown, HTML, DOCX, and PDF.
+- **Fully-connected structured-data cluster** — JSON, CSV, TSV, YAML, XML, and TOON each convert to all five of the others, entirely client-side (uses the same first-party [TOON](https://github.com/toon-format/spec) codec as the Data Format Linter's TOON tab, shared via `static/toon.js`).
 - **Server-side conversions** — XLSX ↔ CSV/JSON, PDF → TXT, DOCX → TXT, and document → PDF via WeasyPrint.
 - **Drag-and-drop upload** — supports drag-and-drop or file picker.
 
@@ -187,8 +188,7 @@ devsuite/
     ├── index.html           # Text & Folder Diff tool
     ├── app.js               # Diff tool JavaScript (Monaco, merge, folder tree)
     │
-    ├── json.html            # JSON Linter & Formatter
-    ├── yaml.html            # YAML Linter & Validator
+    ├── data-linter.html     # Data Format Linter (JSON/YAML/XML tab strip)
     ├── regex.html           # Regex Tester
     ├── base64.html          # Base64 Encoder / Decoder + JWT Inspector
     │
@@ -222,7 +222,8 @@ devsuite/
     ├── db-manager.js        # DevDB Manager UI logic
     ├── db-manager.css       # DevDB Manager styles
     │
-    └── file-converter.html  # File Format Converter (JSON, CSV, YAML, XLSX, PDF, DOCX, etc.)
+    ├── toon.js              # TOON codec (pure, node-testable) — shared by data-linter.html + file-converter.html
+    └── file-converter.html  # File Format Converter (JSON, CSV, YAML, XML, TOON, XLSX, PDF, DOCX, etc.)
 ```
 
 ---

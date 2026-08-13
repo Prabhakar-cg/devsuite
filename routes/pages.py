@@ -34,16 +34,17 @@ def read_diff():
     return _serve_html("index.html")
 
 
-@router.get("/json", response_class=HTMLResponse, summary="Serve JSON linter tool")
-def read_json_tool():
-    """Serve the JSON Linter & Formatter tool."""
-    return _serve_html("json.html")
+@router.get("/data-linter", response_class=HTMLResponse, summary="Serve Data Format Linter tool")
+@router.get("/json", response_class=HTMLResponse, summary="Serve Data Format Linter tool (JSON tab)")
+@router.get("/yaml", response_class=HTMLResponse, summary="Serve Data Format Linter tool (YAML tab)")
+@router.get("/xml", response_class=HTMLResponse, summary="Serve Data Format Linter tool (XML tab)")
+def read_data_linter_tool():
+    """Serve the Data Format Linter tool (JSON/YAML/XML tabs).
 
-
-@router.get("/yaml", response_class=HTMLResponse, summary="Serve YAML linter tool")
-def read_yaml_tool():
-    """Serve the YAML Linter & Validator tool."""
-    return _serve_html("yaml.html")
+    Four routes serve the same file; the client resolves the initial active
+    tab from `location.pathname` / `?tab=` (specs/016-data-linter research.md R3).
+    """
+    return _serve_html("data-linter.html")
 
 
 @router.get("/regex", response_class=HTMLResponse, summary="Serve Regex Tester tool")

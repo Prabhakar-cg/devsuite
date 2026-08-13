@@ -40,7 +40,46 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Confirm this feature upholds every applicable principle in `.specify/memory/constitution.md`.
+Record PASS/violation for each; a violation requires an entry in Complexity Tracking with a
+documented justification.
+
+**Core principles (I–VII):** _map each to how the feature complies (or N/A)._
+
+**Spec & security baseline** (enforced continuously; violations of NON-NEGOTIABLE
+principles block merge):
+- [ ] `specs/SPEC.md` is updated **in the same commit** as any behavior/API/UI change;
+      no undocumented routes, stores, env vars, or security rules (Art. I).
+- [ ] No new outbound network paths beyond the user-initiated CORS proxy and SSH/SFTP;
+      no CDN assets — fonts and third-party JS self-hosted under `/static/` (Art. II).
+- [ ] Vanilla HTML/CSS/JS, no frameworks or build tools; all persistence via DevDB —
+      no SQLite/Postgres/Redis (Art. III).
+- [ ] Backend never decrypts vault/SSH blobs; master password never transmitted or
+      stored; API Tester cookie jar stays in-memory only (Art. IV).
+- [ ] No `innerHTML` with untrusted data; document responses never carry
+      `unsafe-eval`; no new inline `<script>` tags (Art. V).
+- [ ] Changes to auth/CSRF/sessions/rate-limiting/PBKDF2/AES-GCM/WebSocket gate/CORS
+      proxy land **with tests** per SPEC §10.2 (Art. VI).
+- [ ] Release path bumps `deps.py` `APP_VERSION`, README badge, CHANGELOG heading,
+      and SPEC §1.3 together; cache busting stays automatic via `_serve_html()` (Art. VII).
+- [ ] Static-analysis gates stay green: SonarCloud, CodeQL, CodeRabbit, Snyk —
+      Security Rating A, 0 unreviewed hotspots, 0 new violations (SPEC §10.3).
+
+**New-tool / UI cross-cutting checklist** (from CLAUDE.md gotchas — each item cost
+rework before; confirm the plan bakes them in up front):
+- [ ] Tool count stays in sync across `routes/pages.py`, `static/tools.html`,
+      `static/home.html`, README, and SPEC; `tools.html` static filter counts match the
+      DOM that `updateFilterCounts()` recomputes.
+- [ ] Any UMD bundle (`jszip.min.js`, `crypto-js.min.js`, …) loads **before**
+      `require.min.js`; `tests/python/test_asset_order.py` still passes.
+- [ ] Scripting/eval features route through `static/script-sandbox-worker.js` and its
+      scoped CSP — never widen the document CSP; renames update `_SANDBOX_WORKER_PATH`
+      and `tests/python/test_csp.py`.
+- [ ] Touching `routes/ssh.py` preserves the pre-setup WebSocket carve-out
+      (`_ws_require_session` gates only once a master password exists, SEC-14).
+- [ ] Icons are stroke-based inline SVG — no emoji in UI chrome (SPEC §9.8/§9.9);
+      design tokens come from `static/style.css`, themes via `static/theme.js`.
+- [ ] New third-party JS requires updating SPEC §11 **and** `UPGRADE_PLAN.md`.
 
 ## Project Structure
 

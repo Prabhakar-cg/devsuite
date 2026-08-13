@@ -243,36 +243,48 @@ class ApiClient {
      *
      * Routing strategy (smart CORS handling):
      *
-     *  1. Same-origin target  →  direct fetch only (no CORS involved).
+     *  1. Same-origin target  →  direct fetch only (no CORS involved), regardless
+     *     of proxyMode — there's nothing for a proxy to fix here.
      *
-     *  2. Cross-origin + non-simple request (has Authorization header, custom
-     *     headers, JSON body, PUT/PATCH/DELETE, …)  →  the browser would send a
-     *     CORS preflight (OPTIONS) that almost certainly fails on APIs with no
-     *     CORS policy. Skip the doomed direct attempt; route through the local
-     *     proxy immediately. This eliminates one failing round-trip, the
-     *     "CORS blocked" error in browser DevTools, and the visible latency
-     *     spike before the proxy kicks in.
+     *  2. config.proxyMode === 'proxy'  →  always proxy, skip the direct attempt
+     *     entirely (explicit user override — e.g. they already know the target
+     *     has no CORS policy and don't want to wait out a doomed attempt).
      *
-     *  3. Cross-origin + simple request (bare GET/HEAD, POST with form body, no
-     *     custom headers)  →  try direct first. If the API returns
-     *     Access-Control-Allow-Origin the response succeeds without a proxy.
-     *     On any fetch error fall back to the proxy (isRetry path).
+     *  3. config.proxyMode === 'direct'  →  always attempt direct, and — unlike
+     *     'auto' — never silently fall back to the proxy on failure. This is for
+     *     deliberately reproducing what a real browser client would experience:
+     *     a genuine CORS/network failure surfaces as the response, not a masked
+     *     proxy retry.
      *
-     *  4. config.useProxy = true  →  always proxy (user override).
+     *  4. config.proxyMode === 'auto' (default) or unset:
+     *     a. Cross-origin + non-simple request (has Authorization header, custom
+     *        headers, JSON body, PUT/PATCH/DELETE, …)  →  the browser would send
+     *        a CORS preflight (OPTIONS) that almost certainly fails on APIs with
+     *        no CORS policy. Skip the doomed direct attempt; route through the
+     *        local proxy immediately. This eliminates one failing round-trip,
+     *        the "CORS blocked" error in browser DevTools, and the visible
+     *        latency spike before the proxy kicks in.
+     *     b. Cross-origin + simple request (bare GET/HEAD, POST with form body,
+     *        no custom headers)  →  try direct first. If the API returns
+     *        Access-Control-Allow-Origin the response succeeds without a proxy.
+     *        On any fetch error fall back to the proxy (isRetry path).
      */
     static async execute(config, isRetry = false) {
         const startTime = performance.now();
         const targetUrl = this.buildUrl(config.url, config.queryParams);
         const headers = this.buildHeaders(config);
         const body = this.buildBody(config);
+        const proxyMode = config.proxyMode || (config.useProxy ? 'proxy' : 'auto');
+        const sameOrigin = !this._isCrossOrigin(targetUrl);
+        const forceDirect = !sameOrigin && proxyMode === 'direct';
 
         // Determine routing before the first network attempt.
-        const skipDirect = !config.useProxy
-            && !isRetry
-            && this._isCrossOrigin(targetUrl)
-            && this._willNeedPreflight(config.method, headers);
+        const skipDirect = !sameOrigin && !forceDirect && !isRetry && (
+            proxyMode === 'proxy'
+            || (proxyMode === 'auto' && this._willNeedPreflight(config.method, headers))
+        );
 
-        const isProxied = config.useProxy || isRetry || skipDirect;
+        const isProxied = !sameOrigin && !forceDirect && (isRetry || skipDirect);
 
         let fetchUrl = targetUrl;
         let fetchOptions = { method: config.method, headers: headers, body: body };
@@ -287,12 +299,12 @@ class ApiClient {
             const response = await fetch(fetchUrl, fetchOptions);
             return await this._parseResponse(response, startTime, isProxied);
         } catch (error) {
-            if (!isRetry && !isProxied) {
+            if (!isRetry && !isProxied && !forceDirect) {
                 // Simple cross-origin request tried directly and failed — fall back to proxy.
                 console.warn('Direct fetch failed (likely CORS or network). Retrying via local proxy…');
                 return await this.execute(config, true);
             }
-            // Proxy path also failed — return a structured error response.
+            // Proxy path failed, or 'direct' mode forbids the fallback — return a structured error.
             const timeMs = Math.round(performance.now() - startTime);
             return {
                 status: 0,
@@ -300,8 +312,9 @@ class ApiClient {
                 headers: {},
                 setCookies: [],
                 body: null,
-                bodyText: error.message
-                    + '\n\n(Status 0 — the target host may be unreachable, or the proxy could not connect.)',
+                bodyText: error.message + (forceDirect
+                    ? '\n\n(Status 0 — "Force Direct" mode: the browser blocked this request (likely CORS) and did not fall back to the proxy.)'
+                    : '\n\n(Status 0 — the target host may be unreachable, or the proxy could not connect.)'),
                 timeMs: timeMs,
                 sizeBytes: 0,
                 error: error.message,

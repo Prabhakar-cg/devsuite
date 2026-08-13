@@ -880,6 +880,122 @@ async function deleteEntry(id) {
     toast('Secret deleted', 'error');
 }
 
+// ── Backup / Restore ────────────────────────────────────────────────
+// Export: re-encrypts the in-memory entries with the current session's Kenc and
+// downloads a self-contained JSON envelope (no server round-trip, no new endpoint).
+// Restore: decrypts a chosen backup with a user-supplied password + the backup's own
+// embedded salt, then re-persists the recovered entries under the CURRENT session's
+// key via the existing persistVault()/POST /api/vault path.
+const BACKUP_APP_ID = 'devsuite-vault-backup';
+let pendingRestoreBackup = null; // parsed+validated backup envelope awaiting a password
+
+async function exportBackup() {
+    if (!masterKenc) return;
+    try {
+        const payload = await encryptVaultGCM(vaultEntries, masterKenc);
+        const backup = {
+            app: BACKUP_APP_ID,
+            backup_version: 1,
+            exported_at: new Date().toISOString(),
+            vault: { encrypted_blob: payload.ciphertext, iv: payload.iv, salt: vaultSaltHex, version: 2 },
+        };
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `devsuite-vault-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        toast(`Backup exported — ${vaultEntries.length} secret${vaultEntries.length === 1 ? '' : 's'}`);
+    } catch (e) {
+        toast('Export failed: ' + e.message, 'error');
+    }
+}
+
+function _restoreError(msg) {
+    const el = document.getElementById('restore-error');
+    if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function openRestoreModal() {
+    if (!masterKenc) return;
+    pendingRestoreBackup = null;
+    document.getElementById('restore-file-name').textContent = '';
+    document.getElementById('restore-pw-input').value = '';
+    document.getElementById('restore-confirm-btn').disabled = true;
+    _restoreError(null);
+    document.getElementById('restore-modal').classList.add('open');
+}
+
+function closeRestoreModal() {
+    document.getElementById('restore-modal').classList.remove('open');
+    pendingRestoreBackup = null;
+}
+
+async function handleRestoreFileChosen(file) {
+    _restoreError(null);
+    document.getElementById('restore-confirm-btn').disabled = true;
+    pendingRestoreBackup = null;
+    if (!file) return;
+    try {
+        const parsed = JSON.parse(await file.text());
+        const v = parsed?.vault;
+        if (parsed?.app !== BACKUP_APP_ID || !v?.encrypted_blob || !v?.iv || !v?.salt) {
+            throw new Error('Not a valid DevSuite vault backup file.');
+        }
+        pendingRestoreBackup = parsed;
+        document.getElementById('restore-file-name').textContent = `Selected: ${file.name}`;
+        document.getElementById('restore-confirm-btn').disabled = false;
+    } catch {
+        document.getElementById('restore-file-name').textContent = '';
+        _restoreError('Not a valid DevSuite vault backup file.');
+    }
+}
+
+async function performRestore() {
+    if (!pendingRestoreBackup || !masterKenc) return;
+    const pw = document.getElementById('restore-pw-input').value;
+    if (!pw) { _restoreError('Enter the master password this backup was encrypted with.'); return; }
+    if (!confirm('This will replace every secret currently in your vault with the contents of this backup. This cannot be undone. Continue?')) return;
+
+    const btn = document.getElementById('restore-confirm-btn');
+    btn.disabled = true;
+    _restoreError(null);
+
+    let restoredEntries;
+    try {
+        const { vault } = pendingRestoreBackup;
+        const { Kenc } = await _deriveMasterKeysV2(pw, vault.salt);
+        restoredEntries = await decryptVaultGCM(vault.encrypted_blob, vault.iv, Kenc);
+        if (!Array.isArray(restoredEntries)) throw new Error('not an array');
+    } catch {
+        _restoreError('Incorrect backup password, or the file is corrupted.');
+        btn.disabled = false;
+        return;
+    }
+
+    vaultEntries = restoredEntries;
+    selectedId = null;
+    editingId = null;
+    try {
+        await persistVault(); // re-encrypts under the CURRENT session's masterKenc
+    } catch (e) {
+        _restoreError('Decrypted successfully but failed to save: ' + e.message);
+        btn.disabled = false;
+        return;
+    }
+
+    renderCounts();
+    renderEntryList();
+    renderDetail();
+    closeRestoreModal();
+    toast(`Vault restored — ${vaultEntries.length} secret${vaultEntries.length === 1 ? '' : 's'}`);
+}
+
 // ── Modal ─────────────────────────────────────────────────────────
 let currentModalType = 'password';
 
@@ -1167,6 +1283,25 @@ document.addEventListener('DOMContentLoaded', () => {
         toast('Vault locked', 'error');
     });
 
+    // Backup / Restore
+    document.getElementById('backup-btn').addEventListener('click', exportBackup);
+    document.getElementById('restore-btn').addEventListener('click', openRestoreModal);
+    document.getElementById('restore-modal-close').addEventListener('click', closeRestoreModal);
+    document.getElementById('restore-cancel-btn').addEventListener('click', closeRestoreModal);
+    document.getElementById('restore-modal').addEventListener('click', e => {
+        if (e.target === document.getElementById('restore-modal')) closeRestoreModal();
+    });
+    const restoreFileInput = document.getElementById('restore-file-input');
+    document.getElementById('restore-choose-file-btn').addEventListener('click', () => restoreFileInput.click());
+    restoreFileInput.addEventListener('change', () => {
+        handleRestoreFileChosen(restoreFileInput.files[0]);
+        restoreFileInput.value = ''; // allow re-selecting the same file
+    });
+    document.getElementById('restore-confirm-btn').addEventListener('click', performRestore);
+    document.getElementById('restore-pw-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !document.getElementById('restore-confirm-btn').disabled) performRestore();
+    });
+
     // Sidebar filter
     document.getElementById('filter-list').addEventListener('click', e => {
         const btn = e.target.closest('.filter-btn');
@@ -1216,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Escape key
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closeModal();
+        if (e.key === 'Escape') { closeModal(); closeRestoreModal(); }
     });
 
     // Initial render (vault is locked until master password is entered)

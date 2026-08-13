@@ -12,6 +12,12 @@ behavioral, API, storage, and design contracts remain in `specs/SPEC.md`** (refe
 section throughout). New features get their own `specs/NNN-name/` directory via
 `/speckit-specify`; durable contracts fold back into `specs/SPEC.md` on completion.
 
+**Superseded (2026-07-28)**: each of the 12 tools named in User Story 1 below now has its own
+retroactive spec-kit folder (`specs/002-diff-checker` … `specs/013-file-converter`) with the full
+spec/plan/tasks/research/data-model/quickstart/contracts/checklists set. This document remains
+the historical whole-system baseline; for tool-specific behavior, requirements, or task history,
+use the tool's own folder instead. `specs/SPEC.md` §4 is the index.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Offline developer toolbox (Priority: P1)

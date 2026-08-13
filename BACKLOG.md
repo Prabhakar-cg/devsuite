@@ -19,7 +19,7 @@
 | SEC-6 | **Remove `unsafe-eval` from CSP**: Closed in v0.3.0 — API Tester scripting moved into `static/script-sandbox-worker.js` (dedicated Worker, scoped CSP with `connect-src 'none'`); document responses no longer carry `unsafe-eval`. Covered by `tests/python/test_csp.py`. | M | `[x]` |
 | SEC-7 | **JS Sandboxing**: Use Web Workers for heavy/untrusted JS logic to isolate the UI thread. API Tester scripting done in v0.3.0 (10 s timeout, no DOM/network). Remaining: diffing, crypto. | L | `[/]` |
 | SEC-8 | **Vault Password Change**: Add a "Change Master Password" flow that re-encrypts all secrets with the new key. | M | `[ ]` |
-| SEC-9 | **Vault Export / Backup**: Export vault entries as an encrypted backup file for disaster recovery. | S | `[ ]` |
+| SEC-9 | **Vault Export / Backup**: Export vault entries as an encrypted backup file for disaster recovery. Closed — "Backup"/"Restore" header controls in `vault.html`; export re-encrypts the in-memory entries client-side (no new endpoint) into a portable `{app, backup_version, exported_at, vault:{encrypted_blob,iv,salt,version}}` JSON file, restore decrypts with a supplied password + the backup's own salt and re-persists under the current session's key. `specs/011-secret-vault/spec.md` US7/FR-017/FR-018/SC-006 updated. | S | `[x]` |
 | SEC-11 | **CSP Nonces (replace `unsafe-inline`)**: Generate a per-response nonce in `_serve_html()` and inject it into all `<script>` and `<style>` tags; update CSP accordingly. Requires moving remaining inline scripts to external `.js` files first. | M | `[ ]` |
 | SEC-12 | **Localhost HTTPS**: On first run, auto-generate a self-signed cert (`trustme` or `cryptography`) and start uvicorn with `ssl_keyfile` / `ssl_certfile`. Eliminates plaintext token transit over the loopback. | M | `[ ]` |
 | SEC-13 | **Argon2id KDF**: Replace PBKDF2-HMAC-SHA256 with Argon2id (`argon2-cffi`) for the vault password. Keep PBKDF2 read path for backward compatibility via the existing header version field. Target v0.3.0+ to avoid a breaking migration. | M | `[ ]` |
@@ -33,7 +33,7 @@
 | FEAT-1 | **Color Studio**: Gradient generator, contrast checker, and palette exporter (HEX/HSL/RGB). | M | `[ ]` |
 | FEAT-2 | **ID Generator**: Bulk generate UUIDs, ULIDs, and CUIDs with entropy inspection. | S | `[ ]` |
 | FEAT-3 | **Markdown Lab**: Real-time Monaco → rendered HTML preview for README testing. | M | `[ ]` |
-| FEAT-4 | **JWT Debugger**: Full JWT decode and verify tool (HS256/RS256) with signature validation. | M | `[ ]` |
+| FEAT-4 | **JWT Debugger**: Full JWT decode and verify tool (HS256/RS256) with signature validation. Already shipped as the JWT Inspector tab in Crypto Suite (`static/crypto.html`, `specs/007-crypto-suite/spec.md` US6) — HS256/384/512 + RS256, real `crypto.subtle.verify`. Was undiscoverable (Crypto Suite's tools.html card didn't mention it, and a stale "Coming Soon" roadmap card duplicated it); both fixed. | M | `[x]` |
 | FEAT-5 | **HTTP Mock Server**: Define mock endpoints locally; replay canned JSON responses for frontend testing. | XL | `[ ]` |
 | FEAT-6 | **File Converter — more formats**: Image format conversion (PNG ↔ JPG ↔ WebP) and XML ↔ JSON client-side. | M | `[ ]` |
 | FEAT-7 | **Folder Diff — Streaming Zip Download**: Current in-browser zip (JSZip) buffers the entire output in RAM, making it unusable for files > 512 MB. Research streaming zip generation using `fflate` (streaming mode) + the File System Access API (`showSaveFilePicker`) to write chunks directly to disk with no RAM ceiling. Blocked on Chrome/Edge-only `showSaveFilePicker` availability; needs a graceful fallback for Firefox. | L | `[ ]` |
@@ -97,8 +97,8 @@
 | JSON Linter | |
 | YAML Linter | |
 | Regex Tester | |
-| Base64 Encoder / Decoder (+ JWT Inspector) | |
-| Crypto Suite | |
+| Base64 Encoder / Decoder (+ JWT decode-only panel) | |
+| Crypto Suite (+ full JWT Inspector w/ signature verification) | |
 | Local API Tester (HTTP Request Builder) | |
 | Secure Terminal & SFTP | |
 | Cron Visualizer | |

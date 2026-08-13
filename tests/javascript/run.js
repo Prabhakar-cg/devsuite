@@ -2,8 +2,9 @@
 /**
  * DevSuite JavaScript unit-test runner (SPEC §10.1) — zero dependencies.
  *
- * Covers the pure modules in static/ (curl-codegen.js, cookie-jar.js), which
- * use a browser/node dual export. Run with:  node tests/javascript/run.js
+ * Covers the pure modules in static/ (curl-codegen.js, cookie-jar.js,
+ * collection-utils.js, toon.js), which use a browser/node dual export.
+ * Run with:  node tests/javascript/run.js
  */
 'use strict';
 
@@ -13,6 +14,7 @@ const TEST_FILES = [
     'test_curl_codegen.js',
     'test_cookie_jar.js',
     'test_collection_utils.js',
+    'test_toon.js',
 ];
 
 let passed = 0;
