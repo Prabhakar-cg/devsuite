@@ -3,7 +3,7 @@
 > **Version:** 0.3.0  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
-> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 13 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `015-xml-linter`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that spec was drafted but never planned/implemented, so it is not a shipped tool and is not counted above. This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `016-`.
+> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 11 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `016-data-linter`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that spec was drafted but never planned/implemented, so it is not a shipped tool and is not counted above. `003-json-linter`, `004-yaml-linter`, and `015-xml-linter` are superseded by `016-data-linter` (kept for record, not deleted — their functional requirements remain the source of truth for exact per-format behavior). This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `017-`.
 
 ---
 
@@ -87,14 +87,15 @@ devsuite/
     ├── auth-guard.js     # 8-hour session auth for DevDB tools
     ├── devdb-client.js   # Fetch wrapper around /api/db/*
     ├── home.html / home.css
-    ├── tools.html        # Tools hub / dashboard (13 tool cards)
+    ├── tools.html        # Tools hub / dashboard (11 tool cards)
     ├── index.html / app.js            # Diff tool
-    ├── json.html / yaml.html / xml.html / regex.html / base64.html / crypto.html
+    ├── data-linter.html  / regex.html / base64.html / crypto.html
     ├── api-tester.html / api-tester.js / api-tester.css / api-client.js
     ├── script-sandbox-worker.js   # API Tester scripting sandbox (dedicated Worker, scoped CSP)
     ├── curl-codegen.js            # cURL parse + cURL/fetch/HTTPie generation (pure, node-testable)
     ├── cookie-jar.js              # Cookie parse/match/serialize logic (pure, node-testable)
     ├── collection-utils.js        # Folder path rename/move/reorder logic (pure, node-testable)
+    ├── toon.js                    # TOON codec (pure, node-testable) — shared by data-linter.html + file-converter.html
     ├── ssh-manager.html / ssh-manager.js / ssh-manager.css
     ├── sftp-browser.html / sftp-browser.js / sftp-browser.css
     ├── xterm.js / xterm.css / xterm-addon-fit.js
@@ -113,7 +114,7 @@ devsuite/
         └── require.min.js
 ```
 
-> **Note:** A Python backend test suite lives in `tests/python/` (run with `pytest`). Coverage currently focuses on the security-critical paths in §10.2. A JavaScript unit suite for the pure modules (`curl-codegen.js`, `cookie-jar.js`, `collection-utils.js`) lives in `tests/javascript/` (run with `node tests/javascript/run.js`, zero dependencies). Browser/e2e coverage remains a v1.0.0 milestone.
+> **Note:** A Python backend test suite lives in `tests/python/` (run with `pytest`). Coverage currently focuses on the security-critical paths in §10.2. A JavaScript unit suite for the pure modules (`curl-codegen.js`, `cookie-jar.js`, `collection-utils.js`, `toon.js`) lives in `tests/javascript/` (run with `node tests/javascript/run.js`, zero dependencies). Browser/e2e coverage remains a v1.0.0 milestone.
 
 ### 3.3 HTML Serving Behavior
 
@@ -128,9 +129,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 |---|---|---|---|---|
 | Home/Dashboard | `home.html` | `home.css` | `main.py` (`/`) | — |
 | Diff | `index.html` | `app.js`, `linter.css` | `/upload` | — |
-| JSON Linter | `json.html` | `app.js`, `linter.css` | `/json` | — |
-| YAML Linter | `yaml.html` | `app.js`, `linter.css` | `/yaml` | — |
-| XML Linter | `xml.html` | `linter.css` (inline `<script>`, no vendored parser — native `DOMParser`/`XMLSerializer`) | `/xml` | — |
+| Data Format Linter | `data-linter.html` | `linter.css` (inline `<script>`; `js-yaml.min.js` for YAML, native `DOMParser`/`XMLSerializer` for XML, `toon.js` for TOON) | `/data-linter`, `/json`, `/yaml`, `/xml` | — |
 | Regex Tester | `regex.html` | `linter.css` | `/regex` | — |
 | Base64 / JWT | `base64.html` | `linter.css` | `/base64` | — |
 | Crypto Suite | `crypto.html` | `linter.css`, `crypto-js.min.js` | `/crypto` | — |
@@ -140,7 +139,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Cron Visualizer | `cron.html` | `cron.js`, `cron.css` | `/cron` | — |
 | Secret Vault | `vault.html` | `vault.js`, `vault.css`, `crypto-js.min.js`, `components.js` (defines `DevSuite.csrfToken`) | `/api/vault`, `/api/auth/*` | `vault` |
 | DevDB Manager | `db-manager.html` | `db-manager.js`, `db-manager.css` | `/api/db/*` | — |
-| File Converter | `file-converter.html` | inline JS + self-hosted `js-yaml`, `papaparse`, `marked` (`/static/libs/`) | `/api/convert` | — |
+| File Converter | `file-converter.html` | inline JS + self-hosted `js-yaml`, `papaparse`, `marked` (`/static/libs/`), `toon.js` | `/api/convert` | — |
 
 ---
 
@@ -156,18 +155,16 @@ into §5–§12 below.
 | # | Tool | Route(s) | Spec |
 |---|---|---|---|
 | 4.1 | Diff Checker | `/diff` | [specs/002-diff-checker/spec.md](002-diff-checker/spec.md) |
-| 4.2 | JSON Linter & Formatter | `/json` | [specs/003-json-linter/spec.md](003-json-linter/spec.md) |
-| 4.3 | YAML Linter & Validator | `/yaml` | [specs/004-yaml-linter/spec.md](004-yaml-linter/spec.md) |
-| 4.4 | Regex Tester | `/regex` | [specs/005-regex-tester/spec.md](005-regex-tester/spec.md) |
-| 4.5 | Base64 Encoder / Decoder | `/base64` | [specs/006-base64-encoder/spec.md](006-base64-encoder/spec.md) |
-| 4.6 | Crypto Suite | `/crypto` | [specs/007-crypto-suite/spec.md](007-crypto-suite/spec.md) |
-| 4.7 | Local API Tester | `/api-tester` | [specs/008-api-tester/spec.md](008-api-tester/spec.md) |
-| 4.8 | Secure Terminal & SFTP | `/ssh`, `/sftp` | [specs/009-secure-terminal-sftp/spec.md](009-secure-terminal-sftp/spec.md) |
-| 4.9 | Cron Visualizer | `/cron` | [specs/010-cron-visualizer/spec.md](010-cron-visualizer/spec.md) |
-| 4.10 | Secret Vault | `/vault` | [specs/011-secret-vault/spec.md](011-secret-vault/spec.md) |
-| 4.11 | DevDB Manager | `/db-manager` | [specs/012-db-manager/spec.md](012-db-manager/spec.md) |
-| 4.12 | File Format Converter | `/file-converter` | [specs/013-file-converter/spec.md](013-file-converter/spec.md) |
-| 4.13 | XML Linter & Validator | `/xml` | [specs/015-xml-linter/spec.md](015-xml-linter/spec.md) |
+| 4.2 | Regex Tester | `/regex` | [specs/005-regex-tester/spec.md](005-regex-tester/spec.md) |
+| 4.3 | Base64 Encoder / Decoder | `/base64` | [specs/006-base64-encoder/spec.md](006-base64-encoder/spec.md) |
+| 4.4 | Crypto Suite | `/crypto` | [specs/007-crypto-suite/spec.md](007-crypto-suite/spec.md) |
+| 4.5 | Local API Tester | `/api-tester` | [specs/008-api-tester/spec.md](008-api-tester/spec.md) |
+| 4.6 | Secure Terminal & SFTP | `/ssh`, `/sftp` | [specs/009-secure-terminal-sftp/spec.md](009-secure-terminal-sftp/spec.md) |
+| 4.7 | Cron Visualizer | `/cron` | [specs/010-cron-visualizer/spec.md](010-cron-visualizer/spec.md) |
+| 4.8 | Secret Vault | `/vault` | [specs/011-secret-vault/spec.md](011-secret-vault/spec.md) |
+| 4.9 | DevDB Manager | `/db-manager` | [specs/012-db-manager/spec.md](012-db-manager/spec.md) |
+| 4.10 | File Format Converter | `/file-converter` | [specs/013-file-converter/spec.md](013-file-converter/spec.md) |
+| 4.11 | Data Format Linter | `/data-linter`, `/json`, `/yaml`, `/xml` | [specs/016-data-linter/spec.md](016-data-linter/spec.md) |
 
 ---
 
@@ -178,10 +175,12 @@ into §5–§12 below.
 | Route | Tool |
 |---|---|
 | `GET /` | Homepage (`home.html`) |
-| `GET /tools` | Tools Hub — 13 tool cards (`tools.html`) |
+| `GET /tools` | Tools Hub — 11 tool cards (`tools.html`) |
 | `GET /diff` | Diff Checker |
-| `GET /json` | JSON Linter |
-| `GET /yaml` | YAML Linter |
+| `GET /data-linter` | Data Format Linter (JSON tab default; also `?tab=json\|yaml\|xml`) |
+| `GET /json` | Data Format Linter (legacy route, JSON tab default) |
+| `GET /yaml` | Data Format Linter (legacy route, YAML tab default) |
+| `GET /xml` | Data Format Linter (legacy route, XML tab default) |
 | `GET /regex` | Regex Tester |
 | `GET /base64` | Base64 / JWT |
 | `GET /crypto` | Crypto Suite |
@@ -192,7 +191,6 @@ into §5–§12 below.
 | `GET /vault` | Secret Vault |
 | `GET /db-manager` | DevDB Manager |
 | `GET /file-converter` | File Format Converter |
-| `GET /xml` | XML Linter |
 
 ### 5.2 Auth Endpoints
 
@@ -554,7 +552,7 @@ Themes driven by `theme.js`. Custom event `devsuite-theme-changed` fires on togg
 
 ### 10.1 Test Suites
 
-> **Status:** The Python backend suite exists in `tests/python/` (`pytest`) and covers the §10.2 security-critical paths. A zero-dependency JavaScript unit suite exists in `tests/javascript/` for the pure modules (`curl-codegen.js`, `cookie-jar.js`, `collection-utils.js`); browser/e2e coverage (Playwright) is still a v1.0.0 deliverable.
+> **Status:** The Python backend suite exists in `tests/python/` (`pytest`) and covers the §10.2 security-critical paths. A zero-dependency JavaScript unit suite exists in `tests/javascript/` for the pure modules (`curl-codegen.js`, `cookie-jar.js`, `collection-utils.js`, `toon.js`); browser/e2e coverage (Playwright) is still a v1.0.0 deliverable.
 
 | Suite | Location | Command |
 |---|---|---|

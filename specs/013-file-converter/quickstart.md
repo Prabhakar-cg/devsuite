@@ -23,11 +23,19 @@ Open `http://127.0.0.1:8000/file-converter`.
 | US3 | Bad Content-Length | `curl -X POST /api/convert -H "Content-Length: -1" ...` | HTTP 400 "Invalid Content-Length header" |
 | US4 | PNG→WEBP | Drop a `.png`, select WEBP | Canvas re-encode, no network request |
 | US4 | PNG→Base64 | Drop a `.png`, select "Base64 (Data URL)" | Data-URL text output with Copy button |
+| US5 | JSON→TOON | Drop a `.json` array of objects, select TOON | Tabular `items[N]{fields}:` form for uniform arrays, no network request |
+| US5 | TOON→JSON round trip | Take the TOON output above, save as `.toon`, drop it back in, select JSON | Reproduces the original array |
+| US5 | Malformed TOON | Drop `.toon` text with a tabular header declaring more rows than present, attempt conversion | Toast "Conversion failed: Declared N tabular row(s) but only found M" |
+| — | XML matrix completion | Drop a `.yaml` file, select XML; then drop that XML output back in, select YAML | Reproduces the original YAML structure (previously YAML→XML didn't exist at all) |
+| — | Named-array field survives XML | Convert `{"roles":["admin","ops"]}` (as `.json`) to XML, then that XML back to JSON | `roles` field name and array both survive (previously the field silently vanished — the bug fixed by FR-013) |
 
 ## Automated coverage that exists today
 
-None specific to this tool. `pytest tests/python/` covers unrelated security-critical paths
-(SPEC §10.2); no test file references `routes/convert.py` or exercises `/api/convert`.
+`tests/javascript/test_toon.js` (run via `node tests/javascript/run.js`) covers the shared
+`static/toon.js` codec this tool's TOON conversions depend on — round-trip encode/decode,
+malformed-input rejection, and the spec's own canonical examples. Otherwise: none specific to
+this tool. `pytest tests/python/` covers unrelated security-critical paths (SPEC §10.2); no test
+file references `routes/convert.py` or exercises `/api/convert`.
 
 ## Coverage gaps (honest accounting)
 
@@ -35,10 +43,14 @@ None specific to this tool. `pytest tests/python/` covers unrelated security-cri
   upload-size enforcement, not (most importantly) the `_safe_url_fetcher` SSRF block. Given the
   SSRF-block's security relevance (research.md R2), this is the highest-priority gap of the three
   tools in this batch (011/012/013) to close with a real test.
-- **No JS test coverage** for any client-side conversion function (`convertJsonText`,
-  `xmlToJson`, `htmlToMarkdown`, `convertImage`, etc.) — all are pure functions with no DOM
-  dependency (aside from `convertImage`'s Canvas use) and would be straightforward to add to
-  `tests/javascript/` alongside `curl-codegen.js`/`cookie-jar.js`/`collection-utils.js`.
+- **No JS test coverage** for any client-side conversion function *local to this file*
+  (`convertJsonText`, `xmlToJson`, `htmlToMarkdown`, `convertImage`, etc.) — all are pure
+  functions with no DOM dependency (aside from `convertImage`'s Canvas use and `xmlToJson`'s
+  `DOMParser` use) and would be straightforward to add to `tests/javascript/` alongside
+  `curl-codegen.js`/`cookie-jar.js`/`collection-utils.js`. The one exception is the TOON codec
+  (`Toon.encode`/`Toon.decode`, shared with `016-data-linter`), which now has real coverage via
+  `tests/javascript/test_toon.js` since it lives in its own requireable module — this gap is
+  about the functions still inline in `file-converter.html` itself, not TOON.
 
 ## Acceptance gates
 

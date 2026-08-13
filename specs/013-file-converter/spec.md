@@ -127,6 +127,34 @@ call.
 
 ---
 
+### User Story 5 - Convert structured data to/from TOON (Priority: P2)
+
+A developer converts JSON, CSV, TSV, YAML, or XML into TOON (Token-Oriented Object Notation) to
+paste into a token-budget-constrained LLM prompt, or converts TOON back into any of those formats
+— all client-side, no data leaving the machine.
+
+**Why this priority**: A new format node connecting to the existing structured-data cluster,
+using the same shared `static/toon.js` codec `016-data-linter`'s TOON tab already validated;
+useful, but the tool's core value (the formats it already supported) doesn't depend on it.
+
+**Independent Test**: Convert a JSON array of objects to TOON — the output uses TOON's tabular
+form (`items[N]{fields}:` header + comma rows) for uniform arrays — then convert that TOON output
+back to JSON and confirm it reproduces the original array, with no `/api/convert` network request
+at any point.
+
+**Acceptance Scenarios**:
+
+1. **Given** a `.json`, `.csv`, `.tsv`, `.yaml`, or `.xml` file, **When** the user selects TOON as
+   the target, **Then** the conversion runs entirely client-side via `Toon.encode()` (loaded from
+   the shared `static/toon.js` module) and the result displays with no server round-trip.
+2. **Given** a `.toon` file, **When** the user selects JSON, CSV, TSV, YAML, or XML as the target,
+   **Then** `Toon.decode()` parses it client-side and the result is produced without a server call.
+3. **Given** malformed TOON (e.g. a tabular header declaring more rows than are present), **When**
+   conversion is attempted, **Then** a toast shows "Conversion failed: <message>" naming what was
+   wrong, not a generic crash.
+
+---
+
 ### Edge Cases
 
 - **Server-side XLSX with an empty first sheet**: rejected with HTTP 400 "Spreadsheet is empty"
@@ -142,6 +170,13 @@ call.
   extension and no transformation, since Markdown is a superset of plain text.
 - **File extension is the sole format-detection signal**: there is no content-sniffing; a
   mislabeled extension (e.g. a JSON file named `.txt`) will be routed as `txt`, not `json`.
+- **Converting an object/array containing a key that isn't a valid XML element name** (through
+  any pair that routes via XML): invalid characters are replaced with `_` when serialized — not
+  reversible back to the original key on a further XML→other round trip (same trade-off as
+  `016-data-linter`'s identical XML bridge).
+- **Converting TOON with nested tabular field-groups** (`orders[2]{id,customer{name,country}}:`)
+  from an external TOON source: not decoded by this implementation (`Toon.decode` — see
+  `specs/016-data-linter/spec.md` FR-011) — a parse error, not silently-dropped data.
 
 ## Requirements *(mandatory)*
 
@@ -169,6 +204,20 @@ call.
 - **FR-010**: Unsupported source→target pairs (not present in `CONV_MAP`) MUST NOT be offered in
   the target dropdown; if attempted anyway via the server path, the backend MUST reject with HTTP
   400 naming the unsupported pair.
+- **FR-011**: JSON, CSV, TSV, YAML, XML, and TOON MUST form a fully-connected client-side
+  conversion cluster — every one of these six formats MUST be able to convert to every other one
+  in the cluster, all client-side (`Toon.encode`/`Toon.decode` from the shared `static/toon.js`
+  module for TOON; `jsonToXml`/`xmlToJson` for the XML pairs, per FR-013).
+- **FR-012**: TOON support MUST NOT introduce a second implementation of the codec — this tool and
+  `specs/016-data-linter` MUST both load the same `static/toon.js` module rather than each
+  carrying an inline copy.
+- **FR-013**: Converting an object/array value to XML MUST wrap named array fields in their key's
+  element with repeated `<item>` children (`{"roles":["a","b"]}` →
+  `<roles><item>a</item><item>b</item></roles>`) so the field name and the array survive the round
+  trip; decoding XML back to another format MUST recognize that convention (an element with no
+  attributes whose children are all `<item>` decodes to an array, with scalar items typed via the
+  same null/true/false/number inference TOON's decoder uses) while leaving the pre-existing
+  `@attributes`/`#text` handling for all other XML content unchanged.
 
 ### Key Entities
 
@@ -177,6 +226,9 @@ call.
   whether it requires a network call.
 - **Conversion Result**: either `{output: string}` (text, rendered inline + downloadable) or a
   binary `Blob` (server responses, or Canvas-produced image blobs).
+- **TOON**: a plain-JS-value serialization format (comma-delimited, 2-space indent, tabular arrays
+  for uniform arrays of flat objects) — the sixth node in the client-side structured-data cluster,
+  encoded/decoded via the shared `static/toon.js` module (FR-012), not a locally-implemented copy.
 
 ## Success Criteria *(mandatory)*
 
@@ -188,9 +240,12 @@ call.
   `Content-Length` header — no meaningful processing time spent on a doomed request.
 - **SC-003**: A PDF-rendering conversion never issues an outbound HTTP request for a resource
   referenced inside the converted document, verified by `_safe_url_fetcher`'s scheme allowlist.
-- **SC-004**: All 10 documented formats (JSON, CSV, YAML, XML, TSV, XLSX, Markdown, HTML, DOCX,
-  PDF) plus the undocumented image formats (PNG/JPG/GIF/BMP/WEBP/SVG/ICO) are reachable from the
-  UI's format dropdowns with at least one valid target each.
+- **SC-004**: All 11 documented formats (JSON, CSV, YAML, XML, TOON, TSV, XLSX, Markdown, HTML,
+  DOCX, PDF) plus the undocumented image formats (PNG/JPG/GIF/BMP/WEBP/SVG/ICO) are reachable from
+  the UI's format dropdowns with at least one valid target each.
+- **SC-005**: JSON, CSV, TSV, YAML, XML, and TOON each reach all five of the others in one client-
+  side conversion — up from XML being a one-way dead end (JSON→XML existed; nothing converted
+  *from* XML except back to JSON) and TOON not existing at all, before this extension.
 
 ## Assumptions
 
@@ -218,3 +273,15 @@ call.
   `routes/convert.py` has no `require_unlocked` call and behaves identically to that group).
   Treated here as a documentation omission to fix in SPEC.md §8 (add File Converter to the
   no-auth row), not a behavioral question — the code's no-auth behavior is unambiguous.
+- **The XML array-field-name-loss bug fix (FR-013) is a behavior change for any existing
+  JSON/CSV/TSV/YAML→XML conversion involving a named array field** — before this fix, such a
+  field silently vanished from the XML output (its items became bare `<item>` siblings with no
+  wrapper); after, it's correctly wrapped. Nothing that previously worked correctly changes
+  output; only output that was silently wrong is now silently correct. No automated test
+  previously locked in the buggy behavior, so this is treated as a bug fix, not a breaking
+  behavior change requiring a deprecation path — consistent with how `016-data-linter` treated
+  the identical bug found in its own (separately-implemented, now also-fixed) XML bridge.
+- **This spec remains a retroactive/verified-against-code document** (see header) for everything
+  except User Story 5 and FR-011/012/013, which were specified before implementation in the
+  normal spec-first order, since they're genuinely new capability rather than documentation of
+  already-shipped behavior.

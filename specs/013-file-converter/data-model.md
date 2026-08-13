@@ -7,11 +7,12 @@ routing table and the request/response shapes.
 
 | From | To (client-side) | To (server-side) |
 |---|---|---|
-| `json` | csv, tsv, yaml, xml | xlsx |
-| `csv` | json, tsv, yaml | xlsx |
-| `tsv` | csv, json, yaml | — |
-| `yaml` | json, csv | — |
-| `xml` | json | — |
+| `json` | csv, tsv, yaml, xml, toon | xlsx |
+| `csv` | json, tsv, yaml, xml, toon | xlsx |
+| `tsv` | csv, json, yaml, xml, toon | — |
+| `yaml` | json, csv, tsv, xml, toon | — |
+| `xml` | json, csv, tsv, yaml, toon | — |
+| `toon` | json, csv, tsv, yaml, xml | — |
 | `xlsx` | — | csv, json |
 | `md`/`markdown` | html | pdf |
 | `html` | md, txt | pdf |
@@ -24,7 +25,30 @@ routing table and the request/response shapes.
 Server-side pairs additionally require a matching branch in `routes/convert.py`'s
 `convert_file()` dispatcher (`src_ext`/`target_format` if-chain) — the client `CONV_MAP` and the
 server dispatcher are two independently maintained sources of truth for the same routing; they
-must be kept in sync manually (no shared schema/codegen).
+must be kept in sync manually (no shared schema/codegen). `json`/`csv`/`tsv`/`yaml`/`xml`/`toon`
+are now a fully-connected client-side cluster (FR-011) — every one of the six reaches the other
+five in one conversion, all via the plain-JS-value shape each format's own parser/serializer
+already produces or consumes (`JSON.parse`/`stringify`, `jsyaml.load`/`dump`, `Papa.parse` +
+`jsonToCsv`, `jsonToXml`/`xmlToJson`, `Toon.encode`/`decode`).
+
+### TOON codec (`static/toon.js`, shared with `specs/016-data-linter`)
+
+Loaded as a `<script>` tag (browser global `Toon`), exposing `Toon.encode(value)`,
+`Toon.decode(text)`, and two helpers reused by the XML bridge below and by
+`016-data-linter`'s auto-detect: `Toon.looksLikeToonHeader(text)`, `Toon.inferScalarFromText(text)`.
+Not vendored — a first-party implementation of a subset of the published spec; see
+`specs/016-data-linter/spec.md` FR-011 for the exact scope (comma delimiter, 2-space indent, no
+nested tabular field-groups).
+
+### XML bridge (`jsonToXml`/`xmlToJson`, local to this file — not shared with `016-data-linter`'s
+separately-implemented, independently-fixed copy)
+
+`jsonToXml(value, tag)` wraps array values in their own `tag` element with repeated `<item>`
+children so the field name survives serialization (FR-013) — fixed from a prior version that
+dropped the tag for array values entirely. `xmlToJson(node)` decodes that convention back into a
+real array on the way in (scalar items typed via `Toon.inferScalarFromText`), while every other
+XML shape keeps the pre-existing `@attributes`/`{"#text": ...}` conventions for arbitrary/foreign
+XML content unchanged.
 
 ## `Conversion Result` (client-side, `resultData`)
 

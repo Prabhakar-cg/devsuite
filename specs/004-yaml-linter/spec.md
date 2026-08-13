@@ -4,7 +4,9 @@
 
 **Created**: 2026-07-28
 
-**Status**: Implemented (retroactive spec)
+**Status**: Superseded by [specs/016-data-linter/spec.md](../016-data-linter/spec.md) — kept
+for record; its functional requirements remain the source of truth for exact YAML-tab
+behavior in the consolidated tool.
 
 **Input**: Retroactive spec-kit conversion of the already-shipped YAML Linter & Validator tool
 (`/yaml`), per the DevSuite spec-kit migration (see `specs/SPEC.md` §4.3 and the module-to-file

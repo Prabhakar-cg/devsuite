@@ -4,7 +4,9 @@
 
 **Created**: 2026-07-28
 
-**Status**: Implemented (retroactive spec)
+**Status**: Superseded by [specs/016-data-linter/spec.md](../016-data-linter/spec.md) — kept
+for record; its functional requirements remain the source of truth for exact JSON-tab
+behavior in the consolidated tool.
 
 **Input**: Retroactive documentation of the already-shipped JSON Linter tool (`/json`,
 `static/json.html`), migrating SPEC.md §4.2 into the spec-kit per-feature structure. Ground

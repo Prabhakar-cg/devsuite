@@ -106,12 +106,43 @@ Single project: `routes/`, `static/` at repo root.
 
 ---
 
+## Phase 8: Extension — TOON format + completed XML matrix + bug fix (User Story 5)
+
+- [X] T027 Extract the TOON codec into a shared `static/toon.js` module (browser/node dual
+      export, matching `curl-codegen.js`/`cookie-jar.js`/`collection-utils.js`'s precedent) so
+      this tool and `specs/016-data-linter` load one implementation instead of two (FR-012,
+      research.md R5); replace `data-linter.html`'s inline copy with a `<script>` include.
+- [X] T028 Add `tests/javascript/test_toon.js` (round-trip encode/decode, malformed-input
+      rejection, spec-canonical examples, `looksLikeToonHeader`/`inferScalarFromText` helpers) —
+      the first automated coverage this tool has ever had for any client-side conversion logic.
+- [X] T029 Add `toon` to `CONV_MAP` connected to json/csv/tsv/yaml/xml (all client-side); extend
+      `convertJsonText`/`convertCsvText`/`convertTsvText`/`convertYamlText`/`convertXmlText` with
+      `toon` branches and add `convertToonText()`, in `static/file-converter.html`.
+- [X] T030 Complete the XML matrix: add `xml→csv/tsv/yaml`, `yaml→xml`, `csv→xml`, `tsv→xml`
+      (all client-side, reusing `jsonToXml`/`xmlToJson`); change `convertXmlText`'s signature to
+      accept a target format instead of being JSON-only, in `static/file-converter.html`.
+- [X] T031 Fix `jsonToXml`'s array-field-name-loss bug (FR-013, research.md R6): wrap array
+      values in their own tag with `<item>` children instead of discarding the tag. Add a
+      matching `xmlToJson` decode path (`xmlToJsonArrayItem`) so the array round-trips cleanly,
+      reusing `Toon.inferScalarFromText` for item typing; verified via Python mirrors of both the
+      encode (well-formedness, `xml.etree`) and decode (exact algorithm match) sides.
+- [X] T032 Update `specs/013-file-converter/spec.md` (User Story 5, FR-011/012/013, new Edge
+      Cases, SC-005, Assumptions), `research.md` (R5-R6), `data-model.md` (matrix + TOON/XML-
+      bridge entities), `quickstart.md` (US5 rows + coverage-gap note).
+- [X] T033 Re-run `pytest tests/python/` and `node tests/javascript/run.js`; live route
+      smoke-check (`/file-converter` and `/static/toon.js` both 200, TOON present in the
+      from-format dropdown).
+
 ## Dependencies & Execution Order
 
-- Setup → Foundational → US1 (MVP) → US2 → US3 → US4 → Polish. US1–US4 are largely
-  file-disjoint (client-side text handlers vs. server Python handlers vs. Canvas image code) and
-  could have been built in parallel.
+- Setup → Foundational → US1 (MVP) → US2 → US3 → US4 → Polish → Extension (Phase 8, User Story
+  5). US1–US4 are largely file-disjoint (client-side text handlers vs. server Python handlers vs.
+  Canvas image code) and could have been built in parallel.
 
 ## Implementation Strategy
 
-Retroactive record, not a forward plan. Future changes should branch a new numbered spec.
+Retroactive record (Phases 1-7) plus one forward-planned extension (Phase 8, User Story 5) added
+in the normal spec-first order. Per CLAUDE.md's convention (a fix or extension to an existing
+tool updates that tool's own spec folder), future changes to this tool continue to land here
+rather than in a new numbered spec — the "branch a new numbered spec" line this replaced predated
+that convention being written down.

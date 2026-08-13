@@ -4,7 +4,10 @@
 
 **Created**: 2026-08-12
 
-**Status**: Draft
+**Status**: Superseded by [specs/016-data-linter/spec.md](../016-data-linter/spec.md) — kept
+for record; its functional requirements remain the source of truth for exact XML-tab behavior
+in the consolidated tool. (This spec's own implementation, built earlier in the same session,
+is being folded into 016 rather than shipped as a standalone `/xml` tool.)
 
 **Input**: User description: "Add an XML Linter & Validator to DevSuite's file-operations
 tools, following the exact same pattern as the JSON Linter (`specs/003-json-linter`) and
