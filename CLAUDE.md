@@ -59,7 +59,7 @@ Rules (full text in the constitution):
 - **`tools.html` filter counts** are recomputed from the DOM at runtime (`updateFilterCounts()`); the static HTML values are just the pre-JS paint — keep both correct.
 
 <!-- SPECKIT START -->
-Spec-kit artifacts: constitution at `.specify/memory/constitution.md`, master spec at
-`specs/SPEC.md`, feature specs under `specs/NNN-name/`. See the Spec-Driven
-Development section above for the workflow.
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at specs/017-notes-workspace/plan.md
 <!-- SPECKIT END -->

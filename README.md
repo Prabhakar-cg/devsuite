@@ -101,6 +101,14 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Server-side conversions** — XLSX ↔ CSV/JSON, PDF → TXT, DOCX → TXT, and document → PDF via WeasyPrint.
 - **Drag-and-drop upload** — supports drag-and-drop or file picker.
 
+### 12. Notes Workspace
+- **Notepad++-style editor** — multi-tab Markdown editing via Monaco, with syntax highlighting and find & replace.
+- **OneNote-style organization** — Notebook → Section → Page hierarchy with drag-to-reorder.
+- **Obsidian-style wiki-links** — `[[Page Name]]` cross-references with autocomplete, create-on-link, and an automatic backlinks panel; renaming a page updates every link that pointed at it.
+- **Tags & search** — inline `#tag` syntax with a tag browser, plus full-text search across every notebook.
+- **AES-256-GCM client-side encryption** — same v2 scheme as Secret Vault; the server only ever stores an opaque encrypted blob (`notes` store).
+- **Master Password gate** — same shared Master Password as Secret Vault; no unencrypted fallback.
+
 ---
 
 ## Premium UI

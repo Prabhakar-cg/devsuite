@@ -15,6 +15,7 @@ const TEST_FILES = [
     'test_cookie_jar.js',
     'test_collection_utils.js',
     'test_toon.js',
+    'test_notes_links.js',
 ];
 
 let passed = 0;

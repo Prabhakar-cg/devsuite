@@ -5,6 +5,7 @@ Covers:
   GET/POST /api/vault          — Secret Vault blob
   GET/POST /api/collections    — API Tester collections
   GET/POST /api/ssh/profiles   — SSH session profiles
+  GET/POST /api/notes          — Notes Workspace blob
 """
 import deps
 from fastapi import APIRouter, HTTPException, Request
@@ -130,3 +131,41 @@ def save_ssh_profiles(data: dict, request: Request):
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Failed to save SSH profiles: %s", e)
         raise HTTPException(status_code=500, detail="Failed to save SSH profiles") from e
+
+
+# ─── Notes Workspace ──────────────────────────────────────────────────────────
+
+@router.get(
+    "/api/notes",
+    summary="Get encrypted notes blob",
+    responses={401: {"description": "Session token missing or expired"}},
+)
+def get_notes(request: Request):
+    """Return the raw encrypted notes blob from the DevDB 'notes' store.
+    Backward-compatible shim — the server never decrypts notes contents.
+    """
+    require_unlocked(request)
+    store = deps._db.get_store("notes")
+    return store if store else {"encrypted_blob": ""}
+
+
+@router.post(
+    "/api/notes",
+    summary="Save encrypted notes blob",
+    responses={
+        401: {"description": "Session token missing or expired"},
+        500: {"description": "Failed to save notes"},
+    },
+)
+def save_notes(data: dict, request: Request):
+    """Persist the encrypted notes blob into the DevDB 'notes' store.
+    Backward-compatible shim — the server never decrypts notes contents.
+    """
+    require_unlocked(request)
+    try:
+        deps._db.set_store("notes", data)
+        deps._db.save()
+        return {"status": "ok"}
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.error("Failed to save notes: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save notes") from e

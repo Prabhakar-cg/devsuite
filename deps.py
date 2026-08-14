@@ -175,6 +175,6 @@ def require_unlocked(request: Request) -> None:
 
 
 # ─── Shared DevDB / validation constants ─────────────────────────────────────
-_ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "app_prefs"}
+_ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "app_prefs", "notes"}
 # Only allow printable, non-shell-special characters for WSL distro names.
 _DISTRO_NAME_RE = re.compile(r'^[A-Za-z0-9_.\-]+$')
