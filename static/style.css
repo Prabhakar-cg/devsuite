@@ -148,6 +148,7 @@ html, body {
 .tool-icon-indigo  { background: linear-gradient(135deg, #6366f1, #3b82f6); }
 .tool-icon-amber   { background: linear-gradient(135deg, #d97706, #f59e0b); }
 .tool-icon-emerald { background: linear-gradient(135deg, #059669, #10b981); }
+.tool-icon-cyan    { background: linear-gradient(135deg, #0e7490, #06b6d4); }
 
 .tool-name { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.2px; color: var(--text); }
 .tool-name .tool-accent { color: var(--blue); }

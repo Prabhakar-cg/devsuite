@@ -9,7 +9,7 @@
     <!-- CSS -->
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link rel="stylesheet" href="/static/xterm.css">
-    <link rel="stylesheet" href="/static/ssh-manager.css?v=3">
+    <link rel="stylesheet" href="/static/ssh-manager.css?v=4">
     <!-- Dependencies -->
     <script src="/static/theme.js?v=2"></script>
     <script src="/static/crypto-js.min.js"></script>
@@ -25,52 +25,94 @@
         <div style="display:flex; align-items:center; gap:0.75rem;">
             <a href="/tools" class="back-link">← DevSuite</a>
             <div class="tool-identity">
-                <div class="tool-icon tool-icon-cyan" style="background:linear-gradient(135deg,#0c4a6e,#0369a1);color:#fff;">
+                <div class="tool-icon tool-icon-cyan">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="4 17 10 11 4 5"></polyline>
                         <line x1="12" y1="19" x2="20" y2="19"></line>
                     </svg>
                 </div>
                 <span class="tool-name">
-                    Secure <span class="tool-accent" style="color:#0ea5e9;">Terminal</span>
+                    Secure <span class="tool-accent">Terminal</span>
                 </span>
                 <span class="tool-version">V2.0</span>
             </div>
         </div>
         <div class="header-controls">
-            <button id="add-server-btn" class="btn-small" style="background:#0369a1; color:#fff; border:none; margin-left:1rem;">+ Add Session</button>
+            <button id="add-server-btn" class="btn btn-primary btn-sm" style="margin-left:1rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Session
+            </button>
         </div>
     </header>
 
     <!-- Master Password Modal (shown only for migration; auth is handled by AuthGuard) -->
     <div id="master-password-overlay" class="modal-overlay" style="display:none;">
         <div class="modal">
-            <h2>Unlock Session Storage</h2>
-            <p style="color:var(--text-muted); margin-top:0.5rem; font-size:0.9rem;">Your SSH profiles are encrypted locally. Enter your Master Password to unlock Terminal and SFTP.</p>
-            <input type="password" id="master-password" class="url-input" placeholder="Master Password" style="width:100%; margin:1rem 0;">
-            <button id="unlock-btn" class="send-btn" style="width:100%; background:#0369a1; color:#fff;">Unlock / Initialize</button>
+            <div class="modal-header">
+                <div class="modal-header-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <h2>Unlock Session Storage</h2>
+            </div>
+            <p class="modal-desc">Your SSH profiles are encrypted locally. Enter your Master Password to unlock Terminal and SFTP.</p>
+            <div class="field-group" style="margin-top:1rem;">
+                <label class="field-label" for="master-password">Master Password</label>
+                <input type="password" id="master-password" class="field-input" placeholder="Master Password" autocomplete="off" spellcheck="false">
+            </div>
+            <button id="unlock-btn" class="btn btn-primary btn-block">Unlock / Initialize</button>
         </div>
     </div>
 
     <!-- Server Config Modal -->
     <div id="server-modal-overlay" class="modal-overlay" style="display:none;">
         <div class="modal" style="width: 400px;">
-            <h2>Session Configuration</h2>
+            <div class="modal-header">
+                <div class="modal-header-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                </div>
+                <h2>Session Configuration</h2>
+            </div>
             <input type="hidden" id="srv-id">
-            <input type="text" id="srv-name" class="url-input" placeholder="Display Name (e.g., Prod Web Server)" style="width:100%; margin-bottom:0.5rem;">
-            <input type="text" id="srv-group" class="url-input" placeholder="Folder/Group (e.g., Linux Servers)" style="width:100%; margin-bottom:0.5rem;">
-            <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
-                <input type="text" id="srv-host" class="url-input" placeholder="Host / IP" style="flex:3;">
-                <input type="number" id="srv-port" class="url-input" placeholder="Port" value="22" style="flex:1;">
+
+            <div class="field-group" style="margin-top:1rem;">
+                <label class="field-label" for="srv-name">Display Name</label>
+                <input type="text" id="srv-name" class="field-input" placeholder="e.g., Prod Web Server">
             </div>
-            <input type="text" id="srv-user" class="url-input" placeholder="Username" style="width:100%; margin-bottom:0.5rem;">
-            <input type="password" id="srv-pass" class="url-input" placeholder="Password (Optional)" style="width:100%; margin-bottom:0.5rem;">
-            <textarea id="srv-key" class="url-input" placeholder="Private Key (Optional, PEM format)" style="width:100%; margin-bottom:0.5rem; height:100px; font-family:var(--font-mono); font-size:0.8rem;"></textarea>
-            <div style="display:flex; gap:1rem; margin-top:1rem;">
-                <button id="cancel-srv-btn" class="btn-small" style="flex:1;">Cancel</button>
-                <button id="save-srv-btn" class="send-btn" style="flex:1; background:#0369a1; color:#fff;">Save</button>
+            <div class="field-group">
+                <label class="field-label" for="srv-group">Folder / Group</label>
+                <input type="text" id="srv-group" class="field-input" placeholder="e.g., Linux Servers">
             </div>
-            <button id="delete-srv-btn" class="btn-small" style="width:100%; margin-top:0.5rem; background:#dc2626; color:#fff; display:none;">Delete Session</button>
+            <div class="field-row field-group">
+                <div class="field-group">
+                    <label class="field-label" for="srv-host">Host / IP</label>
+                    <input type="text" id="srv-host" class="field-input" placeholder="192.168.1.10">
+                </div>
+                <div class="field-group narrow">
+                    <label class="field-label" for="srv-port">Port</label>
+                    <input type="number" id="srv-port" class="field-input" value="22">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="srv-user">Username</label>
+                <input type="text" id="srv-user" class="field-input" placeholder="root">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="srv-pass">Password <span style="text-transform:none;font-weight:400;">(optional)</span></label>
+                <input type="password" id="srv-pass" class="field-input" placeholder="Password" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="srv-key">Private Key <span style="text-transform:none;font-weight:400;">(optional, PEM format)</span></label>
+                <textarea id="srv-key" class="field-input" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" style="height:100px; font-family:var(--font-mono); font-size:0.8rem;"></textarea>
+            </div>
+
+            <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+                <button id="cancel-srv-btn" class="btn" style="flex:1;">Cancel</button>
+                <button id="save-srv-btn" class="btn btn-primary" style="flex:1;">Save</button>
+            </div>
+            <button id="delete-srv-btn" class="btn btn-danger btn-block" style="margin-top:0.6rem; display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                Delete Session
+            </button>
         </div>
     </div>
 
@@ -80,12 +122,21 @@
         <!-- Left vertical strip — Sessions | SFTP -->
         <div class="vertical-strip">
             <button class="strip-btn active" id="strip-sessions" title="Terminal Sessions">
+                <span class="strip-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                </span>
                 <span class="strip-text">Sessions</span>
             </button>
             <button class="strip-btn" id="strip-sftp" title="SFTP Browser">
+                <span class="strip-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </span>
                 <span class="strip-text">SFTP</span>
             </button>
             <button class="strip-btn" id="strip-dashboard" title="Server Dashboard">
+                <span class="strip-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </span>
                 <span class="strip-text">Dashboard</span>
             </button>
         </div>
@@ -98,7 +149,10 @@
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span>User sessions</span>
                     </div>
-                    <input type="text" id="quick-connect" class="url-input" placeholder="Quick connect..." style="font-size:0.85rem; padding:0.4rem 0.6rem; border-radius:12px; width:100%;">
+                    <div class="search-input-wrap">
+                        <svg class="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="quick-connect" class="field-input" placeholder="Quick connect…" aria-label="Search sessions" style="padding-left:2.1rem; font-size:0.85rem;">
+                    </div>
                 </div>
                 <div class="sidebar-content" id="server-list">
                     <!-- Injected via JS -->
@@ -111,7 +165,10 @@
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span>Connect via SFTP</span>
                     </div>
-                    <input type="text" id="sftp-session-search" class="url-input" placeholder="Search sessions..." style="font-size:0.85rem; padding:0.4rem 0.6rem; border-radius:12px; width:100%;">
+                    <div class="search-input-wrap">
+                        <svg class="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="sftp-session-search" class="field-input" placeholder="Search sessions…" aria-label="Search SFTP sessions" style="padding-left:2.1rem; font-size:0.85rem;">
+                    </div>
                 </div>
                 <div class="sidebar-content" id="sftp-session-list">
                     <!-- Injected via JS -->
@@ -124,7 +181,10 @@
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span>Server Dashboard</span>
                     </div>
-                    <input type="text" id="dashboard-session-search" class="url-input" placeholder="Search sessions..." style="font-size:0.85rem; padding:0.4rem 0.6rem; border-radius:12px; width:100%;">
+                    <div class="search-input-wrap">
+                        <svg class="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="dashboard-session-search" class="field-input" placeholder="Search sessions…" aria-label="Search dashboard sessions" style="padding-left:2.1rem; font-size:0.85rem;">
+                    </div>
                 </div>
                 <div class="sidebar-content" id="dashboard-session-list">
                     <!-- Injected via JS -->
@@ -141,14 +201,18 @@
                 <div id="terminals-wrapper" style="width:100%; flex:1; background:#000; position:relative; overflow:hidden;">
                     <div id="terminal-overlay" class="overlay-msg">
                         <div style="text-align:center;">
-                            <h2 style="margin-bottom:1rem; color:#0ea5e9;">DevSuite Professional Terminal</h2>
-                            <p style="color:#ccc; font-family:var(--font-mono); font-size:0.9rem;">
-                                ✔ Multiple Tabs<br>
-                                ✔ Password &amp; Private Key Auth<br>
-                                ✔ End-to-End Encryption
-                            </p>
-                            <p style="color:var(--text-muted); margin-top:2rem; font-size:0.85rem;">Select a session from the sidebar or click <strong>+ Add Session</strong>.</p>
-                            <button onclick="document.getElementById('strip-sftp').click()" style="display:inline-block; margin-top:1rem; color:#0ea5e9; font-size:0.85rem; background:transparent; border:1px solid rgba(14,165,233,0.4); padding:0.4rem 1rem; border-radius:8px; cursor:pointer;">📁 Switch to SFTP Browser →</button>
+                            <h2 style="margin-bottom:1rem; color:var(--blue);">DevSuite Professional Terminal</h2>
+                            <ul class="overlay-feature-list">
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="20 6 9 17 4 12"/></svg> Multiple Tabs</li>
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="20 6 9 17 4 12"/></svg> Password &amp; Private Key Auth</li>
+                                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="20 6 9 17 4 12"/></svg> End-to-End Encryption</li>
+                            </ul>
+                            <p style="color:var(--text-muted); margin-top:2rem; font-size:0.85rem;">Select a session from the sidebar or click <strong>Add Session</strong>.</p>
+                            <button class="overlay-cta-btn" id="terminal-overlay-sftp-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                Switch to SFTP Browser
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -158,33 +222,42 @@
             <div id="sftp-panel" style="flex:1; display:none; flex-direction:column; overflow:hidden;">
 
                 <!-- SFTP Toolbar -->
-                <div class="view-header" id="sftp-toolbar" style="gap:0.75rem; padding:0 1rem;">
+                <div class="view-header" id="sftp-toolbar" style="gap:0.5rem; padding:0 1rem;">
                     <div id="sftp-conn-indicator" style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:var(--text-muted); flex:1; font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                        <span style="width:8px;height:8px;border-radius:50%;background:#6b7280;flex-shrink:0;" id="sftp-status-dot"></span>
+                        <span class="status-dot" id="sftp-status-dot"></span>
                         <span id="sftp-conn-label">Not connected — select a session</span>
                     </div>
-                    <button id="sftp-up-btn" class="btn-small" style="padding:0.25rem 0.6rem;" disabled>↑ Up</button>
-                    <button id="sftp-refresh-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↺</button>
-                    <button id="sftp-upload-btn" class="btn-small" style="padding:0.25rem 0.6rem; display:none;">↑ Upload</button>
-                    <input type="file" id="sftp-upload-input" style="display:none;" multiple>
-                    <button id="sftp-disconnect-btn" class="btn-small" style="color:#b91c1c; border-color:rgba(239,68,68,0.3); display:none;">Disconnect</button>
+                    <button id="sftp-up-btn" class="icon-btn" title="Go up one directory" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                    </button>
+                    <button id="sftp-refresh-btn" class="icon-btn" title="Refresh directory listing" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    </button>
+                    <button id="sftp-upload-btn" class="btn btn-sm" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Upload
+                    </button>
+                    <input type="file" id="sftp-upload-input" style="display:none;" multiple aria-label="Upload files to current directory">
+                    <button id="sftp-disconnect-btn" class="btn btn-sm btn-danger" style="display:none;">Disconnect</button>
                 </div>
 
                 <!-- Path bar -->
                 <div style="padding:0.4rem 1rem; border-bottom:1px solid var(--border); background:var(--bg-1); display:flex; align-items:center; gap:0.5rem;">
-                    <span style="color:var(--text-muted); font-size:0.75rem;">PATH</span>
-                    <input type="text" id="sftp-path-input" class="url-input" value="/" readonly
-                        style="flex:1; font-family:var(--font-mono); font-size:0.82rem; padding:0.25rem 0.5rem; background:var(--bg-3);">
+                    <label for="sftp-path-input" style="color:var(--text-muted); font-size:0.75rem; font-weight:600; letter-spacing:0.04em;">PATH</label>
+                    <input type="text" id="sftp-path-input" class="field-input" value="/" readonly
+                        style="flex:1; font-family:var(--font-mono); font-size:0.82rem; padding:0.3rem 0.6rem; background:var(--bg-3);">
                 </div>
 
                 <!-- File Grid -->
                 <div style="flex:1; overflow-y:auto; padding:0.75rem 1rem; position:relative;" id="sftp-file-area">
                     <!-- Empty state -->
-                    <div id="sftp-empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:1rem; color:var(--text-muted); text-align:center;">
-                        <div style="width:64px;height:64px;border-radius:16px;background:var(--bg-3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem;">📁</div>
+                    <div id="sftp-empty-state" class="panel-empty-state">
+                        <div class="panel-empty-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        </div>
                         <div>
-                            <p style="font-size:1rem; font-weight:600; color:var(--text-color); margin:0 0 0.3rem;">SFTP File Browser</p>
-                            <p style="font-size:0.85rem; margin:0;">Click a session in the sidebar to connect.</p>
+                            <p class="panel-empty-title">SFTP File Browser</p>
+                            <p class="panel-empty-desc">Click a session in the sidebar to connect.</p>
                         </div>
                     </div>
                     <!-- Loading -->
@@ -193,7 +266,7 @@
                         <span style="font-size:0.9rem;">Loading directory…</span>
                     </div>
                     <!-- Error -->
-                    <div id="sftp-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; border:1px solid rgba(239,68,68,0.3); color:#b91c1c; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:0.5rem;"></div>
+                    <div id="sftp-error-msg" class="panel-error-msg"></div>
                     <!-- File grid -->
                     <div id="sftp-file-grid" class="sftp-grid"></div>
                 </div>
@@ -204,37 +277,40 @@
                 <!-- Toolbar -->
                 <div class="view-header" style="gap:0.75rem; padding:0 1rem; border-bottom: 1px solid var(--border);">
                     <div id="dashboard-conn-indicator" style="display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:var(--text-muted); flex:1; font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                        <span style="width:8px;height:8px;border-radius:50%;background:#6b7280;flex-shrink:0;" id="dashboard-status-dot"></span>
+                        <span class="status-dot" id="dashboard-status-dot"></span>
                         <span id="dashboard-conn-label">Not connected — select a session</span>
                     </div>
-                    <button id="dashboard-disconnect-btn" class="btn-small" style="color:#dc2626; border-color:rgba(239,68,68,0.3); display:none;">Disconnect</button>
+                    <button id="dashboard-disconnect-btn" class="btn btn-sm btn-danger" style="display:none;">Disconnect</button>
                 </div>
                 
                 <div style="flex:1; overflow-y:auto; padding:1.5rem; position:relative; background:var(--bg-2);" id="dashboard-content-area">
                     <!-- Empty state -->
-                    <div id="dashboard-empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:1rem; color:var(--text-muted); text-align:center;">
-                        <div style="width:64px;height:64px;border-radius:16px;background:var(--bg-3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem;">📊</div>
+                    <div id="dashboard-empty-state" class="panel-empty-state">
+                        <div class="panel-empty-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        </div>
                         <div>
-                            <p style="font-size:1rem; font-weight:600; color:var(--text-color); margin:0 0 0.3rem;">System Dashboard</p>
-                            <p style="font-size:0.85rem; margin:0;">Click a session in the sidebar to view live metrics.</p>
+                            <p class="panel-empty-title">System Dashboard</p>
+                            <p class="panel-empty-desc">Click a session in the sidebar to view live metrics.</p>
                         </div>
                     </div>
-                    
+
                     <div id="dashboard-loading" style="display:none; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:1rem; color:var(--text-muted);">
                         <div class="sftp-spinner-inline"></div>
                         <span style="font-size:0.9rem;">Connecting and fetching telemetry…</span>
                     </div>
-                    
-                    <div id="dashboard-error-msg" style="display:none; padding:0.85rem 1rem; border-radius:8px; border:1px solid rgba(239,68,68,0.3); color:#dc2626; font-family:var(--font-mono); font-size:0.85rem; margin-bottom:1rem;"></div>
+
+                    <div id="dashboard-error-msg" class="panel-error-msg" style="margin-bottom:1rem;"></div>
 
                     <!-- Metrics Grid -->
                     <div id="dashboard-metrics" style="display:none; gap:1.5rem; flex-direction:column;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <h2 style="font-size:1.25rem; font-weight:600; margin:0; display:flex; align-items:center; gap:0.5rem;">
-                                <span style="color:#0ea5e9;">🖥️</span> <span id="dash-host-title">Host</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;color:var(--blue);" aria-hidden="true" focusable="false"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                                <span id="dash-host-title">Host</span>
                             </h2>
                             <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-muted); background:var(--bg-3); padding:0.3rem 0.6rem; border-radius:6px; border:1px solid var(--border);">
-                                Uptime: <span id="dash-uptime-val" style="color:#fff;">0s</span>
+                                Uptime: <span id="dash-uptime-val" style="color:var(--text-color);">0s</span>
                             </div>
                         </div>
 
@@ -245,7 +321,7 @@
                                 <div style="height: 200px; width: 100%; position: relative;">
                                     <canvas id="dash-cpu-canvas"></canvas>
                                 </div>
-                                <div style="text-align: right; font-size: 0.85rem; font-weight: 600; color: #0ea5e9; margin-top: 0.5rem;"><span id="dash-cpu-val">0</span>% Current</div>
+                                <div style="text-align: right; font-size: 0.85rem; font-weight: 600; color: var(--blue); margin-top: 0.5rem;"><span id="dash-cpu-val">0</span>% Current</div>
                             </div>
                             <!-- RAM Graph -->
                             <div class="dashboard-card">
@@ -285,6 +361,6 @@
     <!-- Toast Container -->
     <div id="toast-container"></div>
 
-    <script src="/static/ssh-manager.js?v=5"></script>
+    <script src="/static/ssh-manager.js?v=6"></script>
 </body>
 </html>

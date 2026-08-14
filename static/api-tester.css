@@ -582,41 +582,45 @@
 .meta-chip-proxy span { color: #b45309; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.03em; }
 .meta-chip-proxy svg  { color: #b45309; flex-shrink: 0; }
 
-/* Proxy warning banner — shown below meta bar when a request was proxied */
-/*
- * Solid colors throughout — no rgba overlays.
- * rgba-on-white blends to a warm mid-tone that kills contrast with both
- * light and dark text. Solid backgrounds are predictable across all themes.
- *
- * Default = dark themes (vs-dark removes data-theme; hc-black gets override below).
- */
+/* Proxy warning banner — shown below meta bar when a request was proxied.
+ * A soft frosted-glass card (reuses the app's --glass-* tokens, same family
+ * used by the ios-glass theme) tinted warm amber — an informational routing
+ * note, not an error, so it stays gentle rather than alarming in every theme. */
 .proxy-warning-banner {
     display: flex;
     align-items: flex-start;
-    gap: 0.55rem;
-    padding: 0.55rem 1rem;
-    background: #431407;
-    border-bottom: 1px solid #78350f;
-    color: #fde68a;
+    gap: 0.7rem;
+    margin: 0.65rem 1rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius, 14px);
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid rgba(255,159,10,0.16);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.7);
+    color: var(--amber-mid);
     font-size: 0.78rem;
-    line-height: 1.5;
+    line-height: 1.55;
 }
-.proxy-warning-banner strong { font-weight: 700; }
-
-/* Light themes — solid amber-50 background, amber-800 text (≥7:1 contrast) */
-[data-theme="vs"] .proxy-warning-banner,
-[data-theme="ios-glass"] .proxy-warning-banner {
-    background: #fffbeb;
-    border-color: #fcd34d;
-    color: #92400e;
+.proxy-warning-icon {
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; flex-shrink: 0; margin-top: 1px;
+    border-radius: 999px;
+    background: rgba(255,159,10,0.14);
+    color: var(--amber-mid);
 }
+.proxy-warning-text strong { font-weight: 700; display: block; margin-bottom: 1px; }
+.proxy-warning-text { opacity: 0.92; }
 
-/* High-contrast — maximum legibility */
+/* High-contrast — the theme already disables --glass-blur for max legibility;
+   swap the near-white glass for a light tint so it still reads clearly on black. */
 [data-theme="high-contrast"] .proxy-warning-banner {
-    background: #1c0a00;
-    border-color: #f59e0b;
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.25);
+    box-shadow: none;
     color: #fbbf24;
 }
+[data-theme="high-contrast"] .proxy-warning-icon { background: rgba(255,159,10,0.2); color: #fbbf24; }
 
 /* Test summary pushed to the right */
 #test-summary { margin-left: auto; font-size: 0.76rem; font-family: var(--font-body); }
