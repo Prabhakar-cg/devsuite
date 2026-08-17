@@ -238,6 +238,12 @@ into §5–§12 below.
 AES-256-GCM) with its own independent salt — see
 `specs/017-notes-workspace/contracts/notes-api.md`.
 
+**Auth contract:** `GET /api/notes` and `POST /api/notes` both require a valid `ds_session`
+(enforced via `require_unlocked` in `routes/storage.py`, same as `/api/vault` and
+`/api/ssh/profiles`); an expired/missing session returns 401. `POST /api/notes` is a
+mutating request, so it additionally requires the `X-CSRF-Token` header per §5.2 — an
+invalid or missing token returns 403.
+
 ### 5.5 Collections API (API Tester)
 
 | Method | Route | Description |

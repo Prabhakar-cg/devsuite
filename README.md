@@ -123,7 +123,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Local-first** — most tools process data entirely in-browser or via the local FastAPI backend with no external network access. Tools that establish outbound connections (SSH/SFTP via `/api/ssh/terminal`, `/api/sftp/*`, and the proxy via `/api/proxy`) transmit data to the target host; session credentials are encrypted client-side before leaving the browser.
 - **Unified encrypted storage** — all persistent data lives in `~/.devsuite/devdb.dsb`, a KeePass-style binary container (AES-256-GCM, PBKDF2 key derivation, 200k iterations).
 - **Client-side encryption** — the vault and SSH profiles are encrypted in-browser before reaching the backend. The server never handles plaintext secrets.
-- **DOM XSS hardened** — all dynamic content is inserted using `textContent` / `createElement` APIs; no untrusted strings ever reach `innerHTML`.
+- **DOM XSS hardened** — all dynamic content is inserted using `textContent` / `createElement` APIs; no untrusted strings ever reach `innerHTML`. The one controlled exception is the Notes Workspace Markdown preview, which assigns `DOMPurify.sanitize(marked.parse(...))` to `pane.innerHTML` — sanitized before insertion, never raw.
 - **Self-hosted libraries** — `crypto-js` and `xterm.js` are served from `/static/` rather than an external CDN.
 - **HTTP Security headers** — `X-Frame-Options`, `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, and `Referrer-Policy` on every response.
 - **HttpOnly session cookie** — the server-side session token is delivered as an `HttpOnly; SameSite=Strict` cookie (`ds_session`). JavaScript cannot read or exfiltrate it.

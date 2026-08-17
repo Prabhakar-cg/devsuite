@@ -164,6 +164,20 @@
         return results;
     }
 
+    /* ── Preview rendering ──────────────────────────────────────────── */
+
+    /**
+     * Markdown -> sanitized HTML for the preview pane. Pure wiring: `markedLib`
+     * and `purifyLib` are injected by the caller (globals `marked`/`DOMPurify`
+     * in the browser) so this never reaches a DOM API itself, and so tests can
+     * assert the sanitize step is never skipped without depending on a real
+     * DOM (Constitution Art. V — no unsanitized HTML ever reaches the page).
+     */
+    function sanitizeMarkdownBody(body, markedLib, purifyLib) {
+        const rawHtml = markedLib.parse(body || '');
+        return purifyLib.sanitize(rawHtml);
+    }
+
     /* ── Aggregate ───────────────────────────────────────────────────── */
 
     /** Convenience: every derived index a caller needs after a tree mutation, built in one pass. */
@@ -187,5 +201,6 @@
         buildTagIndex,
         searchNotes,
         buildIndexes,
+        sanitizeMarkdownBody,
     };
 });

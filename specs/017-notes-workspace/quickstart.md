@@ -87,8 +87,9 @@ instant (SC-002, <150ms perceived).
 - Open DevDB Manager (`/db-manager`) and confirm a `notes` store is listed
   alongside `vault`/`collections`/`ssh_profiles` (contracts/notes-api.md,
   "Cross-cutting: `_ALLOWED_STORES`").
-- Confirm `/tools` shows a Notes Workspace card and the tool count reads 13
+- Confirm `/tools` shows a Notes Workspace card and the tool count reads 12
   consistently across `tools.html`, `home.html`, README, and `SPEC.md §4`.
 - Type `<img src=x onerror=alert(1)>` into a page's Markdown body and
-  switch to preview mode. Expect it renders as inert text/escaped markup —
-  **no script execution** (research.md item 5, the DOMPurify requirement).
+  switch to preview mode. Expect the rendered element carries no `onerror`
+  attribute (inspect it in DevTools) and **no script executes**
+  (research.md item 5, the DOMPurify requirement).

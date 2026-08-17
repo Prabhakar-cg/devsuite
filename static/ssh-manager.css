@@ -547,8 +547,8 @@
 }
 .btn-primary:hover { background: var(--blue-hover); border-color: var(--blue-hover); box-shadow: 0 4px 14px rgba(0,113,227,0.34); }
 
-.btn-danger { background: rgba(255,59,48,0.1); border-color: rgba(255,59,48,0.3); color: #ff3b30; }
-.btn-danger:hover { background: rgba(255,59,48,0.18); }
+.btn-danger { background: rgba(255,59,48,0.1); border-color: rgba(255,59,48,0.3); color: var(--red-mid); }
+.btn-danger:hover { background: rgba(255,59,48,0.18); color: var(--red-mid); }
 
 .btn-ghost { background: transparent; border-color: transparent; }
 .btn-ghost:hover { background: var(--bg-secondary); border-color: var(--border); }
@@ -566,7 +566,7 @@
 .icon-btn:hover:not(:disabled) { background: var(--bg-secondary); color: var(--text-color); border-color: var(--border); }
 .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .icon-btn svg { width: 15px; height: 15px; }
-.icon-btn-danger:hover:not(:disabled) { background: rgba(255,59,48,0.1); color: #ff3b30; border-color: rgba(255,59,48,0.25); }
+.icon-btn-danger:hover:not(:disabled) { background: rgba(255,59,48,0.1); color: var(--red-mid); border-color: rgba(255,59,48,0.25); }
 
 /* ════════════════════════════════════════════════════════════
    Form fields

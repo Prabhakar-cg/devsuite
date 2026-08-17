@@ -111,9 +111,9 @@
 
 **Purpose**: The mechanical integration steps CLAUDE.md flags as easy to drop, plus release-readiness checks.
 
-- [X] T039 [P] Add a Notes Workspace card to `static/tools.html`; update its static filter counts to match what `updateFilterCounts()` recomputes at runtime (12 → 13 tools).
-- [X] T040 [P] Update the tool count in `static/home.html` (12 → 13).
-- [X] T041 [P] Update the tool count/list in `README.md` (12 → 13).
+- [X] T039 [P] Add a Notes Workspace card to `static/tools.html`; update its static filter counts to match what `updateFilterCounts()` recomputes at runtime (11 → 12 tools).
+- [X] T040 [P] Update the tool count in `static/home.html` (11 → 12).
+- [X] T041 [P] Update the tool count/list in `README.md` (11 → 12).
 - [X] T042 [P] Update `specs/SPEC.md`: §4 tool index (add Notes Workspace row), §5 (document `GET/POST /api/notes`), §6 (document the `notes` DevDB store shape), §11.3 (add the `dompurify.min.js` row).
 - [X] T043 [P] Update `UPGRADE_PLAN.md`'s vendored-JS inventory table with the new DOMPurify row.
 - [ ] T044 Theme sweep: verify `/notes` renders correctly under all 6 DevSuite themes (`theme.js`); fix any hardcoded-color regressions found in `notes.css`. Depends on T039–T038 (all UI built).

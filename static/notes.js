@@ -134,11 +134,29 @@ async function loadNotesTree() {
     } catch {
         throw new Error('Wrong password or corrupted notes store.');
     }
+    normalizeTree();
     rebuildIndexes();
 }
 
 function rebuildIndexes() {
     indexes = NotesLinks.buildIndexes(tree);
+}
+
+// data-model.md §4: sectionOrder/pageOrder must exactly match the set of
+// child ids that actually exist — repair dangling/missing ids after a
+// partial write before anything else reads the tree.
+function normalizeTree() {
+    tree = { version: 1, notebooks: {}, sections: {}, pages: {}, ...tree };
+    for (const sec of Object.values(tree.sections)) {
+        const existing = Object.values(tree.pages).filter(p => p.sectionId === sec.id).map(p => p.id);
+        sec.pageOrder = (sec.pageOrder || []).filter(id => existing.includes(id))
+            .concat(existing.filter(id => !(sec.pageOrder || []).includes(id)));
+    }
+    for (const nb of Object.values(tree.notebooks)) {
+        const existing = Object.values(tree.sections).filter(s => s.notebookId === nb.id).map(s => s.id);
+        nb.sectionOrder = (nb.sectionOrder || []).filter(id => existing.includes(id))
+            .concat(existing.filter(id => !(nb.sectionOrder || []).includes(id)));
+    }
 }
 
 async function persistNotesTreeNow() {
@@ -166,6 +184,15 @@ function flushSaveNow() {
     persistNotesTreeNow().catch(e => console.error(e));
 }
 
+// visibilitychange fires while the document can still complete async work;
+// beforeunload cannot await the encrypt+fetch chain, so a tab closed within
+// SAVE_DEBOUNCE_MS of the last keystroke would otherwise lose that edit.
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        flushCurrentEditorToTree();
+        flushSaveNow();
+    }
+});
 window.addEventListener('beforeunload', flushSaveNow);
 
 // ──────────────────────────────────────────
@@ -812,11 +839,11 @@ function renderPreview() {
     const pane = document.getElementById('notes-preview-pane');
     if (!currentPageId) { pane.innerHTML = ''; return; }
     const body = monacoModel ? monacoModel.getValue() : (tree.pages[currentPageId]?.body || '');
-    const rawHtml = marked.parse(body || '');
     // Constitution Art. V — never insert unsanitized HTML. marked has no
     // built-in sanitizer; DOMPurify strips script/event-handler vectors
-    // before this ever reaches the DOM (research.md item 5).
-    pane.innerHTML = DOMPurify.sanitize(rawHtml); // NOSONAR — sanitized via DOMPurify immediately above
+    // before this ever reaches the DOM (research.md item 5). Wiring lives in
+    // NotesLinks.sanitizeMarkdownBody so it's covered by a DOM-free test.
+    pane.innerHTML = NotesLinks.sanitizeMarkdownBody(body, marked, DOMPurify); // NOSONAR — sanitized via DOMPurify inside sanitizeMarkdownBody
 }
 
 function setEditorMode(mode) {

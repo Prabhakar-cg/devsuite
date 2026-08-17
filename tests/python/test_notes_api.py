@@ -55,6 +55,18 @@ def test_post_notes_without_session_is_401(client):
     assert r.status_code in (401, 403)  # 403 if CSRF check runs first
 
 
+def test_post_notes_with_session_but_no_csrf_token_is_403(client):
+    _authenticated_client(client)
+    r = client.post("/api/notes", json={"encrypted_blob": "x"})
+    assert r.status_code == 403
+
+
+def test_post_notes_with_session_but_invalid_csrf_token_is_403(client):
+    _authenticated_client(client)
+    r = client.post("/api/notes", json={"encrypted_blob": "x"}, headers={"X-CSRF-Token": "not-the-real-token"})
+    assert r.status_code == 403
+
+
 def test_get_notes_with_no_prior_save_returns_empty_blob(client):
     _authenticated_client(client)
     r = client.get("/api/notes")

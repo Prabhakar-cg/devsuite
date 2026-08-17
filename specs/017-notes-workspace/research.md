@@ -192,7 +192,7 @@ across tools).
 **Decision**: New route `GET /notes` in `routes/pages.py` serving
 `static/notes.html`, following the exact pattern of every existing tool
 route (`_serve_html("notes.html")`). Add a card to `static/tools.html`, sync
-the tool count (12 → 13) across `static/tools.html`'s static filter counts,
+the tool count (11 → 12) across `static/tools.html`'s static filter counts,
 `static/home.html`, `README.md`, and `SPEC.md §4`, per CLAUDE.md's explicit
 "Gotchas" list and Constitution "Additional Constraints".
 
