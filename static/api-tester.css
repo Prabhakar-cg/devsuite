@@ -618,9 +618,9 @@
     background: rgba(255,255,255,0.08);
     border-color: rgba(255,255,255,0.25);
     box-shadow: none;
-    color: #ffffff;
+    color: #ffffff; /* NOSONAR */
 }
-[data-theme="high-contrast"] .proxy-warning-icon { background: rgba(255,159,10,0.2); color: #ffffff; }
+[data-theme="high-contrast"] .proxy-warning-icon { background: rgba(255,159,10,0.2); color: #ffffff; } /* NOSONAR */
 
 /* Test summary pushed to the right */
 #test-summary { margin-left: auto; font-size: 0.76rem; font-family: var(--font-body); }

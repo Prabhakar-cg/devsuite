@@ -230,7 +230,7 @@ function renameNotebook(id, name) {
 function deleteNotebook(id) {
     const nb = tree.notebooks[id];
     if (!nb) return;
-    for (const secId of [...nb.sectionOrder]) deleteSection(secId, /*skipSave*/ true);
+    for (const secId of nb.sectionOrder) deleteSection(secId, /*skipSave*/ true);
     delete tree.notebooks[id];
     scheduleSave();
 }
@@ -263,7 +263,7 @@ function renameSection(id, name) {
 function deleteSection(id, skipSave = false) {
     const sec = tree.sections[id];
     if (!sec) return;
-    for (const pageId of [...sec.pageOrder]) deletePage(pageId, /*skipSave*/ true);
+    for (const pageId of sec.pageOrder) deletePage(pageId, /*skipSave*/ true);
     const nb = tree.notebooks[sec.notebookId];
     if (nb) nb.sectionOrder = nb.sectionOrder.filter(x => x !== id);
     delete tree.sections[id];
@@ -554,7 +554,7 @@ function _wireSectionDragReorder(el, sec) {
         const draggedId = e.dataTransfer.getData('text/notes-section');
         if (draggedId === sec.id) return;
         const nb = tree.notebooks[sec.notebookId];
-        if (!nb || !nb.sectionOrder.includes(draggedId)) return;
+        if (!nb?.sectionOrder.includes(draggedId)) return;
         nb.sectionOrder = nb.sectionOrder.filter(x => x !== draggedId);
         const targetIdx = nb.sectionOrder.indexOf(sec.id);
         nb.sectionOrder.splice(targetIdx, 0, draggedId);
@@ -577,7 +577,7 @@ function _wirePageDragReorder(el, page) {
         const draggedId = e.dataTransfer.getData('text/notes-page');
         if (draggedId === page.id) return;
         const sec = tree.sections[page.sectionId];
-        if (!sec || !sec.pageOrder.includes(draggedId)) return;
+        if (!sec?.pageOrder.includes(draggedId)) return;
         sec.pageOrder = sec.pageOrder.filter(x => x !== draggedId);
         const targetIdx = sec.pageOrder.indexOf(page.id);
         sec.pageOrder.splice(targetIdx, 0, draggedId);
@@ -915,7 +915,7 @@ function openTagModal() {
     const list = document.getElementById('tag-list');
     list.innerHTML = '';
     document.getElementById('tag-pages').style.display = 'none';
-    const tagNames = [...indexes.tagIndex.keys()].sort();
+    const tagNames = [...indexes.tagIndex.keys()].sort((a, b) => a.localeCompare(b));
     if (tagNames.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'notes-tag-empty';

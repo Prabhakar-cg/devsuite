@@ -26,7 +26,13 @@ const XSS_PAYLOAD = '<img src=x onerror=alert(1)>';
 function fakePurify() {
     return {
         sanitize(html) {
-            return html.replaceAll(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '');
+            let out = html;
+            let previous;
+            do {
+                previous = out;
+                out = out.replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|\S+)/gi, '');
+            } while (out !== previous);
+            return out;
         },
     };
 }
