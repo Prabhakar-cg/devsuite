@@ -19,7 +19,12 @@ def _script_order(html: str) -> list[str]:
 def _assert_umd_before_require(html: str, page: str):
     order = _script_order(html)
     require_idx = order.index("/static/libs/require.min.js")
-    for umd in ("/static/libs/jszip.min.js", "/static/crypto-js.min.js"):
+    for umd in (
+        "/static/libs/jszip.min.js",
+        "/static/crypto-js.min.js",
+        "/static/libs/dompurify.min.js",
+        "/static/libs/marked.min.js",
+    ):
         if umd in order:
             assert order.index(umd) < require_idx, (
                 f"{page}: {umd} loads after require.min.js — UMD bundles register "
@@ -56,4 +61,25 @@ def test_vault_page_loads_components_before_vault_script(client):
     )
     assert order.index("/static/components.js") < order.index("/static/vault.js"), (
         "/vault: components.js must load before vault.js (defines DevSuite.csrfToken)"
+    )
+
+
+def test_notes_page_umd_bundles_load_before_requirejs(client):
+    """DOMPurify and marked ship UMD builds; both must precede require.min.js
+    (Monaco's RequireJS loader) on /notes for the same reason as jszip/crypto-js
+    elsewhere (see module docstring)."""
+    r = client.get("/notes")
+    assert r.status_code == 200
+    _assert_umd_before_require(r.text, "/notes")
+
+
+def test_notes_page_loads_components_before_notes_script(client):
+    """notes.js calls DevSuite.csrfToken()/DevSuite.toast()/DevSuite.initMonaco()
+    (all defined in components.js) — components.js must load first."""
+    r = client.get("/notes")
+    assert r.status_code == 200
+    order = _script_order(r.text)
+    assert "/static/components.js" in order
+    assert order.index("/static/components.js") < order.index("/static/notes.js"), (
+        "/notes: components.js must load before notes.js"
     )

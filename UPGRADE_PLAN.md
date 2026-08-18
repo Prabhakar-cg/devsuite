@@ -51,6 +51,7 @@
 |---|---|---|---|
 | `static/libs/highlight.min.js` | highlight.js | unknown | [npmjs highlight.js](https://www.npmjs.com/package/highlight.js) |
 | `static/libs/marked.min.js` | marked | unknown | [npmjs marked](https://www.npmjs.com/package/marked) |
+| `static/libs/dompurify.min.js` | DOMPurify | 3.4.13 | [npmjs dompurify](https://www.npmjs.com/package/dompurify) |
 | `static/libs/papaparse.min.js` | PapaParse | unknown | [npmjs papaparse](https://www.npmjs.com/package/papaparse) |
 | `static/libs/js-yaml.min.js` | js-yaml | 4.1.0 → **4.1.1 available** | [npmjs js-yaml](https://www.npmjs.com/package/js-yaml) |
 | `static/libs/require.min.js` | RequireJS | 2.3.6 → **2.3.8 available** | [requirejs.org](https://requirejs.org/docs/download.html) |

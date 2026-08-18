@@ -107,6 +107,12 @@ def read_file_converter_tool():
     return _serve_html("file-converter.html")
 
 
+@router.get("/notes", response_class=HTMLResponse, summary="Serve Notes Workspace tool")
+def read_notes_tool():
+    """Serve the Notes Workspace tool."""
+    return _serve_html("notes.html")
+
+
 # ─── Text file upload for diff tool ──────────────────────────────────────────
 
 async def _read_upload_stream(file: UploadFile, max_size: int) -> tuple[bytearray, bool]:

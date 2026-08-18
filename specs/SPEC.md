@@ -140,6 +140,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Secret Vault | `vault.html` | `vault.js`, `vault.css`, `crypto-js.min.js`, `components.js` (defines `DevSuite.csrfToken`) | `/api/vault`, `/api/auth/*` | `vault` |
 | DevDB Manager | `db-manager.html` | `db-manager.js`, `db-manager.css` | `/api/db/*` | — |
 | File Converter | `file-converter.html` | inline JS + self-hosted `js-yaml`, `papaparse`, `marked` (`/static/libs/`), `toon.js` | `/api/convert` | — |
+| Notes Workspace | `notes.html` | `notes.js`, `notes-links.js`, `notes.css`, `auth-guard.js`, `components.js`, self-hosted `marked`, `dompurify` (`/static/libs/`), Monaco Editor | `/api/notes` | `notes` |
 
 ---
 
@@ -165,6 +166,7 @@ into §5–§12 below.
 | 4.9 | DevDB Manager | `/db-manager` | [specs/012-db-manager/spec.md](012-db-manager/spec.md) |
 | 4.10 | File Format Converter | `/file-converter` | [specs/013-file-converter/spec.md](013-file-converter/spec.md) |
 | 4.11 | Data Format Linter | `/data-linter`, `/json`, `/yaml`, `/xml` | [specs/016-data-linter/spec.md](016-data-linter/spec.md) |
+| 4.12 | Notes Workspace | `/notes` | [specs/017-notes-workspace/spec.md](017-notes-workspace/spec.md) |
 
 ---
 
@@ -175,7 +177,7 @@ into §5–§12 below.
 | Route | Tool |
 |---|---|
 | `GET /` | Homepage (`home.html`) |
-| `GET /tools` | Tools Hub — 11 tool cards (`tools.html`) |
+| `GET /tools` | Tools Hub — 12 tool cards (`tools.html`) |
 | `GET /diff` | Diff Checker |
 | `GET /data-linter` | Data Format Linter (JSON tab default; also `?tab=json\|yaml\|xml`) |
 | `GET /json` | Data Format Linter (legacy route, JSON tab default) |
@@ -191,6 +193,7 @@ into §5–§12 below.
 | `GET /vault` | Secret Vault |
 | `GET /db-manager` | DevDB Manager |
 | `GET /file-converter` | File Format Converter |
+| `GET /notes` | Notes Workspace |
 
 ### 5.2 Auth Endpoints
 
@@ -219,7 +222,7 @@ into §5–§12 below.
 | `GET` | `/api/db/export` | Download full `.dsb` file |
 | `POST` | `/api/db/import` | Upload and replace `.dsb` file |
 
-### 5.4 Vault & SSH Profile APIs (opaque pass-through)
+### 5.4 Vault, SSH Profile & Notes APIs (opaque pass-through)
 
 | Method | Route | Description |
 |---|---|---|
@@ -227,8 +230,19 @@ into §5–§12 below.
 | `POST` | `/api/vault` | Write vault blob (ciphertext) |
 | `GET` | `/api/ssh/profiles` | Read SSH profiles blob (ciphertext) |
 | `POST` | `/api/ssh/profiles` | Write SSH profiles blob (ciphertext) |
+| `GET` | `/api/notes` | Read notes tree blob (ciphertext) |
+| `POST` | `/api/notes` | Write notes tree blob (ciphertext) |
 
 **Invariant:** Backend never decrypts these blobs. Encryption/decryption happens in-browser only.
+`/api/notes` uses the same v2 WebCrypto scheme as `/api/vault` (PBKDF2-SHA256/310k →
+AES-256-GCM) with its own independent salt — see
+`specs/017-notes-workspace/contracts/notes-api.md`.
+
+**Auth contract:** `GET /api/notes` and `POST /api/notes` both require a valid `ds_session`
+(enforced via `require_unlocked` in `routes/storage.py`, same as `/api/vault` and
+`/api/ssh/profiles`); an expired/missing session returns 401. `POST /api/notes` is a
+mutating request, so it additionally requires the `X-CSRF-Token` header per §5.2 — an
+invalid or missing token returns 403.
 
 ### 5.5 Collections API (API Tester)
 
@@ -339,6 +353,7 @@ Access via the DevDB REST API is restricted to these store names (`_ALLOWED_STOR
 | `ssh_profiles` | SSH Terminal / SFTP | AES-256 ciphertext blob (never decrypted server-side) |
 | `collections` | API Tester | JSON request collections |
 | `app_prefs` | Auth system | `master_setup_done`, `master_salt`, `master_verify_blob`, `challenge_version`; `master_verify_iv` (v1) or `master_verify_nonce` (v2) |
+| `notes` | Notes Workspace | AES-256-GCM ciphertext blob (never decrypted server-side); decrypts client-side to a Notebook → Section → Page tree, see `specs/017-notes-workspace/data-model.md` |
 
 ### 6.5 JS Client (`devdb-client.js`)
 
@@ -635,6 +650,7 @@ These paths must have automated tests. Adding or changing any of them requires a
 |---|---|---|
 | `highlight.min.js` | highlight.js | — |
 | `marked.min.js` | marked | — |
+| `dompurify.min.js` | DOMPurify | — |
 | `papaparse.min.js` | PapaParse | — |
 | `js-yaml.min.js` | js-yaml | 4.1.1 available |
 | `jszip.min.js` | JSZip | — |

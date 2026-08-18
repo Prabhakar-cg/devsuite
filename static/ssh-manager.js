@@ -33,14 +33,69 @@ function destroyAllDashCharts() {
 let currentView  = 'terminal';
 
 // ──────────────────────────────────────────
+// SVG Icons (no emoji in UI chrome — SPEC §9.8/§9.9)
+// ──────────────────────────────────────────
+const ICON_PATHS = {
+    host:         '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
+    folder:       '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+    edit:         '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+    trash:        '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+    close:        '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    chevronRight: '<polyline points="9 18 15 12 9 6"/>',
+    chevronDown:  '<polyline points="6 9 12 15 18 9"/>',
+    file:         '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+    fileText:     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
+    code:         '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+    image:        '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+    archive:      '<line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+    media:        '<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>',
+    lock:         '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    check:        '<polyline points="20 6 9 17 4 12"/>',
+    warning:      '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    refresh:      '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+    alertCircle:  '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+    info:         '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+};
+
+/** Builds an inline stroke-SVG icon element. `name` must be a key in ICON_PATHS (static, not user data). */
+function svgIcon(name, { size = 15, strokeWidth = 2, className = '' } = {}) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    el.setAttribute('viewBox', '0 0 24 24');
+    el.setAttribute('fill', 'none');
+    el.setAttribute('stroke', 'currentColor');
+    el.setAttribute('stroke-width', String(strokeWidth));
+    el.setAttribute('stroke-linecap', 'round');
+    el.setAttribute('stroke-linejoin', 'round');
+    el.setAttribute('width', String(size));
+    el.setAttribute('height', String(size));
+    el.setAttribute('aria-hidden', 'true');
+    el.setAttribute('focusable', 'false');
+    if (className) el.setAttribute('class', className);
+    el.innerHTML = ICON_PATHS[name] || ''; // NOSONAR — static constant markup, not user input
+    return el;
+}
+
+// ──────────────────────────────────────────
 // Toast
 // ──────────────────────────────────────────
+const TOAST_ICONS = { error: 'alertCircle', success: 'check', warning: 'warning', info: 'info' };
+
 function showToast(msg, type = 'info') {
     const c = document.getElementById('toast-container');
     if (!c) return;
     const t = document.createElement('div');
-    t.className = `toast toast-${type}`;
-    t.textContent = msg;
+    t.className = `toast ${type}`;
+
+    const icon = document.createElement('span');
+    icon.className = 'toast-icon';
+    icon.appendChild(svgIcon(TOAST_ICONS[type] || 'host', { size: 15 }));
+
+    const body = document.createElement('span');
+    body.className = 'toast-body';
+    body.textContent = msg;
+
+    t.appendChild(icon);
+    t.appendChild(body);
     c.appendChild(t);
     setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3200);
 }
@@ -127,20 +182,24 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
     const overlay = document.getElementById('master-password-overlay');
     overlay.innerHTML = `
         <div class="modal">
-            <h2>🔄 Migrate SSH Profiles</h2>
-            <p style="color:var(--text-muted);margin-top:0.5rem;font-size:0.9rem;line-height:1.6;">
+            <div class="modal-header">
+                <div class="modal-header-icon">${svgIcon('refresh', { size: 17 }).outerHTML}</div>
+                <h2>Migrate SSH Profiles</h2>
+            </div>
+            <p class="modal-desc">
                 Your SSH profiles were encrypted with a <strong>different password</strong>.
                 Enter the old password to migrate them to your DevSuite master password,
                 or start fresh (your existing profiles will be lost).
             </p>
-            <input type="password" id="migrate-old-pwd" class="url-input"
-                   placeholder="Old SSH password" style="width:100%;margin:1rem 0 0.5rem;">
-            <div id="migrate-err" style="display:none;color:#ef4444;font-size:13px;margin-bottom:0.5rem;"></div>
-            <div style="display:flex;gap:8px;margin-top:0.5rem;">
-                <button id="migrate-btn" class="send-btn"
-                        style="flex:1;background:#0ea5e9;color:#fff;">Migrate</button>
-                <button id="migrate-fresh-btn" class="send-btn"
-                        style="flex:1;background:#374151;color:#e2e8f0;">Start Fresh</button>
+            <div class="field-group" style="margin-top:1rem;">
+                <label class="field-label" for="migrate-old-pwd">Old SSH Password</label>
+                <input type="password" id="migrate-old-pwd" class="field-input"
+                       placeholder="Old SSH password" autocomplete="off" spellcheck="false">
+            </div>
+            <div id="migrate-err" class="field-error" style="display:none;"></div>
+            <div style="display:flex;gap:8px;">
+                <button id="migrate-btn" class="btn btn-primary" style="flex:1;">Migrate</button>
+                <button id="migrate-fresh-btn" class="btn" style="flex:1;">Start Fresh</button>
             </div>
         </div>`;
     overlay.style.display = 'flex';
@@ -153,14 +212,14 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
 
         const dec = decryptData(encryptedBlob, oldPwd);
         if (!dec) {
-            errEl.textContent = '❌ Incorrect old password.';
+            errEl.textContent = 'Incorrect old password.';
             errEl.style.display = 'block';
             return;
         }
         try {
             profiles = JSON.parse(dec);
         } catch {
-            errEl.textContent = '❌ Could not parse profiles — data may be corrupted.';
+            errEl.textContent = 'Could not parse profiles — data may be corrupted.';
             errEl.style.display = 'block';
             return;
         }
@@ -168,7 +227,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
         masterKey = newPwd;
         await saveProfilesBlob(encryptData(JSON.stringify(profiles), newPwd));
         overlay.style.display = 'none';
-        showToast('✅ SSH profiles migrated to master password', 'success');
+        showToast('SSH profiles migrated to master password', 'success');
         discoverWsl();
         renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
     });
@@ -194,7 +253,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
         // No master password set — store and retrieve profiles as plain JSON
         profilesEncrypted = false;
         masterKey = '';
-        showToast('⚠️ No master password set — profiles are stored unencrypted.', 'warn');
+        showToast('No master password set — profiles are stored unencrypted.', 'warning');
         document.getElementById('master-password-overlay').style.display = 'none';
         // Load existing plain profiles if any
         try {
@@ -238,6 +297,7 @@ async function discoverWsl() {
 document.getElementById('strip-sessions').addEventListener('click', () => switchView('terminal'));
 document.getElementById('strip-sftp').addEventListener('click',    () => switchView('sftp'));
 document.getElementById('strip-dashboard')?.addEventListener('click', () => switchView('dashboard'));
+document.getElementById('terminal-overlay-sftp-btn').addEventListener('click', () => switchView('sftp'));
 
 function switchView(view) {
     currentView = view;
@@ -323,7 +383,7 @@ function _buildServerItem(p) {
 
     const nameLbl = document.createElement('div');
     nameLbl.className = 'server-name-lbl';
-    nameLbl.textContent = '🖥️ ';
+    nameLbl.appendChild(svgIcon('host', { size: 14, className: 'server-item-icon' }));
     const nameSpan = document.createElement('span');
     nameSpan.textContent = p.name || p.host;
     nameLbl.appendChild(nameSpan);
@@ -337,14 +397,14 @@ function _buildServerItem(p) {
         const editBtn = document.createElement('div');
         editBtn.className = 'edit-srv-icon';
         editBtn.title = 'Edit Session';
-        editBtn.textContent = '⚙';
+        editBtn.appendChild(svgIcon('edit', { size: 13 }));
         editBtn.addEventListener('click', e => { e.stopPropagation(); openServerModal(p); });
         actionsDiv.appendChild(editBtn);
 
         const delBtn = document.createElement('div');
         delBtn.className = 'del-srv-icon';
         delBtn.title = 'Delete Session';
-        delBtn.textContent = '🗑️';
+        delBtn.appendChild(svgIcon('trash', { size: 13 }));
         delBtn.addEventListener('click', makeDeleteHandler(p));
         actionsDiv.appendChild(delBtn);
 
@@ -363,11 +423,11 @@ function _buildGroupDiv(gName, items) {
 
     const toggleSpan = document.createElement('span');
     toggleSpan.className = 'folder-toggle';
-    toggleSpan.textContent = isExpanded ? '[-]' : '[+]';
+    toggleSpan.appendChild(svgIcon(isExpanded ? 'chevronDown' : 'chevronRight', { size: 11 }));
 
     const iconSpan = document.createElement('span');
     iconSpan.className = 'folder-icon';
-    iconSpan.textContent = '📂';
+    iconSpan.appendChild(svgIcon('folder', { size: 14 }));
 
     const nameSpan = document.createElement('span');
     nameSpan.textContent = gName;
@@ -383,7 +443,9 @@ function _buildGroupDiv(gName, items) {
     header.addEventListener('click', () => {
         const open = childrenDiv.style.display !== 'none';
         childrenDiv.style.display = open ? 'none' : 'flex';
-        header.querySelector('.folder-toggle').textContent = open ? '[+]' : '[-]';
+        const toggle = header.querySelector('.folder-toggle');
+        toggle.innerHTML = '';
+        toggle.appendChild(svgIcon(open ? 'chevronRight' : 'chevronDown', { size: 11 }));
         open ? expandedFolders.delete(gName) : expandedFolders.add(gName);
     });
 
@@ -677,16 +739,13 @@ function renderTabsHeader() {
         if (tab.id === currentTabId) d.classList.add('active');
         const titleDiv = document.createElement('div');
         titleDiv.className = 'term-tab-title';
-        const arrowSpan = document.createElement('span');
-        arrowSpan.style.color = '#0ea5e9';
-        arrowSpan.textContent = '➜';
-        titleDiv.appendChild(arrowSpan);
+        titleDiv.appendChild(svgIcon('chevronRight', { size: 12, className: 'term-tab-arrow' }));
         titleDiv.appendChild(document.createTextNode(' ' + (tab.profile.name || tab.profile.host)));
         d.appendChild(titleDiv);
 
         const closeDiv = document.createElement('div');
         closeDiv.className = 'tab-close';
-        closeDiv.textContent = '✖';
+        closeDiv.appendChild(svgIcon('close', { size: 11, strokeWidth: 2.5 }));
         d.appendChild(closeDiv);
 
         d.addEventListener('click', () => switchTab(tab.id));
@@ -740,9 +799,7 @@ async function sftpConnectTo(profile) {
     renderSftpSidebar();
 
     // Update connection indicator
-    const dot   = document.getElementById('sftp-status-dot');
-    dot.style.background = '#22c55e';
-    dot.style.boxShadow  = '0 0 6px rgba(34,197,94,0.6)';
+    document.getElementById('sftp-status-dot').className = 'status-dot status-dot-connected';
     document.getElementById('sftp-conn-label').textContent = `${profile.user}@${profile.host}:${profile.port || 22}`;
     document.getElementById('sftp-disconnect-btn').style.display = 'inline-block';
     document.getElementById('sftp-refresh-btn').style.display    = 'inline-block';
@@ -759,8 +816,7 @@ document.getElementById('sftp-disconnect-btn').addEventListener('click', () => {
     sftpConn = null;
     renderSftpSidebar();
     // Reset UI
-    document.getElementById('sftp-status-dot').style.background = '#6b7280';
-    document.getElementById('sftp-status-dot').style.boxShadow  = 'none';
+    document.getElementById('sftp-status-dot').className = 'status-dot';
     document.getElementById('sftp-conn-label').textContent  = 'Not connected — select a session';
     document.getElementById('sftp-disconnect-btn').style.display = 'none';
     document.getElementById('sftp-refresh-btn').style.display    = 'none';
@@ -866,13 +922,13 @@ function renderSftpGrid(files) {
     files.forEach(f => {
         const card      = document.createElement('div');
         card.className  = f.is_dir ? 'sftp-card sftp-card-dir' : 'sftp-card';
-        const icon      = f.is_dir ? '📁' : getSftpFileIcon(f.name);
         const size      = f.is_dir ? '' : formatFileSize(f.size);
+        const { icon, cls } = f.is_dir ? { icon: 'folder', cls: 'file-icon-dir' } : getSftpFileIcon(f.name);
 
         // Create icon element
         const iconDiv = document.createElement('div');
-        iconDiv.className = 'sftp-card-icon';
-        iconDiv.textContent = icon;
+        iconDiv.className = `sftp-card-icon ${cls}`;
+        iconDiv.appendChild(svgIcon(icon, { size: 28 }));
 
         // Create name element
         const nameDiv = document.createElement('div');
@@ -1025,7 +1081,7 @@ async function sftpHandle409(xhr, fd, file, resolve) {
     if (approved) {
         sftpRetryUpload(fd, file, fp, resolve); // resolve() called by retryXhr
     } else {
-        showToast(`Upload cancelled: host key rejected.`, 'warn');
+        showToast(`Upload cancelled: host key rejected.`, 'warning');
         resolve();
     }
 }
@@ -1097,17 +1153,21 @@ function formatFileSize(bytes) {
     return bytes + ' B';
 }
 
+const SFTP_ICON_GROUPS = {
+    code:    { icon: 'code',     cls: 'file-icon-code',    exts: ['js', 'ts', 'py', 'rb', 'go', 'sh', 'bash', 'html', 'css'] },
+    doc:     { icon: 'fileText', cls: 'file-icon-doc',     exts: ['json', 'yaml', 'yml', 'toml', 'xml', 'md', 'txt', 'log', 'pdf'] },
+    image:   { icon: 'image',    cls: 'file-icon-image',   exts: ['png', 'jpg', 'jpeg', 'gif', 'svg'] },
+    archive: { icon: 'archive',  cls: 'file-icon-archive', exts: ['zip', 'tar', 'gz', 'bz2', 'xz', 'deb'] },
+    media:   { icon: 'media',    cls: 'file-icon-media',   exts: ['mp3', 'mp4', 'mkv'] },
+    lock:    { icon: 'lock',     cls: 'file-icon-lock',    exts: ['lock'] },
+};
+
 function getSftpFileIcon(name) {
     const ext = (name || '').split('.').pop().toLowerCase();
-    const map = {
-        js: '📜', ts: '📜', py: '🐍', rb: '💎', go: '🐹', sh: '⚙️', bash: '⚙️',
-        html: '🌐', css: '🎨', json: '📋', yaml: '📋', yml: '📋', toml: '📋',
-        xml: '📋', md: '📝', txt: '📝', log: '📝', pdf: '📄',
-        png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️', svg: '🖼️',
-        zip: '📦', tar: '📦', gz: '📦', bz2: '📦', xz: '📦', deb: '📦',
-        mp3: '🎵', mp4: '🎬', mkv: '🎬', lock: '🔒',
-    };
-    return map[ext] || '📄';
+    for (const group of Object.values(SFTP_ICON_GROUPS)) {
+        if (group.exts.includes(ext)) return { icon: group.icon, cls: group.cls };
+    }
+    return { icon: 'file', cls: 'file-icon-generic' };
 }
 
 // ──────────────────────────────────────────
@@ -1124,8 +1184,7 @@ async function dashConnectTo(profile) {
     dashConn = { profile, ws: null };
     renderDashboardSidebar();
 
-    document.getElementById('dashboard-status-dot').style.background = '#eab308'; // yellow ping
-    document.getElementById('dashboard-status-dot').style.boxShadow  = '0 0 6px rgba(234,179,8,0.6)';
+    document.getElementById('dashboard-status-dot').className = 'status-dot status-dot-connecting';
     document.getElementById('dashboard-conn-label').textContent = `Connecting to ${profile.user}@${profile.host}...`;
     document.getElementById('dashboard-disconnect-btn').style.display = 'inline-block';
     
@@ -1172,8 +1231,7 @@ async function dashConnectTo(profile) {
                 }
 
                 if (msg.status === 'connected') {
-                    document.getElementById('dashboard-status-dot').style.background = '#22c55e';
-                    document.getElementById('dashboard-status-dot').style.boxShadow  = '0 0 6px rgba(34,197,94,0.6)';
+                    document.getElementById('dashboard-status-dot').className = 'status-dot status-dot-connected';
                     document.getElementById('dashboard-conn-label').textContent = `${profile.user}@${profile.host}:${profile.port || 22}`;
 
                     document.getElementById('dashboard-loading').style.display = 'none';
@@ -1198,8 +1256,7 @@ async function dashConnectTo(profile) {
 
         ws.onclose = () => {
             if (!dashConn?.ws || dashConn.ws !== expectedWs) return;
-            document.getElementById('dashboard-status-dot').style.background = '#ef4444';
-            document.getElementById('dashboard-status-dot').style.boxShadow  = 'none';
+            document.getElementById('dashboard-status-dot').className = 'status-dot status-dot-error';
             document.getElementById('dashboard-conn-label').textContent = 'Disconnected';
         };
     } catch (e) {
@@ -1254,7 +1311,7 @@ function updateDashboardGauges(metrics) {
         },
         () => ({
             type: 'line',
-            data: { labels: dashCharts.cpu_history.map(d=>d.t), datasets: [{ label: 'CPU Usage %', data: dashCharts.cpu_history.map(d=>d.y), borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4, pointRadius: 0 }] },
+            data: { labels: dashCharts.cpu_history.map(d=>d.t), datasets: [{ label: 'CPU Usage %', data: dashCharts.cpu_history.map(d=>d.y), borderColor: '#0071e3', backgroundColor: 'rgba(0,113,227,0.1)', fill: true, tension: 0.4, pointRadius: 0 }] },
             options: { responsive: true, maintainAspectRatio: false, animation: {duration: 0}, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, border: {display: false}, grid: {color: 'rgba(255,255,255,0.05)'} }, x: { border: {display: false}, grid: {color: 'transparent'}, ticks: {maxTicksLimit: 5} } } }
         })
     );
@@ -1379,8 +1436,7 @@ if(document.getElementById('dashboard-disconnect-btn')) {
         destroyAllDashCharts();
         renderDashboardSidebar();
         
-        document.getElementById('dashboard-status-dot').style.background = '#6b7280';
-        document.getElementById('dashboard-status-dot').style.boxShadow  = 'none';
+        document.getElementById('dashboard-status-dot').className = 'status-dot';
         document.getElementById('dashboard-conn-label').textContent  = 'Not connected — select a session';
         document.getElementById('dashboard-disconnect-btn').style.display = 'none';
         

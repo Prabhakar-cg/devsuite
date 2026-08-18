@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes Workspace — DevSuite</title>
+    <meta name="description" content="Notepad++-style multi-tab Markdown editor with OneNote-style notebook organization and Obsidian-style wiki-links, backlinks, and tags. Master-password encrypted.">
+    <link rel="stylesheet" href="/static/libs/fonts.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/notes.css?v=1">
+    <script src="/static/theme.js?v=2"></script>
+    <!-- UMD bundles MUST load before require.min.js (Monaco's RequireJS loader) —
+         see CLAUDE.md's "UMD bundles must load BEFORE require.min.js" gotcha. -->
+    <script src="/static/libs/dompurify.min.js"></script>
+    <script src="/static/libs/marked.min.js"></script>
+    <script src="/static/auth-guard.js?v=1"></script>
+    <script src="/static/libs/require.min.js"></script>
+    <script src="/static/components.js"></script>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            <a href="/tools" class="back-link">← DevSuite</a>
+            <div class="tool-identity">
+                <div class="tool-icon tool-icon-rose">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                </div>
+                <span class="tool-name">Notes <span class="tool-accent">Workspace</span></span>
+                <span class="tool-version">V1.0</span>
+            </div>
+        </div>
+        <div class="header-controls" style="display:flex; align-items:center; gap:0.5rem;">
+            <button id="search-btn" class="icon-btn" title="Search notes (Ctrl+K)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+            <button id="tags-btn" class="icon-btn" title="Browse tags">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.81z"/><line x1="7.5" y1="7.5" x2="7.51" y2="7.5"/></svg>
+            </button>
+            <button id="new-notebook-btn" class="btn btn-primary btn-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New Notebook
+            </button>
+        </div>
+    </header>
+
+    <!-- Notebook modal (create + rename) -->
+    <div id="notebook-modal-overlay" class="notes-modal-overlay" style="display:none;">
+        <div class="notes-modal" style="width:360px;">
+            <div class="notes-modal-header">
+                <div class="notes-modal-header-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                </div>
+                <h2 id="notebook-modal-title">New Notebook</h2>
+            </div>
+            <input type="hidden" id="notebook-modal-id">
+            <div class="field-group">
+                <label class="field-label" for="notebook-name-input">Name</label>
+                <input type="text" id="notebook-name-input" class="field-input" placeholder="e.g., Project X" maxlength="80">
+            </div>
+            <div id="notebook-modal-error" class="field-error" style="display:none;"></div>
+            <div style="display:flex; gap:0.6rem; margin-top:0.5rem;">
+                <button id="notebook-modal-cancel" class="btn" style="flex:1;">Cancel</button>
+                <button id="notebook-modal-save" class="btn btn-primary" style="flex:1;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search palette -->
+    <div id="search-modal-overlay" class="notes-modal-overlay" style="display:none;">
+        <div class="notes-modal notes-search-modal">
+            <div class="notes-search-input-row">
+                <div class="search-input-wrap">
+                    <svg class="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="search-query-input" class="field-input" placeholder="Search all notebooks…" aria-label="Search all notes">
+                </div>
+            </div>
+            <div id="search-results" class="notes-search-results"></div>
+        </div>
+    </div>
+
+    <!-- Tag browser -->
+    <div id="tag-modal-overlay" class="notes-modal-overlay" style="display:none;">
+        <div class="notes-modal notes-tag-modal">
+            <div class="notes-modal-header">
+                <div class="notes-modal-header-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.81z"/><line x1="7.5" y1="7.5" x2="7.51" y2="7.5"/></svg>
+                </div>
+                <h2>Tags</h2>
+            </div>
+            <div id="tag-list" class="notes-tag-list"></div>
+            <div id="tag-pages" class="notes-tag-pages" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="notes-container">
+        <div class="notes-sidebar">
+            <div class="notes-sidebar-header">
+                <div class="notes-sidebar-header-row">
+                    <span class="notes-sidebar-title">Notebooks</span>
+                </div>
+                <div class="search-input-wrap">
+                    <svg class="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="tree-filter-input" class="field-input" placeholder="Filter…" aria-label="Filter notebooks and pages" style="font-size:0.85rem;">
+                </div>
+            </div>
+            <div class="notes-tree" id="notes-tree"></div>
+        </div>
+
+        <div class="notes-main">
+            <div class="notes-tab-strip" id="notes-tab-strip"></div>
+
+            <div class="notes-body" id="notes-body">
+                <!-- Empty state (no page open) -->
+                <div class="notes-panel-empty" id="notes-empty-state">
+                    <div class="notes-panel-empty-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    </div>
+                    <div>
+                        <p class="notes-panel-empty-title" id="notes-empty-title">Notes Workspace</p>
+                        <p class="notes-panel-empty-desc" id="notes-empty-desc">Create a notebook to get started.</p>
+                    </div>
+                </div>
+
+                <!-- Editor column (shown when a page is open) -->
+                <div class="notes-editor-col" id="notes-editor-col" style="display:none;">
+                    <div class="notes-editor-toolbar">
+                        <span id="notes-current-title" style="font-size:0.85rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+                        <div class="notes-editor-mode-switch">
+                            <button id="mode-edit-btn" class="notes-mode-btn active">Edit</button>
+                            <button id="mode-preview-btn" class="notes-mode-btn">Preview</button>
+                        </div>
+                    </div>
+                    <div class="notes-editor-pane">
+                        <div id="notes-monaco-host"></div>
+                    </div>
+                    <div class="notes-preview-pane" id="notes-preview-pane"></div>
+                </div>
+
+                <!-- Backlinks panel (shown alongside the editor column) -->
+                <div class="notes-backlinks-panel" id="notes-backlinks-panel" style="display:none;">
+                    <div class="notes-backlinks-title">Backlinks</div>
+                    <div id="notes-backlinks-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script src="/static/notes-links.js"></script>
+    <script src="/static/notes.js"></script>
+</body>
+</html>

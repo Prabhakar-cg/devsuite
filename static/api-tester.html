@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link rel="stylesheet" href="/static/linter.css?v=2">
-    <link rel="stylesheet" href="/static/api-tester.css?v=10">
+    <link rel="stylesheet" href="/static/api-tester.css?v=13">
     <script src="/static/crypto-js.min.js"></script>
     <!-- jszip is UMD: it must load BEFORE require.min.js, otherwise it registers
          as an anonymous AMD module (no window.JSZip) and RequireJS throws
@@ -314,8 +314,10 @@
                     </output>
 
                     <div id="resp-proxy-banner" class="proxy-warning-banner" style="display:none;" role="alert">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0; margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        <div>
+                        <span class="proxy-warning-icon">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </span>
+                        <div class="proxy-warning-text">
                             <strong>CORS blocked the direct request — response fetched via local proxy.</strong>
                             Your actual client would be blocked by this API's CORS policy. Status and body are accurate, but timing includes proxy overhead and is not representative of real network latency.
                         </div>
