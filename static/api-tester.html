@@ -238,7 +238,7 @@
                             <div id="req-body-editor" style="width:100%; height:100%;"></div>
                         </div>
                         <div id="req-text-body-wrap" style="display:none; flex:1; padding:0.5rem;">
-                            <textarea id="req-text-body" class="text-body-area" placeholder="Raw text body"></textarea>
+                            <textarea id="req-text-body" class="text-body-area" placeholder="Raw text body" aria-label="Raw request body"></textarea>
                         </div>
                         <div id="req-form-data-wrap" style="display:none; flex:1; overflow-y:auto;">
                             <div class="kv-table-head" role="presentation" style="margin:0.75rem 0.875rem 0;">
@@ -357,9 +357,9 @@
 
     </div>
 
-    <input type="file" id="import-collections-file" accept=".json,.zip" style="display:none;" tabindex="-1">
-    <input type="file" id="import-env-file" accept=".json" style="display:none;" tabindex="-1">
-    <input type="file" id="openapi-file-input" accept=".json" style="display:none;" tabindex="-1">
+    <input type="file" id="import-collections-file" accept=".json,.zip" style="display:none;" tabindex="-1" aria-label="Import collections file">
+    <input type="file" id="import-env-file" accept=".json" style="display:none;" tabindex="-1" aria-label="Import environment file">
+    <input type="file" id="openapi-file-input" accept=".json" style="display:none;" tabindex="-1" aria-label="Import OpenAPI spec file">
 
     <!-- OpenAPI Import Modal -->
     <dialog id="openapi-modal" class="modal" aria-label="Import OpenAPI Spec">
@@ -374,7 +374,7 @@
             <div style="display:flex; gap:0.5rem; flex-shrink:0;">
                 <button id="btn-openapi-load-file" class="btn-small">Load JSON File…</button>
             </div>
-            <textarea id="openapi-spec-input" class="openapi-spec-textarea" placeholder='{"openapi":"3.0.0","info":{"title":"My API","version":"1.0"},"paths":{"/users":{"get":{"summary":"List users","responses":{"200":{"description":"OK"}}}}}}'></textarea>
+            <textarea id="openapi-spec-input" class="openapi-spec-textarea" placeholder='{"openapi":"3.0.0","info":{"title":"My API","version":"1.0"},"paths":{"/users":{"get":{"summary":"List users","responses":{"200":{"description":"OK"}}}}}}' aria-label="OpenAPI spec JSON"></textarea>
             <div style="display:flex; align-items:center; gap:0.625rem; flex-shrink:0;">
                 <button id="btn-openapi-import" class="btn-small btn-accent">Import into Collection</button>
                 <button id="btn-openapi-cancel" class="btn-small">Cancel</button>
@@ -485,7 +485,7 @@
                 </div>
                 <div id="code-import-wrap" class="code-import-wrap" style="display:none;">
                     <p class="code-hint">Paste a curl command — method, headers, body, basic auth, cookies, and query strings are imported into the editor. Unsupported flags are ignored.</p>
-                    <textarea id="code-import-input" class="code-import-textarea" placeholder="curl -X POST https://api.example.com/v1/users -H 'Content-Type: application/json' -d '{&quot;name&quot;:&quot;Ada&quot;}'"></textarea>
+                    <textarea id="code-import-input" class="code-import-textarea" placeholder="curl -X POST https://api.example.com/v1/users -H 'Content-Type: application/json' -d '{&quot;name&quot;:&quot;Ada&quot;}'" aria-label="Paste curl command to import"></textarea>
                     <div style="display:flex; align-items:center; gap:0.625rem;">
                         <button id="btn-code-import" class="btn-small btn-accent">Import into editor</button>
                         <span id="code-import-status" style="font-size:0.78rem; color:#dc2626;"></span>

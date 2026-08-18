@@ -513,7 +513,7 @@
          PANEL 5 — BASE64
     ══════════════════════════════════════════════ -->
     <div class="crypto-panel" id="panel-base64">
-        <input type="file" id="b64-file-input" hidden>
+        <input type="file" id="b64-file-input" hidden aria-label="Choose file to Base64-encode">
         <div class="cs-controls">
             <button class="btn btn-primary" id="b64-encode-btn">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
@@ -574,7 +574,7 @@
                     <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="jwt-clear-btn">Clear</button>
                 </div>
             </div>
-            <textarea id="jwt-raw-input" class="cs-textarea" placeholder="Paste a JWT (xxxxx.yyyyy.zzzzz) here — decodes automatically…" style="min-height:80px;max-height:24vh;"></textarea>
+            <textarea id="jwt-raw-input" class="cs-textarea" placeholder="Paste a JWT (xxxxx.yyyyy.zzzzz) here — decodes automatically…" style="min-height:80px;max-height:24vh;" aria-label="JWT to decode"></textarea>
         </div>
 
         <!-- Decoded columns -->
@@ -599,13 +599,13 @@
         <!-- Verify bar -->
         <div class="jwt-verify-bar">
             <span class="cs-label">Verify:</span>
-            <select class="cs-select" id="jwt-verify-algo">
+            <select class="cs-select" id="jwt-verify-algo" aria-label="Verification algorithm">
                 <option value="HS256">HS256</option>
                 <option value="HS384">HS384</option>
                 <option value="HS512">HS512</option>
                 <option value="RS256">RS256</option>
             </select>
-            <input type="text" class="cs-input" id="jwt-verify-key" placeholder="Secret (HS*) or PEM public key (RS256)" style="flex:1;min-width:180px;">
+            <input type="text" class="cs-input" id="jwt-verify-key" placeholder="Secret (HS*) or PEM public key (RS256)" style="flex:1;min-width:180px;" aria-label="Verification secret or public key">
             <button class="btn btn-primary" id="jwt-verify-btn">Verify Signature</button>
             <div class="cs-spacer"></div>
             <button class="btn btn-ghost" id="jwt-copy-btn">Copy Token</button>
