@@ -179,6 +179,8 @@
 .notes-mode-btn { padding: 0.3rem 0.7rem; font-size: 0.75rem; font-weight: 600; background: var(--bg); color: var(--text-muted); border: none; cursor: pointer; }
 .notes-mode-btn.active { background: var(--blue); color: #fff; }
 
+.notes-format-toolbar { display: flex; align-items: center; gap: 0.15rem; padding-right: 0.5rem; border-right: 1px solid var(--border); margin-right: 0.25rem; }
+
 .notes-editor-pane { flex: 1; position: relative; min-height: 0; }
 #notes-monaco-host { position: absolute; inset: 0; }
 .notes-preview-pane {
@@ -189,10 +191,22 @@
 .notes-preview-pane h1, .notes-preview-pane h2, .notes-preview-pane h3 { font-weight: 700; margin: 1.2em 0 0.5em; }
 .notes-preview-pane p { margin: 0.6em 0; }
 .notes-preview-pane code { background: var(--bg-tertiary); padding: 0.15em 0.4em; border-radius: 4px; font-family: var(--font-mono); font-size: 0.88em; }
-.notes-preview-pane pre { background: var(--bg-tertiary); padding: 0.85em 1em; border-radius: var(--radius-sm); overflow-x: auto; }
+.notes-preview-pane pre { position: relative; background: var(--bg-tertiary); padding: 0.85em 1em; border-radius: var(--radius-sm); overflow-x: auto; }
 .notes-preview-pane pre code { background: none; padding: 0; }
 .notes-preview-pane a { color: var(--blue); }
 .notes-preview-pane blockquote { border-left: 3px solid var(--border-mid); margin: 0.6em 0; padding: 0.2em 1em; color: var(--text-mid); }
+.notes-preview-pane img { max-width: 100%; border-radius: var(--radius-sm); }
+
+.notes-code-copy-btn {
+    position: absolute; top: 0.5em; right: 0.5em;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; padding: 0; border-radius: var(--radius-xs);
+    border: 1px solid var(--border-mid); background: var(--bg);
+    color: var(--text-mid); cursor: pointer; opacity: 0; transition: var(--transition);
+}
+.notes-preview-pane pre:hover .notes-code-copy-btn { opacity: 1; }
+.notes-code-copy-btn:hover { background: var(--bg-tertiary); color: var(--text); }
+.notes-code-copy-btn svg { width: 14px; height: 14px; }
 
 /* Wiki-link decorations inside Monaco */
 .notes-link-resolved { color: var(--blue); text-decoration: underline; text-decoration-style: dotted; cursor: pointer; }

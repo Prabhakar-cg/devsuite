@@ -6,7 +6,15 @@
 let masterKey        = null;
 let profilesEncrypted = true;   // false when no master password is configured
 let profiles         = [];
-let wslProfiles      = [];
+let wslProfiles      = [];   // real, auto-discovered WSL distros only — empty unless wsl.exe actually found some
+// "Local Terminal" is a plain shell on whatever OS DevSuite's server runs on (routes/ssh.py
+// local_terminal, distro=None → exec $SHELL) — it is NOT WSL-specific and always available,
+// so it gets its own group rather than being folded into "WSL Environments" (previously always
+// showed a WSL group even on hosts with no WSL at all).
+const localProfiles = [{
+    id: 'wsl-local', name: 'Local Terminal', group: 'Local',
+    host: 'local', isWsl: true, distro: null,
+}];
 // activeTabs: tabId → { id, profile, term, fitAddon, ws, paneDom }
 let activeTabs   = {};
 let currentTabId = null;
@@ -277,19 +285,26 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
 async function discoverWsl() {
     try {
         const r = await fetch('/api/wsl/discover');
-        if (!r.ok) return;
+        if (!r.ok) { wslProfiles = []; renderSidebar(); return []; }
         const d = await r.json();
-        wslProfiles = d.wsl_instances.map(name => ({
+        wslProfiles = (d.wsl_instances || []).map(name => ({
             id: 'wsl-' + name, name, group: 'WSL Environments',
             host: 'local', isWsl: true, distro: name
         }));
-        wslProfiles.unshift({
-            id: 'wsl-local', name: 'Local Terminal', group: 'WSL Environments',
-            host: 'local', isWsl: true, distro: null
-        });
         renderSidebar();
-    } catch (e) { console.warn('WSL discover failed', e); }
+        return d.wsl_instances || [];
+    } catch (e) {
+        console.warn('WSL discover failed', e);
+        wslProfiles = [];
+        renderSidebar();
+        return [];
+    }
 }
+
+document.getElementById('detect-wsl-btn').addEventListener('click', async () => {
+    const found = await discoverWsl();
+    showToast(found.length ? `Found ${found.length} WSL distro${found.length === 1 ? '' : 's'}.` : 'No WSL distros found on this machine.', found.length ? 'success' : 'info');
+});
 
 // ──────────────────────────────────────────
 // Strip Tab Switching
@@ -342,7 +357,7 @@ const expandedFolders = new Set(['Ungrouped']);
 
 function getGroupedProfiles() {
     const q = document.getElementById('quick-connect').value.toLowerCase().trim();
-    const all = [...wslProfiles, ...profiles];
+    const all = [...localProfiles, ...wslProfiles, ...profiles];
     const filtered = all.filter(p =>
         (p.name || p.host).toLowerCase().includes(q) ||
         p.host.toLowerCase().includes(q) ||

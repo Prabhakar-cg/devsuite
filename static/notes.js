@@ -39,6 +39,7 @@ const ICON_PATHS = {
     trash:        '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
     close:        '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
     plus:         '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    copy:         '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
 };
 function svgIcon(name, { size = 14, strokeWidth = 2, className = '' } = {}) {
     const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -835,6 +836,113 @@ function initMonacoEditor() {
     if (currentPageId && tree.pages[currentPageId]) loadPageIntoEditor(tree.pages[currentPageId]);
 }
 
+// ──────────────────────────────────────────
+// Formatting toolbar (FR-023/FR-024/FR-026)
+// ──────────────────────────────────────────
+
+/** Wrap the current selection (or a placeholder, pre-selected) in a marker pair, e.g. **bold**. */
+function _wrapSelection(marker, placeholder) {
+    if (!monacoEditor || !monacoModel) return;
+    const sel = monacoEditor.getSelection();
+    const hasSelection = !sel.isEmpty();
+    const inner = hasSelection ? monacoModel.getValueInRange(sel) : placeholder;
+    const startOffset = monacoModel.getOffsetAt(sel.getStartPosition());
+    monacoEditor.executeEdits('notes-toolbar', [{ range: sel, text: marker + inner + marker }]);
+    _selectOffsetRange(startOffset + marker.length, startOffset + marker.length + inner.length);
+}
+
+/** Select the given [start, end) character offsets in the (already-edited) model and focus it. */
+function _selectOffsetRange(startOffset, endOffset) {
+    const p1 = monacoModel.getPositionAt(startOffset);
+    const p2 = monacoModel.getPositionAt(endOffset);
+    monacoEditor.setSelection(new monaco.Range(p1.lineNumber, p1.column, p2.lineNumber, p2.column));
+    monacoEditor.focus();
+    flushCurrentEditorToTree();
+}
+
+function insertCodeBlock() {
+    if (!monacoEditor || !monacoModel) return;
+    const sel = monacoEditor.getSelection();
+    const body = sel.isEmpty() ? '' : monacoModel.getValueInRange(sel);
+    const startOffset = monacoModel.getOffsetAt(sel.getStartPosition());
+    monacoEditor.executeEdits('notes-toolbar', [{ range: sel, text: '```\n' + body + '\n```' }]);
+    _selectOffsetRange(startOffset + 4, startOffset + 4 + body.length);
+}
+
+function insertLink() {
+    if (!monacoEditor || !monacoModel) return;
+    const sel = monacoEditor.getSelection();
+    const hasSelection = !sel.isEmpty();
+    const linkText = hasSelection ? monacoModel.getValueInRange(sel) : 'link text';
+    const startOffset = monacoModel.getOffsetAt(sel.getStartPosition());
+    monacoEditor.executeEdits('notes-toolbar', [{ range: sel, text: `[${linkText}](url)` }]);
+    // With a selection, the text is fixed and the URL placeholder is what needs typing next;
+    // with no selection, the placeholder link text itself is what needs typing first.
+    if (hasSelection) {
+        const urlStart = startOffset + 1 + linkText.length + 1;
+        _selectOffsetRange(urlStart, urlStart + 3); // "url"
+    } else {
+        _selectOffsetRange(startOffset + 1, startOffset + 1 + linkText.length); // "link text"
+    }
+}
+
+const ATTACH_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const ATTACH_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'];
+
+/** FR-026: embed an image inline as a base64 data: URI — no separate file store, no network. */
+function attachImageFile(file) {
+    if (!monacoEditor || !monacoModel) return;
+    if (!ATTACH_IMAGE_MIME_TYPES.includes(file.type)) {
+        toast('Unsupported file type — attach a PNG, JPEG, GIF, WebP, or BMP image.', 'error');
+        return;
+    }
+    if (file.size > ATTACH_IMAGE_MAX_BYTES) {
+        toast('Image too large — 5 MB max.', 'error');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+        const altText = (file.name || 'image').replaceAll(/[[\]]/g, '');
+        const sel = monacoEditor.getSelection();
+        monacoEditor.executeEdits('notes-toolbar', [{ range: sel, text: `![${altText}](${reader.result})` }]);
+        monacoEditor.focus();
+        flushCurrentEditorToTree();
+    };
+    reader.onerror = () => toast('Failed to read the image file.', 'error');
+    reader.readAsDataURL(file);
+}
+
+document.getElementById('fmt-bold-btn').addEventListener('click', () => _wrapSelection('**', 'bold text'));
+document.getElementById('fmt-italic-btn').addEventListener('click', () => _wrapSelection('*', 'italic text'));
+document.getElementById('fmt-inline-code-btn').addEventListener('click', () => _wrapSelection('`', 'code'));
+document.getElementById('fmt-code-block-btn').addEventListener('click', insertCodeBlock);
+document.getElementById('fmt-link-btn').addEventListener('click', insertLink);
+document.getElementById('fmt-image-btn').addEventListener('click', () => document.getElementById('fmt-image-input').click());
+document.getElementById('fmt-image-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    e.target.value = ''; // allow re-selecting the same file next time
+    if (file) attachImageFile(file);
+});
+
+/** FR-025: copy-to-clipboard control on every fenced code block shown in Preview. */
+function _attachCodeCopyButtons(pane) {
+    pane.querySelectorAll('pre').forEach(pre => {
+        const codeEl = pre.querySelector('code');
+        if (!codeEl) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'notes-code-copy-btn';
+        btn.title = 'Copy code';
+        btn.appendChild(svgIcon('copy', { size: 14 }));
+        btn.addEventListener('click', () => {
+            navigator.clipboard.writeText(codeEl.textContent)
+                .then(() => toast('Code copied to clipboard', 'success'))
+                .catch(() => toast('Failed to copy code', 'error'));
+        });
+        pre.appendChild(btn);
+    });
+}
+
 function renderPreview() {
     const pane = document.getElementById('notes-preview-pane');
     if (!currentPageId) { pane.innerHTML = ''; return; }
@@ -844,6 +952,7 @@ function renderPreview() {
     // before this ever reaches the DOM (research.md item 5). Wiring lives in
     // NotesLinks.sanitizeMarkdownBody so it's covered by a DOM-free test.
     pane.innerHTML = NotesLinks.sanitizeMarkdownBody(body, marked, DOMPurify); // NOSONAR — sanitized via DOMPurify inside sanitizeMarkdownBody
+    _attachCodeCopyButtons(pane);
 }
 
 function setEditorMode(mode) {

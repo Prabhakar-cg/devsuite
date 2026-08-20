@@ -5,7 +5,7 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
-## [Unreleased]
+## [0.4.0] — 2026-08-18 (Notes Workspace)
 
 ### Features
 
@@ -52,6 +52,13 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 - The Field Builder previously rendered only Minute, Hour, Month, and Day-of-Week grids; day-of-month could only be edited by typing in the expression. Added a click-to-toggle Day-of-Month grid (1–31, 8 columns), rendered between Hour and Month to match cron field order, for all four dialects.
 - Clicking a cell when the field is the Quartz/AWS `?` wildcard now behaves like `*`: it selects only the clicked value instead of expanding into a 30-value list. `SPEC.md` §4.9 updated.
 
+#### Notes Workspace: formatting toolbar, code-block copy, and image attachments (`static/notes.html`, `static/notes.js`, `static/notes.css`, `static/notes-links.js`)
+- New editor toolbar: Bold/Italic/Inline Code/Code Block wrap the current selection (or insert a pre-selected placeholder with none), and Link turns a selection into `[text](url)` with the URL segment ready to type (FR-023/FR-024).
+- Every fenced code block in Preview mode now gets a hover-revealed Copy control that copies its exact text content to the clipboard (FR-025) — the main ask driving this batch: code blocks in notes exist to be pasted elsewhere.
+- Attach Image embeds a PNG/JPEG/GIF/WebP/BMP file (5 MB max) inline as a base64 `data:` URI in the page's Markdown — no separate file store, no network request, consistent with the whole-tree-is-one-encrypted-blob model (FR-026). Non-image or oversized files are rejected with a toast.
+- DOMPurify's default `ALLOWED_URI_REGEXP` deliberately excludes `data:` entirely, so `sanitizeMarkdownBody` now passes a scoped variant — the same default regex plus exactly `data:image/(png|jpe?g|gif|webp|bmp);base64,` — deliberately excluding `image/svg+xml` (SVG can carry a `<script>` that *would* execute if a `data:image/svg+xml` URI were opened directly via `<a href>`, unlike the sandboxed `<img src>` context) and every non-image `data:` MIME type (FR-027). New tests in `tests/javascript/test_notes_preview.js` exercise the regex directly (allow/block cases) and assert the option is actually threaded through to `DOMPurify.sanitize`.
+- `specs/017-notes-workspace/spec.md` updated: new User Story 4, FR-023–FR-027, new Edge Cases, and the "embedded rich media out of scope" assumption narrowed to allow images specifically.
+
 ### Improvements
 
 #### API Tester: manual Proxy Mode override (`static/api-client.js`, `static/api-tester.js`, `static/api-tester.html`)
@@ -69,6 +76,21 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 #### Secret Vault master-password setup threw "DevSuite is not defined" (`static/vault.html`)
 - `vault.html` loaded `theme.js`, `crypto-js.min.js`, and `vault.js`, but never `components.js` — the file that defines the `DevSuite` global. On the master-password setup path, `vault.js` calls `_csrfToken()` → `DevSuite.csrfToken()`, which threw `ReferenceError: DevSuite is not defined`, so setting a new vault password failed. Added `<script src="/static/components.js">` before `vault.js`, matching every other DevSuite-dependent page.
 - Regression guard extended: `tests/python/test_asset_order.py` now asserts `/vault` serves `components.js` before `vault.js`. `SPEC.md` §3.4 Module-to-File Map and the `components.js` file descriptions in `SPEC.md`/`README.md` updated to list the `DevSuite.csrfToken` dependency.
+
+#### Monaco's Find/Replace and other codicon-based icons rendered as tofu boxes (`main.py`)
+- The document CSP's `font-src 'self'` had no `data:` — but Monaco's `codicon` icon font (used by Find/Replace and other built-in widgets) is embedded as a `data:` URI directly inside the vendored `editor.main.css`, not a separate font file. The browser silently blocked it and fell back to missing-glyph boxes everywhere those icons appear, most visibly in Notes Workspace's Find/Replace bar. `font-src` now allows `data:` (all self-hosted — this doesn't widen it to any remote origin). New test: `tests/python/test_csp.py::test_document_csp_font_src_allows_data_uri`.
+
+#### Secure Terminal & SFTP: phantom "WSL Environments" group shown on hosts with no WSL (`static/ssh-manager.html`, `static/ssh-manager.js`)
+- `discoverWsl()` always unshifted a hardcoded "Local Terminal" entry into the same array/group as auto-discovered WSL distros, so the sidebar showed a "WSL Environments" group — implying WSL was present — on every fresh install, including plain Linux/macOS hosts with no WSL at all. "Local Terminal" (`routes/ssh.py`'s `local_terminal` with `distro=None`, just `exec $SHELL`) isn't WSL-specific to begin with.
+- "Local Terminal" now lives in its own always-present "Local" group; "WSL Environments" only renders when `/api/wsl/discover` actually found distros. Added a "Detect WSL" control next to "User sessions" that re-runs discovery on demand, since it previously only ran once at page load — installing a distro after that point had no way to surface it short of reloading. `specs/009-secure-terminal-sftp/spec.md` updated: US5 scenarios 5–6, FR-016a/FR-016b, Edge Cases.
+
+### Security
+
+#### CI: SonarCloud new-code quality gate closed (`.github/workflows/tests.yml`, `static/api-tester.html`, `static/crypto.html`, `requirements-lock.txt`, `start.sh`)
+- Fixed the failing SonarCloud quality gate on new code (reliability and security ratings both at E). Added `aria-label` to file/text inputs in API Tester and Crypto Suite that lacked an accessible name (`Web:InputWithoutLabelCheck`, 10 issues).
+- CI `pip install` steps now pin exact versions and pass `--only-binary :all:` so a dependency install can never fall back to running an sdist's `setup.py` (`githubactions:S8541`).
+- New `requirements-lock.txt` hash-locks every CI dependency — resolved and SHA-256 verified independently for both Python 3.10 and 3.12 on manylinux/x86_64 (including version splits where a package's latest release drops 3.10, e.g. `websockets`). The workflow now installs with `pip install --require-hashes -r requirements-lock.txt` instead of the unpinned `-r requirements.txt` (`githubactions:S8544`). Regeneration steps are documented in the file's own header comment.
+- Suppressed a clear-text-protocol false positive in `start.sh`'s local dev server banner string with a justified `NOSONAR` comment (`shell:S5332`) — the string is a `printf`-style log line, never a network call.
 
 ---
 

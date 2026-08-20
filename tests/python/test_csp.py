@@ -37,6 +37,17 @@ def test_sandbox_worker_csp_is_scoped(client):
     assert "connect-src 'none'" in csp
 
 
+def test_document_csp_font_src_allows_data_uri(client):
+    # Monaco's codicon icon font (Find/Replace widget, etc.) is embedded as a
+    # data: URI inside editor.main.css, not a separate file — font-src must
+    # allow data: or those icons render as tofu boxes. All self-hosted, so
+    # this doesn't widen font-src to any remote origin.
+    r = client.get("/notes")
+    assert r.status_code == 200
+    csp = r.headers["content-security-policy"]
+    assert "font-src 'self' data:" in csp
+
+
 def test_security_headers_present(client):
     r = client.get("/")
     assert r.headers["x-frame-options"] == "DENY"

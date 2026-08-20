@@ -1,9 +1,9 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.3.0  
+> **Version:** 0.4.0  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
-> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 11 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `016-data-linter`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that spec was drafted but never planned/implemented, so it is not a shipped tool and is not counted above. `003-json-linter`, `004-yaml-linter`, and `015-xml-linter` are superseded by `016-data-linter` (kept for record, not deleted — their functional requirements remain the source of truth for exact per-format behavior). This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `017-`.
+> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 12 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `016-data-linter` and `017-notes-workspace`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that spec was drafted but never planned/implemented, so it is not a shipped tool and is not counted above. `003-json-linter`, `004-yaml-linter`, and `015-xml-linter` are superseded by `016-data-linter` (kept for record, not deleted — their functional requirements remain the source of truth for exact per-format behavior). This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `017-`.
 
 ---
 
@@ -19,7 +19,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.3.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
+`0.4.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
 
 ---
 
@@ -692,7 +692,7 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 > **Strategic focus (decided 2026-06-10):** the API Tester is DevSuite's flagship — the one tool where the offline-first mission meets a proven market wedge (Bruno/Postman). Releases prioritize making it a daily driver before adding new commodity tools.
 
-### v0.3.0 — API Tester: Daily Driver ✅ (this release)
+### v0.3.0 — API Tester: Daily Driver ✅
 
 - Script sandbox: pre-request/test scripts run in a dedicated Web Worker; `unsafe-eval` removed from the document CSP (closes SEC-6; SEC-7 partially — scripting isolated, with a 10 s timeout so scripts can't freeze the UI).
 - Collection runner: run a folder or the whole collection sequentially; per-request test results, pass/fail summary, stop button; runtime vars persist across the run for request chaining.
@@ -720,7 +720,20 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 > **Deliberate non-goals vs Bruno:** live file-based collections (conflicts with the DevDB-only constraint in §2 — the zip export + CLI runner cover the git/CI workflow instead) and gRPC (effort/value off-balance for a local suite).
 
-### v0.4.0 — UX Foundation
+### v0.4.0 — Notes Workspace ✅ (this release)
+
+> Priorities shifted from the originally planned "UX Foundation" slot (below, now retargeted to v0.5.0) to ship the Notes Workspace tool and close out in-flight Data Format Linter / File Converter work instead. See `CHANGELOG.md` [0.4.0] for full detail.
+
+- New 12th tool, Notes Workspace (`/notes`): Monaco-based Markdown editor, Notebook → Section → Page hierarchy, Obsidian-style `[[wiki-links]]` with backlinks, `#tags`, full-text search — encrypted client-side (WebCrypto PBKDF2 → AES-256-GCM) via a new `notes` DevDB store, same model as Secret Vault (§4.12).
+- File Format Converter: TOON added as a sixth conversion node; XML matrix completed (was JSON→XML only); a silent array-tag-name data-loss bug in `jsonToXml`/`xmlToJson` fixed in both its copies.
+- Data Format Linter: paste/on-demand format auto-detection across JSON/YAML/XML/TOON.
+- API Tester: manual Proxy Mode override (Auto / Force Direct / Force Proxy).
+- JWT experience consolidated and made discoverable across Crypto Suite, Base64, and the marketing site.
+- Secret Vault: encrypted export/restore backup; fixed a master-password setup crash (missing `components.js`).
+- Cron Visualizer: Day-of-Month grid added to the Visual Field Builder.
+- CI: SonarCloud new-code quality gate closed — accessible-name fixes, hash-locked CI dependencies (`requirements-lock.txt`, `--require-hashes`), pinned/`--only-binary`-only `pip install` steps.
+
+### v0.5.0 — UX Foundation
 
 - Persistent back-to-tools nav header on all tool pages.
 - Empty state screens for all tools (CSS `::before` placeholder).
@@ -730,7 +743,7 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 - Recent + Pinned tools section on tools page.
 - Actionable error messages (what / why / how to fix).
 
-### v0.5.0 — Power User
+### v0.6.0 — Power User
 
 - Global command palette (`Ctrl+K`) with fuzzy search across all tools.
 - Loading / progress states for slow operations (file converter, SSH connect).
@@ -809,4 +822,4 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 ---
 
-*This spec reflects DevSuite v0.3.0. Update before implementing any new feature or changing existing behavior.*
+*This spec reflects DevSuite v0.4.0. Update before implementing any new feature or changing existing behavior.*
