@@ -64,6 +64,26 @@ The user tags pages with short labels (e.g. `#todo`, `#idea`) to cut across the 
 
 ---
 
+### User Story 4 - Format content and attach images quickly (Priority: P2)
+
+While writing, the user wants common Markdown formatting (bold, italic, inline code, fenced code blocks, links) without memorizing syntax, an easy way to copy a code block's contents back out for pasting elsewhere, and the ability to drop in a screenshot or image without leaving the editor.
+
+**Why this priority**: Once P1's editor exists, raw Markdown syntax is a real friction point for anything beyond plain paragraphs — especially code blocks, which are central to a developer's notes and only useful if their contents can be copied back out cleanly. Independent of wiki-links/tags (P2/P3), so it can ship on its own.
+
+**Independent Test**: Can be fully tested by selecting text and clicking each formatting button to confirm the correct Markdown syntax is applied, switching to Preview to confirm a fenced code block's Copy control copies its exact contents, and attaching an image file to confirm it renders inline in Preview.
+
+**Acceptance Scenarios**:
+
+1. **Given** the editor with no text selected, **When** the user clicks the Bold, Italic, or Inline Code toolbar button, **Then** the corresponding Markdown syntax is inserted with the cursor positioned to type the emphasized text immediately.
+2. **Given** selected text in the editor, **When** the user clicks Bold, Italic, or Inline Code, **Then** the selection is wrapped in the corresponding Markdown syntax.
+3. **Given** the editor, **When** the user clicks the Code Block button, **Then** a fenced code block is inserted (wrapping the current selection if any) with the cursor left inside it.
+4. **Given** a page in Preview mode containing a fenced code block, **When** the user clicks its Copy control, **Then** the code block's exact text content (not the surrounding Markdown fence) is copied to the clipboard and a confirmation toast appears.
+5. **Given** the editor, **When** the user clicks the Link button, **Then** any current selection becomes the link's visible text and the cursor is positioned inside the `()` to type the URL; with no selection, placeholder link text is inserted pre-selected for immediate typing.
+6. **Given** the editor, **When** the user clicks Attach Image and selects a supported image file under the size limit, **Then** the image is embedded inline in the page content as a `data:` URI and renders in Preview with no network request and no separate file store.
+7. **Given** the user selects a non-image file, or an image file over the size limit, via Attach Image, **Then** the system rejects it with a clear error and inserts nothing.
+
+---
+
 ### Edge Cases
 
 - What happens when the user tries to create a page whose title exactly matches an existing page's title elsewhere in the workspace? Titles must be unique workspace-wide (wiki-links resolve by title alone); the system must reject the duplicate and prompt for a different title rather than silently creating an ambiguous link target.
@@ -73,6 +93,8 @@ The user tags pages with short labels (e.g. `#todo`, `#idea`) to cut across the 
 - What happens when two different pages both link to a not-yet-created title? Both links point at the same unresolved target; creating that page resolves both simultaneously.
 - What happens when a search or tag filter matches zero pages? Shows a clear "no results" state, not an empty list indistinguishable from "still loading."
 - What happens when the user deletes a section or notebook that still contains pages? The system requires explicit confirmation and communicates how many pages will be removed with it, since deletion also removes those pages' link targets workspace-wide.
+- What happens when the user attaches an image over the size limit, or a non-image file, via Attach Image? Rejected with a clear error toast; nothing is inserted into the page.
+- What happens when a page contains many/large embedded images? Each is inline base64 text within that page's Markdown body, inflating the encrypted tree blob's size — there is no lazy-loading or external storage, so very large or numerous embeds slow the whole-tree encrypt/decrypt on every save/unlock, not just that page.
 
 ## Requirements *(mandatory)*
 
@@ -100,6 +122,11 @@ The user tags pages with short labels (e.g. `#todo`, `#idea`) to cut across the 
 - **FR-020**: System MUST be fully usable under every existing DevSuite theme via the shared design tokens in `static/style.css`.
 - **FR-021**: System MUST gate all Notes content behind the DevSuite master password, matching Secret Vault's model: notebook/section/page content is encrypted client-side before it reaches DevDB, the backend stores only opaque encrypted blobs and never decrypts them, and an unlock screen (entering the master password) is required before any note becomes readable in a session.
 - **FR-022**: System MUST NOT transmit, store, or write the master password to `sessionStorage`/`localStorage`; it is held only in memory for the duration of the unlocked session, consistent with Constitution Principle IV.
+- **FR-023**: System MUST provide toolbar controls to insert or wrap the current selection in Bold, Italic, and Inline Code Markdown syntax, and a Code Block control that inserts a fenced code block (wrapping the selection if any).
+- **FR-024**: System MUST provide a toolbar control to insert a Markdown link (`[text](url)`), using the current selection as the link text when one exists.
+- **FR-025**: System MUST render a copy-to-clipboard control on every fenced code block shown in Preview mode that copies the block's exact text content.
+- **FR-026**: System MUST provide a toolbar control to attach an image file (PNG/JPEG/GIF/WebP/BMP, 5 MB max), embedding it inline as a base64 `data:` URI within the page's Markdown content — no separate file store, no network request — and reject non-image files or oversized files with a clear error.
+- **FR-027**: System MUST sanitize rendered Markdown such that only image `data:` URIs matching the FR-026 format allowlist (not arbitrary `data:` schemes, which remain blocked) are permitted through, preserving the existing XSS-sanitization guarantee (Constitution Art. V) for everything else.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -122,7 +149,7 @@ The user tags pages with short labels (e.g. `#todo`, `#idea`) to cut across the 
 
 ## Assumptions
 
-- Page content is Markdown text only for v1 — free-position canvas notes, ink/drawing, and embedded rich media (OneNote's non-text capabilities) are out of scope.
+- Page content is Markdown text for v1 — free-position canvas notes and ink/drawing (OneNote's non-text capabilities) remain out of scope. Images may be embedded inline as base64 `data:` URIs within that Markdown text (FR-026, no separate file store, no network); other binary file attachments (PDFs, archives, etc.) are out of scope for v1, deferred pending a scoped MIME-allowlist + forced-download design given the larger XSS surface arbitrary `data:` links carry.
 - Wiki-links resolve by page title across the entire workspace, not scoped to the current notebook or section — matching Obsidian's vault-wide linking model, which the feature description explicitly cites as inspiration.
 - There is a single Notes workspace per DevSuite installation (one collection of notebooks), consistent with DevSuite being a single-user local tool — not multiple independently switchable workspaces/vaults.
 - No explicit "Save" action or unsaved-changes prompt exists anywhere in the feature; all edits autosave, consistent with both OneNote's and Obsidian's editing models.

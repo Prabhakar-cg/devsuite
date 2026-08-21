@@ -144,13 +144,14 @@
 .server-item-icon { color: var(--text-muted); flex-shrink: 0; }
 
 .edit-srv-icon, .del-srv-icon {
-    opacity: 0;
+    opacity: 0.4;
     display: flex; align-items: center; justify-content: center;
     width: 20px; height: 20px;
     color: var(--text-muted);
     padding: 2px;
     border-radius: 4px;
     flex-shrink: 0;
+    transition: opacity 0.15s;
 }
 .edit-srv-icon:hover {
     background: var(--border);

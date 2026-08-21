@@ -1,6 +1,6 @@
 # DevSuite — Developer Tools from Hell
 
-![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Version](https://img.shields.io/badge/version-0.4.0-blue)
 [![CodeQL](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml)
 [![Tests](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
@@ -153,6 +153,8 @@ chmod +x start.sh
 ```
 
 *(On a fresh Debian/Ubuntu system, `start.sh` will auto-detect and attempt to install `python3`, `python3-venv`, and dependencies as necessary.)*
+
+`start.sh`/`start.ps1` print the detected Python version and warn (without aborting) if it's below the supported minimum — you can choose to continue anyway. They also prompt for a PyPI index URL to install dependencies from; press Enter to use the standard registry (`https://pypi.org/simple`), or set the `PYPI_INDEX_URL` environment variable to point at a private mirror/proxy without being prompted.
 
 Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 

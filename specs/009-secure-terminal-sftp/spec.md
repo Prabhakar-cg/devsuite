@@ -163,6 +163,14 @@ prompt appears without any host/credentials step; on a WSL-capable host, confirm
 4. **Given** a distro name is supplied in the local-terminal config, **When** it is validated
    against `_DISTRO_NAME_RE`, **Then** an invalid name is rejected (treated as "no distro" /
    default shell) rather than passed unsanitized to `os.execvp`.
+5. **Given** a fresh environment with no WSL distros installed (or a non-Windows host), **When**
+   the sidebar loads, **Then** it shows no "WSL Environments" group at all — "Local Terminal" is
+   listed under its own "Local" group instead, since it is a plain local shell, not a WSL
+   feature, and is always available regardless of WSL.
+6. **Given** the sidebar, **When** the user clicks the "Detect WSL" control next to "User
+   sessions", **Then** `GET /api/wsl/discover` is re-run on demand (not only once at page load)
+   and a toast reports how many distros were found, so a distro installed after the page loaded
+   becomes reachable without a full reload.
 
 ---
 
@@ -206,8 +214,11 @@ approximately every 2 seconds and reflect real `/proc` values on the remote host
 - **Master Password changed after profiles were saved**: decrypting with the new password fails
   distinctly from "no profiles exist," triggering the migration panel (prompt for the old
   password) rather than silently discarding data.
-- **Windows without WSL**: `/api/wsl/discover` returns `{"wsl_instances": []}` rather than
-  erroring; local terminal is unavailable (`_PTY_AVAILABLE` is false on Windows).
+- **Windows without WSL, or any non-Windows host**: `/api/wsl/discover` returns
+  `{"wsl_instances": []}` rather than erroring; the sidebar renders no "WSL Environments" group
+  in that case (previously it always showed one containing a hardcoded "Local Terminal" entry,
+  implying WSL was present even when it wasn't). Local terminal availability itself is a separate
+  concern — unavailable when `_PTY_AVAILABLE` is false (native Windows).
 - **Terminal resize during active output**: resize escapes are detected and stripped from the
   input stream before being written to the PTY/SSH stdin, so they never leak into the shell as
   literal characters.
@@ -263,6 +274,12 @@ approximately every 2 seconds and reflect real `/proc` values on the remote host
 - **FR-016**: The system MUST discover installed WSL distributions (`wsl.exe -l -q`) and allow
   opening a local shell inside a named distro, with the distro name validated against an
   allowlist pattern before being passed to process execution.
+- **FR-016a**: The sidebar MUST NOT display a "WSL Environments" group unless `/api/wsl/discover`
+  actually returned at least one distro; "Local Terminal" (the plain-shell feature from FR-014)
+  MUST be listed under its own group, never implied to be a WSL environment.
+- **FR-016b**: The system MUST provide a manual "Detect WSL" control that re-runs
+  `/api/wsl/discover` on demand, so a distro installed after the page loaded becomes reachable
+  without a full reload.
 
 **Dashboard**
 

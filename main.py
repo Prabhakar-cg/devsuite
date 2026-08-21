@@ -102,12 +102,17 @@ app.add_middleware(SlowAPIMiddleware)
 
 # Document policy: no unsafe-eval (SEC-6, closed v0.3.0). unsafe-inline remains
 # tracked as SEC-11. blob: in script-src / worker-src is required by Monaco.
+# data: in font-src is required by Monaco too: its codicon icon font (used by
+# the built-in Find/Replace widget, among others) is embedded as a data: URI
+# inside editor.main.css, not a separate file — without this the icons are
+# blocked and fall back to tofu boxes (all self-hosted, no remote font ever
+# loads, so this is not a font-src 'self'-widening risk).
 _DOCUMENT_CSP = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline' blob:; "
     "worker-src 'self' blob:; "
     "style-src 'self' 'unsafe-inline'; "
-    "font-src 'self'; "
+    "font-src 'self' data:; "
     "img-src 'self' data:; "
     "connect-src 'self';"
 )

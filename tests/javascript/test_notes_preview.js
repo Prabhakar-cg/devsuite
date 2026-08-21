@@ -62,3 +62,38 @@ test('sanitizeMarkdownBody handles an empty body without invoking marked on unde
     assert.equal(NotesLinks.sanitizeMarkdownBody('', marked, purify), '');
     assert.equal(NotesLinks.sanitizeMarkdownBody(undefined, marked, purify), '');
 });
+
+test('sanitizeMarkdownBody passes the scoped image-data-URI allowlist to DOMPurify (FR-027)', () => {
+    let seenOptions;
+    const spyPurify = { sanitize(html, options) { seenOptions = options; return html; } };
+    NotesLinks.sanitizeMarkdownBody('body', marked, spyPurify);
+    assert.equal(seenOptions.ALLOWED_URI_REGEXP, NotesLinks.SAFE_IMAGE_URI_REGEXP,
+        'must pass the same regex object the module exports, not a divergent copy');
+});
+
+// SAFE_IMAGE_URI_REGEXP (FR-026/FR-027): widens DOMPurify's default
+// ALLOWED_URI_REGEXP by exactly one alternative — data:image/<raster>;base64,
+// — so an embedded attachment's <img src> survives sanitization. Everything
+// DOMPurify's default already blocked must stay blocked, especially
+// data:image/svg+xml (SVG can carry a <script>, unlike a raster format) and
+// data:text/html (the classic data: URI XSS payload).
+for (const [uri, expected] of [
+    ['data:image/png;base64,AAAA', true],
+    ['data:image/jpeg;base64,AAAA', true],
+    ['data:image/jpg;base64,AAAA', true],
+    ['data:image/gif;base64,AAAA', true],
+    ['data:image/webp;base64,AAAA', true],
+    ['data:image/bmp;base64,AAAA', true],
+    ['data:image/svg+xml;base64,AAAA', false],
+    ['data:text/html,<script>alert(1)</script>', false],
+    ['data:text/html;base64,AAAA', false],
+    ['data:application/javascript,alert(1)', false],
+    ['javascript:alert(1)', false],
+    ['https://example.com/x.png', true],
+    ['/relative/path.png', true],
+    ['mailto:a@b.com', true],
+]) {
+    test(`SAFE_IMAGE_URI_REGEXP ${expected ? 'allows' : 'blocks'} ${uri}`, () => {
+        assert.equal(NotesLinks.SAFE_IMAGE_URI_REGEXP.test(uri), expected);
+    });
+}

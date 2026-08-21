@@ -167,6 +167,20 @@
     /* ── Preview rendering ──────────────────────────────────────────── */
 
     /**
+     * DOMPurify's default ALLOWED_URI_REGEXP (see static/libs/dompurify.min.js)
+     * deliberately excludes `data:` from its safe-scheme list, so an embedded
+     * image (FR-026) would otherwise have its `src` stripped. This is that
+     * same default regex with ONE addition: `data:image/<raster-format>;base64,`
+     * — explicitly excluding `image/svg+xml`, since SVG can carry a `<script>`
+     * that a browser executes if the data: URI is opened directly via an `<a
+     * href>` (unlike an `<img src>`, which sandboxes it) — this regex can't
+     * tell those two tag contexts apart, so the unsafe one is excluded
+     * outright. Every other `data:` MIME type (text/html, application/*, …)
+     * stays blocked, same as DOMPurify's own default (FR-027).
+     */
+    const SAFE_IMAGE_URI_REGEXP = /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|data:image\/(?:png|jpe?g|gif|webp|bmp);base64,|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
+
+    /**
      * Markdown -> sanitized HTML for the preview pane. Pure wiring: `markedLib`
      * and `purifyLib` are injected by the caller (globals `marked`/`DOMPurify`
      * in the browser) so this never reaches a DOM API itself, and so tests can
@@ -175,7 +189,7 @@
      */
     function sanitizeMarkdownBody(body, markedLib, purifyLib) {
         const rawHtml = markedLib.parse(body || '');
-        return purifyLib.sanitize(rawHtml);
+        return purifyLib.sanitize(rawHtml, { ALLOWED_URI_REGEXP: SAFE_IMAGE_URI_REGEXP });
     }
 
     /* ── Aggregate ───────────────────────────────────────────────────── */
@@ -202,5 +216,6 @@
         searchNotes,
         buildIndexes,
         sanitizeMarkdownBody,
+        SAFE_IMAGE_URI_REGEXP,
     };
 });
