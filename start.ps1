@@ -48,6 +48,30 @@ if (-not $PYTHON_CMD) { $PYTHON_CMD = "python" }   # will be installed if missin
 $VENV_ACTIVATE = ".venv\Scripts\Activate.ps1"
 
 # ---------------------------------------------------------------------------
+# Report the detected Python version and check it against the supported
+# minimum (README.md "Prerequisites": Python 3.10+). Unsupported does not
+# abort the script — the user can opt to continue at their own risk.
+# ---------------------------------------------------------------------------
+if (Test-CommandAvailable $PYTHON_CMD) {
+    $pyVersionStr = & $PYTHON_CMD -c "import sys; print('%d.%d.%d' % sys.version_info[:3])" 2>$null
+    if ($pyVersionStr) {
+        Write-Host "Detected Python: $pyVersionStr (via $PYTHON_CMD)"
+        & $PYTHON_CMD -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Python version is supported (DevSuite requires 3.10+)."
+        } else {
+            Write-Host "Warning: Python $pyVersionStr does not meet the supported minimum (3.10+)."
+            Write-Host "DevSuite may fail to start or behave unexpectedly on this version."
+            if (-not (Get-UserConfirmation "Continue anyway at your own risk?")) {
+                Write-Host "Aborted. Please install Python 3.10 or newer and re-run this script."
+                exit 1
+            }
+            Write-Host "Continuing with an unsupported Python version at your own risk."
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Collect missing prerequisites
 # ---------------------------------------------------------------------------
 $missingSoftware = @()
@@ -174,11 +198,23 @@ if (Test-Path $VENV_ACTIVATE) {
 # ---------------------------------------------------------------------------
 # Install Python dependencies
 # ---------------------------------------------------------------------------
-Write-Host "Installing Python dependencies..."
-if (Test-CommandAvailable pip) {
-    pip install -r requirements.txt
+# PyPI registry endpoint — lets users point at a private mirror/proxy.
+# Press Enter with no input to use the standard PyPI registry. Set
+# $env:PYPI_INDEX_URL to skip the prompt (e.g. non-interactive/CI runs).
+$DefaultPypiIndexUrl = "https://pypi.org/simple"
+if ($env:PYPI_INDEX_URL) {
+    $PipIndexUrl = $env:PYPI_INDEX_URL
+    Write-Host "Using PyPI index URL from `$env:PYPI_INDEX_URL: $PipIndexUrl"
 } else {
-    & $PYTHON_CMD -m pip install -r requirements.txt
+    $PipIndexUrl = Read-Host "PyPI index URL to install dependencies from [Enter for default: $DefaultPypiIndexUrl]"
+    if (-not $PipIndexUrl) { $PipIndexUrl = $DefaultPypiIndexUrl }
+}
+
+Write-Host "Installing Python dependencies from $PipIndexUrl..."
+if (Test-CommandAvailable pip) {
+    pip install --index-url $PipIndexUrl -r requirements.txt
+} else {
+    & $PYTHON_CMD -m pip install --index-url $PipIndexUrl -r requirements.txt
 }
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Failed to install Python dependencies."

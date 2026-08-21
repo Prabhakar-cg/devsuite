@@ -154,6 +154,8 @@ chmod +x start.sh
 
 *(On a fresh Debian/Ubuntu system, `start.sh` will auto-detect and attempt to install `python3`, `python3-venv`, and dependencies as necessary.)*
 
+`start.sh`/`start.ps1` print the detected Python version and warn (without aborting) if it's below the supported minimum — you can choose to continue anyway. They also prompt for a PyPI index URL to install dependencies from; press Enter to use the standard registry (`https://pypi.org/simple`), or set the `PYPI_INDEX_URL` environment variable to point at a private mirror/proxy without being prompted.
+
 Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 
 ### Manual Setup

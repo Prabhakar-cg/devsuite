@@ -143,12 +143,29 @@ queue_installation () {
     return 0
 }
 
-echo -n "Checking core system prerequisites... "
+echo "Checking core system prerequisites..."
 
 # Check Python and venv
 if ! command_exists "$PYTHON_CMD"; then
     queue_installation "Python 3" "python3 python3-venv python3-pip" "$PYTHON" "python3 python3-pip" "python python-pip" "$PYTHON" "Python.Python"
 else
+    # Report the detected Python version and check it against the supported
+    # minimum (README.md "Prerequisites": Python 3.10+). Unsupported does not
+    # abort the script — the user can opt to continue at their own risk.
+    PYTHON_VERSION_STR=$("$PYTHON_CMD" -c "import sys; print('%d.%d.%d' % sys.version_info[:3])" 2>/dev/null || echo "$UNKNOWN")
+    echo "Detected Python: $PYTHON_VERSION_STR (via $PYTHON_CMD)"
+    if [[ "$PYTHON_VERSION_STR" != "$UNKNOWN" ]] && "$PYTHON_CMD" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
+        echo "Python version is supported (DevSuite requires 3.10+)."
+    else
+        echo "Warning: Python $PYTHON_VERSION_STR does not meet the supported minimum (3.10+)." >&2
+        echo "DevSuite may fail to start or behave unexpectedly on this version." >&2
+        if ! ask_permission "Continue anyway at your own risk?"; then
+            echo "Aborted. Please install Python 3.10 or newer and re-run this script."
+            exit 1
+        fi
+        echo "Continuing with an unsupported Python version at your own risk."
+    fi
+
     # Check venv specifically
     if ! "$PYTHON_CMD" -m venv --help >/dev/null 2>&1; then
         if [[ "$PKG_MGR" = "apt-get" ]]; then
@@ -251,9 +268,21 @@ pip_run() {
     return
 }
 
+# PyPI registry endpoint — lets users point at a private mirror/proxy.
+# Press Enter with no input to use the standard PyPI registry. Set
+# PYPI_INDEX_URL to skip the prompt (e.g. non-interactive/CI runs).
+DEFAULT_PYPI_INDEX_URL="https://pypi.org/simple"
+if [[ -n "${PYPI_INDEX_URL:-}" ]]; then
+    PIP_INDEX_URL="$PYPI_INDEX_URL"
+    echo "Using PyPI index URL from \$PYPI_INDEX_URL: $PIP_INDEX_URL"
+else
+    read -p "PyPI index URL to install dependencies from [Enter for default: $DEFAULT_PYPI_INDEX_URL]: " -r PIP_INDEX_URL
+    PIP_INDEX_URL="${PIP_INDEX_URL:-$DEFAULT_PYPI_INDEX_URL}"
+fi
+
 # Install dependencies explicitly to avoid caching issues across environments
-echo "Installing Python dependencies..."
-pip_run install -r requirements.txt
+echo "Installing Python dependencies from $PIP_INDEX_URL..."
+pip_run install --index-url "$PIP_INDEX_URL" -r requirements.txt
 
 # Start the server — honour HOST/PORT env vars; enable --reload only in dev mode.
 SERVER_HOST="${HOST:-127.0.0.1}"
