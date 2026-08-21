@@ -178,7 +178,7 @@
      * outright. Every other `data:` MIME type (text/html, application/*, …)
      * stays blocked, same as DOMPurify's own default (FR-027).
      */
-    const SAFE_IMAGE_URI_REGEXP = /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|data:image\/(?:png|jpe?g|gif|webp|bmp);base64,|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i;
+    const SAFE_IMAGE_URI_REGEXP = /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|data:image\/(?:png|jpe?g|gif|webp|bmp);base64,|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
 
     /**
      * Markdown -> sanitized HTML for the preview pane. Pure wiring: `markedLib`
