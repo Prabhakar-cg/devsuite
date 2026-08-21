@@ -292,7 +292,7 @@ if [[ "${DEVSUITE_DEV:-0}" = "1" ]]; then
     RELOAD_ARGS+=(--reload)
 fi
 
-echo -e "\nStarting FastAPI server on http://${SERVER_HOST}:${SERVER_PORT}..."
+echo -e "\nStarting FastAPI server on http://${SERVER_HOST}:${SERVER_PORT}..." # NOSONAR: local dev server banner, not a data transmission
 if command_exists uvicorn; then
     uvicorn main:app --host "$SERVER_HOST" --port "$SERVER_PORT" "${RELOAD_ARGS[@]}"
 else

@@ -310,7 +310,8 @@ async function discoverWsl() {
 document.getElementById('detect-wsl-btn').addEventListener('click', async () => {
     const found = await discoverWsl();
     const foundAny = found.length > 0;
-    const message = foundAny ? `Found ${found.length} WSL distro${found.length === 1 ? '' : 's'}.` : 'No WSL distros found on this machine.';
+    const distroSuffix = found.length === 1 ? '' : 's';
+    const message = foundAny ? `Found ${found.length} WSL distro${distroSuffix}.` : 'No WSL distros found on this machine.';
     const toastType = foundAny ? 'success' : 'info';
     showToast(message, toastType);
 });

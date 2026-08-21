@@ -887,12 +887,12 @@ function insertLink() {
 }
 
 const ATTACH_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-const ATTACH_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'];
+const ATTACH_IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp']);
 
 /** FR-026: embed an image inline as a base64 data: URI — no separate file store, no network. */
 function attachImageFile(file) {
     if (!monacoEditor || !monacoModel) return;
-    if (!ATTACH_IMAGE_MIME_TYPES.includes(file.type)) {
+    if (!ATTACH_IMAGE_MIME_TYPES.has(file.type)) {
         toast('Unsupported file type — attach a PNG, JPEG, GIF, WebP, or BMP image.', 'error');
         return;
     }
@@ -909,7 +909,8 @@ function attachImageFile(file) {
             return;
         }
         const altText = (file.name || 'image').replaceAll(/[[\]]/g, '');
-        monacoEditor.executeEdits('notes-toolbar', [{ range: originSelection, text: `![${altText}](${reader.result})` }]);
+        const dataUri = String(reader.result); // readAsDataURL guarantees a string result
+        monacoEditor.executeEdits('notes-toolbar', [{ range: originSelection, text: `![${altText}](${dataUri})` }]);
         monacoEditor.focus();
         flushCurrentEditorToTree();
     };
