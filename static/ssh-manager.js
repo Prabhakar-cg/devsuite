@@ -12,7 +12,7 @@ let wslProfiles      = [];   // real, auto-discovered WSL distros only — empty
 // so it gets its own group rather than being folded into "WSL Environments" (previously always
 // showed a WSL group even on hosts with no WSL at all).
 const localProfiles = [{
-    id: 'wsl-local', name: 'Local Terminal', group: 'Local',
+    id: 'local-terminal', name: 'Local Terminal', group: 'Local',
     host: 'local', isWsl: true, distro: null,
 }];
 // activeTabs: tabId → { id, profile, term, fitAddon, ws, paneDom }
@@ -282,19 +282,25 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
 // ──────────────────────────────────────────
 // WSL Discovery
 // ──────────────────────────────────────────
+let wslDiscoveryRequestId = 0;
+
 async function discoverWsl() {
+    const requestId = ++wslDiscoveryRequestId;
     try {
         const r = await fetch('/api/wsl/discover');
+        if (requestId !== wslDiscoveryRequestId) return []; // a newer discovery superseded this one
         if (!r.ok) { wslProfiles = []; renderSidebar(); return []; }
         const d = await r.json();
+        if (requestId !== wslDiscoveryRequestId) return [];
         wslProfiles = (d.wsl_instances || []).map(name => ({
-            id: 'wsl-' + name, name, group: 'WSL Environments',
+            id: 'wsl-distro-' + name, name, group: 'WSL Environments',
             host: 'local', isWsl: true, distro: name
         }));
         renderSidebar();
         return d.wsl_instances || [];
     } catch (e) {
         console.warn('WSL discover failed', e);
+        if (requestId !== wslDiscoveryRequestId) return [];
         wslProfiles = [];
         renderSidebar();
         return [];
@@ -303,7 +309,10 @@ async function discoverWsl() {
 
 document.getElementById('detect-wsl-btn').addEventListener('click', async () => {
     const found = await discoverWsl();
-    showToast(found.length ? `Found ${found.length} WSL distro${found.length === 1 ? '' : 's'}.` : 'No WSL distros found on this machine.', found.length ? 'success' : 'info');
+    const foundAny = found.length > 0;
+    const message = foundAny ? `Found ${found.length} WSL distro${found.length === 1 ? '' : 's'}.` : 'No WSL distros found on this machine.';
+    const toastType = foundAny ? 'success' : 'info';
+    showToast(message, toastType);
 });
 
 // ──────────────────────────────────────────

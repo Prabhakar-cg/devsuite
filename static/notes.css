@@ -204,8 +204,10 @@
     border: 1px solid var(--border-mid); background: var(--bg);
     color: var(--text-mid); cursor: pointer; opacity: 0; transition: var(--transition);
 }
-.notes-preview-pane pre:hover .notes-code-copy-btn { opacity: 1; }
+.notes-preview-pane pre:hover .notes-code-copy-btn,
+.notes-preview-pane pre:focus-within .notes-code-copy-btn { opacity: 1; }
 .notes-code-copy-btn:hover { background: var(--bg-tertiary); color: var(--text); }
+.notes-code-copy-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .notes-code-copy-btn svg { width: 14px; height: 14px; }
 
 /* Wiki-link decorations inside Monaco */

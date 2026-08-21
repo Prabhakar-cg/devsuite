@@ -900,11 +900,16 @@ function attachImageFile(file) {
         toast('Image too large — 5 MB max.', 'error');
         return;
     }
+    const originPageId = currentPageId;
+    const originSelection = monacoEditor.getSelection();
     const reader = new FileReader();
     reader.onload = () => {
+        if (currentPageId !== originPageId) {
+            toast('Image discarded — you switched notes before it finished loading.', 'error');
+            return;
+        }
         const altText = (file.name || 'image').replaceAll(/[[\]]/g, '');
-        const sel = monacoEditor.getSelection();
-        monacoEditor.executeEdits('notes-toolbar', [{ range: sel, text: `![${altText}](${reader.result})` }]);
+        monacoEditor.executeEdits('notes-toolbar', [{ range: originSelection, text: `![${altText}](${reader.result})` }]);
         monacoEditor.focus();
         flushCurrentEditorToTree();
     };
@@ -935,6 +940,10 @@ function _attachCodeCopyButtons(pane) {
         btn.title = 'Copy code';
         btn.appendChild(svgIcon('copy', { size: 14 }));
         btn.addEventListener('click', () => {
+            if (!navigator.clipboard?.writeText) {
+                toast('Failed to copy code', 'error');
+                return;
+            }
             navigator.clipboard.writeText(codeEl.textContent)
                 .then(() => toast('Code copied to clipboard', 'success'))
                 .catch(() => toast('Failed to copy code', 'error'));
