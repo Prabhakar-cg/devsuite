@@ -58,19 +58,44 @@ While working through a step, a user writes free-form markdown notes about what 
 
 ---
 
-### User Story 4 - Create and manage roadmaps and their steps (Priority: P4)
+### User Story 4 - Create and manage roadmaps via the API (Priority: P4)
 
-A user creates a brand-new roadmap from scratch (or edits an existing one's title/description), so the tool is usable for topics beyond the seeded AI/MLOps content — e.g. a future DevOps roadmap — without any code changes.
+**v1 scope note**: this story is API-only. `roadmap.html`/`roadmap.js` render the roadmap list and
+detail views (User Story 1) and support editing a step's notes/course_links/documents and
+toggling checklist items (User Stories 2–3), but ship **no UI** for creating, editing, or deleting
+a roadmap — no "new roadmap" form, no title/description edit control, no delete button. Those
+operations exist only as direct calls to `POST`/`PUT`/`DELETE /api/roadmaps...`
+(`contracts/roadmap-api.md`), e.g. via `curl` or the seed script. A future milestone that wants
+these reachable from the UI would need new frontend controls, not just this story's existing API
+routes — out of scope for v1.
 
-**Why this priority**: The schema is explicitly designed to be roadmap-agnostic, but proving that genericity requires the ability to add a second roadmap through the UI/API alone. Lower priority than the seeded roadmap's own read/track/annotate flows because the first roadmap ships pre-seeded and is immediately useful without this capability.
+A caller creates a brand-new roadmap from scratch via the API (or edits an existing one's
+title/description, or deletes one), so the tool is usable for topics beyond the seeded AI/MLOps
+content — e.g. a future DevOps roadmap — without any backend code changes, even though reaching
+that capability today requires the API directly rather than the shipped UI.
 
-**Independent Test**: Through the API/UI, create a new roadmap with a title and description, confirm it appears in the roadmap list alongside the seeded one with independent (0%, since it has no steps — steps are seed-script-only in v1, see Assumptions) progress, then delete it and confirm it disappears without affecting the seeded roadmap.
+**Why this priority**: The schema is explicitly designed to be roadmap-agnostic, but proving that
+genericity requires the ability to add a second roadmap via the API alone. Lower priority than the
+seeded roadmap's own UI-driven read/track/annotate flows because the first roadmap ships
+pre-seeded and is immediately useful without this capability.
+
+**Independent Test**: Via the API, create a new roadmap with a title and description, confirm it
+appears in `GET /api/roadmaps` alongside the seeded one with independent (0%, since it has no
+steps — steps are seed-script-only in v1, see Assumptions) progress, then delete it and confirm it
+disappears without affecting the seeded roadmap. (There is no UI path for this test — see the
+scope note above.)
 
 **Acceptance Scenarios**:
 
-1. **Given** the roadmap list, **When** the user creates a new roadmap, **Then** it appears in the list with its own id, title, and description.
-2. **Given** an existing roadmap, **When** the user edits its title or description, **Then** the change is reflected in both the list and detail views.
-3. **Given** an existing roadmap, **When** the user deletes it, **Then** it is removed from the list and its detail view is no longer reachable, and no other roadmap is affected.
+1. **Given** the roadmap list (`GET /api/roadmaps`), **When** a caller creates a new roadmap via
+   `POST /api/roadmaps`, **Then** it appears in the list with its own id, title, and description.
+2. **Given** an existing roadmap, **When** a caller edits its title or description via
+   `PUT /api/roadmaps/{id}`, **Then** the change is reflected in both `GET /api/roadmaps` and
+   `GET /api/roadmaps/{id}` — and, since the UI renders whatever the API returns, in the list/detail
+   views too, on next load.
+3. **Given** an existing roadmap, **When** a caller deletes it via `DELETE /api/roadmaps/{id}`,
+   **Then** it is removed from `GET /api/roadmaps` and `GET /api/roadmaps/{id}` 404s for it, and no
+   other roadmap is affected.
 
 ---
 
@@ -122,7 +147,7 @@ A user creates a brand-new roadmap from scratch (or edits an existing one's titl
 - **SC-001**: A user can determine their overall progress on any roadmap within 2 seconds of opening the tool, with no manual calculation required.
 - **SC-002**: Checking or unchecking a checklist item updates the visible step and roadmap completion percentages in under 500ms.
 - **SC-003**: 100% of roadmaps with zero steps, and 100% of steps with zero checklist items, display a 0% completion value rather than an error, blank, or "NaN" in manual testing.
-- **SC-004**: A second, entirely different roadmap's (e.g. a future DevOps-focused plan) **metadata** — id, title, description — can be created and managed through the UI/API without any code change to the tool, proving the schema and UI are fully data-driven at the roadmap level. **v1 scope note**: this does not extend to that roadmap's steps — per the Assumptions section, steps are seed-script-only in v1 (`POST /api/roadmaps` always creates `steps: []`, and no route adds/removes/reorders steps), so a user-created roadmap has no steps and therefore no progress tracking, notes, or links to use until a future milestone adds step-management. Full "steps included" reuse of the schema is demonstrated by the seed script's data (any roadmap's worth of steps, seeded the same way as the shipped one), not by the UI/API alone.
+- **SC-004**: A second, entirely different roadmap's (e.g. a future DevOps-focused plan) **metadata** — id, title, description — can be created and managed via the API without any code change to the tool, proving the schema is fully data-driven at the roadmap level (the *list/detail rendering UI* is likewise data-driven — it displays whatever `GET /api/roadmaps*` returns — but creating/editing/deleting a roadmap is API-only in v1, per User Story 4's scope note; there is no UI control for it). **v1 scope note**: this also does not extend to that roadmap's steps — per the Assumptions section, steps are seed-script-only in v1 (`POST /api/roadmaps` always creates `steps: []`, and no route adds/removes/reorders steps), so an API-created roadmap has no steps and therefore no progress tracking, notes, or links to use until a future milestone adds step-management. Full "steps included" reuse of the schema is demonstrated by the seed script's data (any roadmap's worth of steps, seeded the same way as the shipped one), not by the API alone.
 - **SC-005**: A user's notes, checklist state, and links for a step are still present and correct after closing and reopening the application, in 100% of manual verification passes.
 - **SC-006**: A new user can find the Learning Roadmap tool from the suite's main tool listing without being told where to look.
 
