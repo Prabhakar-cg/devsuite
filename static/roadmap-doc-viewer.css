@@ -1,0 +1,170 @@
+/* ============================================================
+   Roadmap Doc Viewer — static/roadmap-doc-viewer.css
+   Long-form reading layout for the original step documentation.
+   Reuses design tokens from style.css — no new custom properties.
+   ============================================================ */
+
+.doc-viewer-shell {
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+    padding: 2.5rem 2.5rem 5rem;
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+}
+
+.doc-toc {
+    flex: 0 0 220px;
+    position: sticky;
+    top: 2.5rem;
+    align-self: flex-start;
+    font-size: 0.8rem;
+    max-height: calc(100vh - 52px - 4rem);
+    overflow-y: auto;
+}
+.doc-toc-label {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+}
+.doc-toc ul { list-style: none; }
+.doc-toc li { margin: 0.15rem 0; }
+.doc-toc-h3 { padding-left: 0.85rem; }
+.doc-toc a {
+    display: block;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-xs);
+    color: var(--text-mid);
+    text-decoration: none;
+    line-height: 1.35;
+    transition: var(--transition);
+}
+.doc-toc a:hover { background: var(--bg-secondary); color: var(--text); }
+
+.doc-article {
+    flex: 1 1 auto;
+    max-width: 760px;
+    min-width: 0;
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 0.95rem;
+}
+
+.doc-loading, .doc-error {
+    color: var(--text-muted);
+    padding: 3rem 0;
+    font-size: 0.9rem;
+}
+
+/* ── Rendered markdown typography ── */
+
+.doc-article h1 {
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 0.5rem;
+}
+.doc-article h1 + p {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-bottom: 2rem;
+}
+.doc-article h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin: 2.4rem 0 0.9rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--border);
+}
+.doc-article h2:first-of-type { padding-top: 0; border-top: none; margin-top: 1.5rem; }
+.doc-article h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 1.6rem 0 0.6rem;
+}
+.doc-article h4 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin: 1.2rem 0 0.5rem;
+    color: var(--text-mid);
+}
+.doc-article p { margin: 0.75rem 0; }
+.doc-article a { color: var(--blue); text-decoration: none; }
+.doc-article a:hover { text-decoration: underline; }
+
+.doc-article ul, .doc-article ol {
+    margin: 0.75rem 0 0.75rem 1.4rem;
+}
+.doc-article li { margin: 0.35rem 0; }
+.doc-article li > ul, .doc-article li > ol { margin-top: 0.35rem; }
+
+.doc-article code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--bg-tertiary);
+    padding: 0.15em 0.4em;
+    border-radius: 5px;
+}
+.doc-article pre {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+.doc-article pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.82rem;
+    line-height: 1.55;
+}
+
+.doc-article blockquote {
+    margin: 1rem 0;
+    padding: 0.7rem 1rem;
+    border-left: 3px solid var(--blue);
+    background: var(--blue-subtle);
+    border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+    color: var(--text-mid);
+}
+.doc-article blockquote p { margin: 0.3rem 0; }
+
+.doc-article table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.2rem 0;
+    font-size: 0.85rem;
+}
+.doc-article th, .doc-article td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+    vertical-align: top;
+}
+.doc-article th {
+    background: var(--bg-secondary);
+    font-weight: 700;
+}
+.doc-article hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+}
+.doc-article img { max-width: 100%; border-radius: var(--radius-sm); }
+.doc-article strong { font-weight: 700; }
+
+@media (max-width: 880px) {
+    .doc-toc { display: none; }
+    .doc-viewer-shell { padding: 1.5rem 1.25rem 4rem; }
+}
+
+@media print {
+    .app-header, .doc-toc { display: none; }
+    .doc-viewer-shell { height: auto; overflow: visible; padding: 0; }
+    .doc-article { max-width: 100%; }
+}

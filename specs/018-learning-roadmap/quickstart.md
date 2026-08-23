@@ -49,9 +49,11 @@ curl http://localhost:8000/api/roadmaps | python -m json.tool   # expect ai-mlop
 ## Frontend validation (M3–M5)
 
 1. Start the app, visit `/roadmap` with no `?id=` — expect the roadmap list view with the seeded
-   card showing 0% (no checklist items filled yet).
+   card showing 0% (the seeded checklist items exist but start unchecked).
 2. Click into the seeded roadmap (`/roadmap?id=ai-mlops-roadmap`) — expect all 6 steps in the
-   documented order, each showing 0%.
+   documented order, each showing 0%, each with a populated checklist, curated `course_links`,
+   and a `documents` entry linking to that step's original guide at `/roadmap/docs?doc=<slug>`
+   (opens `roadmap-doc-viewer.html`, which fetches and renders `static/roadmap-docs/<slug>.md`).
 3. Open a step's checklist section, add/check an item — expect the step and header percentages to
    update immediately (US2 AC1), and to still be correct after a page reload (US2 AC3).
 4. Disconnect network (or stop the server) mid-toggle — expect the checkbox to visibly revert and

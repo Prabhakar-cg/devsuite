@@ -45,7 +45,7 @@ _PTY_AVAILABLE = _pty_available  # compatibility alias for tests referencing mai
 logger = logging.getLogger("devsuite")
 
 # ─── App version and run-mode flags ──────────────────────────────────────────
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.5.1"
 _DEV_MODE   = os.getenv("DEVSUITE_DEV",   "0") == "1"
 _HTTPS      = os.getenv("DEVSUITE_HTTPS", "0") == "1"
 

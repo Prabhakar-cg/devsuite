@@ -5,6 +5,19 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.5.1] — 2026-08-23 (Learning Roadmap content upgrade)
+
+### Features
+
+#### Learning Roadmap: the seeded AI/MLOps roadmap's six steps get real content (`scripts/seed_roadmap.py`, `static/roadmap-doc-viewer.html`, `static/roadmap-doc-viewer.js`, `static/roadmap-doc-viewer.css`, `static/roadmap-docs/`, `routes/pages.py`)
+- Each of the seeded roadmap's six steps previously shipped with only a title and a one-line description ("banner"). They now ship with a concrete, actionable checklist (15–18 tasks each, sequenced foundational-to-advanced), 7–8 curated `course_links` per step (real, verified public resources — university courses, official docs, free short courses), and a `documents` entry linking to an original, in-depth reference guide written for that exact step.
+- New per-step reference guides at `static/roadmap-docs/*.md` — six original documents (~2,500–4,500 words each) covering: ML/LLM systems fundamentals (tokenization, embeddings, KV-cache math, quantization, roofline analysis), model serving & inference infra on Kubernetes (vLLM/KServe/GPU scheduling/KEDA/observability), ML pipeline & MLOps tooling (MLflow/W&B, Feast, model registries, ML-aware CI/CD, Terraform/Ansible), agentic AI engineering (the agent loop, LangGraph/CrewAI/AutoGen, MCP, guardrails, cost-aware orchestration, trace observability), certifications (with corrections to the retired AWS ML Specialty exam and the actual current AWS/NVIDIA/CNCF cert lineup), and portfolio & positioning (a concrete write-up template and diagramming/publishing guidance).
+- New read-only doc viewer, `static/roadmap-doc-viewer.html`/`.js`/`.css`, served at the new page route `GET /roadmap/docs?doc=<slug>&title=<title>` — fetches the requested `.md` file client-side and renders it with the same `marked` + `DOMPurify` sanitization pipeline Notes Workspace already uses (`NotesLinks.sanitizeMarkdownBody`), with a live table-of-contents sidebar built from the doc's headings, code-block/table/blockquote styling, and print support. No new sanitization surface, no DevDB access, no auth gate — same unauthenticated tier as the rest of the tool.
+- `scripts/seed_roadmap.py` rewritten to carry this full per-step content and to **backfill** any step still in its untouched seed state (empty checklist/course_links/documents/notes) when re-run against an already-seeded store, rather than only skipping entirely when the roadmap id exists — so an install seeded before this upgrade still picks up the new content on the next run, without touching any step a user has already started editing.
+- No `/api/roadmaps*` contract change — this is a content and static-asset addition only.
+
+---
+
 ## [0.5.0] — 2026-08-23 (Learning Roadmap)
 
 ### Security

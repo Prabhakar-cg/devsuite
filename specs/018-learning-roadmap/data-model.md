@@ -45,7 +45,14 @@ Computed, never stored (FR-011): `completion_pct` (int 0–100).
 | Field | Type | Notes |
 |---|---|---|
 | `title` | string | Required, non-empty. |
-| `url` | string | May be empty string (placeholder link, per spec.md Edge Cases — e.g. seed data ships a document with a title and no URL yet). Not validated as a well-formed URL server-side; rendered as non-clickable text client-side when empty. |
+| `url` | string | May be empty string (placeholder link, per spec.md Edge Cases). Not validated as a well-formed URL server-side; rendered as non-clickable text client-side when empty. |
+
+The seeded roadmap's `documents` entries are relative URLs of the form
+`/roadmap/docs?doc=<slug>&title=<url-encoded title>` — a step's own original reference guide,
+authored to `static/roadmap-docs/<slug>.md` and rendered read-only by `roadmap-doc-viewer.html`
+(contracts/roadmap-api.md). `course_links` entries are absolute `https://` URLs to external
+resources instead. Both shapes are ordinary `Link` records to the client; there is no field-level
+distinction between "internal doc" and "external course" beyond which array they live in.
 
 ## Completion Computation (`roadmap_utils.compute_completion`)
 
@@ -92,6 +99,9 @@ Rules (FR-011, FR-012, spec.md Edge Cases):
 
 ## Example Record
 
+Shape only — see `scripts/seed_roadmap.py` for the real seeded content (each step actually ships
+15+ checklist items and several `course_links`/one `documents` entry, per FR-018).
+
 ```json
 {
   "id": "ai-mlops-roadmap",
@@ -106,9 +116,15 @@ Rules (FR-011, FR-012, spec.md Edge Cases):
       "title": "ML/LLM systems fundamentals",
       "description": "Model training vs. inference, tokens, embeddings, quantization, GPU memory math, LLM request lifecycle.",
       "notes": "",
-      "checklist": [],
-      "course_links": [],
-      "documents": []
+      "checklist": [
+        {"id": "item-1-1", "text": "Tokenize the same paragraph with tiktoken cl100k_base, o200k_base, and the Llama 3 tokenizer...", "done": false}
+      ],
+      "course_links": [
+        {"title": "Stanford CS336: Language Modeling from Scratch", "url": "https://cs336.stanford.edu/"}
+      ],
+      "documents": [
+        {"title": "ML/LLM systems fundamentals — DevSuite Guide", "url": "/roadmap/docs?doc=step-1-ml-llm-fundamentals&title=ML%2FLLM%20systems%20fundamentals"}
+      ]
     }
   ]
 }

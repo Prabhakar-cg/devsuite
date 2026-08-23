@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roadmap Doc — DevSuite</title>
+    <meta name="description" content="Original reference documentation for a Learning Roadmap step.">
+    <link rel="stylesheet" href="/static/libs/fonts.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/roadmap.css?v=1">
+    <link rel="stylesheet" href="/static/roadmap-doc-viewer.css?v=1">
+    <script src="/static/theme.js?v=2"></script>
+    <!-- UMD bundles MUST load before require.min.js — see CLAUDE.md gotcha. -->
+    <script src="/static/libs/dompurify.min.js"></script>
+    <script src="/static/libs/marked.min.js"></script>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            <a href="/roadmap" class="back-link">&larr; Learning Roadmap</a>
+            <div class="tool-identity">
+                <div class="tool-icon tool-icon-emerald">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                </div>
+                <span class="tool-name">Roadmap <span class="tool-accent">Docs</span></span>
+            </div>
+        </div>
+        <div class="header-controls" style="display:flex; align-items:center; gap:0.5rem;">
+            <button id="print-btn" class="icon-btn" title="Print / save as PDF">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="roadmap-main">
+        <div class="doc-viewer-shell">
+            <nav id="doc-toc" class="doc-toc" aria-label="On this page"></nav>
+            <article id="doc-article" class="doc-article">
+                <div id="doc-loading" class="doc-loading">Loading&hellip;</div>
+            </article>
+        </div>
+    </main>
+
+    <script src="/static/notes-links.js"></script>
+    <script src="/static/roadmap-doc-viewer.js"></script>
+</body>
+</html>

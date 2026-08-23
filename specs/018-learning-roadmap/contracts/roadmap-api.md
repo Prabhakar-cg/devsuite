@@ -85,3 +85,13 @@ from one response without a second round-trip.
 **404**: unknown roadmap `id`, `step_id`, or `item_id`.
 
 **400**: `done` missing or not a boolean.
+
+## `GET /roadmap/docs`
+
+Not part of the JSON API — a page route (`routes/pages.py`, served via `_serve_html`) for the
+read-only step-documentation viewer. Query params: `doc` (slug, matched against
+`static/roadmap-docs/<slug>.md`) and `title` (display fallback if the doc has no `# h1`). The
+page (`static/roadmap-doc-viewer.js`) fetches the `.md` file client-side and renders it with the
+same `marked` + `DOMPurify` pipeline as Notes Workspace (`NotesLinks.sanitizeMarkdownBody`). No
+DevDB access, no auth gate — matches the rest of this tool's unauthenticated tier. The seeded
+roadmap's `documents` links point here (see `scripts/seed_roadmap.py`).

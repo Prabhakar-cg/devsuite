@@ -1,6 +1,6 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.5.0  
+> **Version:** 0.5.1  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
 > **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 13 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `016-data-linter`, `017-notes-workspace`, and `018-learning-roadmap`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that spec was drafted but never planned/implemented, so it is not a shipped tool and is not counted above. `003-json-linter`, `004-yaml-linter`, and `015-xml-linter` are superseded by `016-data-linter` (kept for record, not deleted — their functional requirements remain the source of truth for exact per-format behavior). This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `019-`.
@@ -19,7 +19,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.5.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
+`0.5.1` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
 
 ---
 
@@ -105,6 +105,9 @@ devsuite/
     ├── db-manager.html / db-manager.js / db-manager.css
     ├── file-converter.html
     ├── roadmap.html / roadmap.js / roadmap.css
+    ├── roadmap-doc-viewer.html / roadmap-doc-viewer.js / roadmap-doc-viewer.css
+    │                       # read-only renderer for static/roadmap-docs/*.md (Learning Roadmap step guides)
+    ├── roadmap-docs/       # original per-step reference docs (plain Markdown, fetched by roadmap-doc-viewer.js)
     └── libs/
         ├── fonts.css / fonts/   # Self-hosted Inter + JetBrains Mono (woff2)
         ├── vs/                  # Monaco Editor (self-hosted, loaded via RequireJS)
@@ -144,6 +147,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | File Converter | `file-converter.html` | inline JS + self-hosted `js-yaml`, `papaparse`, `marked` (`/static/libs/`), `toon.js` | `/api/convert` | — |
 | Notes Workspace | `notes.html` | `notes.js`, `notes-links.js`, `notes.css`, `auth-guard.js`, `components.js`, self-hosted `marked`, `dompurify` (`/static/libs/`), Monaco Editor | `/api/notes` | `notes` |
 | Learning Roadmap | `roadmap.html` | `roadmap.js`, `roadmap.css`, `components.js` (Monaco init + CSRF helper), Monaco Editor | `/api/roadmaps/*` | `roadmaps` |
+| Learning Roadmap — Doc Viewer | `roadmap-doc-viewer.html` | `roadmap-doc-viewer.js`, `roadmap-doc-viewer.css`, `notes-links.js` (shared `sanitizeMarkdownBody`), self-hosted `marked`, `dompurify` | `/roadmap/docs` (page route only; content fetched client-side from static `roadmap-docs/*.md`) | — |
 
 ---
 
@@ -199,6 +203,7 @@ into §5–§12 below.
 | `GET /file-converter` | File Format Converter |
 | `GET /notes` | Notes Workspace |
 | `GET /roadmap` | Learning Roadmap (list view; also `?id=<roadmap-id>` for detail view) |
+| `GET /roadmap/docs` | Learning Roadmap step reference-doc viewer (`?doc=<slug>&title=<title>`; renders `static/roadmap-docs/<slug>.md` read-only, client-side, via `marked`+`DOMPurify`) |
 
 ### 5.2 Auth Endpoints
 
@@ -773,10 +778,26 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 - Cron Visualizer: Day-of-Month grid added to the Visual Field Builder.
 - CI: SonarCloud new-code quality gate closed — accessible-name fixes, hash-locked CI dependencies (`requirements-lock.txt`, `--require-hashes`), pinned/`--only-binary`-only `pip install` steps.
 
-### v0.5.0 — Learning Roadmap ✅ (this release)
+### v0.5.1 — Learning Roadmap content upgrade ✅ (this release)
 
-> Priorities shifted from the originally planned "UX Foundation" slot (below, now retargeted to
-> v0.6.0) to ship the Learning Roadmap tool instead. See `CHANGELOG.md` [0.5.0] for full detail.
+> The seeded "AI/MLOps & Agentic AI Infrastructure" roadmap's six steps went from banner-only
+> title+description to full content: a concrete checklist per step (15–18 tasks each), curated
+> `course_links` to verified public resources, and a `documents` entry linking to an original,
+> in-depth reference guide authored for that step. See `CHANGELOG.md` [0.5.1] for full detail.
+
+- New static asset `static/roadmap-docs/*.md` (six original reference guides, ~2,500–4,500 words
+  each) and a new read-only viewer, `static/roadmap-doc-viewer.html`/`.js`/`.css`, served at the
+  new page route `GET /roadmap/docs?doc=<slug>&title=<title>` (`routes/pages.py`). Renders the
+  requested `.md` file client-side with the same `marked` + `DOMPurify` pipeline Notes Workspace
+  uses (`NotesLinks.sanitizeMarkdownBody`) — no new sanitization surface introduced.
+- `scripts/seed_roadmap.py` rewritten to carry the full per-step content (checklist/course_links/
+  documents) and to backfill any step still in its untouched seed state on re-run, not just skip
+  entirely when the roadmap id already exists — so upgrading an already-seeded install still picks
+  up the new content without clobbering any user-added notes/checklist/links.
+- No API contract change — `PATCH .../steps/{step_id}` and the checklist-toggle route are
+  unchanged; only the seeded data and the new doc-viewer page route are new.
+
+### v0.5.0 — Learning Roadmap ✅
 
 - New 13th tool, Learning Roadmap (`/roadmap`): generic, multi-roadmap tracker — ordered steps
   each with Monaco-based Markdown notes, a checklist, course links, and reference documents.
@@ -878,4 +899,4 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 ---
 
-*This spec reflects DevSuite v0.5.0. Update before implementing any new feature or changing existing behavior.*
+*This spec reflects DevSuite v0.5.1. Update before implementing any new feature or changing existing behavior.*
