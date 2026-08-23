@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Roadmap — DevSuite</title>
+    <meta name="description" content="Track multi-step learning plans with notes, checklists, and course/document links. Computed completion at a glance.">
+    <link rel="stylesheet" href="/static/libs/fonts.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/roadmap.css?v=1">
+    <script src="/static/theme.js?v=2"></script>
+    <script src="/static/libs/require.min.js"></script>
+    <script src="/static/components.js"></script>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            <a href="/tools" class="back-link">← DevSuite</a>
+            <div class="tool-identity">
+                <div class="tool-icon tool-icon-emerald">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                </div>
+                <span class="tool-name">Learning <span class="tool-accent">Roadmap</span></span>
+                <span class="tool-version">V1.0</span>
+            </div>
+        </div>
+        <div class="header-controls" id="header-controls" style="display:flex; align-items:center; gap:0.5rem;"></div>
+    </header>
+
+    <!-- Main content -->
+    <main class="roadmap-main">
+        <div class="roadmap-main-inner">
+
+            <!-- List view -->
+            <section id="list-view">
+                <div class="roadmap-list-header">
+                    <div>
+                        <h1>Learning Roadmaps</h1>
+                        <p>Multi-step learning plans with notes, checklists, and links.</p>
+                    </div>
+                </div>
+                <div id="roadmap-grid" class="roadmap-grid"></div>
+                <div id="list-empty-state" class="empty-state" style="display:none; height:auto; padding:3rem 0;">
+                    <div class="empty-state-icon">◎</div>
+                    <div>No roadmaps yet.</div>
+                </div>
+            </section>
+
+            <!-- Detail view -->
+            <section id="detail-view" style="display:none;">
+                <div class="roadmap-detail-header">
+                    <h1 id="detail-title"></h1>
+                    <p id="detail-desc"></p>
+                    <div class="roadmap-detail-progress-row">
+                        <div class="roadmap-progress-track"><div id="detail-progress-fill" class="roadmap-progress-fill" style="width:0%;"></div></div>
+                        <span id="detail-pct" class="roadmap-detail-pct">0%</span>
+                    </div>
+                </div>
+                <div id="steps-container" class="roadmap-steps"></div>
+            </section>
+
+            <!-- Not-found state -->
+            <section id="not-found-view" style="display:none;">
+                <div class="empty-state roadmap-not-found">
+                    <div class="empty-state-icon">✕</div>
+                    <div>Roadmap not found.</div>
+                    <a href="/roadmap" class="btn btn-ghost" style="margin-top:0.5rem;">Back to roadmaps</a>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <div id="toast-container"></div>
+    <script src="/static/roadmap.js"></script>
+</body>
+</html>

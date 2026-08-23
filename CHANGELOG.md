@@ -5,6 +5,27 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.5.0] — 2026-08-23 (Learning Roadmap)
+
+### Security
+
+#### CSRF cookie now issued to every visitor, not only after a master-password session (`main.py`)
+- Found while wiring Learning Roadmap's mutating routes: the `ds_csrf` cookie was only ever set by `/api/auth/session`, which meant every unauthenticated-tier tool with a mutating endpoint — `/api/convert` (File Converter), `/upload` (Diff), `/api/proxy` (API Tester) — was **already permanently unreachable** for a visitor who had never unlocked the suite (confirmed via `TestClient`: all three returned `403 CSRF validation failed`). New `ensure_csrf_cookie` middleware mints `ds_csrf` for any request that doesn't already carry one, regardless of auth state. This does not weaken CSRF protection — the double-submit pattern's defense comes from `SameSite=Strict` plus the cookie/header equality check, not from *when* the cookie was issued; session-gated routes still separately require `require_unlocked`. New regression tests in `tests/python/test_csrf.py` cover both the new issuance behavior and that the existing mismatch/missing-cookie rejection is unchanged. See `specs/018-learning-roadmap/research.md` item 1.
+
+### Features
+
+#### Learning Roadmap: new 13th tool for tracking multi-step learning plans (`static/roadmap.html`, `static/roadmap.js`, `static/roadmap.css`, `routes/roadmap.py`, `roadmap_utils.py`)
+- New tool at `/roadmap`: a generic, multi-roadmap tracker — any number of independent roadmaps, each an ordered list of steps with a title/description, Monaco-based Markdown notes, a checklist, course links, and reference documents. List view shows each roadmap's overall completion; detail view shows per-step completion in an accordion.
+- **Completion is always computed, never stored** (`roadmap_utils.compute_completion`): step % = checklist items done ÷ total (0 items → 0%, never NaN); roadmap % = unweighted average of its steps' %s (0 steps → 0%) — so displayed percentages and checklist state can never drift apart.
+- **Unauthenticated tool tier** — no master-password gate, consistent with Diff Checker/Data Format Linter/Regex Tester/Cron Visualizer, since roadmap content isn't sensitive. New `roadmaps` DevDB store holds plain JSON (not encrypted — there's no session-derived key to encrypt with at this tier).
+- Full CRUD + PATCH API (`GET/POST/PUT/DELETE /api/roadmaps`, `PATCH .../steps/{id}`, `PATCH .../steps/{id}/checklist/{item_id}`) — see `specs/018-learning-roadmap/contracts/roadmap-api.md`.
+- Checklist toggling is optimistic (instant local recompute + redraw) with rollback and a toast on failure, so a dropped request never leaves a checkbox showing the wrong state.
+- Notes use a lazily-created per-step Monaco editor (plain Markdown text, no rendered-HTML view — deliberately avoids adding a second sanitization surface for a field that only needs to be edited and persisted, not rendered; see `research.md` item 3). Course links and documents support add/remove, with empty-URL entries rendering as plain text rather than a broken link.
+- Ships pre-seeded with one roadmap, "AI/MLOps & Agentic AI Infrastructure" (6 steps), via `scripts/seed_roadmap.py` — idempotent, safe to re-run.
+- Built via the full Spec Kit flow (`specs/018-learning-roadmap/`: spec → plan → research → data-model → contracts → tasks), implemented in six gated milestones (data layer → API → read-only UI → checklist interactivity → notes/link editing → seed & integration), each verified against a live browser session before proceeding to the next.
+
+---
+
 ## [0.4.0] — 2026-08-18 (Notes Workspace)
 
 ### Features

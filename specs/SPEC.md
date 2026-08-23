@@ -1,9 +1,9 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.4.0  
+> **Version:** 0.5.0  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
-> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 12 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `016-data-linter` and `017-notes-workspace`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that spec was drafted but never planned/implemented, so it is not a shipped tool and is not counted above. `003-json-linter`, `004-yaml-linter`, and `015-xml-linter` are superseded by `016-data-linter` (kept for record, not deleted — their functional requirements remain the source of truth for exact per-format behavior). This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `017-`.
+> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 13 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `016-data-linter`, `017-notes-workspace`, and `018-learning-roadmap`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that spec was drafted but never planned/implemented, so it is not a shipped tool and is not counted above. `003-json-linter`, `004-yaml-linter`, and `015-xml-linter` are superseded by `016-data-linter` (kept for record, not deleted — their functional requirements remain the source of truth for exact per-format behavior). This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `019-`.
 
 ---
 
@@ -19,7 +19,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.4.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
+`0.5.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
 
 ---
 
@@ -67,6 +67,7 @@ devsuite/
 │   ├── db.py            # /api/db/* (DevDB REST API)
 │   ├── pages.py         # HTML page routes, /upload
 │   ├── proxy.py         # /api/proxy (CORS bypass)
+│   ├── roadmap.py       # /api/roadmaps/* (Learning Roadmap CRUD + PATCH)
 │   ├── ssh.py           # SSH terminal, SFTP, WSL discovery, dashboard WebSocket
 │   └── storage.py       # /api/vault, /api/collections, /api/ssh/profiles
 ├── devdb.py             # Storage engine: .dsb binary (AES-256-GCM)
@@ -87,7 +88,7 @@ devsuite/
     ├── auth-guard.js     # 8-hour session auth for DevDB tools
     ├── devdb-client.js   # Fetch wrapper around /api/db/*
     ├── home.html / home.css
-    ├── tools.html        # Tools hub / dashboard (11 tool cards)
+    ├── tools.html        # Tools hub / dashboard (13 tool cards)
     ├── index.html / app.js            # Diff tool
     ├── data-linter.html  / regex.html / base64.html / crypto.html
     ├── api-tester.html / api-tester.js / api-tester.css / api-client.js
@@ -103,6 +104,7 @@ devsuite/
     ├── vault.html / vault.js / vault.css
     ├── db-manager.html / db-manager.js / db-manager.css
     ├── file-converter.html
+    ├── roadmap.html / roadmap.js / roadmap.css
     └── libs/
         ├── fonts.css / fonts/   # Self-hosted Inter + JetBrains Mono (woff2)
         ├── vs/                  # Monaco Editor (self-hosted, loaded via RequireJS)
@@ -141,6 +143,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | DevDB Manager | `db-manager.html` | `db-manager.js`, `db-manager.css` | `/api/db/*` | — |
 | File Converter | `file-converter.html` | inline JS + self-hosted `js-yaml`, `papaparse`, `marked` (`/static/libs/`), `toon.js` | `/api/convert` | — |
 | Notes Workspace | `notes.html` | `notes.js`, `notes-links.js`, `notes.css`, `auth-guard.js`, `components.js`, self-hosted `marked`, `dompurify` (`/static/libs/`), Monaco Editor | `/api/notes` | `notes` |
+| Learning Roadmap | `roadmap.html` | `roadmap.js`, `roadmap.css`, `components.js` (Monaco init + CSRF helper), Monaco Editor | `/api/roadmaps/*` | `roadmaps` |
 
 ---
 
@@ -167,6 +170,7 @@ into §5–§12 below.
 | 4.10 | File Format Converter | `/file-converter` | [specs/013-file-converter/spec.md](013-file-converter/spec.md) |
 | 4.11 | Data Format Linter | `/data-linter`, `/json`, `/yaml`, `/xml` | [specs/016-data-linter/spec.md](016-data-linter/spec.md) |
 | 4.12 | Notes Workspace | `/notes` | [specs/017-notes-workspace/spec.md](017-notes-workspace/spec.md) |
+| 4.13 | Learning Roadmap | `/roadmap` | [specs/018-learning-roadmap/spec.md](018-learning-roadmap/spec.md) |
 
 ---
 
@@ -177,7 +181,7 @@ into §5–§12 below.
 | Route | Tool |
 |---|---|
 | `GET /` | Homepage (`home.html`) |
-| `GET /tools` | Tools Hub — 12 tool cards (`tools.html`) |
+| `GET /tools` | Tools Hub — 13 tool cards (`tools.html`) |
 | `GET /diff` | Diff Checker |
 | `GET /data-linter` | Data Format Linter (JSON tab default; also `?tab=json\|yaml\|xml`) |
 | `GET /json` | Data Format Linter (legacy route, JSON tab default) |
@@ -194,6 +198,7 @@ into §5–§12 below.
 | `GET /db-manager` | DevDB Manager |
 | `GET /file-converter` | File Format Converter |
 | `GET /notes` | Notes Workspace |
+| `GET /roadmap` | Learning Roadmap (list view; also `?id=<roadmap-id>` for detail view) |
 
 ### 5.2 Auth Endpoints
 
@@ -208,7 +213,7 @@ into §5–§12 below.
 | `GET` | `/api/vault/migrate` | — | Read vault blob without auth (only available before first `auth/setup`; returns 409 after) |
 
 **Session cookie:** `ds_session` — `HttpOnly; SameSite=Strict; max_age=28800` (8 hours). `Secure` flag set when `DEVSUITE_HTTPS=1`.  
-**CSRF cookie:** `ds_csrf` — non-HttpOnly, same TTL; required as `X-CSRF-Token` header on all mutating requests. `Secure` flag set when `DEVSUITE_HTTPS=1`.  
+**CSRF cookie:** `ds_csrf` — non-HttpOnly, same TTL; required as `X-CSRF-Token` header on all mutating requests. `Secure` flag set when `DEVSUITE_HTTPS=1`. Issued to **every visitor on their first request** (`ensure_csrf_cookie` middleware, `main.py`), not only after `/api/auth/session` — this is what makes mutating routes in the unauthenticated tool tier (Learning Roadmap, and previously-broken `/api/convert`/`/upload`/`/api/proxy`) reachable without ever unlocking the suite; see §7.3.  
 **Token storage:** Only the BLAKE2b-32 hex digest of each `token_urlsafe(32)` session token is kept in server memory.  
 **CSRF exempt paths:** `/api/auth/session` and `/api/auth/setup` (bootstrap endpoints that predate any session).
 
@@ -250,6 +255,28 @@ invalid or missing token returns 403.
 |---|---|---|
 | `GET` | `/api/collections` | List saved request collections |
 | `POST` | `/api/collections` | Save a collection |
+
+### 5.6 Learning Roadmap API
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/api/roadmaps` | List all roadmaps (id, title, description, computed `completion_pct`) |
+| `GET` | `/api/roadmaps/{id}` | Full roadmap detail: steps in `order`, each with its own `completion_pct` |
+| `POST` | `/api/roadmaps` | Create a roadmap (`id`, `title`, `description`); 409 on duplicate `id`, 400 on invalid `id`/empty `title` |
+| `PUT` | `/api/roadmaps/{id}` | Update `title`/`description` only (`id`, `created_at`, `steps` immutable via this route) |
+| `DELETE` | `/api/roadmaps/{id}` | Delete a roadmap |
+| `PATCH` | `/api/roadmaps/{id}/steps/{step_id}` | Update a step's `notes`/`course_links`/`documents` (any subset) |
+| `PATCH` | `/api/roadmaps/{id}/steps/{step_id}/checklist/{item_id}` | Set a checklist item's `done` state (body: `{"done": bool}`); returns the item plus recomputed `step_completion_pct` and `roadmap_completion_pct` |
+
+**Auth contract:** unauthenticated tier — no `require_unlocked` on any route (roadmap content is
+not sensitive, same tier as Diff Checker/Data Format Linter). Mutating routes still require the
+standard `X-CSRF-Token`/`ds_csrf` double-submit pair per §5.2/§7.3. 404 on any unknown roadmap,
+step, or checklist-item id — never a silent no-op or implicit creation.
+
+**Completion percentages are always computed, never stored** (`roadmap_utils.compute_completion`):
+a step with zero checklist items is 0% (not an error/NaN); a roadmap with zero steps is 0%; a
+roadmap's overall % is the unweighted average of its steps' %s. Full contract:
+`specs/018-learning-roadmap/contracts/roadmap-api.md`.
 
 ### 5.7 File Operations
 
@@ -354,6 +381,7 @@ Access via the DevDB REST API is restricted to these store names (`_ALLOWED_STOR
 | `collections` | API Tester | JSON request collections |
 | `app_prefs` | Auth system | `master_setup_done`, `master_salt`, `master_verify_blob`, `challenge_version`; `master_verify_iv` (v1) or `master_verify_nonce` (v2) |
 | `notes` | Notes Workspace | AES-256-GCM ciphertext blob (never decrypted server-side); decrypts client-side to a Notebook → Section → Page tree, see `specs/017-notes-workspace/data-model.md` |
+| `roadmaps` | Learning Roadmap | **Plain JSON**, not encrypted (unauthenticated tier — no master-password key to encrypt with; content is not sensitive by design). Dict keyed by roadmap id → full roadmap record (steps, checklist, notes, links), see `specs/018-learning-roadmap/data-model.md` |
 
 ### 6.5 JS Client (`devdb-client.js`)
 
@@ -385,6 +413,16 @@ DevDB.getMeta()           // GET /api/db/meta
 ### 7.3 CSRF Protection
 
 - Server issues `ds_csrf` cookie (non-HttpOnly, same TTL) alongside `ds_session`.
+- **Also issued standalone, to every visitor:** `ensure_csrf_cookie` middleware (`main.py`) mints
+  `ds_csrf` (`secrets.token_hex(32)`) for any request that doesn't already carry one, regardless
+  of authentication state — added in v0.5.0 (specs/018-learning-roadmap/research.md item 1) after
+  discovering that unauthenticated-tier mutating routes (`/api/convert`, `/upload`, `/api/proxy`,
+  and the new `/api/roadmaps*`) were otherwise permanently unreachable, since nothing issued the
+  cookie before a master password was ever set. This does not weaken the protection: the
+  double-submit pattern's security comes from `SameSite=Strict` (blocks the cookie on cross-site
+  requests) plus the cookie/header equality check, not from the cookie having been minted
+  specifically post-authentication — a session is still separately required for any
+  session-gated route via `require_unlocked`.
 - All `POST / PUT / DELETE / PATCH` requests must include `X-CSRF-Token` header matching `ds_csrf`.
 - Comparison uses `secrets.compare_digest` (constant-time).
 - Exempt: `/api/auth/session` and `/api/auth/setup` (bootstrap endpoints that predate any session).
@@ -581,6 +619,8 @@ These paths must have automated tests. Adding or changing any of them requires a
 - PBKDF2 key derivation: deterministic with same password + salt.
 - AES-GCM roundtrip: `decrypt(encrypt(plaintext, key), key) == plaintext`.
 - CSRF middleware: mutating requests without `X-CSRF-Token` → HTTP 403.
+- CSRF cookie issuance: a bare `GET` with no cookies is issued a `ds_csrf` cookie; that cookie
+  authorizes a subsequent mutating request past the CSRF check (§7.3).
 - Rate limiting: 6th auth request within 60s → HTTP 429.
 - SSRF proxy block: loopback/link-local/reserved addresses → HTTP 403; LAN ranges allowed.
 - Session token hashing: raw token not present in `_sessions` dict.
@@ -720,9 +760,9 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 > **Deliberate non-goals vs Bruno:** live file-based collections (conflicts with the DevDB-only constraint in §2 — the zip export + CLI runner cover the git/CI workflow instead) and gRPC (effort/value off-balance for a local suite).
 
-### v0.4.0 — Notes Workspace ✅ (this release)
+### v0.4.0 — Notes Workspace ✅
 
-> Priorities shifted from the originally planned "UX Foundation" slot (below, now retargeted to v0.5.0) to ship the Notes Workspace tool and close out in-flight Data Format Linter / File Converter work instead. See `CHANGELOG.md` [0.4.0] for full detail.
+> Priorities shifted from the originally planned "UX Foundation" slot to ship the Notes Workspace tool and close out in-flight Data Format Linter / File Converter work instead (that slot then shifted again to v0.5.0 for Learning Roadmap — see below). See `CHANGELOG.md` [0.4.0] for full detail.
 
 - New 12th tool, Notes Workspace (`/notes`): Monaco-based Markdown editor, Notebook → Section → Page hierarchy, Obsidian-style `[[wiki-links]]` with backlinks, `#tags`, full-text search — encrypted client-side (WebCrypto PBKDF2 → AES-256-GCM) via a new `notes` DevDB store, same model as Secret Vault (§4.12).
 - File Format Converter: TOON added as a sixth conversion node; XML matrix completed (was JSON→XML only); a silent array-tag-name data-loss bug in `jsonToXml`/`xmlToJson` fixed in both its copies.
@@ -733,7 +773,23 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 - Cron Visualizer: Day-of-Month grid added to the Visual Field Builder.
 - CI: SonarCloud new-code quality gate closed — accessible-name fixes, hash-locked CI dependencies (`requirements-lock.txt`, `--require-hashes`), pinned/`--only-binary`-only `pip install` steps.
 
-### v0.5.0 — UX Foundation
+### v0.5.0 — Learning Roadmap ✅ (this release)
+
+> Priorities shifted from the originally planned "UX Foundation" slot (below, now retargeted to
+> v0.6.0) to ship the Learning Roadmap tool instead. See `CHANGELOG.md` [0.5.0] for full detail.
+
+- New 13th tool, Learning Roadmap (`/roadmap`): generic, multi-roadmap tracker — ordered steps
+  each with Monaco-based Markdown notes, a checklist, course links, and reference documents.
+  Completion percentages always computed on read (`roadmap_utils.compute_completion`), never
+  stored — a step/roadmap with zero items is 0%, never NaN. New `roadmaps` DevDB store (§6.4,
+  plain JSON — not encrypted, since this is the unauthenticated tool tier). Ships pre-seeded with
+  an "AI/MLOps & Agentic AI Infrastructure" roadmap via `scripts/seed_roadmap.py`.
+- **Cross-cutting CSRF fix** (§7.3): `ds_csrf` is now minted for every visitor on first contact,
+  not only after a master-password session — this was blocking all unauthenticated-tier mutating
+  routes (`/api/convert`, `/upload`, `/api/proxy`) before Learning Roadmap's own mutating routes
+  surfaced the same pre-existing gap.
+
+### v0.6.0 — UX Foundation
 
 - Persistent back-to-tools nav header on all tool pages.
 - Empty state screens for all tools (CSS `::before` placeholder).
@@ -743,7 +799,7 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 - Recent + Pinned tools section on tools page.
 - Actionable error messages (what / why / how to fix).
 
-### v0.6.0 — Power User
+### v0.7.0 — Power User
 
 - Global command palette (`Ctrl+K`) with fuzzy search across all tools.
 - Loading / progress states for slow operations (file converter, SSH connect).
@@ -822,4 +878,4 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 ---
 
-*This spec reflects DevSuite v0.4.0. Update before implementing any new feature or changing existing behavior.*
+*This spec reflects DevSuite v0.5.0. Update before implementing any new feature or changing existing behavior.*

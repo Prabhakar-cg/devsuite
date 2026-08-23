@@ -45,7 +45,7 @@ _PTY_AVAILABLE = _pty_available  # compatibility alias for tests referencing mai
 logger = logging.getLogger("devsuite")
 
 # ─── App version and run-mode flags ──────────────────────────────────────────
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.5.0"
 _DEV_MODE   = os.getenv("DEVSUITE_DEV",   "0") == "1"
 _HTTPS      = os.getenv("DEVSUITE_HTTPS", "0") == "1"
 
@@ -175,6 +175,6 @@ def require_unlocked(request: Request) -> None:
 
 
 # ─── Shared DevDB / validation constants ─────────────────────────────────────
-_ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "app_prefs", "notes"}
+_ALLOWED_STORES = {"vault", "collections", "ssh_profiles", "app_prefs", "notes", "roadmaps"}
 # Only allow printable, non-shell-special characters for WSL distro names.
 _DISTRO_NAME_RE = re.compile(r'^[A-Za-z0-9_.\-]+$')
