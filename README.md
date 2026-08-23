@@ -1,6 +1,6 @@
 # DevSuite — Developer Tools from Hell
 
-![Version](https://img.shields.io/badge/version-0.4.0-blue)
+![Version](https://img.shields.io/badge/version-0.5.0-blue)
 [![CodeQL](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml)
 [![Tests](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
@@ -109,6 +109,13 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **AES-256-GCM client-side encryption** — same v2 scheme as Secret Vault; the server only ever stores an opaque encrypted blob (`notes` store).
 - **Master Password gate** — same shared Master Password as Secret Vault; no unencrypted fallback.
 
+### 13. Learning Roadmap
+- **Multi-roadmap tracker** — an unlimited number of independent learning plans, each with an ordered list of steps.
+- **Per-step notes, checklists, and links** — Monaco-based Markdown notes, a checklist, course links, and reference documents per step.
+- **Always-computed completion** — step and roadmap completion percentages are derived fresh on every read from checklist state, never stored, so they can never drift out of sync.
+- **No Master Password gate** — roadmap content isn't sensitive, so it's reachable without unlocking the suite, same tier as Diff Checker and Data Format Linter.
+- Ships pre-seeded with an "AI/MLOps & Agentic AI Infrastructure" roadmap.
+
 ---
 
 ## Premium UI
@@ -180,7 +187,7 @@ uvicorn main:app --port 8000 --reload
 devsuite/
 ├── main.py                  # Thin orchestrator — app factory, middleware, router inclusion
 ├── deps.py                  # Shared singletons & helpers (DevDB, limiter, sessions, constants)
-├── routes/                  # APIRouter modules: auth, convert, db, pages, proxy, ssh, storage
+├── routes/                  # APIRouter modules: auth, convert, db, pages, proxy, roadmap, ssh, storage
 ├── devdb.py                 # Unified Storage Engine — KeePass-style .dsb binary format (AES-256-GCM)
 ├── requirements.txt         # fastapi, uvicorn, asyncssh, cryptography, openpyxl, pypdf, etc.
 ├── start.sh                 # One-shot virtual environment setup & run script
@@ -233,7 +240,11 @@ devsuite/
     ├── db-manager.css       # DevDB Manager styles
     │
     ├── toon.js              # TOON codec (pure, node-testable) — shared by data-linter.html + file-converter.html
-    └── file-converter.html  # File Format Converter (JSON, CSV, YAML, XML, TOON, XLSX, PDF, DOCX, etc.)
+    ├── file-converter.html  # File Format Converter (JSON, CSV, YAML, XML, TOON, XLSX, PDF, DOCX, etc.)
+    │
+    ├── roadmap.html         # Learning Roadmap (multi-roadmap tracker)
+    ├── roadmap.js           # Roadmap list/detail rendering, checklist toggling, Monaco notes, link editing
+    └── roadmap.css          # Learning Roadmap styles
 ```
 
 ---

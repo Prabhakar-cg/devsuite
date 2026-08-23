@@ -38,6 +38,7 @@ from deps import (
     _DEVSUITE_DIR,
     _HTTPS,
     _PTY_AVAILABLE,    # noqa: F401 — referenced by tests as main._PTY_AVAILABLE
+    _SESSION_TTL,
     _audit_log,        # noqa: F401 — re-exported for import completeness
     _db,
     _hash_token,
@@ -51,7 +52,7 @@ from deps import (
 from routes.proxy import _SSRFSafeRedirectHandler, _check_ip_not_private  # noqa: F401
 
 # ─── Router imports ──────────────────────────────────────────────────────────
-from routes import auth, convert, db, pages, proxy, ssh, storage
+from routes import auth, convert, db, pages, proxy, roadmap, ssh, storage
 
 
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
@@ -163,6 +164,36 @@ _CSRF_EXEMPT_PATHS = {"/api/auth/session", "/api/auth/setup"}
 
 
 @app.middleware("http")
+async def ensure_csrf_cookie(request, call_next):
+    """Mint a ds_csrf cookie for any visitor who doesn't have one yet.
+
+    Unauthenticated-tier tools (Diff, File Converter, API Tester's proxy, and now
+    Learning Roadmap) have mutating routes but no master-password session to derive
+    the CSRF cookie from — previously ds_csrf was only ever set by /api/auth/session,
+    leaving those routes permanently 403 for a visitor who never unlocks the suite.
+    Minting it here on first contact does not weaken the double-submit check: the
+    defense comes from SameSite=strict plus the cookie/header equality test, not from
+    the cookie having been issued specifically post-authentication. See
+    specs/018-learning-roadmap/research.md item 1.
+
+    Scoped to HTML document responses only (checked via the response's own
+    Content-Type, not the request path — no route allowlist to keep in sync). A
+    visitor's first request is always a page load, so this still covers every
+    first-contact case; it just skips minting redundantly on every /static/*
+    asset and /api/* call a page then makes with the cookie it already got.
+    """
+    had_cookie = "ds_csrf" in request.cookies
+    response = await call_next(request)
+    is_document = response.headers.get("content-type", "").startswith("text/html")
+    if not had_cookie and is_document:
+        response.set_cookie(  # NOSONAR — secure=_HTTPS is intentional: app runs over HTTP locally
+            key="ds_csrf", value=secrets.token_hex(32),
+            httponly=False, samesite="strict", max_age=_SESSION_TTL, secure=_HTTPS,
+        )
+    return response
+
+
+@app.middleware("http")
 async def csrf_middleware(request, call_next):
     """Double-submit CSRF check on all mutating routes."""
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
@@ -188,6 +219,7 @@ app.include_router(convert.router)
 app.include_router(proxy.router)
 app.include_router(db.router)
 app.include_router(ssh.router)
+app.include_router(roadmap.router)
 
 
 # ─── Entry point ─────────────────────────────────────────────────────────────

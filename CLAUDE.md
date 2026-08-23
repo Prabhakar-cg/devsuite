@@ -7,9 +7,9 @@ This project uses GitHub Spec Kit. **The spec-kit tree is the single source of t
 - `.specify/memory/constitution.md` — non-negotiable principles. Read first; every plan and implementation must comply.
 - `specs/SPEC.md` — the master specification for everything *cross-cutting*: backend API surface, storage engine, security model, design system, versioning. §4 is now just an index — tool behavior lives in each tool's own folder (below). Code and tests cite it as `SPEC.md §<section>` — keep its § numbering stable.
 - **Every tool has its own numbered spec folder** (`specs/NNN-tool-slug/`), same layout as any spec-kit feature — `spec.md`, `plan.md`, `tasks.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/`, `checklists/`:
-  `002-diff-checker` · `003-json-linter` · `004-yaml-linter` · `005-regex-tester` · `006-base64-encoder` · `007-crypto-suite` · `008-api-tester` · `009-secure-terminal-sftp` · `010-cron-visualizer` · `011-secret-vault` · `012-db-manager` · `013-file-converter` · `014-id-generator` · `015-xml-linter` · `016-data-linter` · `017-notes-workspace`.
+  `002-diff-checker` · `003-json-linter` · `004-yaml-linter` · `005-regex-tester` · `006-base64-encoder` · `007-crypto-suite` · `008-api-tester` · `009-secure-terminal-sftp` · `010-cron-visualizer` · `011-secret-vault` · `012-db-manager` · `013-file-converter` · `014-id-generator` · `015-xml-linter` · `016-data-linter` · `017-notes-workspace` · `018-learning-roadmap`.
   `specs/001-devsuite-baseline/spec.md` is the historical whole-system baseline predating this split — kept for record, superseded by the per-tool specs above for tool-specific detail.
-- **New features get the next number after the highest existing one** (currently `017-`): `/speckit-specify` creates `specs/NNN-name/`, then `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`. When a feature ships, fold its durable cross-cutting contracts back into `specs/SPEC.md` (§5–§12, and add a row to the §4 index) in the same commit. A fix or extension to an *existing* tool updates that tool's own `specs/NNN-tool-slug/` folder, not a new one.
+- **New features get the next number after the highest existing one** (currently `018-`): `/speckit-specify` creates `specs/NNN-name/`, then `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`. When a feature ships, fold its durable cross-cutting contracts back into `specs/SPEC.md` (§5–§12, and add a row to the §4 index) in the same commit. A fix or extension to an *existing* tool updates that tool's own `specs/NNN-tool-slug/` folder, not a new one.
 - If implementation stalls or drifts from the spec, `/speckit-converge` audits the codebase against the feature's spec/plan/tasks and appends the remaining unbuilt work to `tasks.md` so `/speckit-implement` can finish it.
 - Every plan must fill in the Constitution Check gates in `plan-template.md` — including the spec/security baseline and the new-tool cross-cutting checklist — before Phase 0 research.
 
@@ -47,7 +47,7 @@ Rules (full text in the constitution):
 - Backend suite: `pytest tests/python/` (41 tests, all should pass). Covers the SPEC §10.2 security-critical paths.
 - JS unit suite: `node tests/javascript/run.js` (zero dependencies). Covers the pure modules `static/curl-codegen.js`, `static/cookie-jar.js`, and `static/collection-utils.js`. Browser/e2e tests are still a v1.0.0 deliverable.
 - CI runs the suite via `.github/workflows/tests.yml` (push/PR, Python 3.10 + 3.12). Still run it locally before claiming a change is verified.
-- DevSuite ships **12 tools**. The source of truth for the tool list is `routes/pages.py` (routes) + `static/tools.html` (cards) — not prose in README. Keep README/SPEC/`tools.html`/`home.html` counts in sync when adding or removing a tool.
+- DevSuite ships **13 tools**. The source of truth for the tool list is `routes/pages.py` (routes) + `static/tools.html` (cards) — not prose in README. Keep README/SPEC/`tools.html`/`home.html` counts in sync when adding or removing a tool.
 
 ## Gotchas (as of 2026-06-10, v0.3.0)
 
@@ -61,5 +61,5 @@ Rules (full text in the constitution):
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/017-notes-workspace/plan.md
+at specs/018-learning-roadmap/plan.md
 <!-- SPECKIT END -->

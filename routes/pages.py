@@ -113,6 +113,12 @@ def read_notes_tool():
     return _serve_html("notes.html")
 
 
+@router.get("/roadmap", response_class=HTMLResponse, summary="Serve Learning Roadmap tool")
+def read_roadmap_tool():
+    """Serve the Learning Roadmap tool."""
+    return _serve_html("roadmap.html")
+
+
 # ─── Text file upload for diff tool ──────────────────────────────────────────
 
 async def _read_upload_stream(file: UploadFile, max_size: int) -> tuple[bytearray, bool]:
