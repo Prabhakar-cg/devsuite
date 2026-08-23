@@ -64,10 +64,18 @@ Pure function, no I/O, no DevDB access — takes a roadmap dict, returns:
 
 Rules (FR-011, FR-012, spec.md Edge Cases):
 
-- Step completion = `round(100 * done_count / total_count)` if `total_count > 0`, else `0`
+- Step completion = `round_half_up(100 * done_count / total_count)` if `total_count > 0`, else `0`
   (never divide by zero, never emit `NaN`).
-- Roadmap completion = `round(mean(step_completions))` if the roadmap has ≥1 step, else `0`
+- Roadmap completion = `round_half_up(mean(step_completions))` if the roadmap has ≥1 step, else `0`
   (a roadmap with zero steps is 0%, not an error — spec.md Edge Cases).
+- **Rounding policy**: ties round up (half-up, `floor(x + 0.5)`), matching JavaScript's
+  `Math.round`. This is deliberate, not the language default: Python's builtin `round()` uses
+  round-half-to-even and disagrees with `Math.round` at exact `.5` midpoints (e.g. a step with 1
+  of 8 checklist items done is exactly 12.5% — `round(12.5) == 12` in Python vs
+  `Math.round(12.5) === 13` in JS). `roadmap_utils._round_half_up` and
+  `static/roadmap-utils.js`'s `computeStepPct`/`computeRoadmapPct` both implement this same
+  half-up rule so the client's optimistic percentage always matches the server's authoritative
+  one, including at midpoints.
 - Every step counts equally regardless of its checklist length (locked design decision:
   "equal weight — steps are not weighted differently in v1").
 - This function is called fresh on every `GET /api/roadmaps` (per-roadmap `roadmap_pct` only, for

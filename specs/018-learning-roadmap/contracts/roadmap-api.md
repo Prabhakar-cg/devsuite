@@ -65,6 +65,11 @@ this body later without a breaking change).
 
 **200**: the updated step, with its `completion_pct`.
 
+**400**: `course_links` or `documents` provided but not a list of valid Link entries (each entry
+must be an object with a non-empty `title`; `url` may be empty). Validation runs for both fields
+before either is written, so an invalid `documents` value cannot leave `course_links` partially
+applied.
+
 **404**: unknown roadmap `id` or `step_id`.
 
 ## `PATCH /api/roadmaps/{id}/steps/{step_id}/checklist/{item_id}`

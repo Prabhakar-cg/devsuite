@@ -144,6 +144,63 @@ def test_patch_step_updates_notes_and_links(client):
     assert body["completion_pct"] == 0
 
 
+def test_patch_step_course_links_not_a_list_is_400(client):
+    headers = _csrf_headers(client)
+    _create_roadmap_with_step(client, headers)
+    r = client.patch(
+        "/api/roadmaps/test-roadmap/steps/step-1",
+        json={"course_links": "not-a-list"},
+        headers=headers,
+    )
+    assert r.status_code == 400
+
+
+def test_patch_step_link_entry_missing_title_is_400(client):
+    headers = _csrf_headers(client)
+    _create_roadmap_with_step(client, headers)
+    r = client.patch(
+        "/api/roadmaps/test-roadmap/steps/step-1",
+        json={"documents": [{"url": "https://example.com"}]},
+        headers=headers,
+    )
+    assert r.status_code == 400
+
+
+def test_patch_step_invalid_documents_does_not_partially_apply_course_links(client):
+    headers = _csrf_headers(client)
+    _create_roadmap_with_step(client, headers)
+    r = client.patch(
+        "/api/roadmaps/test-roadmap/steps/step-1",
+        json={
+            "course_links": [{"title": "Should not save", "url": ""}],
+            "documents": "not-a-list",
+        },
+        headers=headers,
+    )
+    assert r.status_code == 400
+
+    r = client.get("/api/roadmaps/test-roadmap")
+    step = r.json()["steps"][0]
+    assert step["course_links"] == []
+
+
+def test_patch_step_empty_links_list_clears_existing(client):
+    headers = _csrf_headers(client)
+    _create_roadmap_with_step(client, headers)
+    client.patch(
+        "/api/roadmaps/test-roadmap/steps/step-1",
+        json={"course_links": [{"title": "Course", "url": "https://example.com"}]},
+        headers=headers,
+    )
+    r = client.patch(
+        "/api/roadmaps/test-roadmap/steps/step-1",
+        json={"course_links": []},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["course_links"] == []
+
+
 def test_patch_step_unknown_roadmap_is_404(client):
     headers = _csrf_headers(client)
     r = client.patch(

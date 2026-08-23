@@ -58,3 +58,25 @@ def test_rounding_at_non_exact_fraction():
     checklist = [{"done": True}, {"done": False}, {"done": False}]
     result = compute_completion({"id": "r", "steps": [_step("step-1", checklist)]})
     assert result["steps"]["step-1"] == 33
+
+
+def test_rounding_at_exact_half_midpoint_rounds_up():
+    # 1/8 done -> exactly 12.5%. Python's builtin round() uses round-half-to-even
+    # (round(12.5) == 12), which would disagree with JS's Math.round(12.5) === 13.
+    # data-model.md's documented policy is half-up, matching JS, on both sides.
+    checklist = [{"done": True}] + [{"done": False}] * 7
+    result = compute_completion({"id": "r", "steps": [_step("step-1", checklist)]})
+    assert result["steps"]["step-1"] == 13
+
+
+def test_roadmap_pct_rounds_up_at_exact_half_midpoint():
+    # Two steps at 25% and 50% average to exactly 37.5% -> rounds up to 38.
+    roadmap = {
+        "id": "r",
+        "steps": [
+            _step("step-1", [{"done": True}] + [{"done": False}] * 3),   # 25%
+            _step("step-2", [{"done": True}, {"done": False}]),          # 50%
+        ],
+    }
+    result = compute_completion(roadmap)
+    assert result["roadmap_pct"] == 38

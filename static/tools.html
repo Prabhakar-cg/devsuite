@@ -294,7 +294,7 @@
                 <span class="qa-stat">zero cloud</span>
                 <div class="qa-spacer"></div>
                 <div class="qa-jump-chips">
-                    <button class="qa-chip" data-jump="dev">Dev <span>3</span></button>
+                    <button class="qa-chip" data-jump="dev">Dev <span>5</span></button>
                     <button class="qa-chip" data-jump="data">Data <span>3</span></button>
                     <button class="qa-chip" data-jump="security">Security <span>3</span></button>
                     <button class="qa-chip" data-jump="network">Network <span>1</span></button>
@@ -831,6 +831,15 @@
                     if (countEl) {
                         const key = t.dataset.filter;
                         countEl.textContent = totals[key] ?? 0;
+                    }
+                });
+                // Quick-access chips (qa-jump-chips) show the same per-category totals as
+                // the filter tabs above — keep them in sync from the same source so they
+                // can't drift when a tool's category changes or a new tool is added.
+                document.querySelectorAll('.qa-chip[data-jump]').forEach(chip => {
+                    const countEl = chip.querySelector('span');
+                    if (countEl) {
+                        countEl.textContent = totals[chip.dataset.jump] ?? 0;
                     }
                 });
             }

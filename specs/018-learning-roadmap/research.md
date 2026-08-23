@@ -4,13 +4,14 @@
 
 **Decision**: Mint the `ds_csrf` cookie for every visitor on their first request to the app,
 not only after a successful `/api/auth/session` (master-password unlock). Concretely: a
-lightweight check early in the middleware chain (or a dependency on the page routes) that, if
-`request.cookies.get("ds_csrf")` is absent, generates a token via `secrets.token_urlsafe(32)`
-(matching `routes/auth.py`'s existing token generation) and sets it via `response.set_cookie(...)`
-with the same flags `routes/auth.py` already uses (`httponly=False`, `samesite="strict"`,
-`secure=_HTTPS`). The existing `/api/auth/session` issuance path is left as-is (it still (re)sets
-the cookie on unlock, which simply overwrites the same-named cookie with a freshly-scoped value —
-harmless).
+lightweight middleware in `main.py` (`ensure_csrf_cookie`) that, if `request.cookies.get("ds_csrf")`
+is absent, generates a token via `secrets.token_hex(32)` (matching that same middleware's existing
+token generation, used consistently at every `ds_csrf` issuance site) and sets it via
+`response.set_cookie(...)` with the same flags already in use (`httponly=False`,
+`samesite="strict"`, `secure=_HTTPS`), scoped to HTML document responses only (checked via
+Content-Type) so it isn't minted redundantly on every static asset or API call. The existing
+`/api/auth/session` issuance path is left as-is (it still (re)sets the cookie on unlock, which
+simply overwrites the same-named cookie with a freshly-scoped value — harmless).
 
 **Rationale**: Confirmed via `TestClient` that `/api/convert`, `/upload`, and `/api/proxy` — all
 unauthenticated-tier, all mutating — currently 403 for any visitor who has never unlocked a

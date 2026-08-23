@@ -51,6 +51,25 @@ def _get_step_or_404(roadmap: dict, step_id: str) -> dict:
     raise HTTPException(status_code=404, detail="Step not found")
 
 
+def _validate_links(value, field_name: str) -> list[dict]:
+    """Validate a course_links/documents replacement array (data-model.md Link shape):
+    a list of objects, each with a non-empty title and a string url (may be empty).
+    Raises 400 on anything else; a valid empty list is returned as-is (full clear)."""
+    if not isinstance(value, list):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be a list")
+    validated = []
+    for entry in value:
+        if not isinstance(entry, dict):
+            raise HTTPException(status_code=400, detail=f"{field_name} entries must be objects")
+        title = str(entry.get("title", "") or "").strip()
+        if not title:
+            raise HTTPException(
+                status_code=400, detail=f"{field_name} entries require a non-empty title"
+            )
+        validated.append({"title": title, "url": str(entry.get("url", "") or "")})
+    return validated
+
+
 # ─── Roadmaps ─────────────────────────────────────────────────────────────────
 
 @router.get("/api/roadmaps", summary="List all roadmaps with computed completion")
@@ -97,6 +116,7 @@ def get_roadmap(roadmap_id: str):
     responses={
         400: {"description": "Invalid or missing id/title"},
         409: {"description": "Roadmap id already exists"},
+        500: {"description": "Failed to save roadmap"},
     },
 )
 def create_roadmap(data: dict):
@@ -137,6 +157,7 @@ def create_roadmap(data: dict):
     responses={
         400: {"description": "Title provided but empty"},
         404: {"description": "Roadmap not found"},
+        500: {"description": "Failed to save roadmap"},
     },
 )
 def update_roadmap(roadmap_id: str, data: dict):
@@ -164,7 +185,10 @@ def update_roadmap(roadmap_id: str, data: dict):
     "/api/roadmaps/{roadmap_id}",
     status_code=204,
     summary="Delete a roadmap",
-    responses={404: {"description": "Roadmap not found"}},
+    responses={
+        404: {"description": "Roadmap not found"},
+        500: {"description": "Failed to delete roadmap"},
+    },
 )
 def delete_roadmap(roadmap_id: str):
     store = _store()
@@ -183,19 +207,29 @@ def delete_roadmap(roadmap_id: str):
 @router.patch(
     "/api/roadmaps/{roadmap_id}/steps/{step_id}",
     summary="Update a step's notes, course_links, and/or documents",
-    responses={404: {"description": "Roadmap or step not found"}},
+    responses={
+        400: {"description": "course_links or documents is not a valid list of link entries"},
+        404: {"description": "Roadmap or step not found"},
+        500: {"description": "Failed to save step"},
+    },
 )
 def update_step(roadmap_id: str, step_id: str, data: dict):
     store = _store()
     roadmap = _get_roadmap_or_404(store, roadmap_id)
     step = _get_step_or_404(roadmap, step_id)
 
+    # Validate both fields before mutating anything, so a bad `documents` value
+    # can't leave a partially-applied update (e.g. course_links saved, documents
+    # rejected) — either the whole PATCH applies or none of it does.
+    course_links = _validate_links(data["course_links"], "course_links") if "course_links" in data else None
+    documents = _validate_links(data["documents"], "documents") if "documents" in data else None
+
     if "notes" in data:
         step["notes"] = str(data["notes"] or "")
-    if "course_links" in data:
-        step["course_links"] = data["course_links"] or []
-    if "documents" in data:
-        step["documents"] = data["documents"] or []
+    if course_links is not None:
+        step["course_links"] = course_links
+    if documents is not None:
+        step["documents"] = documents
 
     roadmap["updated_at"] = _now()
     try:
@@ -214,6 +248,7 @@ def update_step(roadmap_id: str, step_id: str, data: dict):
     responses={
         400: {"description": "'done' missing or not a boolean"},
         404: {"description": "Roadmap, step, or checklist item not found"},
+        500: {"description": "Failed to save checklist item"},
     },
 )
 def toggle_checklist_item(roadmap_id: str, step_id: str, item_id: str, data: dict):

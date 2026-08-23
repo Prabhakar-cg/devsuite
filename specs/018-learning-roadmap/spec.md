@@ -130,7 +130,17 @@ A user creates a brand-new roadmap from scratch (or edits an existing one's titl
 
 - Single-user, local-first usage matches the rest of the suite — no multi-user concurrent-editing conflict resolution is required beyond basic existence checks (FR-019).
 - Roadmap and step content is not considered sensitive (unlike vault/notes content), so it is intentionally placed outside the master-password-gated tier, per the locked design decision in the input.
-- Steps within a roadmap are a fixed, user-managed list for v1; the ability to add/remove/reorder steps through the UI beyond the seeded set is implicitly covered by the same generic step-update capability used for editing, since the schema treats steps as an ordinary ordered collection — no separate "step-reordering" user story was called out as a distinct priority in the source input, so it is treated as part of the general editing capability rather than a headline feature.
+- Steps within a roadmap are **immutable in v1**: the seeded/created step set (title, description,
+  order) cannot be added to, removed, or reordered through the UI or API — only a step's `notes`,
+  `course_links`, and `documents` are editable (FR-009), via `PATCH /api/roadmaps/{id}/steps/{step_id}`
+  per `contracts/roadmap-api.md`, which explicitly excludes `id`/`order`/`title`/`description` from
+  that route. `POST /api/roadmaps` likewise always creates a roadmap with `steps: []`; the only way
+  a roadmap gets steps in v1 is the seed script (FR-018). *(This resolves an earlier draft of this
+  assumption, which claimed add/remove/reorder was "implicitly covered by the same generic
+  step-update capability" — that was never true of the implemented `PATCH` contract and is
+  corrected here per the constitution's spec-vs-code discrepancy rule rather than left
+  contradictory. A future milestone that wants step management end-to-end would need a new
+  `POST`/`DELETE` step route, an `order`-reorder endpoint, UI, and tests — out of scope for v1.)*
 - Course links and documents are simple title+URL pairs with no additional metadata (e.g. no tags, no favicon fetching, no link-health checking) for v1.
 - Cross-roadmap analytics/dashboards, reminders/scheduling, and dedicated export/import are explicitly out of scope for v1 (export/import needs are already met by the existing database-management export/import capability, applied to this tool's data like any other stored data).
 - "Reuse the Notes Workspace markdown editor pattern" is a UI/implementation consideration rather than a user-facing requirement in its own right, so it does not appear as a standalone functional requirement — the requirement that matters at the spec level is FR-009 (notes must be editable and persisted), independent of which editor component satisfies it.

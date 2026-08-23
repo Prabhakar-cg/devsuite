@@ -175,10 +175,17 @@ async def ensure_csrf_cookie(request, call_next):
     defense comes from SameSite=strict plus the cookie/header equality test, not from
     the cookie having been issued specifically post-authentication. See
     specs/018-learning-roadmap/research.md item 1.
+
+    Scoped to HTML document responses only (checked via the response's own
+    Content-Type, not the request path — no route allowlist to keep in sync). A
+    visitor's first request is always a page load, so this still covers every
+    first-contact case; it just skips minting redundantly on every /static/*
+    asset and /api/* call a page then makes with the cookie it already got.
     """
     had_cookie = "ds_csrf" in request.cookies
     response = await call_next(request)
-    if not had_cookie:
+    is_document = response.headers.get("content-type", "").startswith("text/html")
+    if not had_cookie and is_document:
         response.set_cookie(  # NOSONAR — secure=_HTTPS is intentional: app runs over HTTP locally
             key="ds_csrf", value=secrets.token_hex(32),
             httponly=False, samesite="strict", max_age=_SESSION_TTL, secure=_HTTPS,

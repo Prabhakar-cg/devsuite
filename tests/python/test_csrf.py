@@ -44,6 +44,15 @@ def test_bare_get_with_no_cookies_is_issued_a_csrf_cookie(client):
     assert len(r.cookies["ds_csrf"]) > 0
 
 
+def test_static_asset_request_does_not_issue_a_csrf_cookie(client):
+    # ds_csrf is minted only for HTML document responses (main.py's
+    # ensure_csrf_cookie checks Content-Type, not path) — a static asset request
+    # must not mint it, even on a visitor's very first request to the server.
+    r = client.get("/static/style.css")
+    assert r.status_code == 200
+    assert "ds_csrf" not in r.cookies
+
+
 def test_csrf_cookie_from_bare_get_authorizes_a_mutating_request(client):
     r = client.get("/")
     csrf = r.cookies["ds_csrf"]

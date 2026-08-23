@@ -6,7 +6,22 @@ Percentages are always derived here, never persisted (SPEC FR-013).
 """
 from __future__ import annotations
 
+import math
 from typing import Any
+
+
+def _round_half_up(value: float) -> int:
+    """Round-half-up (ties round toward +infinity) — the documented rounding
+    policy for completion percentages (data-model.md "Completion Computation").
+
+    Python's builtin round() uses round-half-to-even ("banker's rounding"), which
+    diverges from JavaScript's Math.round (round-half-up) at exact .5 midpoints —
+    e.g. round(12.5) == 12 in Python vs Math.round(12.5) === 13 in JS. static/
+    roadmap-utils.js's computeStepPct/computeRoadmapPct must produce the same
+    result as this function for the client's optimistic percentage to match the
+    server's authoritative one at every midpoint, not just most of them.
+    """
+    return math.floor(value + 0.5)
 
 
 def _step_completion_pct(step: dict[str, Any]) -> int:
@@ -15,7 +30,7 @@ def _step_completion_pct(step: dict[str, Any]) -> int:
     if total == 0:
         return 0
     done = sum(1 for item in checklist if item.get("done"))
-    return round(100 * done / total)
+    return _round_half_up(100 * done / total)
 
 
 def compute_completion(roadmap: dict[str, Any]) -> dict[str, Any]:
@@ -28,6 +43,6 @@ def compute_completion(roadmap: dict[str, Any]) -> dict[str, Any]:
     if not step_pcts:
         roadmap_pct = 0
     else:
-        roadmap_pct = round(sum(step_pcts.values()) / len(step_pcts))
+        roadmap_pct = _round_half_up(sum(step_pcts.values()) / len(step_pcts))
 
     return {"roadmap_pct": roadmap_pct, "steps": step_pcts}

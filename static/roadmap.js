@@ -24,20 +24,10 @@
     // feedback — mirrors roadmap_utils.compute_completion's rules exactly).
     let currentRoadmap = null;
 
-    function computeStepPct(checklist) {
-        const items = checklist || [];
-        const total = items.length;
-        if (total === 0) return 0;
-        const done = items.filter(function (item) { return !!item.done; }).length;
-        return Math.round((100 * done) / total);
-    }
-
-    function computeRoadmapPct(steps) {
-        const list = steps || [];
-        if (list.length === 0) return 0;
-        const sum = list.reduce(function (acc, step) { return acc + computeStepPct(step.checklist); }, 0);
-        return Math.round(sum / list.length);
-    }
+    // Pure completion math lives in roadmap-utils.js, mirroring roadmap_utils.py
+    // (see its module docstring re: round-half-up parity at .5 midpoints).
+    const computeStepPct = RoadmapUtils.computeStepPct;
+    const computeRoadmapPct = RoadmapUtils.computeRoadmapPct;
 
     function getRoadmapIdFromUrl() {
         const params = new URLSearchParams(window.location.search);
@@ -48,6 +38,33 @@
         listView.style.display = view === 'list' ? '' : 'none';
         detailView.style.display = view === 'detail' ? '' : 'none';
         notFoundView.style.display = view === 'not-found' ? '' : 'none';
+    }
+
+    const isSafeHttpUrl = RoadmapUtils.isSafeHttpUrl;
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+
+    /** Build a stroke-based inline SVG icon from path `d` strings (SPEC §9.8 —
+     * all icons are SVG, none are emoji/text glyphs). Built via createElementNS,
+     * not innerHTML, matching this file's no-innerHTML convention. */
+    function createIcon(paths, size) {
+        const svg = document.createElementNS(SVG_NS, 'svg');
+        svg.setAttribute('width', String(size));
+        svg.setAttribute('height', String(size));
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2.5');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        paths.forEach(function (d) {
+            const path = document.createElementNS(SVG_NS, 'path');
+            path.setAttribute('d', d);
+            svg.appendChild(path);
+        });
+        return svg;
     }
 
     async function fetchJson(url) {
@@ -241,6 +258,19 @@
         const listEl = document.createElement('div');
         container.appendChild(listEl);
 
+        // Add/remove mutations for this field are serialized through this chain so a
+        // failed operation's rollback only reverts its own change — without this, an
+        // operation queued while an earlier one is still in flight would capture
+        // step[fieldName] as its "previous" snapshot, then a later failed rollback could
+        // reset the field to that stale snapshot and silently discard the newer edit.
+        let mutationChain = Promise.resolve();
+
+        function queueMutation(run) {
+            const result = mutationChain.then(run, run);
+            mutationChain = result.catch(function () {});
+            return result;
+        }
+
         function redrawList() {
             listEl.textContent = '';
             const links = step[fieldName] || [];
@@ -257,7 +287,7 @@
                 const row = document.createElement('div');
                 row.className = 'roadmap-link-item';
 
-                if (link.url) {
+                if (isSafeHttpUrl(link.url)) {
                     const a = document.createElement('a');
                     a.href = link.url;
                     a.target = '_blank';
@@ -274,8 +304,9 @@
                 const removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
                 removeBtn.className = 'roadmap-link-remove-btn';
-                removeBtn.textContent = '✕';
                 removeBtn.title = 'Remove';
+                removeBtn.setAttribute('aria-label', 'Remove');
+                removeBtn.appendChild(createIcon(['M18 6 6 18', 'm6 6 12 12'], 12));
                 removeBtn.addEventListener('click', function () {
                     handleRemove(index);
                 });
@@ -286,33 +317,37 @@
             listEl.appendChild(list);
         }
 
-        async function handleRemove(index) {
-            const previous = (step[fieldName] || []).slice();
-            const next = previous.slice();
-            next.splice(index, 1);
-            step[fieldName] = next;
-            redrawList();
-            try {
-                await patchStep(roadmapId, step, wrapField(fieldName, next));
-            } catch (e) {
-                step[fieldName] = previous;
+        function handleRemove(index) {
+            return queueMutation(async function () {
+                const previous = (step[fieldName] || []).slice();
+                const next = previous.slice();
+                next.splice(index, 1);
+                step[fieldName] = next;
                 redrawList();
-                DevSuite.toast('Failed to remove link — reverted.', 'error');
-            }
+                try {
+                    await patchStep(roadmapId, step, wrapField(fieldName, next));
+                } catch (e) {
+                    step[fieldName] = previous;
+                    redrawList();
+                    DevSuite.toast('Failed to remove link — reverted.', 'error');
+                }
+            });
         }
 
-        async function handleAdd(title, url) {
-            const previous = (step[fieldName] || []).slice();
-            const next = previous.concat([{ title: title, url: url }]);
-            step[fieldName] = next;
-            redrawList();
-            try {
-                await patchStep(roadmapId, step, wrapField(fieldName, next));
-            } catch (e) {
-                step[fieldName] = previous;
+        function handleAdd(title, url) {
+            return queueMutation(async function () {
+                const previous = (step[fieldName] || []).slice();
+                const next = previous.concat([{ title: title, url: url }]);
+                step[fieldName] = next;
                 redrawList();
-                DevSuite.toast('Failed to add link — reverted.', 'error');
-            }
+                try {
+                    await patchStep(roadmapId, step, wrapField(fieldName, next));
+                } catch (e) {
+                    step[fieldName] = previous;
+                    redrawList();
+                    DevSuite.toast('Failed to add link — reverted.', 'error');
+                }
+            });
         }
 
         redrawList();
@@ -405,7 +440,9 @@
                     padding: { top: 8, bottom: 8 },
                 });
                 editor.onDidBlurEditorWidget(function () {
-                    saveNotes(editor.getValue());
+                    const value = editor.getValue();
+                    if (value === (step.notes || '')) return;
+                    saveNotes(value);
                 });
             });
         }
@@ -465,7 +502,7 @@
 
         const chevron = document.createElement('div');
         chevron.className = 'roadmap-step-chevron';
-        chevron.textContent = '›';
+        chevron.appendChild(createIcon(['m9 18 6-6-6-6'], 16));
         head.appendChild(chevron);
 
         card.appendChild(head);
