@@ -62,3 +62,43 @@ test('isSafeHttpUrl rejects a data: URL', () => {
 test('isSafeHttpUrl rejects an empty or malformed value', () => {
     assert.equal(RoadmapUtils.isSafeHttpUrl(''), false);
 });
+
+// ─── createSerialQueue (out-of-order response guard for notes/link saves) ─────
+
+test('createSerialQueue runs queued operations in submission order even when a later one would resolve first', async () => {
+    // Simulates two PATCH requests for the same field where the first (older
+    // value) is slower than the second (newer value) — without serialization the
+    // faster response would land first and then be overwritten by the slower,
+    // stale one. The queue must not even START the second operation until the
+    // first has settled, so results are applied in submission order regardless
+    // of each operation's own latency.
+    const order = [];
+    const queue = RoadmapUtils.createSerialQueue();
+
+    const first = queue(() => new Promise((resolve) => {
+        setTimeout(() => { order.push('first (older value)'); resolve('first'); }, 20);
+    }));
+    const second = queue(() => new Promise((resolve) => {
+        setTimeout(() => { order.push('second (newer value)'); resolve('second'); }, 0);
+    }));
+
+    const results = await Promise.all([first, second]);
+    assert.deepEqual(order, ['first (older value)', 'second (newer value)']);
+    assert.deepEqual(results, ['first', 'second']);
+});
+
+test('createSerialQueue still runs a later operation after an earlier one rejects', async () => {
+    const order = [];
+    const queue = RoadmapUtils.createSerialQueue();
+
+    const first = queue(() => new Promise((_resolve, reject) => {
+        setTimeout(() => { order.push('first (failed)'); reject(new Error('network error')); }, 10);
+    })).catch(() => 'first-failed');
+    const second = queue(() => new Promise((resolve) => {
+        setTimeout(() => { order.push('second (succeeded)'); resolve('second'); }, 0);
+    }));
+
+    const results = await Promise.all([first, second]);
+    assert.deepEqual(order, ['first (failed)', 'second (succeeded)']);
+    assert.deepEqual(results, ['first-failed', 'second']);
+});

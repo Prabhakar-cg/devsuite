@@ -24,7 +24,8 @@ Full roadmap detail, steps in `order`, each step carrying its own `completion_pc
 
 **200**: roadmap record (data-model.md shape) + `completion_pct` on the roadmap and on each step.
 
-**404**: `{ "error": "Roadmap not found" }` — unknown `id`.
+**404**: `{ "detail": "Roadmap not found" }` — unknown `id` (FastAPI's default `HTTPException` envelope;
+every other error response in this contract uses the same `detail` key, not `error`).
 
 ## `POST /api/roadmaps`
 

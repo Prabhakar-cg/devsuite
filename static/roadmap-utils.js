@@ -50,5 +50,24 @@
         }
     }
 
-    return { computeStepPct, computeRoadmapPct, isSafeHttpUrl };
+    /**
+     * A FIFO queue that runs async operations one at a time: the next queued
+     * `run` only starts once the previous one's returned promise has settled
+     * (success or failure), regardless of how fast either one's own work
+     * finishes. Used wherever a UI action can fire a PATCH before the previous
+     * one for the same field has resolved (link add/remove, notes save) — without
+     * this, a slower request for an older value could resolve after a faster one
+     * for a newer value and silently overwrite it, both on the server and in
+     * local state.
+     */
+    function createSerialQueue() {
+        let chain = Promise.resolve();
+        return function enqueue(run) {
+            const result = chain.then(run, run);
+            chain = result.catch(function () {});
+            return result;
+        };
+    }
+
+    return { computeStepPct, computeRoadmapPct, isSafeHttpUrl, createSerialQueue };
 });

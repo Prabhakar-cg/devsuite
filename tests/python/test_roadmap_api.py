@@ -94,6 +94,14 @@ def test_get_put_delete_unknown_roadmap_is_404(client):
     assert client.delete("/api/roadmaps/nope", headers=headers).status_code == 404
 
 
+def test_get_unknown_roadmap_404_body_matches_contract(client):
+    # contracts/roadmap-api.md documents the FastAPI default HTTPException envelope
+    # ({"detail": ...}), not {"error": ...} — assert the actual response shape.
+    r = client.get("/api/roadmaps/nope")
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Roadmap not found"}
+
+
 def test_mutations_without_csrf_are_forbidden(client):
     r = client.post("/api/roadmaps", json={"id": "x", "title": "x"})
     assert r.status_code == 403

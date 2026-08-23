@@ -64,7 +64,7 @@ A user creates a brand-new roadmap from scratch (or edits an existing one's titl
 
 **Why this priority**: The schema is explicitly designed to be roadmap-agnostic, but proving that genericity requires the ability to add a second roadmap through the UI/API alone. Lower priority than the seeded roadmap's own read/track/annotate flows because the first roadmap ships pre-seeded and is immediately useful without this capability.
 
-**Independent Test**: Through the API/UI, create a new roadmap with a title and description, confirm it appears in the roadmap list alongside the seeded one with independent (initially 0%, since it has no steps yet) progress, then delete it and confirm it disappears without affecting the seeded roadmap.
+**Independent Test**: Through the API/UI, create a new roadmap with a title and description, confirm it appears in the roadmap list alongside the seeded one with independent (0%, since it has no steps — steps are seed-script-only in v1, see Assumptions) progress, then delete it and confirm it disappears without affecting the seeded roadmap.
 
 **Acceptance Scenarios**:
 
@@ -122,7 +122,7 @@ A user creates a brand-new roadmap from scratch (or edits an existing one's titl
 - **SC-001**: A user can determine their overall progress on any roadmap within 2 seconds of opening the tool, with no manual calculation required.
 - **SC-002**: Checking or unchecking a checklist item updates the visible step and roadmap completion percentages in under 500ms.
 - **SC-003**: 100% of roadmaps with zero steps, and 100% of steps with zero checklist items, display a 0% completion value rather than an error, blank, or "NaN" in manual testing.
-- **SC-004**: A second, entirely different roadmap (e.g. a future DevOps-focused plan) can be added and fully used (progress tracking, notes, links) without any code change to the tool — schema and UI are fully data-driven.
+- **SC-004**: A second, entirely different roadmap's (e.g. a future DevOps-focused plan) **metadata** — id, title, description — can be created and managed through the UI/API without any code change to the tool, proving the schema and UI are fully data-driven at the roadmap level. **v1 scope note**: this does not extend to that roadmap's steps — per the Assumptions section, steps are seed-script-only in v1 (`POST /api/roadmaps` always creates `steps: []`, and no route adds/removes/reorders steps), so a user-created roadmap has no steps and therefore no progress tracking, notes, or links to use until a future milestone adds step-management. Full "steps included" reuse of the schema is demonstrated by the seed script's data (any roadmap's worth of steps, seeded the same way as the shipped one), not by the UI/API alone.
 - **SC-005**: A user's notes, checklist state, and links for a step are still present and correct after closing and reopening the application, in 100% of manual verification passes.
 - **SC-006**: A new user can find the Learning Roadmap tool from the suite's main tool listing without being told where to look.
 

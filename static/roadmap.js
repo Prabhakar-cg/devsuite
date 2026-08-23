@@ -258,18 +258,12 @@
         const listEl = document.createElement('div');
         container.appendChild(listEl);
 
-        // Add/remove mutations for this field are serialized through this chain so a
+        // Add/remove mutations for this field are serialized through this queue so a
         // failed operation's rollback only reverts its own change — without this, an
         // operation queued while an earlier one is still in flight would capture
         // step[fieldName] as its "previous" snapshot, then a later failed rollback could
         // reset the field to that stale snapshot and silently discard the newer edit.
-        let mutationChain = Promise.resolve();
-
-        function queueMutation(run) {
-            const result = mutationChain.then(run, run);
-            mutationChain = result.catch(function () {});
-            return result;
-        }
+        const queueMutation = RoadmapUtils.createSerialQueue();
 
         function redrawList() {
             listEl.textContent = '';
@@ -410,6 +404,17 @@
 
         let editorRequested = false;
 
+        // Notes PATCH requests are serialized through this queue so two saves in
+        // flight at once (e.g. blur, refocus, edit, blur again before the first
+        // PATCH resolves) always reach the server — and get applied to step.notes
+        // — in the order they were made, never out of order (see
+        // RoadmapUtils.createSerialQueue's docstring).
+        const queueSave = RoadmapUtils.createSerialQueue();
+
+        function queueSaveNotes(value) {
+            return queueSave(function () { return saveNotes(value); });
+        }
+
         async function saveNotes(value) {
             status.textContent = 'Saving…';
             try {
@@ -442,7 +447,7 @@
                 editor.onDidBlurEditorWidget(function () {
                     const value = editor.getValue();
                     if (value === (step.notes || '')) return;
-                    saveNotes(value);
+                    queueSaveNotes(value);
                 });
             });
         }
