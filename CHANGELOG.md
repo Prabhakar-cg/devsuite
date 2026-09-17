@@ -5,6 +5,42 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.7.0] — 2026-09-17 (WebSocket Tester)
+
+### Security
+
+#### New scoped per-page CSP for the WebSocket Tester (`main.py`)
+- The default document CSP ends with `connect-src 'self'`, which blocks the browser from opening `ws:`/`wss:` handshakes to any other origin. The new WebSocket Tester page — and **only** that page (`/ws-tester`) — is served with `_WS_TESTER_CSP`, identical to the document policy except `connect-src 'self' ws: wss:`. `script-src` is unchanged, so **no `unsafe-eval` is introduced** (SEC-6 preserved), and every other page keeps the strict `connect-src 'self'`. Implemented as a third branch in the existing `add_security_headers` middleware, mirroring the sandbox-worker scoping. Covered by new tests in `tests/python/test_csp.py` (the `/ws-tester` widening, no-unsafe-eval, and that `/` stays strict). See `specs/020-websocket-tester/research.md` item R1.
+
+### Features
+
+#### WebSocket Tester: new 15th tool for testing realtime APIs (`static/ws-tester.html`, `static/ws-utils.js`, `static/ws-tester.js`, `static/ws-tester.css`, `routes/pages.py`)
+- New tool at `/ws-tester` (BACKLOG FEAT-16): connect to a `ws://`/`wss://` endpoint, send text or JSON messages, and watch a single time-ordered, direction-tagged **live log** of sent/received messages and connection lifecycle events (open, close-with-code, error). The browser connects **directly** to the endpoint — browsers don't apply CORS to WebSocket, so there is no DevSuite backend proxy in the data path.
+- **Connection handling** — one live socket at a time (reconnecting closes the previous one first); always-visible status (connecting/open/closing/closed/error); optional comma-separated **subprotocols** with the negotiated subprotocol shown on open; validation rejecting blank / non-`ws`/`wss` URLs before any connection attempt.
+- **Messages** — JSON mode validates + pretty-prints before send; incoming text that parses as JSON is pretty-printed, otherwise shown verbatim; **binary frames** (received as `ArrayBuffer`) are shown as `binary (N bytes)` with a hex + best-effort UTF-8 preview, never `[object Blob]`. The on-screen log is **bounded** (FIFO-trimmed at 500 entries) so a high message rate can't grow the DOM without limit; auto-scrolls to newest unless you've scrolled up.
+- **Recent endpoints** — recently-used URLs + subprotocols persist in `localStorage` (no DevDB store, no master-password gate — ungated tier like Cron/Regex) and can be restored or cleared. No message bodies are persisted.
+- **Not strictly offline** — the tool opens user-initiated outbound WebSocket connections (the same sanctioned category as SSH/SFTP and the CORS proxy) and is labeled as such in the UI. All message bodies and event text are rendered via `createElement` + `textContent` (no `innerHTML` with connection-derived data); stroke-based SVG icons, no inline `<script>`, no emoji.
+- **Pure, Node-tested core** — URL validation, subprotocol parsing, JSON formatting, log capping, and recent-endpoint management live in `static/ws-utils.js` (DOM-free browser/Node dual-export module, extending the DX-10 pattern). `tests/javascript/test_ws_utils.js` adds 14 tests to the zero-dependency runner. No new third-party dependency (native `WebSocket` API).
+- Tool count synced to **15** across `static/tools.html` (new `network`-category card; All 14→15, Network 1→2 filter/chip counts), `static/home.html`, `specs/SPEC.md`, and this changelog.
+- Built via the full Spec Kit flow (`specs/020-websocket-tester/`: spec → plan → research → data-model → quickstart → tasks).
+
+---
+
+## [0.6.0] — 2026-09-17 (ID Generator)
+
+### Features
+
+#### ID Generator: new 14th tool for bulk identifier generation with entropy inspection (`static/id-generator.html`, `static/id-gen.js`, `static/id-generator.js`, `static/id-generator.css`, `routes/pages.py`)
+- New tool at `/id-generator` (BACKLOG FEAT-2): bulk-generate identifiers of five types — **UUID v4** (RFC 9562, 122 random bits), **UUID v7** (48-bit ms timestamp + 74 random bits, time-sortable), **ULID** (26-char Crockford base32, 48-bit timestamp + 80 random bits, time-sortable), **CUID2** (base36, default length 24), and **NanoID** (21-char URL-safe, ~126 bits). Choose a type and a count (1–1000) and generate a batch on demand.
+- **Entropy inspection panel** — for the selected type, shows total bits, bits of randomness, the timestamp component size/meaning, and a time-sortability badge, updating immediately on type change. For the time-based types (UUID v7, ULID) each generated value's embedded creation timestamp is decoded and rendered as an ISO date alongside the value.
+- **Cryptographically secure, fully local** — all randomness comes from `crypto.getRandomValues` (never `Math.random()`); if secure randomness is unavailable the tool refuses to generate rather than falling back. No backend endpoint, no DevDB store, no persistence, and no master-password gate — same unauthenticated tier as Diff Checker / Data Format Linter / Regex Tester / Cron Visualizer. One-click copy per row and "Copy all" (newline-joined) via the async Clipboard API, with success/failure feedback.
+- **Pure, Node-tested generator core** — generation, the per-type facts table, and timestamp decoding live in `static/id-gen.js`, a DOM-free browser/Node dual-export module (extending the DX-10 pure-module pattern). `tests/javascript/test_id_gen.js` adds 16 tests (format conformance for all five types, 1000-value batch distinctness, entropy-fact assertions, and UUID v7 / ULID timestamp-decode round-trips) to the zero-dependency runner. The DOM controller `static/id-generator.js` inserts every value via `createElement` + `textContent` (no `innerHTML` with generated data) and uses stroke-based inline SVG icons — no inline `<script>`, no emoji (constitution Art. V, SPEC §9.8/§9.9).
+- CUID2 hashing uses `CryptoJS.SHA3` from the already-vendored `static/crypto-js.min.js` — **no new third-party dependency**, so no SPEC §11 / `UPGRADE_PLAN.md` entry required.
+- Tool count synced to **14** across `static/tools.html` (new `dev`-category card; All 13→14, Dev 5→6 filter/chip counts), `static/home.html`, `specs/SPEC.md`, and this changelog.
+- Built via the full Spec Kit flow (`specs/019-id-generator/`: spec → plan → research → data-model → quickstart → tasks). Supersedes the never-implemented `014-id-generator` draft.
+
+---
+
 ## [0.5.1] — 2026-08-23 (Learning Roadmap content upgrade)
 
 ### Features

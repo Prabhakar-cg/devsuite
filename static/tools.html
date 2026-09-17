@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevSuite — All Tools</title>
-    <meta name="description" content="13 powerful developer tools — locally hosted, zero cloud, zero tracking. Diff files, lint JSON/YAML/XML, test APIs, manage secrets and more.">
+    <meta name="description" content="15 powerful developer tools — locally hosted, zero cloud, zero tracking. Diff files, lint JSON/YAML/XML, test REST & WebSocket APIs, generate IDs, manage secrets and more.">
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/home.css">
     <script src="/static/theme.js"></script>
@@ -286,7 +286,7 @@
             <div class="qa-stats-strip">
                 <span class="qa-stat">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-                    13 tools
+                    15 tools
                 </span>
                 <span class="qa-divider">·</span>
                 <span class="qa-stat">100% offline</span>
@@ -294,10 +294,10 @@
                 <span class="qa-stat">zero cloud</span>
                 <div class="qa-spacer"></div>
                 <div class="qa-jump-chips">
-                    <button class="qa-chip" data-jump="dev">Dev <span>5</span></button>
+                    <button class="qa-chip" data-jump="dev">Dev <span>6</span></button>
                     <button class="qa-chip" data-jump="data">Data <span>3</span></button>
                     <button class="qa-chip" data-jump="security">Security <span>3</span></button>
-                    <button class="qa-chip" data-jump="network">Network <span>1</span></button>
+                    <button class="qa-chip" data-jump="network">Network <span>2</span></button>
                     <button class="qa-chip" data-jump="time">Schedule <span>1</span></button>
                 </div>
             </div>
@@ -377,15 +377,15 @@
 
             <div class="filter-tabs" role="radiogroup" aria-label="Filter tools by category">
                 <input type="radio" name="tool-filter" id="filter-all"      class="filter-radio" value="all"      checked tabindex="0">
-                <label  class="filter-tab active" for="filter-all"      data-filter="all"     >All      <span class="filter-count">13</span></label>
+                <label  class="filter-tab active" for="filter-all"      data-filter="all"     >All      <span class="filter-count">15</span></label>
                 <input type="radio" name="tool-filter" id="filter-dev"      class="filter-radio" value="dev"      tabindex="-1">
-                <label  class="filter-tab"        for="filter-dev"      data-filter="dev"     >Dev      <span class="filter-count">5</span></label>
+                <label  class="filter-tab"        for="filter-dev"      data-filter="dev"     >Dev      <span class="filter-count">6</span></label>
                 <input type="radio" name="tool-filter" id="filter-data"     class="filter-radio" value="data"     tabindex="-1">
                 <label  class="filter-tab"        for="filter-data"     data-filter="data"    >Data     <span class="filter-count">3</span></label>
                 <input type="radio" name="tool-filter" id="filter-security" class="filter-radio" value="security" tabindex="-1">
                 <label  class="filter-tab"        for="filter-security" data-filter="security">Security <span class="filter-count">3</span></label>
                 <input type="radio" name="tool-filter" id="filter-network"  class="filter-radio" value="network"  tabindex="-1">
-                <label  class="filter-tab"        for="filter-network"  data-filter="network" >Network  <span class="filter-count">1</span></label>
+                <label  class="filter-tab"        for="filter-network"  data-filter="network" >Network  <span class="filter-count">2</span></label>
                 <input type="radio" name="tool-filter" id="filter-time"     class="filter-radio" value="time"     tabindex="-1">
                 <label  class="filter-tab"        for="filter-time"     data-filter="time"    >Schedule <span class="filter-count">1</span></label>
             </div>
@@ -672,6 +672,55 @@
                         <span class="tag-chip">Checklists</span>
                         <span class="tag-chip">Notes</span>
                         <span class="tag-chip">Progress</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- ID Generator -->
+                <a class="tool-card active-tool" href="/id-generator" data-category="dev"
+                   style="--card-glow:rgba(99,102,241,0.18);--card-border-hover:rgba(59,130,246,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#6366f1,#3b82f6);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="16" rx="2"/>
+                                <line x1="7" y1="9" x2="7" y2="15"/>
+                                <line x1="11" y1="9" x2="11" y2="15"/>
+                                <line x1="15" y1="12" x2="17" y2="12"/>
+                            </svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">ID Generator</div>
+                        <div class="card-desc">Bulk-generate UUID v4/v7, ULID, CUID2, and NanoID identifiers with entropy inspection and timestamp decoding. 100% local.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">UUID</span>
+                        <span class="tag-chip">ULID</span>
+                        <span class="tag-chip">Entropy</span>
+                        <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+                <!-- WebSocket Tester -->
+                <a class="tool-card active-tool" href="/ws-tester" data-category="network"
+                   style="--card-glow:rgba(2,132,199,0.18);--card-border-hover:rgba(56,189,248,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#0284c7,#38bdf8);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 12h4l3 8 4-16 3 8h4"/>
+                            </svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">WebSocket Tester</div>
+                        <div class="card-desc">Connect to ws:// and wss:// endpoints, send text or JSON, and watch a live message log. For testing realtime APIs — connects directly from your browser.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">ws / wss</span>
+                        <span class="tag-chip">Live Log</span>
+                        <span class="tag-chip">Subprotocols</span>
                         <svg class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     </div>
                 </a>

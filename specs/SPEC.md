@@ -1,9 +1,9 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.5.1  
+> **Version:** 0.7.0  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
-> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 13 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `016-data-linter`, `017-notes-workspace`, and `018-learning-roadmap`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that spec was drafted but never planned/implemented, so it is not a shipped tool and is not counted above. `003-json-linter`, `004-yaml-linter`, and `015-xml-linter` are superseded by `016-data-linter` (kept for record, not deleted — their functional requirements remain the source of truth for exact per-format behavior). This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `019-`.
+> **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 15 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `016-data-linter`, `017-notes-workspace`, `018-learning-roadmap`, `019-id-generator`, and `020-websocket-tester`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that earlier draft was never planned/implemented and was superseded by the shipped `019-id-generator` (the ID Generator now ships as the 14th tool). `003-json-linter`, `004-yaml-linter`, and `015-xml-linter` are superseded by `016-data-linter` (kept for record, not deleted — their functional requirements remain the source of truth for exact per-format behavior). This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `021-`.
 
 ---
 
@@ -19,7 +19,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.5.1` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
+`0.7.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
 
 ---
 
@@ -88,7 +88,7 @@ devsuite/
     ├── auth-guard.js     # 8-hour session auth for DevDB tools
     ├── devdb-client.js   # Fetch wrapper around /api/db/*
     ├── home.html / home.css
-    ├── tools.html        # Tools hub / dashboard (13 tool cards)
+    ├── tools.html        # Tools hub / dashboard (15 tool cards)
     ├── index.html / app.js            # Diff tool
     ├── data-linter.html  / regex.html / base64.html / crypto.html
     ├── api-tester.html / api-tester.js / api-tester.css / api-client.js
@@ -148,6 +148,8 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Notes Workspace | `notes.html` | `notes.js`, `notes-links.js`, `notes.css`, `auth-guard.js`, `components.js`, self-hosted `marked`, `dompurify` (`/static/libs/`), Monaco Editor | `/api/notes` | `notes` |
 | Learning Roadmap | `roadmap.html` | `roadmap.js`, `roadmap.css`, `components.js` (Monaco init + CSRF helper), Monaco Editor | `/api/roadmaps/*` | `roadmaps` |
 | Learning Roadmap — Doc Viewer | `roadmap-doc-viewer.html` | `roadmap-doc-viewer.js`, `roadmap-doc-viewer.css`, `notes-links.js` (shared `sanitizeMarkdownBody`), self-hosted `marked`, `dompurify` | `/roadmap/docs` (page route only; content fetched client-side from static `roadmap-docs/*.md`) | — |
+| ID Generator | `id-generator.html` | `id-gen.js` (pure generator core), `id-generator.js`, `id-generator.css`, `crypto-js.min.js` (SHA3 for CUID2) | `/id-generator` (page route only; all generation client-side) | — |
+| WebSocket Tester | `ws-tester.html` | `ws-utils.js` (pure helpers), `ws-tester.js`, `ws-tester.css`, `components.js` (toast) | `/ws-tester` (page route only; browser connects to ws:/wss: directly, scoped CSP) | — |
 
 ---
 
@@ -175,6 +177,8 @@ into §5–§12 below.
 | 4.11 | Data Format Linter | `/data-linter`, `/json`, `/yaml`, `/xml` | [specs/016-data-linter/spec.md](016-data-linter/spec.md) |
 | 4.12 | Notes Workspace | `/notes` | [specs/017-notes-workspace/spec.md](017-notes-workspace/spec.md) |
 | 4.13 | Learning Roadmap | `/roadmap` | [specs/018-learning-roadmap/spec.md](018-learning-roadmap/spec.md) |
+| 4.14 | ID Generator | `/id-generator` | [specs/019-id-generator/spec.md](019-id-generator/spec.md) |
+| 4.15 | WebSocket Tester | `/ws-tester` | [specs/020-websocket-tester/spec.md](020-websocket-tester/spec.md) |
 
 ---
 
@@ -185,7 +189,7 @@ into §5–§12 below.
 | Route | Tool |
 |---|---|
 | `GET /` | Homepage (`home.html`) |
-| `GET /tools` | Tools Hub — 13 tool cards (`tools.html`) |
+| `GET /tools` | Tools Hub — 15 tool cards (`tools.html`) |
 | `GET /diff` | Diff Checker |
 | `GET /data-linter` | Data Format Linter (JSON tab default; also `?tab=json\|yaml\|xml`) |
 | `GET /json` | Data Format Linter (legacy route, JSON tab default) |
@@ -204,6 +208,8 @@ into §5–§12 below.
 | `GET /notes` | Notes Workspace |
 | `GET /roadmap` | Learning Roadmap (list view; also `?id=<roadmap-id>` for detail view) |
 | `GET /roadmap/docs` | Learning Roadmap step reference-doc viewer (`?doc=<slug>&title=<title>`; renders `static/roadmap-docs/<slug>.md` read-only, client-side, via `marked`+`DOMPurify`) |
+| `GET /id-generator` | ID Generator (UUID v4/v7, ULID, CUID2, NanoID — bulk generation + entropy inspection, all client-side) |
+| `GET /ws-tester` | WebSocket Tester (connect to ws:/wss:, send/receive live message log; served with a scoped CSP allowing ws:/wss:) |
 
 ### 5.2 Auth Endpoints
 
@@ -328,6 +334,8 @@ Strict-Transport-Security: (when served over HTTPS)
 ```
 
 **CSP split (SEC-6, v0.3.0):** document responses carry `script-src` **without** `unsafe-eval`. The single exception is `/static/script-sandbox-worker.js`, whose response carries its own locked-down policy — `default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'` — so user-authored API Tester scripts can be evaluated inside that worker and nowhere else, with no DOM, cookie, or network reach.
+
+**WebSocket Tester scoped CSP (v0.7.0):** the `/ws-tester` page — and only that page — is served with a document CSP whose `connect-src` is `'self' ws: wss:` (constant `_WS_TESTER_CSP` in `main.py`, a third branch in `add_security_headers` alongside the sandbox-worker branch). This lets the browser open `ws:`/`wss:` handshakes directly (browsers do not apply CORS to WebSocket, so no backend proxy is used). `script-src` is unchanged — no `unsafe-eval` is introduced — and every other page keeps the strict `connect-src 'self'`. Covered by `tests/python/test_csp.py`.
 
 ---
 
@@ -778,7 +786,43 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 - Cron Visualizer: Day-of-Month grid added to the Visual Field Builder.
 - CI: SonarCloud new-code quality gate closed — accessible-name fixes, hash-locked CI dependencies (`requirements-lock.txt`, `--require-hashes`), pinned/`--only-binary`-only `pip install` steps.
 
-### v0.5.1 — Learning Roadmap content upgrade ✅ (this release)
+### v0.7.0 — WebSocket Tester ✅ (this release)
+
+> New 15th tool, WebSocket Tester (`/ws-tester`, BACKLOG FEAT-16): connect to `ws:`/`wss:`
+> endpoints, send text/JSON, and watch a live, direction-tagged, bounded message + lifecycle log.
+> For testing realtime APIs. See `CHANGELOG.md` [0.7.0] for full detail.
+
+- The browser connects **directly** to the endpoint — browsers don't apply CORS to WebSocket, so
+  there is no DevSuite backend proxy in the data path. The one server change is a **scoped per-page
+  CSP** (`_WS_TESTER_CSP` in `main.py`): `/ws-tester` alone gets `connect-src 'self' ws: wss:`,
+  `script-src` unchanged (no `unsafe-eval`), every other page stays `connect-src 'self'`. Landed
+  with `tests/python/test_csp.py` assertions (Art. VI). See `specs/020-websocket-tester/research.md` R1.
+- Ungated tier (no auth-guard, like Cron/Regex); recent endpoints persist in `localStorage`, no
+  DevDB store. Binary frames rendered with a size + hex/text preview; the log is FIFO-bounded so a
+  high message rate can't grow the DOM without limit. Connection-independent logic is a pure
+  browser/Node module (`static/ws-utils.js`) with 14 unit tests; native `WebSocket` API, no new dep.
+- Built via the full Spec Kit flow (`specs/020-websocket-tester/`: spec → plan → research →
+  data-model → quickstart → tasks).
+
+### v0.6.0 — ID Generator ✅
+
+> New 14th tool, ID Generator (`/id-generator`, BACKLOG FEAT-2): bulk-generate UUID v4/v7, ULID,
+> CUID2, and NanoID identifiers with per-type entropy inspection and timestamp decoding for the
+> time-based types. See `CHANGELOG.md` [0.6.0] for full detail.
+
+- Fully client-side, no backend endpoint, no DevDB store, no master-password gate — same
+  unauthenticated tier as Diff / Data Format Linter / Regex / Cron. All randomness from
+  `crypto.getRandomValues`; never `Math.random()`.
+- Generation core is a pure, DOM-free module (`static/id-gen.js`, dual browser/Node export) so it
+  is unit-tested under the zero-dependency Node runner (`tests/javascript/test_id_gen.js`, 16
+  tests: format conformance, batch distinctness, entropy facts, timestamp-decode round-trips) —
+  extending the DX-10 pure-module pattern. The thin DOM controller `static/id-generator.js` renders
+  every value via `createElement` + `textContent` (no `innerHTML` with generated data) and copies
+  via the async Clipboard API. CUID2 uses the already-vendored `crypto-js` SHA3 — no new dependency.
+- Built via the full Spec Kit flow (`specs/019-id-generator/`: spec → plan → research → data-model →
+  quickstart → tasks). Supersedes the never-implemented `014-id-generator` draft.
+
+### v0.5.1 — Learning Roadmap content upgrade ✅
 
 > The seeded "AI/MLOps & Agentic AI Infrastructure" roadmap's six steps went from banner-only
 > title+description to full content: a concrete checklist per step (15–18 tasks each), curated
@@ -899,4 +943,4 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 ---
 
-*This spec reflects DevSuite v0.5.1. Update before implementing any new feature or changing existing behavior.*
+*This spec reflects DevSuite v0.7.0. Update before implementing any new feature or changing existing behavior.*

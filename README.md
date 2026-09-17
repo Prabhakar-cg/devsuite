@@ -1,6 +1,6 @@
 # DevSuite — Developer Tools from Hell
 
-![Version](https://img.shields.io/badge/version-0.5.1-blue)
+![Version](https://img.shields.io/badge/version-0.7.0-blue)
 [![CodeQL](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml)
 [![Tests](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
@@ -115,6 +115,20 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Always-computed completion** — step and roadmap completion percentages are derived fresh on every read from checklist state, never stored, so they can never drift out of sync.
 - **No Master Password gate** — roadmap content isn't sensitive, so it's reachable without unlocking the suite, same tier as Diff Checker and Data Format Linter.
 - Ships pre-seeded with an "AI/MLOps & Agentic AI Infrastructure" roadmap.
+
+### 14. ID Generator
+- **Five identifier types** — UUID v4, UUID v7, ULID, CUID2, and NanoID, generated in bulk (up to 1000 per batch).
+- **Entropy inspection** — per-type total/random bit counts, timestamp component size, and a time-sortability note.
+- **Timestamp decoding** — for UUID v7 and ULID, decodes each value's embedded creation time to a human-readable date.
+- **Cryptographically secure** — all randomness from `crypto.getRandomValues`; one-click copy per row or for the whole batch.
+- 100% client-side — no backend, no storage, no Master Password gate.
+
+### 15. WebSocket Tester
+- **Connect to `ws://` / `wss://` endpoints** — for testing realtime APIs; the browser connects directly (browsers don't apply CORS to WebSocket, so no proxy is needed).
+- **Send text or JSON** — JSON mode validates and pretty-prints before sending.
+- **Live message log** — sent and received messages plus lifecycle events in one time-ordered, bounded log; binary frames shown with a size + hex/text preview.
+- **Subprotocols & recent endpoints** — offer subprotocols in the handshake; recently-used endpoints are remembered locally for quick reconnection.
+- **Network Notice**: This tool opens **outbound WebSocket connections** from your browser to the endpoint you enter, so it is not strictly offline (labeled in the UI). It is served with a scoped CSP whose `connect-src` allows `ws:`/`wss:` — no other page carries that relaxation.
 
 ---
 

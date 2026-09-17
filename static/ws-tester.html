@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Tester — DevSuite</title>
+    <meta name="description" content="Connect to ws:// and wss:// endpoints, send text/JSON messages, and watch a live message log. Test realtime APIs locally.">
+    <link rel="stylesheet" href="/static/libs/fonts.css">
+    <link rel="stylesheet" href="/static/linter.css">
+    <link rel="stylesheet" href="/static/ws-tester.css">
+    <script src="/static/theme.js?v=2"></script>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- HEADER -->
+<header class="tool-header" aria-label="WebSocket Tester toolbar">
+    <div class="header-left">
+        <a href="/tools" class="back-link" aria-label="Back to DevSuite tools">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            DevSuite
+        </a>
+        <div class="tool-identity">
+            <div class="tool-icon tool-icon-sky" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 12h4l3 8 4-16 3 8h4"/>
+                </svg>
+            </div>
+            <span class="tool-name">WebSocket <span class="tool-accent">Tester</span></span>
+            <span class="tool-version">v1.0</span>
+        </div>
+    </div>
+    <div class="header-right">
+        <output id="wst-status" class="status-pill idle" aria-live="polite" aria-atomic="true"><span class="status-dot" aria-hidden="true"></span><span id="wst-status-text">Disconnected</span></output>
+    </div>
+</header>
+
+<main class="wst-main">
+
+    <div class="wst-net-notice" role="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+        Not strictly offline — this tool opens outbound WebSocket connections from your browser to the endpoint you enter.
+    </div>
+
+    <!-- Connection bar -->
+    <div class="wst-connbar">
+        <div class="wst-url-wrap">
+            <label class="wst-field-label" for="wst-url">Endpoint URL</label>
+            <input id="wst-url" class="wst-input" type="text" placeholder="wss://echo.websocket.org" spellcheck="false" autocomplete="off" aria-describedby="wst-url-error">
+        </div>
+        <div class="wst-proto-wrap">
+            <label class="wst-field-label" for="wst-proto">Subprotocols (optional)</label>
+            <input id="wst-proto" class="wst-input" type="text" placeholder="e.g. graphql-ws, mqtt" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="wst-conn-actions">
+            <button id="wst-connect" class="btn btn-primary" aria-label="Connect">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
+                Connect
+            </button>
+            <button id="wst-disconnect" class="btn btn-ghost" aria-label="Disconnect" disabled>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Disconnect
+            </button>
+        </div>
+        <div id="wst-url-error" class="wst-input-error" role="alert" aria-live="assertive"></div>
+    </div>
+
+    <div class="wst-statusline">
+        <span id="wst-nego" class="wst-nego" hidden></span>
+    </div>
+
+    <!-- Recent endpoints -->
+    <div class="wst-recent" id="wst-recent" hidden>
+        <span class="wst-recent-label">Recent:</span>
+        <span id="wst-recent-list" style="display:contents;"></span>
+        <button id="wst-recent-clear" class="btn btn-ghost" style="padding:2px 8px;font-size:0.68rem;" aria-label="Clear recent endpoints">Clear</button>
+    </div>
+
+    <!-- Message / event log -->
+    <section class="wst-log" aria-label="Message log">
+        <div class="wst-log-header">
+            <span class="wst-log-title" id="wst-log-title">Message Log</span>
+            <button id="wst-clear-log" class="btn btn-ghost" style="padding:3px 10px;font-size:0.72rem;" aria-label="Clear log">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                Clear
+            </button>
+        </div>
+        <div class="wst-log-list" id="wst-log-list" aria-live="polite">
+            <div class="wst-empty" id="wst-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h4l3 8 4-16 3 8h4"/></svg>
+                <span>Connect to a ws:// or wss:// endpoint to start exchanging messages.</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Composer -->
+    <div class="wst-composer">
+        <div class="wst-composer-row">
+            <textarea id="wst-msg" class="wst-msg" placeholder="Type a message to send…" spellcheck="false" aria-label="Message to send"></textarea>
+            <div class="wst-composer-actions">
+                <label class="wst-jsonmode"><input type="checkbox" id="wst-jsonmode"> JSON</label>
+                <button id="wst-send" class="btn btn-primary" aria-label="Send message" disabled>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script src="/static/components.js"></script>
+<script src="/static/ws-utils.js" defer></script>
+<script src="/static/ws-tester.js" defer></script>
+</body>
+</html>

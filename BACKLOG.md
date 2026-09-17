@@ -45,7 +45,7 @@
 | FEAT-13 | **API Tester — CLI runner** (Bruno `bru run` equivalent): `python -m devsuite run <collection.zip> --env <name> --report junit.xml`; consumes the git-friendly zip (SPEC §13 v0.3.x #4). | L | `[ ]` |
 | FEAT-14 | **API Tester — declarative assertions**: no-code assert rows (field/operator/value) compiled onto the sandbox `expect` engine. | S | `[ ]` |
 | FEAT-15 | **API Tester — collection/folder-level variables** + folder-level cascading scripts, extending the folder-auth inheritance pattern. | M | `[ ]` |
-| FEAT-16 | **WebSocket tester**: browsers don't enforce CORS on WS — mostly frontend, no proxy needed. gRPC explicitly out of scope. | M | `[ ]` |
+| FEAT-16 | **WebSocket tester**: browsers don't enforce CORS on WS — mostly frontend, no proxy needed. gRPC explicitly out of scope. Shipped in v0.7.0 as DevSuite's 15th tool (`/ws-tester`, `specs/020-websocket-tester/`) — direct browser `ws:`/`wss:` connect, send text/JSON, live bounded message log, subprotocols, `localStorage` recent endpoints, ungated tier. The one server change is a scoped per-page CSP widening `connect-src` to `ws: wss:` for `/ws-tester` only (`tests/python/test_csp.py`). | M | `[x]` |
 | FEAT-17 | **API Tester — cheap parity wins**: Insomnia import; code-gen for Python `requests`/axios/Go; markdown docs field per request; collection-level default auth. | S | `[ ]` |
 
 ---
