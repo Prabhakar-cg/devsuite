@@ -201,6 +201,16 @@
             <!-- ══ TERMINAL PANEL ══ -->
             <div id="terminal-panel" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
                 <div class="tab-strip" id="tab-strip"></div>
+                <div class="term-toolbar" id="term-toolbar">
+                    <button class="btn btn-sm term-log-toggle-btn" id="term-log-toggle-btn" title="Capture this session's output in the browser for later download. Off by default — session output can include sensitive command output, so logging is per-tab and opt-in." disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="7"/></svg>
+                        <span id="term-log-toggle-label">Log Output</span>
+                    </button>
+                    <button class="btn btn-sm" id="term-log-download-btn" title="Download the captured log for this tab (ANSI formatting stripped for readability)" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download Log
+                    </button>
+                </div>
                 <div id="terminals-wrapper" style="width:100%; flex:1; background:#000; position:relative; overflow:hidden;">
                     <div id="terminal-overlay" class="overlay-msg">
                         <div style="text-align:center;">
@@ -238,7 +248,7 @@
                     </button>
                     <button id="sftp-upload-btn" class="btn btn-sm" style="display:none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        Upload
+                        <span id="sftp-upload-btn-label">Upload</span>
                     </button>
                     <input type="file" id="sftp-upload-input" style="display:none;" multiple aria-label="Upload files to current directory">
                     <button id="sftp-disconnect-btn" class="btn btn-sm btn-danger" style="display:none;">Disconnect</button>

@@ -1,6 +1,6 @@
 # DevSuite — Master Specification
 
-> **Version:** 0.7.0  
+> **Version:** 0.10.0  
 > **Status:** Living document — updated with each release.  
 > **Purpose:** Detailed system reference within the spec-kit tree. All features, behaviors, APIs, and constraints are defined here. Implementation must match this spec; divergences require a spec update first.  
 > **Spec-kit layout:** non-negotiable principles live in `.specify/memory/constitution.md`; `specs/001-devsuite-baseline/spec.md` is the historical requirements-level baseline of the pre-split system. Each of the 15 shipped tools now has its own `specs/NNN-tool-slug/` folder (`002-diff-checker` … `013-file-converter`, plus `016-data-linter`, `017-notes-workspace`, `018-learning-roadmap`, `019-id-generator`, and `020-websocket-tester`) — full spec/plan/tasks/research/data-model/quickstart/contracts/checklists per tool, same structure `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` produces for any new feature. Note the gap at `014-id-generator`: that earlier draft was never planned/implemented and was superseded by the shipped `019-id-generator` (the ID Generator now ships as the 14th tool). `003-json-linter`, `004-yaml-linter`, and `015-xml-linter` are superseded by `016-data-linter` (kept for record, not deleted — their functional requirements remain the source of truth for exact per-format behavior). This document stays the master reference for what's *cross-cutting* — backend API surface, storage engine, security model, design system, versioning — and folds in durable contracts when a tool spec ships. Code and tests cite this file as `SPEC.md §<section>` — keep the § numbering stable. The next new feature spec starts at `021-`.
@@ -19,7 +19,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.7.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
+`0.10.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
 
 ---
 
@@ -786,7 +786,74 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 - Cron Visualizer: Day-of-Month grid added to the Visual Field Builder.
 - CI: SonarCloud new-code quality gate closed — accessible-name fixes, hash-locked CI dependencies (`requirements-lock.txt`, `--require-hashes`), pinned/`--only-binary`-only `pip install` steps.
 
-### v0.7.0 — WebSocket Tester ✅ (this release)
+### v0.10.0 — Optional Terminal Session Logging ✅ (this release)
+
+> Adds an off-by-default, per-tab "Log Output" capture to the SSH terminal (`static/ssh-manager.js`/
+> `.html`/`.css`), downloadable as an ANSI-stripped plain-text transcript. See `CHANGELOG.md`
+> [0.10.0] for full detail.
+
+- Captures the same server→client byte stream xterm.js already renders (`ws.onmessage`), bounded
+  to ~2 MB per tab (oldest output trimmed past the cap) so a long or noisy session can't grow
+  browser memory without limit. Off by default and never sent to the server — session output can
+  contain sensitive command output, so it's an explicit per-tab opt-in.
+- "Download Log" strips common ANSI/VT escape sequences (color, cursor movement, OSC
+  title-setting, charset-select) via a small inlined regex (`_stripAnsi`) — best-effort, not a
+  full terminal emulator, but covers what typical shells actually emit.
+- Deliberately did not vendor `xterm-addon-serialize` to seed the buffer with pre-existing
+  scrollback (would need a new third-party JS dependency + `SPEC.md` §11/`UPGRADE_PLAN.md`
+  update per CLAUDE.md) — logging only captures output from the moment it's turned on.
+- Extends `specs/009-secure-terminal-sftp/spec.md` (FR-002a, SC-007, US1 scenario 5) per
+  CLAUDE.md's "extension, not a new number" rule — no new `specs/NNN-*` folder.
+
+### v0.9.0 — SFTP Upload Feedback ✅
+
+> Fixes the SFTP upload UX bug where the tool looked finished while the real remote transfer
+> was still silently running (`static/ssh-manager.js`/`.html`, BACKLOG BUG-2). See
+> `CHANGELOG.md` [0.9.0] for full detail.
+
+- `sftp_upload` (routes/ssh.py) buffers the whole file then does one write to the remote host —
+  the browser's `xhr.upload.onprogress` only measures the fast local browser→server leg, so the
+  status toast went stale/quiet while the (often slower) remote SFTP write kept running with no
+  feedback at all.
+- Fixed the visibility gap: a single reused per-file toast (`_uploadStatusToast`) now shows
+  "sent to server — writing to remote via SFTP…" for that gap instead of spawning a new
+  auto-dismissing toast on every progress tick (which used to visibly stack up and keep fading
+  for seconds after the transfer had already finished). The Upload button disables for the
+  duration of a transfer.
+- Not fixed in this release: the server still buffers the whole file in memory instead of
+  streaming, and can't be cancelled mid-transfer (no `request.is_disconnected()` check) — tracked
+  as `BACKLOG.md` BUG-2 (`[/]`, in progress).
+- Extends `specs/009-secure-terminal-sftp/spec.md` (FR-012a, SC-006) per CLAUDE.md's "extension,
+  not a new number" rule — no new `specs/NNN-*` folder.
+
+### v0.8.0 — Vault Password Change ✅
+
+> Secret Vault gets its own "Change Master Password" flow (`/vault`, BACKLOG SEC-8): re-derives
+> a new salt/`Kenc`/`Kauth` from the new password, re-encrypts every entry client-side, rotates
+> the shared `POST /api/auth/update-challenge` endpoint (always the v2 shape), and
+> re-authenticates before persisting. See `CHANGELOG.md` [0.8.0] for full detail.
+
+- Client-side current-password check (re-derived `Kauth` vs. the session's `masterKauth`) before
+  any network call, so a wrong guess never touches the server. Reuses the existing v2 KDF
+  (§7.5) and the pre-existing, previously-untested `/api/auth/update-challenge` endpoint (built
+  originally for DB Manager's password change) — no new backend route.
+- Handles the endpoint's session-revoking side effect explicitly: after rotating the challenge,
+  the client immediately re-authenticates with the new `Kauth`, then persists the re-encrypted
+  blob under the new salt. If that final persist fails, the re-encrypted payload is kept in
+  memory and the modal offers an explicit "Retry Save" — no re-entry of either password.
+- New `tests/python/test_auth_update_challenge.py` covers the rotation/session-revocation path
+  (previously had zero coverage) per CLAUDE.md rule 4: requires an active session, requires setup,
+  rejects incomplete payloads, revokes the old session and rejects the old key, and preserves the
+  v1-shape default DB Manager still relies on.
+- Fixed a stale claim in `specs/012-db-manager/spec.md`'s Assumptions: DB Manager's v1-only
+  password-change flow does **not** safely coexist with an existing v2 Vault as previously
+  documented — it's a real lockout (`_unlockVaultNormal` falls into its generic version-mismatch
+  error, not a handled branch). Corrected there and tracked as `BACKLOG.md` BUG-1.
+- Built via the full Spec Kit flow, extending the existing `specs/011-secret-vault/spec.md`
+  (US8/FR-019/FR-020/SC-007) per CLAUDE.md's "extension to an existing tool" rule — no new
+  `specs/NNN-*` folder.
+
+### v0.7.0 — WebSocket Tester ✅
 
 > New 15th tool, WebSocket Tester (`/ws-tester`, BACKLOG FEAT-16): connect to `ws:`/`wss:`
 > endpoints, send text/JSON, and watch a live, direction-tagged, bounded message + lifecycle log.
@@ -943,4 +1010,4 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 ---
 
-*This spec reflects DevSuite v0.7.0. Update before implementing any new feature or changing existing behavior.*
+*This spec reflects DevSuite v0.10.0. Update before implementing any new feature or changing existing behavior.*

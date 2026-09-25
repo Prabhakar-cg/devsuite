@@ -5,6 +5,110 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.10.0] — 2026-09-25 (Optional Terminal Session Logging)
+
+### Features
+
+#### SSH Terminal: optional "Log Output" per tab (`static/ssh-manager.js`, `static/ssh-manager.html`, `static/ssh-manager.css`)
+- New toolbar above the terminal tabs: **Log Output** (off by default, per tab) and
+  **Download Log**. Enabling it captures that tab's server→client output stream — the same
+  bytes xterm.js already renders — into an in-memory, per-tab buffer bounded at ~2 MB (oldest
+  output trimmed past the cap, so a long-running or high-volume session can't grow browser
+  memory without limit).
+- Off by default, deliberately: terminal output can echo sensitive command output (typed
+  commands via normal PTY echo, `cat`'d secrets, curl'd API responses), so capture only starts
+  once a user explicitly turns it on for that tab. Nothing is sent to or stored by the backend —
+  purely client-side, lost if the tab is closed without downloading.
+- **Download Log** saves the buffer as plain text with common ANSI/VT escape sequences stripped
+  (`_stripAnsi`: color codes, cursor movement, OSC title-setting, charset-select) so the file
+  reads like a normal transcript instead of raw control codes. On disconnect, if logging was on
+  and something was captured, a toast reminds the user to download it before closing the tab.
+- No new third-party dependency — deliberately did not vendor `xterm-addon-serialize` (which
+  would let logging seed itself with pre-existing scrollback); logging only captures output
+  from the moment it's enabled. Adding that addon later needs its own `specs/SPEC.md` §11 /
+  `UPGRADE_PLAN.md` update per CLAUDE.md.
+- `specs/009-secure-terminal-sftp/spec.md` gains FR-002a, SC-007, and a new US1 acceptance
+  scenario, plus Edge Cases/Assumptions entries — extending the existing tool spec per
+  CLAUDE.md's "extension, not a new number" rule.
+
+---
+
+## [0.9.0] — 2026-09-25 (SFTP Upload Feedback)
+
+### Bugfix
+
+#### SFTP upload no longer looks "done" while it's still transferring (`static/ssh-manager.js`, `static/ssh-manager.html`)
+- **Root cause**: `sftp_upload` (routes/ssh.py) reads the whole uploaded file into memory
+  (`await file.read()`), *then* opens the SSH/SFTP connection and does a single
+  `await remote_file.write(...)` to the actual remote host. The browser's
+  `xhr.upload.onprogress` only measures the first (fast, local) leg — it hits 100% almost
+  instantly — while `xhr.onload` doesn't fire until the second (often much slower) leg, the real
+  network write to the remote host, also completes. That gap had **zero UI feedback**: the
+  progress toast just sat at 100% and auto-dismissed after 3.2s, making the tool look finished
+  while a genuine file transfer was still silently running in the background.
+- **Amplifying bug**: the progress toast was spawned fresh on every single `onprogress` tick
+  (no reuse, no cap). On a fast local connection those ticks can fire in a quick burst near
+  completion, stacking up several independently-timed toasts that kept visibly fading out for
+  a few seconds *after* the real upload had already finished — compounding the "still uploading"
+  illusion.
+- **Fix**: a single, updatable toast per file (`_uploadStatusToast`) replaces the per-tick
+  `showToast()` spam, and explicitly switches to "`<file>`: sent to server — writing to remote
+  via SFTP…" once the local leg hits 100%, so the tool visibly keeps working through the real
+  transfer instead of going quiet. The Upload button (`static/ssh-manager.html`) now disables for
+  the duration of a transfer, closing off the failure mode where a user — seeing no feedback —
+  clicks Upload again and fires a second, concurrent transfer to the same remote path.
+- **Not fixed in this release** (tracked as `BACKLOG.md` BUG-2, `[/]`): the server still buffers
+  the entire file in memory before writing it (no streaming, unlike `sftp_download`'s existing
+  64 KB chunking), and there's still no `request.is_disconnected()` check, so closing the tab
+  mid-upload doesn't stop the backend from finishing the write. A complete fix needs a chunked
+  server-side write plus a real mid-transfer progress channel — HTTP request/response alone gives
+  the server no way to push progress back to the client mid-request.
+- `specs/009-secure-terminal-sftp/spec.md` gains FR-012a / SC-006 and two Edge Cases/Assumptions
+  entries, extending the existing tool spec per CLAUDE.md's "extension to an existing tool" rule.
+
+---
+
+## [0.8.0] — 2026-09-25 (Vault Password Change)
+
+### Security
+
+#### Secret Vault: "Change Master Password" flow (`static/vault.html`, `static/vault.js`)
+- New header control on `/vault` (BACKLOG SEC-8): change the master password from inside an
+  unlocked vault, re-encrypting every secret with a freshly derived key. Before this, `/vault`
+  had no in-tool way to rotate its password at all.
+- **Client-side current-password check** — re-derives `Kauth` from the typed current password
+  and the in-memory `vaultSaltHex`, compares it to the active session's `masterKauth`, and shows
+  "Current master password is incorrect." with **no network request** on a mismatch.
+- **Full rotation on success** — generates a new random 16-byte salt, derives new `Kenc`/`Kauth`
+  (same v2 PBKDF2-SHA256/310k scheme as setup/migration, SPEC §7.5), re-encrypts all entries with
+  the new `Kenc` (AES-256-GCM), rotates the shared `POST /api/auth/update-challenge` endpoint
+  (always the v2 payload shape), immediately re-authenticates with the new `Kauth` (the endpoint
+  revokes every existing session, including the one making the request), then persists the
+  re-encrypted blob under the new salt via the existing `POST /api/vault`. No new backend route —
+  `update-challenge` already existed (built for DB Manager's password change) but had zero test
+  coverage before this release.
+- **Failure recovery without re-entering either password** — if the final `POST /api/vault` fails
+  after the challenge has already rotated, the re-encrypted payload stays in memory
+  (`_pwRotationPending`) and re-opening the modal (or clicking the button again) shows an explicit
+  "Retry Save" that just re-submits it. This mirrors the existing v1→v2 auto-migration's
+  non-atomicity (rotate-then-persist) but surfaces it visibly instead of relying on a silent
+  next-unlock retry, since a password change (unlike migration) can't self-heal on reload.
+- New `tests/python/test_auth_update_challenge.py`: the rotation/session-revocation endpoint now
+  has dedicated coverage — requires an active session, requires setup to exist, rejects
+  incomplete v2 payloads, revokes the old session and rejects the old key after rotation, accepts
+  the new key, and preserves the v1-shape default that DB Manager's own flow still relies on.
+- **Spec correction**: while verifying this against source, found that
+  `specs/012-db-manager/spec.md`'s Assumptions section previously claimed DB Manager's v1-only
+  password-change flow was safely handled by `_unlockVaultNormal` when it collides with an
+  existing v2 Vault. Traced the actual branch and that's wrong — it's a genuine lockout (falls
+  into the generic "Unexpected vault/challenge version mismatch" error, never resolves). Corrected
+  in that spec and tracked as `BACKLOG.md` BUG-1; not fixed in this release (out of scope — the
+  fix belongs in DB Manager's own flow, not the Vault's new one).
+- `specs/011-secret-vault/spec.md` gains US8 (Change the master password) / FR-019 / FR-020 /
+  SC-007, extending the existing tool spec per CLAUDE.md's "extension, not a new number" rule.
+
+---
+
 ## [0.7.0] — 2026-09-17 (WebSocket Tester)
 
 ### Security

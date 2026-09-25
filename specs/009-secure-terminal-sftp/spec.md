@@ -39,6 +39,13 @@ sessions run independently.
 4. **Given** an open terminal tab, **When** the user resizes the browser/tab, **Then** a resize
    escape sequence (`\x1b[resize;COLS;ROWSm`) is sent over the socket and the remote PTY's
    window size is updated via `process.change_terminal_size`.
+5. **Given** an open terminal tab, **When** the user clicks "Log Output" (off by default, per
+   tab), **Then** subsequent output written to that tab's xterm.js instance is also captured
+   in-memory in that tab, and "Download Log" becomes enabled once any output has been captured.
+   Clicking "Download Log" saves the captured output as a plain-text file with ANSI/VT escape
+   sequences stripped (color, cursor movement, title-setting) for readability. Logging state,
+   the buffer, and the file are per-tab and client-side only — nothing is sent to or stored on
+   the server, and closing the tab or reloading the page discards an unsaved buffer.
 
 ---
 
@@ -133,6 +140,14 @@ next listing.
 4. **Given** the user navigates via `/sftp` directly (not through `/ssh`), **Then** the same
    profile store (`ssh_profiles`) and SFTP endpoints are used — the standalone browser is not a
    separate data silo.
+5. **Given** an upload in progress, **When** the browser→server leg (the only phase
+   `xhr.upload.onprogress` can measure) reaches 100%, **Then** the status toast switches to an
+   explicit "sent to server — writing to remote via SFTP…" message rather than going quiet,
+   because the server's actual remote SFTP write (routes/ssh.py's `sftp_upload`) still has to
+   complete before the request resolves — a gap that previously had zero UI feedback and read as
+   "finished" while a real network transfer was still silently running. The Upload button is
+   disabled for the duration so a user who sees no immediate change can't fire a second,
+   concurrent transfer at the same remote path (`static/ssh-manager.js`).
 
 ---
 
@@ -222,6 +237,15 @@ approximately every 2 seconds and reflect real `/proc` values on the remote host
 - **Terminal resize during active output**: resize escapes are detected and stripped from the
   input stream before being written to the PTY/SSH stdin, so they never leak into the shell as
   literal characters.
+- **Session output logging is opt-in and off by default**: terminal output can echo sensitive
+  data (typed commands, `cat`'d secrets, curl'd API responses) back to the client, so capture
+  only starts once a user explicitly enables it per tab (`static/ssh-manager.js`); it is never
+  silently on.
+- **Upload progress toast flooding**: `xhr.upload.onprogress` can fire many times in quick
+  succession on a fast local connection; per-tick progress updates go through a single reused
+  toast element per file (`_uploadStatusToast` in `static/ssh-manager.js`) rather than spawning a
+  new auto-dismissing toast on every tick, which previously stacked up and kept visibly
+  fading out for seconds after the underlying transfer had already finished.
 
 ## Requirements *(mandatory)*
 
@@ -233,6 +257,11 @@ approximately every 2 seconds and reflect real `/proc` values on the remote host
   profile.
 - **FR-002**: The system MUST support multiple concurrent terminal sessions, each as an
   independent WebSocket + xterm.js instance.
+- **FR-002a**: Each terminal tab MUST support an optional, off-by-default "Log Output" capture
+  of its server→client output stream, downloadable as an ANSI-stripped plain-text file. Logging
+  state and the captured buffer MUST be per-tab, client-side only, and MUST NOT be sent to or
+  persisted by the backend. The buffer MUST be bounded (oldest output trimmed past a fixed size
+  cap) so a long-running or high-volume session cannot grow browser memory without limit.
 - **FR-003**: The system MUST verify the remote host's SSH key against a local `known_hosts`
   file before authenticating, using `ssh-keyscan` + `ssh-keygen -F`/`-l`, and MUST require
   explicit user approval (fingerprint shown) for any host not already pinned.
@@ -262,6 +291,11 @@ approximately every 2 seconds and reflect real `/proc` values on the remote host
 - **FR-011**: Directory listings MUST sort directories before files, then case-insensitively by
   name.
 - **FR-012**: Downloads MUST stream (not buffer the whole file in memory) in fixed-size chunks.
+- **FR-012a**: Upload progress feedback MUST distinguish the two transfer phases it spans — the
+  browser→server leg (what `xhr.upload.onprogress` measures) and the server→remote SFTP write
+  that follows it — rather than presenting a single percentage that silently stalls at 100% while
+  the (often slower) remote write is still in progress. The upload control MUST be disabled for
+  the duration of a transfer.
 - **FR-013**: The SFTP tool MUST be reachable both from within `/ssh` (sub-tab) and as a
   standalone page at `/sftp`.
 
@@ -317,6 +351,14 @@ approximately every 2 seconds and reflect real `/proc` values on the remote host
   Password exists, and accept them beforehand — verified by `tests/python/test_ws_auth.py`.
 - **SC-005**: SFTP downloads of large remote files do not require buffering the full file in
   server memory (streamed in 64 KB chunks).
+- **SC-006**: An SFTP upload's status display never goes quiet/stale while the request is still
+  genuinely in flight — the upload control stays disabled and the toast reflects "writing to
+  remote via SFTP…" for the entire gap between the browser-side leg completing and the server's
+  response arriving, and never shows more than one progress toast per file at a time.
+- **SC-007**: A user who enables "Log Output" on a terminal tab, runs commands, and clicks
+  "Download Log" gets a plain-text file containing that tab's captured output with no ANSI
+  escape sequences visible, and no `/api/*` request is ever made to persist it — verified by
+  inspecting network activity during the capture/download flow.
 
 ## Assumptions
 
@@ -332,6 +374,27 @@ approximately every 2 seconds and reflect real `/proc` values on the remote host
   per-subsystem choice, not an oversight, and is called out explicitly in SPEC.md §7.5.
 - **Local terminal is Linux/macOS only**; Windows users without WSL have no local-terminal
   option — WSL distro access is the Windows path instead.
+- **Session log capture is output-only, not a full replay/typescript**: it captures the bytes
+  written to xterm.js (`ws.onmessage`), which already includes the remote shell's own echo of
+  typed input under normal PTY behavior — the same content a tool like `script(1)` would record.
+  It does not separately record raw keystrokes (`term.onData`), and it does not seed the buffer
+  with scrollback that existed before logging was turned on (no `xterm-addon-serialize` is
+  vendored — adding it would need a `specs/SPEC.md` §11/`UPGRADE_PLAN.md` update per CLAUDE.md,
+  deliberately deferred rather than added for this one feature).
+- **ANSI-stripping is best-effort, not exhaustive**: `_stripAnsi` (static/ssh-manager.js) covers
+  the common CSI/OSC/charset-select escape families xterm.js actually receives from typical
+  shells; unusual sequences from exotic TUIs may leave stray control bytes in a downloaded log.
+  This is treated as acceptable for a "readable transcript" feature, not a terminal emulator.
 - **Host-key approval has no visible timeout UI on the SFTP REST path** — the 409 + retry pattern
   assumes the calling frontend code (not verified in this spec's scope) handles the approval
   prompt and retry; this spec documents the backend contract only.
+- **Upload still buffers the whole file server-side before writing it remotely, and can't be
+  cancelled mid-transfer**: `sftp_upload` (routes/ssh.py) does `file_content = await file.read()`
+  (loads the full upload into memory) and then a single `await remote_file.write(file_content)` —
+  unlike `sftp_download`'s 64 KB streaming (FR-012). FR-012a's two-phase status message fixes the
+  *visibility* gap this creates, but not the underlying memory footprint, and there's still no
+  server-side check of `request.is_disconnected()` — closing the tab or navigating away mid-upload
+  does not stop the backend from finishing the write. Fixing this properly (chunked streaming
+  write + a real mid-transfer progress channel, since HTTP request/response gives the server no
+  way to push progress back mid-request) is a larger change, deliberately out of scope for this
+  round; tracked as `BACKLOG.md` BUG-2.
