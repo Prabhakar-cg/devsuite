@@ -5,6 +5,172 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [Unreleased] — Docs
+
+### Governance
+
+- **Constitution v1.0.0 → v1.0.1 (PATCH)**: `.specify/memory/constitution.md`'s "Additional
+  Constraints" section had drifted — it still said "tool count (currently 12)" while
+  `specs/SPEC.md` §1/§3.2, `static/tools.html`, and `CLAUDE.md` had all already moved to 15
+  tools as new tools shipped. Corrected the stale number; no principle changed, so this is a
+  PATCH per the constitution's own versioning rule. `specs/SPEC.md` and `CLAUDE.md` needed no
+  edit — they were already correct. No `APP_VERSION` bump (docs-only, no behavior change).
+
+---
+
+## [0.10.0] — 2026-09-25 (Optional Terminal Session Logging)
+
+### Features
+
+#### SSH Terminal: optional "Log Output" per tab (`static/ssh-manager.js`, `static/ssh-manager.html`, `static/ssh-manager.css`)
+- New toolbar above the terminal tabs: **Log Output** (off by default, per tab) and
+  **Download Log**. Enabling it captures that tab's server→client output stream — the same
+  bytes xterm.js already renders — into an in-memory, per-tab buffer bounded at ~2 MB (oldest
+  output trimmed past the cap, so a long-running or high-volume session can't grow browser
+  memory without limit).
+- Off by default, deliberately: terminal output can echo sensitive command output (typed
+  commands via normal PTY echo, `cat`'d secrets, curl'd API responses), so capture only starts
+  once a user explicitly turns it on for that tab. Nothing is sent to or stored by the backend —
+  purely client-side, lost if the tab is closed without downloading.
+- **Download Log** saves the buffer as plain text with common ANSI/VT escape sequences stripped
+  (`_stripAnsi`: color codes, cursor movement, OSC title-setting, charset-select) so the file
+  reads like a normal transcript instead of raw control codes. On disconnect, if logging was on
+  and something was captured, a toast reminds the user to download it before closing the tab.
+- No new third-party dependency — deliberately did not vendor `xterm-addon-serialize` (which
+  would let logging seed itself with pre-existing scrollback); logging only captures output
+  from the moment it's enabled. Adding that addon later needs its own `specs/SPEC.md` §11 /
+  `UPGRADE_PLAN.md` update per CLAUDE.md.
+- `specs/009-secure-terminal-sftp/spec.md` gains FR-002a, SC-007, and a new US1 acceptance
+  scenario, plus Edge Cases/Assumptions entries — extending the existing tool spec per
+  CLAUDE.md's "extension, not a new number" rule.
+
+---
+
+## [0.9.0] — 2026-09-25 (SFTP Upload Feedback)
+
+### Bugfix
+
+#### SFTP upload no longer looks "done" while it's still transferring (`static/ssh-manager.js`, `static/ssh-manager.html`)
+- **Root cause**: `sftp_upload` (routes/ssh.py) reads the whole uploaded file into memory
+  (`await file.read()`), *then* opens the SSH/SFTP connection and does a single
+  `await remote_file.write(...)` to the actual remote host. The browser's
+  `xhr.upload.onprogress` only measures the first (fast, local) leg — it hits 100% almost
+  instantly — while `xhr.onload` doesn't fire until the second (often much slower) leg, the real
+  network write to the remote host, also completes. That gap had **zero UI feedback**: the
+  progress toast just sat at 100% and auto-dismissed after 3.2s, making the tool look finished
+  while a genuine file transfer was still silently running in the background.
+- **Amplifying bug**: the progress toast was spawned fresh on every single `onprogress` tick
+  (no reuse, no cap). On a fast local connection those ticks can fire in a quick burst near
+  completion, stacking up several independently-timed toasts that kept visibly fading out for
+  a few seconds *after* the real upload had already finished — compounding the "still uploading"
+  illusion.
+- **Fix**: a single, updatable toast per file (`_uploadStatusToast`) replaces the per-tick
+  `showToast()` spam, and explicitly switches to "`<file>`: sent to server — writing to remote
+  via SFTP…" once the local leg hits 100%, so the tool visibly keeps working through the real
+  transfer instead of going quiet. The Upload button (`static/ssh-manager.html`) now disables for
+  the duration of a transfer, closing off the failure mode where a user — seeing no feedback —
+  clicks Upload again and fires a second, concurrent transfer to the same remote path.
+- **Not fixed in this release** (tracked as `BACKLOG.md` BUG-2, `[/]`): the server still buffers
+  the entire file in memory before writing it (no streaming, unlike `sftp_download`'s existing
+  64 KB chunking), and there's still no `request.is_disconnected()` check, so closing the tab
+  mid-upload doesn't stop the backend from finishing the write. A complete fix needs a chunked
+  server-side write plus a real mid-transfer progress channel — HTTP request/response alone gives
+  the server no way to push progress back to the client mid-request.
+- `specs/009-secure-terminal-sftp/spec.md` gains FR-012a / SC-006 and two Edge Cases/Assumptions
+  entries, extending the existing tool spec per CLAUDE.md's "extension to an existing tool" rule.
+
+---
+
+## [0.8.0] — 2026-09-25 (Vault Password Change)
+
+### Security
+
+#### Secret Vault: "Change Master Password" flow (`static/vault.html`, `static/vault.js`)
+- New header control on `/vault` (BACKLOG SEC-8): change the master password from inside an
+  unlocked vault, re-encrypting every secret with a freshly derived key. Before this, `/vault`
+  had no in-tool way to rotate its password at all.
+- **Client-side current-password check** — re-derives `Kauth` from the typed current password
+  and the in-memory `vaultSaltHex`, compares it to the active session's `masterKauth`, and shows
+  "Current master password is incorrect." with **no network request** on a mismatch.
+- **Full rotation on success** — generates a new random 16-byte salt, derives new `Kenc`/`Kauth`
+  (same v2 PBKDF2-SHA256/310k scheme as setup/migration, SPEC §7.5), re-encrypts all entries with
+  the new `Kenc` (AES-256-GCM), rotates the shared `POST /api/auth/update-challenge` endpoint
+  (always the v2 payload shape), immediately re-authenticates with the new `Kauth` (the endpoint
+  revokes every existing session, including the one making the request), then persists the
+  re-encrypted blob under the new salt via the existing `POST /api/vault`. No new backend route —
+  `update-challenge` already existed (built for DB Manager's password change) but had zero test
+  coverage before this release.
+- **Failure recovery without re-entering either password** — if the final `POST /api/vault` fails
+  after the challenge has already rotated, the re-encrypted payload stays in memory
+  (`_pwRotationPending`) and re-opening the modal (or clicking the button again) shows an explicit
+  "Retry Save" that just re-submits it. This mirrors the existing v1→v2 auto-migration's
+  non-atomicity (rotate-then-persist) but surfaces it visibly instead of relying on a silent
+  next-unlock retry, since a password change (unlike migration) can't self-heal on reload.
+- New `tests/python/test_auth_update_challenge.py`: the rotation/session-revocation endpoint now
+  has dedicated coverage — requires an active session, requires setup to exist, rejects
+  incomplete v2 payloads, revokes the old session and rejects the old key after rotation, accepts
+  the new key, and preserves the v1-shape default that DB Manager's own flow still relies on.
+- **Spec correction**: while verifying this against source, found that
+  `specs/012-db-manager/spec.md`'s Assumptions section previously claimed DB Manager's v1-only
+  password-change flow was safely handled by `_unlockVaultNormal` when it collides with an
+  existing v2 Vault. Traced the actual branch and that's wrong — it's a genuine lockout (falls
+  into the generic "Unexpected vault/challenge version mismatch" error, never resolves). Corrected
+  in that spec and tracked as `BACKLOG.md` BUG-1; not fixed in this release (out of scope — the
+  fix belongs in DB Manager's own flow, not the Vault's new one).
+- `specs/011-secret-vault/spec.md` gains US8 (Change the master password) / FR-019 / FR-020 /
+  SC-007, extending the existing tool spec per CLAUDE.md's "extension, not a new number" rule.
+
+---
+
+## [0.7.0] — 2026-09-17 (WebSocket Tester)
+
+### Security
+
+#### New scoped per-page CSP for the WebSocket Tester (`main.py`)
+- The default document CSP ends with `connect-src 'self'`, which blocks the browser from opening `ws:`/`wss:` handshakes to any other origin. The new WebSocket Tester page — and **only** that page (`/ws-tester`) — is served with `_WS_TESTER_CSP`, identical to the document policy except `connect-src 'self' ws: wss:`. `script-src` is unchanged, so **no `unsafe-eval` is introduced** (SEC-6 preserved), and every other page keeps the strict `connect-src 'self'`. Implemented as a third branch in the existing `add_security_headers` middleware, mirroring the sandbox-worker scoping. Covered by new tests in `tests/python/test_csp.py` (the `/ws-tester` widening, no-unsafe-eval, and that `/` stays strict). See `specs/020-websocket-tester/research.md` item R1.
+
+### Features
+
+#### WebSocket Tester: new 15th tool for testing realtime APIs (`static/ws-tester.html`, `static/ws-utils.js`, `static/ws-tester.js`, `static/ws-tester.css`, `routes/pages.py`)
+- New tool at `/ws-tester` (BACKLOG FEAT-16): connect to a `ws://`/`wss://` endpoint, send text or JSON messages, and watch a single time-ordered, direction-tagged **live log** of sent/received messages and connection lifecycle events (open, close-with-code, error). The browser connects **directly** to the endpoint — browsers don't apply CORS to WebSocket, so there is no DevSuite backend proxy in the data path.
+- **Connection handling** — one live socket at a time (reconnecting closes the previous one first); always-visible status (connecting/open/closing/closed/error); optional comma-separated **subprotocols** with the negotiated subprotocol shown on open; validation rejecting blank / non-`ws`/`wss` URLs before any connection attempt.
+- **Messages** — JSON mode validates + pretty-prints before send; incoming text that parses as JSON is pretty-printed, otherwise shown verbatim; **binary frames** (received as `ArrayBuffer`) are shown as `binary (N bytes)` with a hex + best-effort UTF-8 preview, never `[object Blob]`. The on-screen log is **bounded** (FIFO-trimmed at 500 entries) so a high message rate can't grow the DOM without limit; auto-scrolls to newest unless you've scrolled up.
+- **Recent endpoints** — recently-used URLs + subprotocols persist in `localStorage` (no DevDB store, no master-password gate — ungated tier like Cron/Regex) and can be restored or cleared. No message bodies are persisted.
+- **Not strictly offline** — the tool opens user-initiated outbound WebSocket connections (the same sanctioned category as SSH/SFTP and the CORS proxy) and is labeled as such in the UI. All message bodies and event text are rendered via `createElement` + `textContent` (no `innerHTML` with connection-derived data); stroke-based SVG icons, no inline `<script>`, no emoji.
+- **Pure, Node-tested core** — URL validation, subprotocol parsing, JSON formatting, log capping, and recent-endpoint management live in `static/ws-utils.js` (DOM-free browser/Node dual-export module, extending the DX-10 pattern). `tests/javascript/test_ws_utils.js` adds 14 tests to the zero-dependency runner. No new third-party dependency (native `WebSocket` API).
+- Tool count synced to **15** across `static/tools.html` (new `network`-category card; All 14→15, Network 1→2 filter/chip counts), `static/home.html`, `specs/SPEC.md`, and this changelog.
+- Built via the full Spec Kit flow (`specs/020-websocket-tester/`: spec → plan → research → data-model → quickstart → tasks).
+
+---
+
+## [0.6.0] — 2026-09-17 (ID Generator)
+
+### Features
+
+#### ID Generator: new 14th tool for bulk identifier generation with entropy inspection (`static/id-generator.html`, `static/id-gen.js`, `static/id-generator.js`, `static/id-generator.css`, `routes/pages.py`)
+- New tool at `/id-generator` (BACKLOG FEAT-2): bulk-generate identifiers of five types — **UUID v4** (RFC 9562, 122 random bits), **UUID v7** (48-bit ms timestamp + 74 random bits, time-sortable), **ULID** (26-char Crockford base32, 48-bit timestamp + 80 random bits, time-sortable), **CUID2** (base36, default length 24), and **NanoID** (21-char URL-safe, ~126 bits). Choose a type and a count (1–1000) and generate a batch on demand.
+- **Entropy inspection panel** — for the selected type, shows total bits, bits of randomness, the timestamp component size/meaning, and a time-sortability badge, updating immediately on type change. For the time-based types (UUID v7, ULID) each generated value's embedded creation timestamp is decoded and rendered as an ISO date alongside the value.
+- **Cryptographically secure, fully local** — all randomness comes from `crypto.getRandomValues` (never `Math.random()`); if secure randomness is unavailable the tool refuses to generate rather than falling back. No backend endpoint, no DevDB store, no persistence, and no master-password gate — same unauthenticated tier as Diff Checker / Data Format Linter / Regex Tester / Cron Visualizer. One-click copy per row and "Copy all" (newline-joined) via the async Clipboard API, with success/failure feedback.
+- **Pure, Node-tested generator core** — generation, the per-type facts table, and timestamp decoding live in `static/id-gen.js`, a DOM-free browser/Node dual-export module (extending the DX-10 pure-module pattern). `tests/javascript/test_id_gen.js` adds 16 tests (format conformance for all five types, 1000-value batch distinctness, entropy-fact assertions, and UUID v7 / ULID timestamp-decode round-trips) to the zero-dependency runner. The DOM controller `static/id-generator.js` inserts every value via `createElement` + `textContent` (no `innerHTML` with generated data) and uses stroke-based inline SVG icons — no inline `<script>`, no emoji (constitution Art. V, SPEC §9.8/§9.9).
+- CUID2 hashing uses `CryptoJS.SHA3` from the already-vendored `static/crypto-js.min.js` — **no new third-party dependency**, so no SPEC §11 / `UPGRADE_PLAN.md` entry required.
+- Tool count synced to **14** across `static/tools.html` (new `dev`-category card; All 13→14, Dev 5→6 filter/chip counts), `static/home.html`, `specs/SPEC.md`, and this changelog.
+- Built via the full Spec Kit flow (`specs/019-id-generator/`: spec → plan → research → data-model → quickstart → tasks). Supersedes the never-implemented `014-id-generator` draft.
+
+---
+
+## [0.5.1] — 2026-08-23 (Learning Roadmap content upgrade)
+
+### Features
+
+#### Learning Roadmap: the seeded AI/MLOps roadmap's six steps get real content (`scripts/seed_roadmap.py`, `static/roadmap-doc-viewer.html`, `static/roadmap-doc-viewer.js`, `static/roadmap-doc-viewer.css`, `static/roadmap-docs/`, `routes/pages.py`)
+- Each of the seeded roadmap's six steps previously shipped with only a title and a one-line description ("banner"). They now ship with a concrete, actionable checklist (15–18 tasks each, sequenced foundational-to-advanced), 7–8 curated `course_links` per step (real, verified public resources — university courses, official docs, free short courses), and a `documents` entry linking to an original, in-depth reference guide written for that exact step.
+- New per-step reference guides at `static/roadmap-docs/*.md` — six original documents (~2,500–4,500 words each) covering: ML/LLM systems fundamentals (tokenization, embeddings, KV-cache math, quantization, roofline analysis), model serving & inference infra on Kubernetes (vLLM/KServe/GPU scheduling/KEDA/observability), ML pipeline & MLOps tooling (MLflow/W&B, Feast, model registries, ML-aware CI/CD, Terraform/Ansible), agentic AI engineering (the agent loop, LangGraph/CrewAI/AutoGen, MCP, guardrails, cost-aware orchestration, trace observability), certifications (with corrections to the retired AWS ML Specialty exam and the actual current AWS/NVIDIA/CNCF cert lineup), and portfolio & positioning (a concrete write-up template and diagramming/publishing guidance).
+- New read-only doc viewer, `static/roadmap-doc-viewer.html`/`.js`/`.css`, served at the new page route `GET /roadmap/docs?doc=<slug>&title=<title>` — fetches the requested `.md` file client-side and renders it with the same `marked` + `DOMPurify` sanitization pipeline Notes Workspace already uses (`NotesLinks.sanitizeMarkdownBody`), with a live table-of-contents sidebar built from the doc's headings, code-block/table/blockquote styling, and print support. No new sanitization surface, no DevDB access, no auth gate — same unauthenticated tier as the rest of the tool.
+- `scripts/seed_roadmap.py` rewritten to carry this full per-step content and to **backfill** any step still in its untouched seed state (empty checklist/course_links/documents/notes) when re-run against an already-seeded store, rather than only skipping entirely when the roadmap id exists — so an install seeded before this upgrade still picks up the new content on the next run, without touching any step a user has already started editing.
+- No `/api/roadmaps*` contract change — this is a content and static-asset addition only.
+
+---
+
 ## [0.5.0] — 2026-08-23 (Learning Roadmap)
 
 ### Security

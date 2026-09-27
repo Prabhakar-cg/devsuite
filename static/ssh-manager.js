@@ -720,7 +720,10 @@ function openTerminalTab(p) {
     const wsUrl    = p.isWsl ? `${protocol}//${host}/api/local/terminal` : `${protocol}//${host}/api/ssh/terminal`;
     const ws       = new WebSocket(wsUrl);
 
-    activeTabs[tabId] = { id: tabId, profile: p, term, fitAddon, ws, paneDom: pane };
+    activeTabs[tabId] = {
+        id: tabId, profile: p, term, fitAddon, ws, paneDom: pane,
+        logging: false, logChunks: [], logChars: 0,  // optional session-output capture (opt-in)
+    };
 
     ws.onopen = () => {
         if (p.isWsl) {
@@ -744,8 +747,19 @@ function openTerminalTab(p) {
             }
         } catch { /* not a JSON control message — fall through */ }
         term.write(evt.data);
+        const currentTab = activeTabs[tabId];
+        if (currentTab?.logging) {
+            _appendTermLog(currentTab, evt.data);
+            if (tabId === currentTabId) _updateTermToolbar();
+        }
     };
-    ws.onclose    = ()  => { try { term.write('\r\nConnection closed.'); } catch {} };
+    ws.onclose    = ()  => {
+        try { term.write('\r\nConnection closed.'); } catch {}
+        const t = activeTabs[tabId];
+        if (t?.logging && t.logChars > 0) {
+            showToast(`Session ended — ${(t.logChars / 1024).toFixed(1)} KB of log captured. Click Download Log before closing this tab.`, 'info');
+        }
+    };
     ws.onerror    = ()  => { try { term.write('\r\nWebSocket error.'); }   catch {} };
     term.onData(d => { if (ws?.readyState === WebSocket.OPEN) ws.send(d); });
     term.write(`Connecting to ${p.host}...\r\n`);
@@ -787,6 +801,7 @@ function switchTab(tabId) {
     });
     renderTabsHeader();
     if (activeTabs[tabId].fitAddon) activeTabs[tabId].fitAddon.fit();
+    _updateTermToolbar();
 }
 
 function closeTab(tabId) {
@@ -801,12 +816,97 @@ function closeTab(tabId) {
     if (keys.length === 0) {
         currentTabId = null;
         document.getElementById('terminal-overlay').style.display = 'flex';
+        _updateTermToolbar();
     } else if (currentTabId === tabId) {
         switchTab(keys.at(-1));
     }
     renderTabsHeader();
     renderSidebar();
 }
+
+// ──────────────────────────────────────────
+// Terminal session-output logging (optional, per tab, opt-in)
+// ──────────────────────────────────────────
+// Captures the server→client output stream (the same bytes term.write() renders) so a
+// session can be saved as a plain-text transcript. Off by default: terminal output can
+// contain sensitive command output, so it's a per-tab, explicit opt-in, never persisted
+// anywhere but this tab's in-memory buffer, and lost if the tab is closed unsaved.
+const TERM_LOG_MAX_CHARS = 2_000_000; // ~2 MB of raw text per tab; oldest output is trimmed past this
+
+function _appendTermLog(tab, chunk) {
+    tab.logChunks.push(chunk);
+    tab.logChars += chunk.length;
+    while (tab.logChars > TERM_LOG_MAX_CHARS && tab.logChunks.length > 1) {
+        tab.logChars -= tab.logChunks.shift().length;
+    }
+    // A single chunk larger than the cap can't be trimmed by shifting whole chunks —
+    // trim it in place to its newest characters so the invariant (never exceeds the
+    // cap) holds even for one oversized burst of output.
+    if (tab.logChars > TERM_LOG_MAX_CHARS && tab.logChunks.length === 1) {
+        tab.logChunks[0] = tab.logChunks[0].slice(-TERM_LOG_MAX_CHARS);
+        tab.logChars = tab.logChunks[0].length;
+    }
+}
+
+// Strips common ANSI/VT escape sequences (cursor movement, color, title-setting) so the
+// downloaded log reads as plain text rather than raw control codes. Matching the ESC
+// (0x1B) and BEL (0x07) control bytes is the entire point of an ANSI stripper, so the
+// javascript:S6324 "no control characters in regex" findings below are intentional and
+// suppressed rather than "fixed" — there is no way to detect an escape sequence without
+// matching the escape byte.
+function _stripAnsi(str) {
+    return str
+        .replaceAll(/\u001B\][\s\S]*?(?:\u0007|\u001B\\)/g, '')   // NOSONAR OSC ... BEL or ST
+        .replaceAll(/\u001B\[[0-?]*[ -/]*[@-~]/g, '')             // CSI ... final byte
+        .replaceAll(/\u001B[()#][0-9A-Za-z]/g, '')                // NOSONAR charset-select (ESC(B, ESC)0, ...)
+        .replaceAll(/\u001B[0-9A-Za-z=><~]/g, '');                // NOSONAR simple 2-byte escapes
+}
+
+function _updateTermToolbar() {
+    const toggleBtn   = document.getElementById('term-log-toggle-btn');
+    const toggleLabel = document.getElementById('term-log-toggle-label');
+    const downloadBtn = document.getElementById('term-log-download-btn');
+    const tab = activeTabs[currentTabId];
+
+    if (!tab) {
+        toggleBtn.disabled = true;
+        toggleBtn.classList.remove('logging-active');
+        toggleLabel.textContent = 'Log Output';
+        downloadBtn.disabled = true;
+        return;
+    }
+
+    toggleBtn.disabled = false;
+    toggleBtn.classList.toggle('logging-active', tab.logging);
+    toggleLabel.textContent = tab.logging ? 'Stop Logging' : 'Log Output';
+    downloadBtn.disabled = tab.logChars === 0;
+}
+
+document.getElementById('term-log-toggle-btn').addEventListener('click', () => {
+    const tab = activeTabs[currentTabId];
+    if (!tab) return;
+    tab.logging = !tab.logging;
+    if (tab.logging) showToast('Logging enabled — output from now on is captured for this tab.', 'info');
+    _updateTermToolbar();
+});
+
+document.getElementById('term-log-download-btn').addEventListener('click', () => {
+    const tab = activeTabs[currentTabId];
+    if (!tab || tab.logChars === 0) return;
+    const clean = _stripAnsi(tab.logChunks.join(''));
+    const blob  = new Blob([clean], { type: 'text/plain' });
+    const url   = URL.createObjectURL(blob);
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const safeName = (tab.profile.name || tab.profile.host || 'session').replace(/[^a-z0-9_-]/gi, '_');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ssh-session-${safeName}-${stamp}.log`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Session log downloaded.', 'success');
+});
 
 window.addEventListener('resize', () => {
     if (currentTabId && activeTabs[currentTabId]?.fitAddon) {
@@ -1057,24 +1157,75 @@ document.getElementById('sftp-upload-input').addEventListener('change', async (e
     const files = Array.from(evt.target.files);
     evt.target.value = '';  // reset so same file can be re-selected
     if (!files.length || !sftpConn) return;
-    for (const file of files) {
-        await sftpUploadFile(file);
+
+    const btn   = document.getElementById('sftp-upload-btn');
+    const label = document.getElementById('sftp-upload-btn-label');
+    btn.disabled = true;
+    label.textContent = 'Uploading…';
+    try {
+        for (const file of files) {
+            await sftpUploadFile(file);
+        }
+    } finally {
+        btn.disabled = false;
+        label.textContent = 'Upload';
     }
 });
 
-function sftpRetryUpload(fd, file, fp, resolve) {
+// A single, updatable toast for one file's transfer — replaces spawning a brand-new
+// toast on every XHR progress tick (which, on a fast local connection, fires often
+// enough to stack up several independently-auto-dismissing toasts that keep fading
+// out for seconds after the real upload already finished, looking like it's "still
+// uploading in the background"). Also used to surface the otherwise-invisible gap
+// between the browser→server leg (what upload.onprogress actually measures) and the
+// slower, unreported server→remote SFTP write that follows it.
+function _uploadStatusToast(initialMsg) {
+    const c = document.getElementById('toast-container');
+    if (!c) return { update() {}, remove() {} };
+    const t = document.createElement('div');
+    t.className = 'toast info';
+    const icon = document.createElement('span');
+    icon.className = 'toast-icon';
+    icon.appendChild(svgIcon(TOAST_ICONS.info || 'host', { size: 15 }));
+    const body = document.createElement('span');
+    body.className = 'toast-body';
+    body.textContent = initialMsg;
+    t.appendChild(icon);
+    t.appendChild(body);
+    c.appendChild(t);
+    let removed = false;
+    return {
+        update(msg) { if (!removed) body.textContent = msg; },
+        remove() {
+            if (removed) return;
+            removed = true;
+            t.style.opacity = '0';
+            setTimeout(() => t.remove(), 300);
+        },
+    };
+}
+
+function _uploadProgressMessage(file, pct) {
+    return pct < 100
+        ? `Uploading ${file.name}… ${pct}%`
+        : `${file.name}: sent to server — writing to remote via SFTP…`;
+}
+
+function sftpRetryUpload(fd, file, fp, resolve, status) {
     fd.append('approved_fingerprint', fp);
     const retryXhr = new XMLHttpRequest();
     retryXhr.open('POST', '/api/sftp/upload');
     const retryHeaders = _sessionHeaders();
     if (retryHeaders['X-CSRF-Token']) retryXhr.setRequestHeader('X-CSRF-Token', retryHeaders['X-CSRF-Token']);
     retryXhr.upload.onprogress = (evt) => {
-        if (evt.lengthComputable) {
-            const pct = Math.round((evt.loaded / evt.total) * 100);
-            showToast(`Uploading ${file.name}… ${pct}%`, 'info');
-        }
+        if (evt.lengthComputable) status.update(_uploadProgressMessage(file, Math.round((evt.loaded / evt.total) * 100)));
     };
+    // upload.onload fires once the request body itself is fully sent, independent of
+    // whether any computable-progress event happened to land exactly at 100% — a fast
+    // or small upload can otherwise never show the "writing to remote" status at all.
+    retryXhr.upload.onload = () => status.update(_uploadProgressMessage(file, 100));
     retryXhr.onload = async () => {
+        status.remove();
         if (retryXhr.status >= 200 && retryXhr.status < 300) {
             showToast(`Uploaded ${file.name}`, 'success');
             await sftpLoadDir(sftpConn.path);
@@ -1085,15 +1236,16 @@ function sftpRetryUpload(fd, file, fp, resolve) {
         }
         resolve();
     };
-    retryXhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
+    retryXhr.onerror = () => { status.remove(); showToast(`Upload failed: network error`, 'error'); resolve(); };
     retryXhr.send(fd);
 }
 
-async function sftpHandle409(xhr, fd, file, resolve) {
+async function sftpHandle409(xhr, fd, file, resolve, status) {
     let errBody = {};
     try { errBody = JSON.parse(xhr.response); } catch {}
     const det = errBody.detail || {};
     if (det.error !== 'host_key_approval_required') {
+        status.remove();
         const msg = det.error || (typeof det === 'string' ? det : `Server error ${xhr.status}`);
         showToast(`Upload failed: ${msg}`, 'error');
         resolve();
@@ -1104,8 +1256,9 @@ async function sftpHandle409(xhr, fd, file, resolve) {
         `New SFTP host detected:\n\n${det.host}:${det.port}\nFingerprint: ${fp}\n\nTrust this host key?`
     );
     if (approved) {
-        sftpRetryUpload(fd, file, fp, resolve); // resolve() called by retryXhr
+        sftpRetryUpload(fd, file, fp, resolve, status); // resolve() called by retryXhr
     } else {
+        status.remove();
         showToast(`Upload cancelled: host key rejected.`, 'warning');
         resolve();
     }
@@ -1123,14 +1276,16 @@ function _buildUploadForm(file) {
     return fd;
 }
 
-async function _handleUploadLoad(xhr, fd, file, resolve) {
+async function _handleUploadLoad(xhr, fd, file, resolve, status) {
     if (xhr.status >= 200 && xhr.status < 300) {
+        status.remove();
         showToast(`Uploaded ${file.name}`, 'success');
         await sftpLoadDir(sftpConn.path);
         resolve();
     } else if (xhr.status === 409) {
-        await sftpHandle409(xhr, fd, file, resolve);
+        await sftpHandle409(xhr, fd, file, resolve, status);
     } else {
+        status.remove();
         let detail = `Server error ${xhr.status}`;
         try { detail = JSON.parse(xhr.response).detail || detail; } catch {}
         showToast(`Upload failed: ${detail}`, 'error');
@@ -1140,7 +1295,7 @@ async function _handleUploadLoad(xhr, fd, file, resolve) {
 
 async function sftpUploadFile(file) {
     if (!sftpConn) return;
-    showToast(`Uploading ${file.name}… 0%`, 'info');
+    const status = _uploadStatusToast(_uploadProgressMessage(file, 0));
     const fd = _buildUploadForm(file);
 
     return new Promise((resolve) => {
@@ -1149,12 +1304,12 @@ async function sftpUploadFile(file) {
         const uploadHeaders = _sessionHeaders();
         if (uploadHeaders['X-CSRF-Token']) xhr.setRequestHeader('X-CSRF-Token', uploadHeaders['X-CSRF-Token']);
         xhr.upload.onprogress = (evt) => {
-            if (evt.lengthComputable) {
-                showToast(`Uploading ${file.name}… ${Math.round((evt.loaded / evt.total) * 100)}%`, 'info');
-            }
+            if (evt.lengthComputable) status.update(_uploadProgressMessage(file, Math.round((evt.loaded / evt.total) * 100)));
         };
-        xhr.onload = () => _handleUploadLoad(xhr, fd, file, resolve);
-        xhr.onerror = () => { showToast(`Upload failed: network error`, 'error'); resolve(); };
+        // See the matching comment on retryXhr.upload.onload above (sftpRetryUpload).
+        xhr.upload.onload = () => status.update(_uploadProgressMessage(file, 100));
+        xhr.onload = () => _handleUploadLoad(xhr, fd, file, resolve, status);
+        xhr.onerror = () => { status.remove(); showToast(`Upload failed: network error`, 'error'); resolve(); };
         xhr.send(fd);
     });
 }

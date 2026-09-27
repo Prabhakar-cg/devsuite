@@ -47,7 +47,7 @@ Rules (full text in the constitution):
 - Backend suite: `pytest tests/python/` (41 tests, all should pass). Covers the SPEC §10.2 security-critical paths.
 - JS unit suite: `node tests/javascript/run.js` (zero dependencies). Covers the pure modules `static/curl-codegen.js`, `static/cookie-jar.js`, and `static/collection-utils.js`. Browser/e2e tests are still a v1.0.0 deliverable.
 - CI runs the suite via `.github/workflows/tests.yml` (push/PR, Python 3.10 + 3.12). Still run it locally before claiming a change is verified.
-- DevSuite ships **13 tools**. The source of truth for the tool list is `routes/pages.py` (routes) + `static/tools.html` (cards) — not prose in README. Keep README/SPEC/`tools.html`/`home.html` counts in sync when adding or removing a tool.
+- DevSuite ships **15 tools**. The source of truth for the tool list is `routes/pages.py` (routes) + `static/tools.html` (cards) — not prose in README. Keep README/SPEC/`tools.html`/`home.html` counts in sync when adding or removing a tool.
 
 ## Gotchas (as of 2026-06-10, v0.3.0)
 

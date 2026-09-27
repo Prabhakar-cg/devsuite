@@ -1,0 +1,265 @@
+/* ============================================================
+   DevSuite — ID Generator (feature 019)
+   Layers on /static/linter.css design tokens, header, buttons,
+   and toast. Tool-scoped rules only; no new color tokens, no
+   emoji (icons are stroke-based inline SVG per SPEC §9.8/§9.9).
+   ============================================================ */
+
+.idg-main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    overflow: hidden;
+}
+
+/* ── Left control column ── */
+.idg-controls {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+}
+
+.idg-panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-xs);
+    padding: 1rem;
+}
+
+.idg-panel h2 {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+
+/* ── Type selector ── */
+.idg-types {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.idg-type {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    background: var(--bg-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-mid);
+    text-align: left;
+    width: 100%;
+}
+
+.idg-type:hover { border-color: var(--border-mid); color: var(--text); }
+
+.idg-type[aria-pressed="true"] {
+    background: var(--blue-subtle);
+    border-color: rgba(0,113,227,0.35);
+    color: var(--blue);
+}
+
+.idg-type-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor; flex-shrink: 0;
+}
+
+/* ── Count row ── */
+.idg-count-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.idg-count-row label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-mid);
+}
+
+.idg-count-input {
+    width: 90px;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-xs);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.idg-count-input:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px var(--blue-subtle);
+}
+
+.idg-generate {
+    width: 100%;
+    margin-top: 0.85rem;
+    justify-content: center;
+}
+
+.idg-input-error {
+    display: none;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--red-mid);
+}
+.idg-input-error.visible { display: block; }
+
+/* ── Entropy panel ── */
+.idg-entropy-blurb {
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: var(--text-mid);
+    margin-bottom: 0.75rem;
+}
+
+.idg-facts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 0.75rem;
+    font-size: 0.78rem;
+}
+.idg-fact-key { color: var(--text-muted); font-weight: 600; }
+.idg-fact-val { color: var(--text); font-family: var(--font-mono); }
+
+.idg-sortable-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.6rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--radius-xs);
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: var(--green-subtle);
+    color: var(--green-mid);
+    border: 1px solid rgba(40,205,65,0.25);
+}
+
+/* ── Results column ── */
+.idg-results {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+}
+
+.idg-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+.idg-results-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.idg-results-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.idg-empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 2rem;
+}
+.idg-empty svg { width: 34px; height: 34px; opacity: 0.5; }
+
+.idg-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.55rem;
+    border-radius: var(--radius-xs);
+    transition: background 0.12s;
+}
+.idg-row:hover { background: var(--bg-secondary); }
+
+.idg-row-index {
+    width: 2.5rem;
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    text-align: right;
+}
+
+.idg-row-value {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--text);
+    word-break: break-all;
+    user-select: all;
+}
+
+.idg-row-time {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.idg-icon-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px; height: 26px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.idg-icon-btn:hover { color: var(--blue); border-color: rgba(0,113,227,0.35); }
+.idg-icon-btn svg { width: 13px; height: 13px; }
+
+@media (max-width: 780px) {
+    .idg-main { flex-direction: column; overflow-y: auto; }
+    .idg-controls { width: 100%; }
+    .idg-results { min-height: 300px; }
+}

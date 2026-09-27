@@ -256,6 +256,22 @@ async function _resolveVaultSalt(data) {
 }
 
 /**
+ * Builds an AES-256-GCM verify_blob + verify_nonce (hex) for a v2 challenge,
+ * encrypted with Kauth — the server verifies this, NOT Kenc. Shared by initial
+ * setup and by password-change rotation (both register a v2 challenge).
+ */
+async function _buildV2VerifyBlob(Kauth) {
+    const nonce  = crypto.getRandomValues(new Uint8Array(12));
+    const aesKey = await crypto.subtle.importKey('raw', Kauth, { name: 'AES-GCM' }, false, ['encrypt']);
+    const encBuf = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: nonce },
+        aesKey,
+        new TextEncoder().encode('DEVSUITE_MASTER_OK')
+    );
+    return { verifyBlob: _bytesToHex(new Uint8Array(encBuf)), verifyNonce: _bytesToHex(nonce) };
+}
+
+/**
  * Registers the master-password challenge on first-run or after KDF migration.
  * Uses v2 format: WebCrypto AES-256-GCM verify_blob with Kauth (not Kenc).
  *
@@ -264,16 +280,7 @@ async function _resolveVaultSalt(data) {
  * @param {string}     saltHex - hex salt used for key derivation
  */
 async function _registerSetupChallenge(Kenc, Kauth, saltHex) {
-    // Build AES-GCM verify_blob using Kauth — the server verifies this, NOT Kenc.
-    const nonce    = crypto.getRandomValues(new Uint8Array(12));
-    const aesKey   = await crypto.subtle.importKey('raw', Kauth, { name: 'AES-GCM' }, false, ['encrypt']);
-    const encBuf   = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv: nonce },
-        aesKey,
-        new TextEncoder().encode('DEVSUITE_MASTER_OK')
-    );
-    const verifyBlob  = _bytesToHex(new Uint8Array(encBuf));
-    const verifyNonce = _bytesToHex(nonce);
+    const { verifyBlob, verifyNonce } = await _buildV2VerifyBlob(Kauth);
 
     const setupRes = await fetch('/api/auth/setup', {
         method: 'POST',
@@ -996,6 +1003,147 @@ async function performRestore() {
     toast(`Vault restored — ${vaultEntries.length} secret${vaultEntries.length === 1 ? '' : 's'}`);
 }
 
+// ── Change Master Password ───────────────────────────────────────
+// Re-encrypts the vault with a brand-new salt/Kenc/Kauth derived from a new
+// password, then rotates the server-side v2 challenge (POST /api/auth/update-challenge,
+// which revokes all sessions) and re-authenticates with the new Kauth.
+//
+// The rotate-then-persist ordering mirrors the existing v1→v2 auto-migration path
+// (_registerSetupChallenge followed by persistVault() in _unlockVaultNormal): if the
+// network drops between the two calls, the challenge has already moved to the new
+// password but the stored blob is still ciphertext under the old Kenc. Unlike the
+// silent auto-migration retry, that gap can't self-heal on the next unlock here (the
+// new password alone won't decrypt old ciphertext), so on failure the module keeps
+// _pwRotationPending and the modal offers an explicit "Retry Save" that just re-runs
+// the persist step — no re-verification or re-derivation needed.
+//
+// _persistRotatedVault() always re-encrypts from the CURRENT vaultEntries/masterKenc
+// at call time rather than reusing a snapshot taken when rotation started. Reusing a
+// snapshot would let "Retry Save" overwrite a newer save made in between (masterKenc
+// is already the new key by the time rotation starts, so an ordinary edit made while
+// this modal sits open and failed would itself have saved successfully under the new
+// key) with the older, pre-edit ciphertext.
+let _pwRotationPending = false; // true while a vault save is owed after a rotated challenge
+
+function _changePwError(msg) {
+    const el = document.getElementById('change-pw-error');
+    if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function openChangePwModal() {
+    if (!masterKenc) return;
+    document.getElementById('change-pw-current').value = '';
+    document.getElementById('change-pw-new').value = '';
+    document.getElementById('change-pw-confirm').value = '';
+    const btn = document.getElementById('change-pw-confirm-btn');
+    if (_pwRotationPending) {
+        btn.textContent = 'Retry Save';
+        _changePwError('Your master password was changed, but saving the re-encrypted vault ' +
+            'failed. Click Retry Save to finish (no need to re-enter passwords).');
+    } else {
+        btn.textContent = 'Change Password';
+        _changePwError(null);
+    }
+    document.getElementById('change-pw-modal').classList.add('open');
+}
+
+function closeChangePwModal() {
+    document.getElementById('change-pw-modal').classList.remove('open');
+    document.getElementById('change-pw-current').value = '';
+    document.getElementById('change-pw-new').value = '';
+    document.getElementById('change-pw-confirm').value = '';
+}
+
+async function _persistRotatedVault() {
+    // Re-encrypt from the CURRENT entries on every call (including retries) —
+    // see the rationale comment above _pwRotationPending.
+    const payload = await encryptVaultGCM(vaultEntries, masterKenc);
+    const res = await fetch('/api/vault', {
+        method: 'POST',
+        headers: _authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+            encrypted_blob: payload.ciphertext, iv: payload.iv,
+            salt: vaultSaltHex, version: 2,
+        }),
+    });
+    if (!res.ok) {
+        throw new Error(`Vault save failed after password change (HTTP ${res.status}) — click Retry Save.`);
+    }
+    _pwRotationPending = false;
+    closeChangePwModal();
+    toast('Master password changed ✓');
+}
+
+async function changeMasterPassword() {
+    if (!masterKenc) return;
+    const btn = document.getElementById('change-pw-confirm-btn');
+
+    if (_pwRotationPending) {
+        btn.disabled = true; btn.textContent = 'Retrying…';
+        try {
+            await _persistRotatedVault();
+        } catch (e) {
+            _changePwError(e.message || 'Retry failed — please try again.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = _pwRotationPending ? 'Retry Save' : 'Change Password';
+        }
+        return;
+    }
+
+    const current = document.getElementById('change-pw-current').value;
+    const next     = document.getElementById('change-pw-new').value;
+    const confirm  = document.getElementById('change-pw-confirm').value;
+    _changePwError(null);
+
+    if (!current) { _changePwError('Enter your current master password.'); return; }
+    if (next.length < 8) { _changePwError('New master password must be at least 8 characters.'); return; }
+    if (next !== confirm) { _changePwError('New passwords do not match.'); return; }
+    if (next === current) { _changePwError('New password must be different from the current password.'); return; }
+
+    btn.disabled = true; btn.textContent = 'Verifying…';
+    try {
+        const { Kauth: currentKauthCheck } = await _deriveMasterKeysV2(current, vaultSaltHex);
+        if (_bytesToHex(currentKauthCheck) !== _bytesToHex(masterKauth)) {
+            _changePwError('Current master password is incorrect.');
+            return;
+        }
+
+        btn.textContent = 'Re-encrypting…';
+        const newSaltHex = _bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
+        const newKeys     = await _deriveMasterKeysV2(next, newSaltHex);
+        const { verifyBlob, verifyNonce } = await _buildV2VerifyBlob(newKeys.Kauth);
+
+        btn.textContent = 'Rotating…';
+        const rotateRes = await fetch('/api/auth/update-challenge', {
+            method: 'POST',
+            headers: _authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+                salt: newSaltHex, verify_blob: verifyBlob,
+                verify_nonce: verifyNonce, challenge_version: 2,
+            }),
+        });
+        if (!rotateRes.ok) throw new Error(`Password change rejected (HTTP ${rotateRes.status}).`);
+
+        // The server just revoked every session (including ours) — re-authenticate now.
+        await _acquireServerSession(_bytesToHex(newKeys.Kauth));
+
+        masterKenc   = newKeys.Kenc;
+        masterKauth  = newKeys.Kauth;
+        vaultSaltHex = newSaltHex;
+
+        _pwRotationPending = true;
+        await _persistRotatedVault();
+    } catch (e) {
+        _changePwError(e.message || 'Password change failed.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = _pwRotationPending ? 'Retry Save' : 'Change Password';
+    }
+}
+
 // ── Modal ─────────────────────────────────────────────────────────
 let currentModalType = 'password';
 
@@ -1283,6 +1431,15 @@ document.addEventListener('DOMContentLoaded', () => {
         toast('Vault locked', 'error');
     });
 
+    // Change Master Password
+    document.getElementById('change-pw-btn').addEventListener('click', openChangePwModal);
+    document.getElementById('change-pw-modal-close').addEventListener('click', closeChangePwModal);
+    document.getElementById('change-pw-cancel-btn').addEventListener('click', closeChangePwModal);
+    document.getElementById('change-pw-modal').addEventListener('click', e => {
+        if (e.target === document.getElementById('change-pw-modal')) closeChangePwModal();
+    });
+    document.getElementById('change-pw-confirm-btn').addEventListener('click', changeMasterPassword);
+
     // Backup / Restore
     document.getElementById('backup-btn').addEventListener('click', exportBackup);
     document.getElementById('restore-btn').addEventListener('click', openRestoreModal);
@@ -1351,7 +1508,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Escape key
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { closeModal(); closeRestoreModal(); }
+        if (e.key === 'Escape') { closeModal(); closeRestoreModal(); closeChangePwModal(); }
     });
 
     // Initial render (vault is locked until master password is entered)

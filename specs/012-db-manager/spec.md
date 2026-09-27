@@ -217,14 +217,40 @@ encryption of the *challenge* (does not itself re-encrypt other stores).
   sends `{salt, verify_blob, verify_iv}` with no `challenge_version`, which `routes/auth.py`
   defaults to `1`). **This is a real cross-tool discrepancy**: if a vault was previously upgraded
   to the v2 domain-separated-key scheme (`specs/011-secret-vault/spec.md` US6), changing the
-  password via DB Manager silently downgrades the *authentication challenge* back to v1 — the
-  vault's ciphertext itself remains v2/GCM until the next Vault unlock re-triggers its own
-  auto-migration path (which re-registers a v2 challenge). Net effect: a brief window (until next
-  Vault unlock) where the challenge is v1-shaped but the blob is v2-shaped; `_unlockVaultNormal`
-  handles this combination correctly (it branches on the *vault blob's* version, not the
-  challenge's), so no data-loss or lockout occurs, but it is worth fixing DB Manager to emit v2
-  challenges to avoid the inconsistency window entirely. Flagged, not fixed, in this
-  documentation-only spec.
+  password via DB Manager silently downgrades the *authentication challenge* back to v1 while the
+  vault's ciphertext itself remains v2/GCM.
+  **Correction (2026-09-25, verified against `static/vault.js` while building SEC-8/US8 —
+  see `specs/011-secret-vault/spec.md`):** the previous version of this bullet claimed
+  `_unlockVaultNormal` "handles this combination correctly... so no data-loss or lockout occurs."
+  That is wrong. Tracing the actual branch: `_acquireChallengeSession` takes the v1 path (challenge
+  is v1-shaped), which sets only `masterKey` and leaves `masterKenc` `null`; the subsequent check
+  is `if (blobVersion === 2 && masterKenc) {...} else if (blobVersion === 1 && masterKey) {...}
+  else { "Unexpected vault/challenge version mismatch — please reload." }`. With a v1 challenge
+  and a v2 blob, neither branch matches — it falls into the `else` and shows that error
+  permanently on every subsequent unlock attempt (reloading doesn't change the challenge/blob
+  version combination). **This is a genuine lockout**, not a handled edge case: the session
+  authenticates fine (the v1 key matches the v1 challenge), but the vault is never decrypted
+  because `_tryDecryptBlob` is never even called down that path. Tracked as BUG-1 in
+  `BACKLOG.md` rather than fixed here.
+  **Correction (2026-09-27, per code review):** the fix suggestions previously given here were
+  both unsound and are retracted. Emitting the v2 challenge shape alone does **not** fix this:
+  `savePassword()` has no access to the vault's `Kenc` and cannot re-encrypt its ciphertext, so a
+  v2-shaped challenge for a *new* password would just authenticate against a different key than
+  whatever key the existing blob is actually encrypted with — trading a "version mismatch" lockout
+  for a "wrong password" one, not fixing anything. A defensive `_unlockVaultNormal` fallback that
+  re-derives v2 keys from whatever password the user just typed cannot work either — it has no way
+  to recover the *old* key needed to decrypt the existing blob before re-encrypting it. The only
+  correct fix is for `savePassword()` to perform the same coordinated operation Secret Vault's own
+  `changeMasterPassword()` already does correctly (`static/vault.js`, SEC-8/US8): decrypt the vault
+  (and any other per-tool encrypted store, e.g. `ssh_profiles`) with the *current* password,
+  re-encrypt it with the *new* one, and rotate the v2 challenge — as one coordinated operation with
+  an explicit recovery path (mirroring Vault's own `_pwRotationPending`/"Retry Save" pattern) for
+  the case where the challenge rotates but a re-encrypted store then fails to persist, so the vault
+  and the challenge can never be left describing two different passwords. Implementing this is out
+  of scope for both this spec and SEC-8/US8 — SEC-8/US8 deliberately gave the Vault its own safe,
+  self-contained rotation path precisely because DB Manager's password change does not yet
+  coordinate with it; this note only corrects the earlier wrong guidance about what a real fix
+  requires.
 - **`innerHTML` use in `renderStores()`** (`static/db-manager.js`) interpolates only
   server-computed values (`m.icon`, `m.label`, formatted byte counts, entry counts) — never a
   value that originated as free-form user input — so it is treated as compliant with the "no

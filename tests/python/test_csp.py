@@ -54,3 +54,38 @@ def test_security_headers_present(client):
     assert r.headers["x-content-type-options"] == "nosniff"
     assert r.headers["x-xss-protection"] == "0"
     assert r.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+
+
+# ── WebSocket Tester scoped CSP (specs/020-websocket-tester/research.md R1) ──
+# The /ws-tester page is the only page whose connect-src allows ws:/wss:, so the
+# browser can open WebSocket connections directly. script-src is unchanged (no
+# unsafe-eval), and every other page keeps connect-src 'self'.
+
+
+def test_ws_tester_page_serves_200(client):
+    r = client.get("/ws-tester")
+    assert r.status_code == 200
+
+
+def test_ws_tester_csp_allows_ws_and_wss(client):
+    r = client.get("/ws-tester")
+    csp = r.headers["content-security-policy"]
+    assert "ws:" in csp
+    assert "wss:" in csp
+    # widened only in connect-src, not globally
+    assert "connect-src 'self' ws: wss:" in csp
+
+
+def test_ws_tester_csp_has_no_unsafe_eval(client):
+    # Widening connect-src must NOT reintroduce unsafe-eval on the document (SEC-6).
+    r = client.get("/ws-tester")
+    assert "unsafe-eval" not in r.headers["content-security-policy"]
+
+
+def test_other_pages_do_not_allow_ws(client):
+    # The widening is scoped to /ws-tester only; the homepage stays strict.
+    r = client.get("/")
+    csp = r.headers["content-security-policy"]
+    assert "connect-src 'self'" in csp
+    assert "ws:" not in csp
+    assert "wss:" not in csp

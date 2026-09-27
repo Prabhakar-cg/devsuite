@@ -128,6 +128,23 @@ _SANDBOX_WORKER_CSP = (
     "connect-src 'none';"
 )
 
+# Scoped policy for the WebSocket Tester page (SPEC §5.11, specs/020-websocket-tester):
+# the browser opens ws:/wss: connections directly (browsers don't apply CORS to
+# WebSocket, so no backend proxy is needed), but the default document CSP's
+# connect-src 'self' would refuse those handshakes. This page — and ONLY this page —
+# widens connect-src to also allow ws: and wss:. Everything else (notably script-src)
+# is identical to _DOCUMENT_CSP, so no unsafe-eval is introduced (SEC-6 preserved).
+_WS_TESTER_PATH = "/ws-tester"
+_WS_TESTER_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' blob:; "
+    "worker-src 'self' blob:; "
+    "style-src 'self' 'unsafe-inline'; "
+    "font-src 'self' data:; "
+    "img-src 'self' data:; "
+    "connect-src 'self' ws: wss:;"
+)
+
 
 @app.middleware("http")
 async def add_security_headers(request, call_next):
@@ -138,10 +155,13 @@ async def add_security_headers(request, call_next):
     # X-XSS-Protection is deprecated; set to "0" to avoid legacy browser quirks.
     response.headers["X-XSS-Protection"] = "0"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    is_sandbox_worker = request.url.path == _SANDBOX_WORKER_PATH
-    response.headers["Content-Security-Policy"] = (
-        _SANDBOX_WORKER_CSP if is_sandbox_worker else _DOCUMENT_CSP
-    )
+    path = request.url.path
+    if path == _SANDBOX_WORKER_PATH:
+        response.headers["Content-Security-Policy"] = _SANDBOX_WORKER_CSP
+    elif path == _WS_TESTER_PATH:
+        response.headers["Content-Security-Policy"] = _WS_TESTER_CSP
+    else:
+        response.headers["Content-Security-Policy"] = _DOCUMENT_CSP
     return response
 
 

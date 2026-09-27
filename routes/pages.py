@@ -119,6 +119,34 @@ def read_roadmap_tool():
     return _serve_html("roadmap.html")
 
 
+@router.get("/id-generator", response_class=HTMLResponse, summary="Serve ID Generator tool")
+def read_id_generator_tool():
+    """Serve the ID Generator tool (UUID v4/v7, ULID, CUID2, NanoID + entropy inspection)."""
+    return _serve_html("id-generator.html")
+
+
+@router.get("/ws-tester", response_class=HTMLResponse, summary="Serve WebSocket Tester tool")
+def read_ws_tester_tool():
+    """Serve the WebSocket Tester tool.
+
+    The browser connects to ws:/wss: endpoints directly; this page is served with a
+    scoped CSP (main.py `_WS_TESTER_CSP`) whose connect-src allows ws:/wss:, unlike
+    every other page. No backend proxy is in the WebSocket data path.
+    """
+    return _serve_html("ws-tester.html")
+
+
+@router.get(
+    "/roadmap/docs",
+    response_class=HTMLResponse,
+    summary="Serve the Learning Roadmap step documentation viewer",
+)
+def read_roadmap_doc_viewer():
+    """Serve the read-only reference-doc viewer for a roadmap step
+    (?doc=<slug>&title=<title>) — renders static/roadmap-docs/<slug>.md."""
+    return _serve_html("roadmap-doc-viewer.html")
+
+
 # ─── Text file upload for diff tool ──────────────────────────────────────────
 
 async def _read_upload_stream(file: UploadFile, max_size: int) -> tuple[bytearray, bool]:

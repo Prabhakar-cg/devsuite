@@ -242,6 +242,25 @@
     background: rgba(255,255,255,0.1);
     opacity: 1;
 }
+.term-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+}
+.term-toolbar .btn svg { width: 13px; height: 13px; }
+.term-log-toggle-btn.logging-active {
+    background: rgba(255,59,48,0.1);
+    border-color: rgba(255,59,48,0.3);
+    color: var(--red-mid);
+}
+.term-log-toggle-btn.logging-active svg { fill: var(--red-mid); animation: term-log-pulse 1.6s ease-in-out infinite; }
+@keyframes term-log-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.35; }
+}
 .term-tab.active .tab-close:hover {
     background: #ef4444;
 }

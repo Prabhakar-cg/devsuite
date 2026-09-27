@@ -225,6 +225,55 @@ the backup's decrypted contents and re-persisted.
 
 ---
 
+### User Story 8 - Change the master password (Priority: P2)
+
+A user wants to rotate their master password (routine hygiene, or suspected exposure) without
+losing any secrets or leaving the vault decryptable under the old password.
+
+**Why this priority**: BACKLOG SEC-8. Before this story, `/vault` had no in-tool way to change
+the password at all — the only existing consumer of `POST /api/auth/update-challenge` was DB
+Manager's password-change flow (§012), which rotates the session challenge but never touches the
+Vault's own AES-256-GCM ciphertext, silently orphaning it (see Assumptions).
+
+**Independent Test**: With an unlocked vault containing entries, click "Change Password", enter
+the current password plus a new one (twice), confirm — the vault stays unlocked, the entry list
+is unchanged, and a full lock/unlock cycle with the *new* password succeeds while the *old*
+password is rejected.
+
+**Acceptance Scenarios**:
+
+1. **Given** an unlocked vault, **When** the user clicks "Change Password", **Then** a modal asks
+   for the current master password and a new one (with confirmation).
+2. **Given** an incorrect current password, **When** the user submits, **Then** the client derives
+   `Kauth` from the typed value + the in-memory `vaultSaltHex` and compares it to the session's
+   actual `masterKauth`; on mismatch it shows "Current master password is incorrect." and makes
+   no network request.
+3. **Given** a new password under 8 characters, or one that doesn't match its confirmation,
+   **When** the user submits, **Then** a client-side validation error is shown and nothing is
+   sent to the server (mirrors FR-002's setup validation).
+4. **Given** a correct current password and a valid new one, **When** the user confirms, **Then**
+   the client: (a) generates a new random 16-byte salt, (b) derives new `Kenc`/`Kauth` from the
+   new password + new salt (same v2 KDF as US5/FR-004), (c) re-encrypts the in-memory
+   `vaultEntries` with the new `Kenc` (AES-256-GCM), (d) calls `POST /api/auth/update-challenge`
+   with a v2 payload built from the new `Kauth`, (e) immediately re-authenticates with the new
+   `Kauth` via `POST /api/auth/session` (the update-challenge call revokes every existing
+   session, including the one making the request), and (f) persists the re-encrypted blob under
+   the new salt via the existing `POST /api/vault`. On success, a toast confirms and the modal
+   closes; `vaultEntries` in memory is never touched, so the UI shows no interruption.
+5. **Given** step 4(d)/(e) succeeds but step 4(f) (the final `POST /api/vault`) fails (e.g. a
+   dropped connection), **When** the failure is caught, **Then** the module keeps the
+   re-encrypted payload in memory (`_pwRotationPending`) and the next "Change Password" open (or
+   a direct retry) shows "Retry Save" — re-submitting the same already-encrypted payload with no
+   re-entry of either password. This is a narrower, more visible version of the same
+   non-atomicity the v1→v2 auto-migration path already accepts (US6; see Assumptions) — reload
+   does not self-heal it here because the challenge already expects the *new* password, which
+   alone cannot decrypt the still-old ciphertext.
+6. **Given** a successful password change, **When** the vault is locked and re-opened, **Then**
+   only the new password unlocks it — the old password is rejected at the challenge step, never
+   reaching vault decryption.
+
+---
+
 ### Edge Cases
 
 - **Auto-lock after inactivity**: if the page is hidden (tab switched/minimized) for more than 5
@@ -288,6 +337,17 @@ the backup's decrypted contents and re-persisted.
   US5/FR-004), then re-persist the recovered entries under the current session's key via the
   existing `POST /api/vault`. An incorrect password or malformed file MUST leave the current
   vault unchanged.
+- **FR-019**: An unlocked vault MUST provide a "Change Master Password" flow that verifies the
+  typed current password client-side (by re-deriving `Kauth` and comparing it to the active
+  session's `masterKauth` — no network round-trip for a wrong guess), then generates a new
+  salt/`Kenc`/`Kauth` pair from the new password and re-encrypts every entry with the new `Kenc`
+  before rotating the server-side challenge.
+- **FR-020**: Rotating the challenge (`POST /api/auth/update-challenge`) MUST always use the v2
+  payload shape (`challenge_version: 2`, `verify_nonce`) from the Vault's own UI, and the client
+  MUST re-authenticate with the new `Kauth` immediately afterward (the endpoint revokes all
+  sessions on write) before persisting the re-encrypted blob. A failure after the challenge
+  rotates but before the blob persists MUST be recoverable without re-entering either password
+  (FR-019's derived keys are held in memory until the save succeeds).
 
 ### Key Entities
 
@@ -324,6 +384,10 @@ the backup's decrypted contents and re-persisted.
 - **SC-006**: A vault backup exported from one install restores into any DevSuite install (same
   or different current master password) with zero entries lost — a byte-for-byte JSON round-trip
   of the entries array — provided the correct backup password is supplied.
+- **SC-007**: After a master-password change, the vault unlocks with the new password and every
+  entry present before the change is still present and unchanged (byte-for-byte JSON round-trip),
+  while the old password is rejected — verified by `tests/python/test_auth_update_challenge.py`
+  asserting the old session is revoked and only the new `Kauth` authenticates.
 
 ## Assumptions
 
@@ -342,13 +406,19 @@ the backup's decrypted contents and re-persisted.
   added on top of v1 code; flagged here as a discrepancy between the documented behavior ("Lock
   screen on every visit" + implied session hygiene) and observed code, not fixed in this
   retroactive spec.
-- **Cross-tool coupling with DB Manager's password-change flow**: `routes/auth.py`'s
-  `/api/auth/update-challenge` is shared between Vault's own (nonexistent — Vault has no
-  in-tool "change password" UI) and DB Manager's `savePassword()` (`static/db-manager.js`),
-  which only ever sends `{salt, verify_blob, verify_iv}` (v1 shape, no `challenge_version`,
-  defaulting server-side to `1`). Changing the master password via DB Manager therefore
-  **downgrades an existing v2 vault's challenge to v1**, though the vault's *ciphertext* stays
-  GCM/v2 until the next unlock's auto-migration re-registers a v2 challenge. See `specs/012-db-manager/spec.md` Assumptions for the DB-Manager-side note.
+- **Cross-tool coupling with DB Manager's password-change flow persists after US8**:
+  `routes/auth.py`'s `/api/auth/update-challenge` is shared between the Vault's own change-password
+  flow (US8/FR-019/FR-020 — always v2, and re-encrypts the vault blob to match) and DB Manager's
+  `savePassword()` (`static/db-manager.js`), which still only ever sends
+  `{salt, verify_blob, verify_iv}` (v1 shape, no `challenge_version`, defaulting server-side to
+  `1`) and never touches the `vault` store. Changing the master password via DB Manager therefore
+  still **downgrades an existing v2 vault's challenge to v1 without re-encrypting its ciphertext**
+  — the next unlock attempt derives a v1 key from the *new* password but the stored blob is still
+  GCM/v2 ciphertext under the *old* `Kenc`, landing on `_unlockVaultNormal`'s final
+  "Unexpected vault/challenge version mismatch" error rather than a clean re-migration. US8 does
+  not fix this — it only gives the Vault its own safe rotation path; DB Manager's flow changing an
+  in-use Vault's password remains a latent lockout and is tracked separately (BACKLOG Bugfix).
+  See `specs/012-db-manager/spec.md` Assumptions for the DB-Manager-side note.
 - Non-fatal migration-retry design (US6 scenario 3) is treated as intentional: the code comment
   says "Non-fatal: vault is decrypted in memory; migration can retry on next unlock" — this spec
   takes that at face value rather than flagging it as a defect.
