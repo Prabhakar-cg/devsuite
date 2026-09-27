@@ -1,1 +1,3 @@
-{"feature_directory":"specs/020-websocket-tester"}
+{
+  "feature_directory": "specs/021-secret-scanner"
+}

@@ -5,6 +5,19 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [Unreleased] — Docs
+
+### Governance
+
+- **Constitution v1.0.0 → v1.0.1 (PATCH)**: `.specify/memory/constitution.md`'s "Additional
+  Constraints" section had drifted — it still said "tool count (currently 12)" while
+  `specs/SPEC.md` §1/§3.2, `static/tools.html`, and `CLAUDE.md` had all already moved to 15
+  tools as new tools shipped. Corrected the stale number; no principle changed, so this is a
+  PATCH per the constitution's own versioning rule. `specs/SPEC.md` and `CLAUDE.md` needed no
+  edit — they were already correct. No `APP_VERSION` bump (docs-only, no behavior change).
+
+---
+
 ## [0.10.0] — 2026-09-25 (Optional Terminal Session Logging)
 
 ### Features
