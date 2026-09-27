@@ -186,7 +186,7 @@
     text-align: center;
     height: fit-content;
 }
-.wst-entry-body { white-space: pre-wrap; word-break: break-word; color: var(--text); margin: 0; }
+.wst-entry-body { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); margin: 0; }
 
 .wst-dir-sent     { background: var(--blue-subtle);  color: var(--blue); }
 .wst-dir-received { background: var(--green-subtle); color: var(--green-mid); }

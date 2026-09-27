@@ -842,13 +842,17 @@ function _appendTermLog(tab, chunk) {
 }
 
 // Strips common ANSI/VT escape sequences (cursor movement, color, title-setting) so the
-// downloaded log reads as plain text rather than raw control codes.
+// downloaded log reads as plain text rather than raw control codes. Matching the ESC
+// (0x1B) and BEL (0x07) control bytes is the entire point of an ANSI stripper, so the
+// javascript:S6324 "no control characters in regex" findings below are intentional and
+// suppressed rather than "fixed" — there is no way to detect an escape sequence without
+// matching the escape byte.
 function _stripAnsi(str) {
     return str
-        .replaceAll(/\u001B\][\s\S]*?(?:\u0007|\u001B\\)/g, '')   // OSC ... BEL or ST
+        .replaceAll(/\u001B\][\s\S]*?(?:\u0007|\u001B\\)/g, '')   // NOSONAR OSC ... BEL or ST
         .replaceAll(/\u001B\[[0-?]*[ -/]*[@-~]/g, '')             // CSI ... final byte
-        .replaceAll(/\u001B[()#][0-9A-Za-z]/g, '')                // charset-select (ESC(B, ESC)0, ...)
-        .replaceAll(/\u001B[0-9A-Za-z=><~]/g, '');                // simple 2-byte escapes
+        .replaceAll(/\u001B[()#][0-9A-Za-z]/g, '')                // NOSONAR charset-select (ESC(B, ESC)0, ...)
+        .replaceAll(/\u001B[0-9A-Za-z=><~]/g, '');                // NOSONAR simple 2-byte escapes
 }
 
 function _updateTermToolbar() {
