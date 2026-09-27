@@ -19,7 +19,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.10.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
+`0.11.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
 
 ---
 
@@ -150,6 +150,7 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Learning Roadmap — Doc Viewer | `roadmap-doc-viewer.html` | `roadmap-doc-viewer.js`, `roadmap-doc-viewer.css`, `notes-links.js` (shared `sanitizeMarkdownBody`), self-hosted `marked`, `dompurify` | `/roadmap/docs` (page route only; content fetched client-side from static `roadmap-docs/*.md`) | — |
 | ID Generator | `id-generator.html` | `id-gen.js` (pure generator core), `id-generator.js`, `id-generator.css`, `crypto-js.min.js` (SHA3 for CUID2) | `/id-generator` (page route only; all generation client-side) | — |
 | WebSocket Tester | `ws-tester.html` | `ws-utils.js` (pure helpers), `ws-tester.js`, `ws-tester.css`, `components.js` (toast) | `/ws-tester` (page route only; browser connects to ws:/wss: directly, scoped CSP) | — |
+| Command Palette *(cross-cutting, not a tool — §9.11)* | *(none — injected, no `.html` file)* | `command-palette-data.js` (pure destination list + filter), `command-palette.js`, `command-palette.css` | *(none — injected by `deps.py::_serve_html()` into every page)* | — |
 
 ---
 
@@ -611,6 +612,40 @@ Themes driven by `theme.js`. Custom event `devsuite-theme-changed` fires on togg
 - Animation without a communicative purpose.
 - Additional font families (Inter + JetBrains Mono is fixed).
 - Reassigning semantic color tokens.
+
+### 9.11 Command Palette
+
+Suite-wide Cmd+K (macOS) / Ctrl+K (other platforms) navigation overlay, shipped in
+`specs/022-command-palette/`. Cross-cutting UI chrome, not a 16th tool — no Tools Hub
+card, no tool-count change, no auth gate.
+
+- **Injection, not markup**: `deps.py::_serve_html()` injects `command-palette.css`
+  (after the favicon `<link>`) and `command-palette-data.js` + `command-palette.js`
+  (before `</body>`, in that order, `defer`) into every page response. No
+  `static/*.html` file references these files directly — any future tool page gets
+  the palette automatically, with zero per-page edits.
+- **Data source of truth**: `static/command-palette-data.js`'s `DESTINATIONS` array
+  (15 tools + Home + Tools Hub, `/base64` deliberately excluded — see
+  `specs/022-command-palette/research.md` §6) is a third manually-synced copy of the
+  tool list, alongside `routes/pages.py` and `static/tools.html` — keep it in sync
+  when tools are added, removed, or renamed.
+- **No auth required**: the palette never calls an `/api/*` endpoint and never checks
+  `auth-guard.js` session state — it must open and navigate on a tool's pre-unlock
+  lock screen.
+- **Theming**: styled via the existing CSS custom properties from both design
+  vocabularies (§9.1) with a two-level `var(--token-a, var(--token-b, #hex))`
+  fallback chain, so it re-themes correctly on home/hub pages (`--void`/`--surface`/
+  `--text-primary`/`--electric`) and on individual tool pages (`--bg`/`--text`/
+  `--blue`) alike, and still renders legibly on `static/db-manager.html`, which loads
+  neither.
+- **Discoverability control**: a floating corner trigger (not injected into any
+  page's own header markup) opens the palette by click — deliberately not
+  DOM-targeted at each page's structurally different header, to guarantee it never
+  collides with existing header controls (theme picker, back link, status pill).
+- **One pre-existing keybinding conflict**: `static/notes.js` already binds Ctrl/Cmd+K
+  to its own in-page "search notes" modal. The palette's keyboard shortcut is
+  suppressed on `/notes` specifically (its click trigger still works there); every
+  other route uses the shortcut normally.
 
 ---
 

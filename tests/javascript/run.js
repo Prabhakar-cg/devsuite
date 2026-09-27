@@ -29,6 +29,7 @@ const TEST_FILES = [
     'test_roadmap_utils.js',
     'test_id_gen.js',
     'test_ws_utils.js',
+    'test_command_palette_data.js',
 ];
 
 const tests = [];

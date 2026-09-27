@@ -5,16 +5,44 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
-## [Unreleased] — Docs
+## [0.11.0] — 2026-09-28 (Command Palette)
+
+### Features
+
+#### Suite-wide Cmd/Ctrl+K command palette (`static/command-palette-data.js`, `static/command-palette.js`, `static/command-palette.css`, `deps.py`)
+
+- Press Cmd+K (macOS) / Ctrl+K (other platforms) — or click the small floating trigger
+  in the bottom-right corner — from **any** DevSuite page, including a tool's
+  pre-unlock lock screen, to open a centered overlay listing all 15 tools plus Home
+  and Tools Hub. Type to filter live against each entry's name, category, or search
+  keywords (e.g. "uuid" → ID Generator, "jwt" → Crypto Suite); arrow keys move the
+  selection (wrapping), Enter navigates, Escape or a backdrop click dismisses without
+  navigating.
+- Cross-cutting UI chrome, not a 16th tool — no Tools Hub card, no auth gate, no
+  network call. Shipped as two new pure/DOM-split files (`command-palette-data.js`,
+  node-testable; `command-palette.js`, the native-`<dialog>`-based controller) plus a
+  small CSS file, injected into **every** page response by `deps.py::_serve_html()`
+  (the same function that already auto-injects the favicon tag) — zero edits to any
+  of the 18 existing `static/*.html` files, and any future tool page gets it for free.
+- `static/notes.js`'s pre-existing Ctrl/Cmd+K binding (its own in-page "search notes"
+  modal) is preserved: the palette's keyboard shortcut is suppressed specifically on
+  `/notes`, while its click trigger still works there.
+- `specs/022-command-palette/spec.md` (+ plan/research/data-model/contracts/quickstart/
+  tasks) added; `specs/SPEC.md` §9.11 (new) and §3.2 (module-to-file map row) updated
+  in the same commit. `tests/javascript/test_command_palette_data.js` (11 cases) and
+  `tests/python/test_command_palette_injection.py` (4 cases) added.
 
 ### Governance
 
+- **Constitution v1.0.1 → v1.0.2 (PATCH)**: noted `static/command-palette-data.js` as a
+  third manually-synced copy of the tool/destination list, alongside `routes/pages.py`
+  and `static/tools.html`, in the "Additional Constraints" tool-count sync-point note.
 - **Constitution v1.0.0 → v1.0.1 (PATCH)**: `.specify/memory/constitution.md`'s "Additional
   Constraints" section had drifted — it still said "tool count (currently 12)" while
   `specs/SPEC.md` §1/§3.2, `static/tools.html`, and `CLAUDE.md` had all already moved to 15
   tools as new tools shipped. Corrected the stale number; no principle changed, so this is a
   PATCH per the constitution's own versioning rule. `specs/SPEC.md` and `CLAUDE.md` needed no
-  edit — they were already correct. No `APP_VERSION` bump (docs-only, no behavior change).
+  edit — they were already correct.
 
 ---
 

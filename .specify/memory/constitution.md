@@ -1,21 +1,22 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.0.0 → 1.0.1 (PATCH — factual correction, no principle change)
+Version change: 1.0.1 → 1.0.2 (PATCH — clarifying addition, no principle change)
 Modified principles: none
 Added sections: none
 Removed sections: none
-Modified: "Additional Constraints" — tool count corrected from stale "12" to 15,
-  matching specs/SPEC.md §1/§3.2 and static/tools.html (both already correct).
+Modified: "Additional Constraints" — added a note that static/command-palette-data.js
+  (feature 022) is a third manually-synced copy of the tool/destination list, alongside
+  routes/pages.py and static/tools.html, per specs/022-command-palette/research.md §6.
 Templates requiring updates:
   ✅ .specify/memory/constitution.md (this file)
-  ✅ specs/SPEC.md — already correct (15 tools), no change needed
-  ✅ CLAUDE.md — already correct ("DevSuite ships 15 tools"), no change needed
+  ✅ specs/SPEC.md — §9.11 added, already documents the sync-point (this session)
   ✅ CHANGELOG.md — entry added under Unreleased/docs
-  ⚠ .specify/templates/plan-template.md, spec-template.md, tasks-template.md — not
-    checked in this pass; none reference a hardcoded tool count, so no update expected,
-    but not independently verified here.
 Follow-up TODOs: none
+
+Previous entry (1.0.0 → 1.0.1, PATCH — factual correction, no principle change):
+Modified: "Additional Constraints" — tool count corrected from stale "12" to 15,
+  matching specs/SPEC.md §1/§3.2 and static/tools.html (both already correct).
 -->
 
 # DevSuite Constitution
@@ -81,7 +82,9 @@ automatic via `_serve_html()` — manual version query strings in HTML are forbi
 - Fonts load only via `@import '/static/libs/fonts.css'` — never from a CDN.
 - New third-party JS libraries require updating `specs/SPEC.md` §11 and `UPGRADE_PLAN.md`.
 - The tool count (currently 15) is sourced from `routes/pages.py` + `static/tools.html`;
-  README/SPEC/`tools.html`/`home.html` counts stay in sync.
+  README/SPEC/`tools.html`/`home.html` counts stay in sync. `static/command-palette-data.js`
+  (feature 022, SPEC §9.11) is a third manually-synced copy of this same tool/destination
+  list — keep it in sync too when tools are added, removed, or renamed.
 - Design system rules (typography, color tokens, radii, motion, copy tone) are
   defined in SPEC §9 and are binding for all UI work.
 
@@ -106,4 +109,4 @@ All plans and code reviews verify compliance with the principles above; violatio
 of the NON-NEGOTIABLE principles block merge. Complexity beyond the vanilla-stack
 baseline must be justified in the feature's plan.
 
-**Version**: 1.0.1 | **Ratified**: 2026-06-10 | **Last Amended**: 2026-09-27
+**Version**: 1.0.2 | **Ratified**: 2026-06-10 | **Last Amended**: 2026-09-28

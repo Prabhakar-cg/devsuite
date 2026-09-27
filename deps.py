@@ -45,7 +45,7 @@ _PTY_AVAILABLE = _pty_available  # compatibility alias for tests referencing mai
 logger = logging.getLogger("devsuite")
 
 # ─── App version and run-mode flags ──────────────────────────────────────────
-APP_VERSION = "0.10.0"
+APP_VERSION = "0.11.0"
 _DEV_MODE   = os.getenv("DEVSUITE_DEV",   "0") == "1"
 _HTTPS      = os.getenv("DEVSUITE_HTTPS", "0") == "1"
 
@@ -80,6 +80,13 @@ _FAVICON_TAG = (
     '<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">\n'
     '    <link rel="icon" href="/static/favicon.svg" sizes="any">'
 )
+# Command Palette (feature 022): injected on every page, never linked from any
+# static/*.html file directly — see specs/022-command-palette/contracts/injected-markup.md.
+_COMMAND_PALETTE_CSS_TAG = '<link rel="stylesheet" href="/static/command-palette.css">'
+_COMMAND_PALETTE_SCRIPT_TAGS = (
+    '<script src="/static/command-palette-data.js" defer></script>\n'
+    '<script src="/static/command-palette.js" defer></script>'
+)
 
 
 def _asset_fingerprint(static_path: str) -> str:
@@ -102,6 +109,10 @@ def _serve_html(filename: str) -> str:
         raise HTTPException(status_code=404, detail=f"{filename} not found.") from None  # NOSONAR
     if 'favicon' not in html:
         html = html.replace('<head>', f'<head>\n    {_FAVICON_TAG}', 1)
+    if 'command-palette.css' not in html:
+        html = html.replace('<head>', f'<head>\n    {_COMMAND_PALETTE_CSS_TAG}', 1)
+    if 'command-palette.js' not in html and '</body>' in html:
+        html = html.replace('</body>', f'{_COMMAND_PALETTE_SCRIPT_TAGS}\n</body>', 1)
     return _STATIC_ASSET_RE.sub(lambda m: f'{m.group(1)}?v={_asset_fingerprint(m.group(1))}', html)
 
 

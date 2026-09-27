@@ -1,0 +1,189 @@
+/* ============================================================
+   DevSuite — Command Palette (feature 022)
+   Injected on every page by deps.py::_serve_html(). Not linked
+   from any static/*.html file directly.
+
+   Two CSS-variable vocabularies exist across the suite: home.css
+   (--void/--surface/--text-primary/--electric/...) on the homepage
+   and Tools Hub, and style.css/linter.css (--bg/--text/--blue/...)
+   on individual tool pages. Every color/radius/font below uses a
+   two-level var() fallback chain so this file works correctly on
+   both without knowing which one a given page loaded, and still
+   renders sensibly via the final hex fallback on static/db-manager.html,
+   which loads neither. No new color tokens are introduced.
+   ============================================================ */
+
+.cpal-dialog {
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-xl, 16px);
+    width: min(560px, 92vw);
+    max-height: min(420px, 80vh);
+    background: transparent;
+    overflow: visible;
+}
+
+.cpal-dialog::backdrop {
+    background: rgba(5, 5, 10, 0.55);
+}
+
+.cpal-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: min(420px, 80vh);
+    background: var(--surface, var(--bg, #ffffff));
+    color: var(--text-primary, var(--text, #0f1018));
+    border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+    border-radius: var(--radius-xl, 16px);
+    box-shadow: var(--shadow-md, 0 8px 32px rgba(0, 0, 0, 0.25));
+    font-family: var(--font-body, var(--font-sans, -apple-system, sans-serif));
+    overflow: hidden;
+}
+
+.cpal-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+    flex-shrink: 0;
+}
+
+.cpal-input-wrap svg {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+    color: var(--text-muted, #86868b);
+}
+
+.cpal-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.95rem;
+    font-family: inherit;
+    color: var(--text-primary, var(--text, #0f1018));
+}
+
+.cpal-input::placeholder {
+    color: var(--text-muted, #86868b);
+}
+
+.cpal-esc-hint {
+    flex-shrink: 0;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.68rem;
+    color: var(--text-muted, #86868b);
+    border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+    border-radius: var(--radius-xs, 6px);
+    padding: 1px 6px;
+}
+
+.cpal-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.4rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.cpal-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.6rem;
+    border-radius: var(--radius-xs, 7px);
+    cursor: pointer;
+    scroll-margin-block: 0.4rem;
+}
+
+.cpal-row-active {
+    background: var(--electric-dim, var(--blue-subtle, rgba(37, 99, 235, 0.1)));
+}
+
+.cpal-row-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--electric, var(--blue, #2563eb));
+}
+
+.cpal-row-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.cpal-row-name {
+    flex: 1;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-primary, var(--text, #0f1018));
+}
+
+.cpal-row-cat {
+    flex-shrink: 0;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted, #86868b);
+}
+
+.cpal-empty {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-muted, #86868b);
+}
+
+/* ── Discoverability trigger (US3) — a floating corner pill, not injected
+   into any page's own header markup, so it never collides with existing
+   header controls (theme picker, back link, status pill) regardless of
+   how different each page's header structure is. ── */
+.cpal-trigger {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+    border-radius: var(--radius-pill, 980px);
+    background: var(--surface, var(--bg, #ffffff));
+    color: var(--text-muted, #86868b);
+    box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.12));
+    cursor: pointer;
+    font-family: inherit;
+    transition: var(--transition, all 0.2s cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.cpal-trigger:hover {
+    color: var(--electric, var(--blue, #2563eb));
+    border-color: var(--electric, var(--blue, #2563eb));
+}
+
+.cpal-trigger svg {
+    width: 15px;
+    height: 15px;
+}
+
+.cpal-trigger-kbd {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cpal-trigger { transition: none; }
+}
+
+@media (max-width: 480px) {
+    .cpal-trigger-kbd { display: none; } /* keep the icon-only tap target on narrow viewports */
+}
