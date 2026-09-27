@@ -43,6 +43,7 @@
     const recentWrap = document.getElementById('wst-recent');
     const recentListEl = document.getElementById('wst-recent-list');
     const recentClearBtn = document.getElementById('wst-recent-clear');
+    const insecureWarnEl = document.getElementById('wst-insecure-warning');
 
     // ── Status ──
     function setStatus(kind, text) {
@@ -74,12 +75,12 @@
         logEntries.push(entry);
         if (logEntries.length > LOG_CAP) {
             logEntries = WsUtils.capLog(logEntries, LOG_CAP);
-            // drop the oldest rendered node(s) to match
-            while (listEl.children.length > LOG_CAP) {
-                listEl.removeChild(listEl.firstChild);
-            }
         }
         renderEntry(entry);
+        // drop the oldest rendered node(s) to match, after the new row is appended
+        while (listEl.children.length > LOG_CAP) {
+            listEl.removeChild(listEl.firstChild);
+        }
     }
 
     function renderEntry(entry) {
@@ -104,13 +105,16 @@
         body.className = 'wst-entry-body';
         body.textContent = entry.body;
 
+        // capture BEFORE appending — appending grows scrollHeight and would
+        // otherwise make a user who was at the bottom look "not near bottom"
+        const nearBottom = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 60;
+
         row.appendChild(ts);
         row.appendChild(dir);
         row.appendChild(body);
         listEl.appendChild(row);
 
         // auto-scroll to newest unless the user has scrolled up
-        const nearBottom = listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < 60;
         if (nearBottom) { listEl.scrollTop = listEl.scrollHeight; }
     }
 
@@ -144,9 +148,13 @@
             return;
         }
         clearUrlError();
+        if (insecureWarnEl) insecureWarnEl.classList.toggle('visible', !parsed.secure);
 
-        // FR-006: never hold two live sockets.
+        // FR-006: never hold two live sockets. Detach the old socket's handlers
+        // before closing it so a late event from it can't mutate shared state
+        // out from under the socket we're about to open.
         if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+            ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
             try { ws.close(1000, 'reconnecting'); } catch (e) { /* ignore */ }
             ws = null;
         }
@@ -154,30 +162,36 @@
         const protocols = WsUtils.parseProtocols(protoEl.value);
         negoEl.hidden = true;
 
+        let socket;
         try {
-            ws = protocols.length ? new WebSocket(parsed.url, protocols) : new WebSocket(parsed.url);
+            socket = protocols.length ? new WebSocket(parsed.url, protocols) : new WebSocket(parsed.url);
         } catch (e) {
             showUrlError((e && e.message) || 'Failed to open connection.');
             return;
         }
-        ws.binaryType = 'arraybuffer';
+        ws = socket;
+        socket.binaryType = 'arraybuffer';
 
         setStatus('connecting', 'Connecting');
         setConnectedUi(true); // disable connect while attempting; disconnect enabled to allow abort
         logEvent('Connecting to ' + parsed.url +
             (protocols.length ? ' [' + protocols.join(', ') + ']' : ''));
 
-        ws.onopen = function () {
+        // Each handler checks `ws === socket` — belt-and-suspenders against a stale
+        // event from a socket that a newer connect() has already superseded.
+        socket.onopen = function () {
+            if (ws !== socket) return;
             setStatus('open', 'Open');
             logEvent('Connection open');
-            if (ws.protocol) {
+            if (socket.protocol) {
                 negoEl.hidden = false;
-                negoEl.textContent = 'Negotiated subprotocol: ' + ws.protocol;
+                negoEl.textContent = 'Negotiated subprotocol: ' + socket.protocol;
             }
             saveRecent(parsed.url, protocols);
         };
 
-        ws.onmessage = function (ev) {
+        socket.onmessage = function (ev) {
+            if (ws !== socket) return;
             if (typeof ev.data === 'string') {
                 const f = WsUtils.formatIncoming(ev.data);
                 pushEntry({ ts: Date.now(), kind: 'received', payload: f.type, body: f.body });
@@ -189,13 +203,15 @@
             }
         };
 
-        ws.onerror = function () {
+        socket.onerror = function () {
+            if (ws !== socket) return;
             // The WebSocket error event carries no detail by spec; the close event
             // that follows usually has the code/reason. Log a generic error entry.
             logEvent('Connection error (see the following close event / browser console for detail)', true);
         };
 
-        ws.onclose = function (ev) {
+        socket.onclose = function (ev) {
+            if (ws !== socket) return;
             const reason = ev.reason ? (' — ' + ev.reason) : '';
             logEvent('Connection closed (code ' + ev.code + (ev.wasClean ? ', clean' : ', unclean') + ')' + reason,
                 !ev.wasClean);
@@ -218,12 +234,13 @@
             toast('Not connected — open a connection before sending.', 'warning');
             return;
         }
-        let payload = msgEl.value;
+        const payload = msgEl.value;
+        let logBody = payload;
         let type = 'text';
         if (jsonModeEl.checked) {
             const v = WsUtils.validateJson(payload);
             if (!v.ok) { toast(v.error, 'error'); return; }
-            payload = v.pretty;
+            logBody = v.pretty; // pretty-print for the log only — the wire payload stays verbatim
             type = 'json';
         }
         try {
@@ -232,7 +249,7 @@
             toast('Send failed: ' + ((e && e.message) || 'unknown error'), 'error');
             return;
         }
-        pushEntry({ ts: Date.now(), kind: 'sent', payload: type, body: payload });
+        pushEntry({ ts: Date.now(), kind: 'sent', payload: type, body: logBody });
     }
 
     // ── Clear log ──

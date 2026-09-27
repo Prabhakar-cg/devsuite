@@ -14,8 +14,8 @@
 ## Requirement Completeness
 
 - [x] No [NEEDS CLARIFICATION] markers remain
-- [x] Requirements are testable and unambiguous
-- [x] Success criteria are measurable
+- [ ] Requirements are testable and unambiguous
+- [ ] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
@@ -39,4 +39,10 @@
   "representative test corpus" wording are all reasonable-default judgment calls, not
   clarifications from the user — worth a sanity check at `/speckit-plan` time before
   they harden into contracts.
-- All items pass on first validation pass; no spec revision iterations were needed.
+- **Unchecked on review (2026-09-27):** "Requirements are testable and unambiguous" and
+  "Success criteria are measurable" — FR-003's "confidence level" and FR-009's "high
+  entropy" are not yet quantified (what score counts as high-confidence? what Shannon
+  entropy value counts as "high"?), and SC-002/SC-003 reference "a representative test
+  corpus" without fixing what that corpus actually is. None of this blocks `/speckit-plan`
+  from starting, but the plan (or a `/speckit-clarify` pass first) should pin down actual
+  thresholds and name the fixed corpus before these are treated as verifiable contracts.

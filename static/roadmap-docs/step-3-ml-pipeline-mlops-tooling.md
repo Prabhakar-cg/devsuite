@@ -44,7 +44,7 @@ mlflow server \
 Most tutorial snippets log a metric and stop. The version below logs everything you need to rebuild the run six months later: code version, data version, environment, signature, and input example.
 
 ```python
-import mlflow, mlflow.sklearn, subprocess, hashlib, json
+import mlflow, mlflow.sklearn, subprocess, hashlib
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import roc_auc_score
 from mlflow.models import infer_signature
@@ -80,7 +80,7 @@ with mlflow.start_run(run_name="gbdt-baseline") as run:
         input_example=X_val.iloc[:5],
         registered_model_name="fraud_scorer",
     )
-    mlflow.log_dict(json.dumps(feature_spec), "feature_spec.json")
+    mlflow.log_dict(feature_spec, "feature_spec.json")
     print("run_id:", run.info.run_id)
 ```
 

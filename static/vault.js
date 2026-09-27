@@ -1016,7 +1016,14 @@ async function performRestore() {
 // new password alone won't decrypt old ciphertext), so on failure the module keeps
 // _pwRotationPending and the modal offers an explicit "Retry Save" that just re-runs
 // the persist step — no re-verification or re-derivation needed.
-let _pwRotationPending = null; // {ciphertext, iv} awaiting a successful POST /api/vault
+//
+// _persistRotatedVault() always re-encrypts from the CURRENT vaultEntries/masterKenc
+// at call time rather than reusing a snapshot taken when rotation started. Reusing a
+// snapshot would let "Retry Save" overwrite a newer save made in between (masterKenc
+// is already the new key by the time rotation starts, so an ordinary edit made while
+// this modal sits open and failed would itself have saved successfully under the new
+// key) with the older, pre-edit ciphertext.
+let _pwRotationPending = false; // true while a vault save is owed after a rotated challenge
 
 function _changePwError(msg) {
     const el = document.getElementById('change-pw-error');
@@ -1044,9 +1051,15 @@ function openChangePwModal() {
 
 function closeChangePwModal() {
     document.getElementById('change-pw-modal').classList.remove('open');
+    document.getElementById('change-pw-current').value = '';
+    document.getElementById('change-pw-new').value = '';
+    document.getElementById('change-pw-confirm').value = '';
 }
 
-async function _persistRotatedVault(payload) {
+async function _persistRotatedVault() {
+    // Re-encrypt from the CURRENT entries on every call (including retries) —
+    // see the rationale comment above _pwRotationPending.
+    const payload = await encryptVaultGCM(vaultEntries, masterKenc);
     const res = await fetch('/api/vault', {
         method: 'POST',
         headers: _authHeaders({ 'Content-Type': 'application/json' }),
@@ -1058,7 +1071,7 @@ async function _persistRotatedVault(payload) {
     if (!res.ok) {
         throw new Error(`Vault save failed after password change (HTTP ${res.status}) — click Retry Save.`);
     }
-    _pwRotationPending = null;
+    _pwRotationPending = false;
     closeChangePwModal();
     toast('Master password changed ✓');
 }
@@ -1070,7 +1083,7 @@ async function changeMasterPassword() {
     if (_pwRotationPending) {
         btn.disabled = true; btn.textContent = 'Retrying…';
         try {
-            await _persistRotatedVault(_pwRotationPending);
+            await _persistRotatedVault();
         } catch (e) {
             _changePwError(e.message || 'Retry failed — please try again.');
         } finally {
@@ -1088,6 +1101,7 @@ async function changeMasterPassword() {
     if (!current) { _changePwError('Enter your current master password.'); return; }
     if (next.length < 8) { _changePwError('New master password must be at least 8 characters.'); return; }
     if (next !== confirm) { _changePwError('New passwords do not match.'); return; }
+    if (next === current) { _changePwError('New password must be different from the current password.'); return; }
 
     btn.disabled = true; btn.textContent = 'Verifying…';
     try {
@@ -1100,7 +1114,6 @@ async function changeMasterPassword() {
         btn.textContent = 'Re-encrypting…';
         const newSaltHex = _bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
         const newKeys     = await _deriveMasterKeysV2(next, newSaltHex);
-        const newPayload  = await encryptVaultGCM(vaultEntries, newKeys.Kenc);
         const { verifyBlob, verifyNonce } = await _buildV2VerifyBlob(newKeys.Kauth);
 
         btn.textContent = 'Rotating…';
@@ -1121,8 +1134,8 @@ async function changeMasterPassword() {
         masterKauth  = newKeys.Kauth;
         vaultSaltHex = newSaltHex;
 
-        _pwRotationPending = newPayload;
-        await _persistRotatedVault(newPayload);
+        _pwRotationPending = true;
+        await _persistRotatedVault();
     } catch (e) {
         _changePwError(e.message || 'Password change failed.');
     } finally {

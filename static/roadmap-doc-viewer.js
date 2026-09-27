@@ -75,18 +75,18 @@
             return;
         }
 
-        let response;
+        let text;
         try {
-            response = await fetch('/static/roadmap-docs/' + docId + '.md');
+            const response = await fetch('/static/roadmap-docs/' + docId + '.md');
+            if (!response.ok) {
+                showError('This document could not be found.');
+                return;
+            }
+            text = await response.text();
         } catch (e) {
             showError('Could not load this document (network error).');
             return;
         }
-        if (!response.ok) {
-            showError('This document could not be found.');
-            return;
-        }
-        const text = await response.text();
 
         articleEl.textContent = '';
         articleEl.innerHTML = NotesLinks.sanitizeMarkdownBody(text, marked, DOMPurify); // NOSONAR — sanitized via DOMPurify inside sanitizeMarkdownBody

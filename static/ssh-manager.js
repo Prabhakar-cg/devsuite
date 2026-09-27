@@ -839,6 +839,13 @@ function _appendTermLog(tab, chunk) {
     while (tab.logChars > TERM_LOG_MAX_CHARS && tab.logChunks.length > 1) {
         tab.logChars -= tab.logChunks.shift().length;
     }
+    // A single chunk larger than the cap can't be trimmed by shifting whole chunks —
+    // trim it in place to its newest characters so the invariant (never exceeds the
+    // cap) holds even for one oversized burst of output.
+    if (tab.logChars > TERM_LOG_MAX_CHARS && tab.logChunks.length === 1) {
+        tab.logChunks[0] = tab.logChunks[0].slice(-TERM_LOG_MAX_CHARS);
+        tab.logChars = tab.logChunks[0].length;
+    }
 }
 
 // Strips common ANSI/VT escape sequences (cursor movement, color, title-setting) so the
@@ -1213,6 +1220,10 @@ function sftpRetryUpload(fd, file, fp, resolve, status) {
     retryXhr.upload.onprogress = (evt) => {
         if (evt.lengthComputable) status.update(_uploadProgressMessage(file, Math.round((evt.loaded / evt.total) * 100)));
     };
+    // upload.onload fires once the request body itself is fully sent, independent of
+    // whether any computable-progress event happened to land exactly at 100% — a fast
+    // or small upload can otherwise never show the "writing to remote" status at all.
+    retryXhr.upload.onload = () => status.update(_uploadProgressMessage(file, 100));
     retryXhr.onload = async () => {
         status.remove();
         if (retryXhr.status >= 200 && retryXhr.status < 300) {
@@ -1295,6 +1306,8 @@ async function sftpUploadFile(file) {
         xhr.upload.onprogress = (evt) => {
             if (evt.lengthComputable) status.update(_uploadProgressMessage(file, Math.round((evt.loaded / evt.total) * 100)));
         };
+        // See the matching comment on retryXhr.upload.onload above (sftpRetryUpload).
+        xhr.upload.onload = () => status.update(_uploadProgressMessage(file, 100));
         xhr.onload = () => _handleUploadLoad(xhr, fd, file, resolve, status);
         xhr.onerror = () => { status.remove(); showToast(`Upload failed: network error`, 'error'); resolve(); };
         xhr.send(fd);

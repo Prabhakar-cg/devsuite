@@ -230,11 +230,27 @@ encryption of the *challenge* (does not itself re-encrypt other stores).
   permanently on every subsequent unlock attempt (reloading doesn't change the challenge/blob
   version combination). **This is a genuine lockout**, not a handled edge case: the session
   authenticates fine (the v1 key matches the v1 challenge), but the vault is never decrypted
-  because `_tryDecryptBlob` is never even called down that path. Tracked as a Bugfix in
-  `BACKLOG.md` rather than fixed here; the fix belongs in DB Manager's `savePassword()` (always
-  emit the v2 shape) or in a defensive `_unlockVaultNormal` fallback that re-derives v2 keys when
-  it sees this exact mismatch — out of scope for both this spec and SEC-8/US8, which only gives
-  the Vault its own safe, self-contained rotation path.
+  because `_tryDecryptBlob` is never even called down that path. Tracked as BUG-1 in
+  `BACKLOG.md` rather than fixed here.
+  **Correction (2026-09-27, per code review):** the fix suggestions previously given here were
+  both unsound and are retracted. Emitting the v2 challenge shape alone does **not** fix this:
+  `savePassword()` has no access to the vault's `Kenc` and cannot re-encrypt its ciphertext, so a
+  v2-shaped challenge for a *new* password would just authenticate against a different key than
+  whatever key the existing blob is actually encrypted with — trading a "version mismatch" lockout
+  for a "wrong password" one, not fixing anything. A defensive `_unlockVaultNormal` fallback that
+  re-derives v2 keys from whatever password the user just typed cannot work either — it has no way
+  to recover the *old* key needed to decrypt the existing blob before re-encrypting it. The only
+  correct fix is for `savePassword()` to perform the same coordinated operation Secret Vault's own
+  `changeMasterPassword()` already does correctly (`static/vault.js`, SEC-8/US8): decrypt the vault
+  (and any other per-tool encrypted store, e.g. `ssh_profiles`) with the *current* password,
+  re-encrypt it with the *new* one, and rotate the v2 challenge — as one coordinated operation with
+  an explicit recovery path (mirroring Vault's own `_pwRotationPending`/"Retry Save" pattern) for
+  the case where the challenge rotates but a re-encrypted store then fails to persist, so the vault
+  and the challenge can never be left describing two different passwords. Implementing this is out
+  of scope for both this spec and SEC-8/US8 — SEC-8/US8 deliberately gave the Vault its own safe,
+  self-contained rotation path precisely because DB Manager's password change does not yet
+  coordinate with it; this note only corrects the earlier wrong guidance about what a real fix
+  requires.
 - **`innerHTML` use in `renderStores()`** (`static/db-manager.js`) interpolates only
   server-computed values (`m.icon`, `m.label`, formatted byte counts, entry counts) — never a
   value that originated as free-form user input — so it is treated as compliant with the "no

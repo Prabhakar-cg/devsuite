@@ -30,6 +30,24 @@
 }
 .wst-net-notice svg { width: 13px; height: 13px; flex-shrink: 0; }
 
+/* ── Insecure ws:// warning (hidden by default; toggled via .visible, not [hidden] —
+   an element styled with display:flex needs [hidden] to be re-asserted explicitly,
+   since an author-stylesheet display rule otherwise wins over the UA [hidden] rule) ── */
+.wst-insecure-warning {
+    display: none;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    color: var(--amber-mid);
+    background: var(--amber-subtle);
+    border: 1px solid rgba(255,159,10,0.25);
+    border-radius: var(--radius-xs);
+    padding: 0.35rem 0.6rem;
+    flex-shrink: 0;
+}
+.wst-insecure-warning.visible { display: flex; }
+.wst-insecure-warning svg { width: 13px; height: 13px; flex-shrink: 0; }
+
 /* ── Connection bar ── */
 .wst-connbar {
     display: flex;
@@ -94,6 +112,9 @@
     flex-wrap: wrap;
     flex-shrink: 0;
 }
+/* display:flex above otherwise wins over the UA [hidden] rule (same author-origin
+   specificity), so recentWrap.hidden = true would not actually hide the element. */
+.wst-recent[hidden] { display: none; }
 .wst-recent-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
 .wst-recent-chip {
     display: inline-flex;

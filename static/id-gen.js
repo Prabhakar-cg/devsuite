@@ -155,7 +155,10 @@
     // ── CUID2 (paralleldrive/cuid2 reference shape) ──────────────────────────
     const CUID_LETTERS = 'abcdefghijklmnopqrstuvwxyz';
     const CUID_DEFAULT_LENGTH = 24;
-    let _cuidCounter = Math.floor(Math.random() * 2057);
+    // Seeded lazily (not at module load) so the configured CSPRNG handle — which a
+    // node caller may install via configure() after this module loads — is available.
+    // Never Math.random (spec FR-005); randomBytes() below is the CSPRNG path.
+    let _cuidCounter = null;
     let _cuidFingerprint = null;
 
     function randomLetter() {
@@ -210,6 +213,10 @@
     }
 
     function genCuid2(length) {
+        if (_cuidCounter === null) {
+            const seed = randomBytes(2);
+            _cuidCounter = (seed[0] * 256 + seed[1]) % 2057;
+        }
         const len = typeof length === 'number' ? length : CUID_DEFAULT_LENGTH;
         const firstLetter = randomLetter();
         const time = Date.now().toString(36);

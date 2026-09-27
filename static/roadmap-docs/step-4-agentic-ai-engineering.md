@@ -290,6 +290,7 @@ TIERS = ["small", "mid", "frontier"]   # cheapest -> most capable
 def cascade(task, budget, min_confidence=0.75):
     """Try cheap models first; escalate only when the answer fails verification."""
     spent = 0.0
+    answer, tier = None, None  # in case budget rejects even the first (cheapest) tier
     for tier in TIERS:
         est = estimate_cost(tier, task)
         if spent + est > budget:

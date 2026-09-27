@@ -33,8 +33,9 @@
 
 ```bash
 # The /ws-tester page must allow ws:/wss:, every other page must not.
-curl -sI http://localhost:8000/ws-tester | grep -i content-security-policy   # connect-src ... ws: wss:
-curl -sI http://localhost:8000/          | grep -i content-security-policy   # connect-src 'self'
+# GET (not HEAD) so this exercises the actual page response, not a HEAD-specific path.
+curl -fsD - http://localhost:8000/ws-tester -o /dev/null | grep -i content-security-policy   # connect-src ... ws: wss:
+curl -fsD - http://localhost:8000/          -o /dev/null | grep -i content-security-policy   # connect-src 'self'
 ```
 
 ## Run the tests

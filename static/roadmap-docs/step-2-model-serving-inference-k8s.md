@@ -280,8 +280,6 @@ spec:
         serverAddress: http://prometheus.monitoring.svc:9090
         query: |
           sum(vllm:num_requests_waiting{service="llama-31-8b"})
-          /
-          count(vllm:num_requests_running{service="llama-31-8b"})
         threshold: "5"
         activationThreshold: "1"
 ```
@@ -289,7 +287,7 @@ spec:
 Notes on that configuration:
 
 - KEDA does not replace the HPA — it **creates and feeds one**, translating external metrics into something the HPA understands. Never point an HPA and a KEDA `ScaledObject` at the same Deployment.
-- `threshold` is a **per-replica target**, exactly like an HPA target. The query divides by replica count so "5" means "5 waiting requests per replica."
+- `threshold` is a **per-replica target**, exactly like an HPA target. The query returns the raw total (`sum(vllm:num_requests_waiting)`) and KEDA's own `AverageValue` metric type divides that by the current replica count before comparing to `threshold` — don't also divide inside the PromQL, or you divide twice and the scaler becomes far less sensitive than "5" implies.
 - **Asymmetric scaling behavior is the whole game.** Scale up fast (a spike is already hurting users). Scale down slowly — a GPU node costs minutes to reacquire, and thrashing between 3 and 4 replicas costs more than just staying at 4.
 - `activationThreshold` controls the 0→1 transition specifically. Only relevant if you scale to zero.
 
