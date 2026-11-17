@@ -64,7 +64,7 @@ const AuthGuard = (() => {
         .ag-icon svg { width: 40px; height: 40px; }
         .ag-session-badge svg, .ag-notice svg, .ag-hint svg { width: 13px; height: 13px; flex-shrink: 0; }
         .ag-title { font-size: 20px; font-weight: 700; color: #e2e8f0; margin: 0; }
-        .ag-desc  { font-size: 13px; color: #64748b; text-align: center; line-height: 1.6; margin: 0; }
+        .ag-desc  { font-size: 13px; color: #94a3b8; text-align: center; line-height: 1.6; margin: 0; }
         .ag-notice {
             background: rgba(245,158,11,0.12);
             border: 1px solid rgba(245,158,11,0.3);
@@ -73,7 +73,7 @@ const AuthGuard = (() => {
             display: flex; gap: 8px; align-items: flex-start;
             width: 100%; line-height: 1.5;
         }
-        .ag-link { color: #6477ff; text-decoration: underline; }
+        .ag-link { color: #8f9cff; text-decoration: underline; }
         #ag-form { width: 100%; display: flex; flex-direction: column; gap: 10px; }
         .ag-input {
             width: 100%; padding: 11px 14px;
@@ -89,13 +89,13 @@ const AuthGuard = (() => {
             background: rgba(239,68,68,0.12);
             border: 1px solid rgba(239,68,68,0.3);
             border-radius: 8px; padding: 8px 12px;
-            font-size: 13px; color: #ef4444;
+            font-size: 13px; color: #ff9b94;
         }
-        .ag-hint { font-size: 11px; color: #64748b; margin: 0;
+        .ag-hint { font-size: 11px; color: #94a3b8; margin: 0;
                    display: flex; align-items: center; justify-content: center; gap: 6px; }
         .ag-btn {
             width: 100%; padding: 12px;
-            background: #6477ff; border: none; border-radius: 8px;
+            background: #4a55d8; border: none; border-radius: 8px;
             color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
             transition: opacity 0.2s, transform 0.2s;
         }
@@ -104,7 +104,7 @@ const AuthGuard = (() => {
         .ag-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .ag-warning {
             display: flex; align-items: flex-start; gap: 7px;
-            font-size: 11px; color: #64748b;
+            font-size: 11px; color: #94a3b8;
             text-align: left; line-height: 1.5; width: 100%;
         }
         .ag-session-badge {

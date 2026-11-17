@@ -12,7 +12,7 @@
     <script src="/static/libs/require.min.js"></script>
     <script src="/static/components.js"></script>
 </head>
-<body>
+<body data-tool="roadmap">
 
     <!-- Header -->
     <header class="app-header">
@@ -46,7 +46,7 @@
                 <div id="roadmap-grid" class="roadmap-grid"></div>
                 <div id="list-empty-state" class="empty-state" style="display:none; height:auto; padding:3rem 0;">
                     <div class="empty-state-icon">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></svg>
+                        <svg class="tk-art" data-art="ids"></svg>
                     </div>
                     <div>No roadmaps yet.</div>
                 </div>
@@ -69,7 +69,7 @@
             <section id="not-found-view" style="display:none;">
                 <div class="empty-state roadmap-not-found">
                     <div class="empty-state-icon">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+                        <svg class="tk-art" data-art="ids"></svg>
                     </div>
                     <div>Roadmap not found.</div>
                     <a href="/roadmap" class="btn btn-ghost" style="margin-top:0.5rem;">Back to roadmaps</a>

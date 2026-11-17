@@ -20,7 +20,16 @@
     /* Text */
     --text-primary:  #f0f1f6;
     --text-secondary:#9ea3b8;
-    --text-muted:    #5a5f7a;
+    --text-muted:    #818599;
+    --focus-ring:    var(--electric);
+    --on-accent:     #ffffff;
+    /* Filled controls (CTA, active filter): >=4.5:1 with --on-electric, themed in theme.js */
+    /* Accent used as TEXT: mixes toward body text so it clears 4.5:1 on any theme surface */
+    --electric-text:  color-mix(in srgb, var(--electric) 65%, var(--text-primary));
+    --electric-solid: #2563eb;
+    --on-electric:    #ffffff;
+    --scrollbar-thumb:       color-mix(in srgb, var(--text-primary) 28%, transparent);
+    --scrollbar-thumb-hover: color-mix(in srgb, var(--text-primary) 45%, transparent);
     --text-dark:     #0f1018;
     /* Accent */
     --electric:      #3b82f6;
@@ -77,11 +86,11 @@ html, body {
     align-items: center;
     gap: 0.5rem;
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--electric);
+    color: var(--electric-text, var(--electric));
     margin-bottom: 1.25rem;
 }
 .eyebrow::before {
@@ -100,14 +109,14 @@ html, body {
     top: 0; left: 0; right: 0;
     z-index: 200;
     height: 56px;
-    background: rgba(5,5,10,0.8);
+    background: var(--header-bg, rgba(5,5,10,0.8));
     backdrop-filter: saturate(180%) blur(24px);
     -webkit-backdrop-filter: saturate(180%) blur(24px);
     border-bottom: 1px solid var(--border);
     transition: background 0.3s, border-color 0.3s;
 }
 .site-header.scrolled {
-    background: rgba(5,5,10,0.95);
+    background: var(--header-bg-strong, rgba(5,5,10,0.95));
     border-color: var(--border-bright);
 }
 
@@ -137,7 +146,7 @@ html, body {
     flex-shrink: 0;
     box-shadow: 0 0 16px rgba(59,130,246,0.4);
 }
-.logo-mark svg { width: 16px; height: 16px; color: #fff; }
+.logo-mark svg { width: 16px; height: 16px; color: var(--on-accent, #fff); }
 
 .logo-name {
     font-family: var(--font-mono);
@@ -149,7 +158,7 @@ html, body {
 
 .logo-version {
     font-family: var(--font-mono);
-    font-size: 0.6rem;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--text-muted);
     background: var(--surface-3);
     border: 1px solid var(--border);
@@ -180,10 +189,10 @@ html, body {
     align-items: center;
     gap: 0.4rem;
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
-    background: var(--electric);
-    color: #fff;
+    background: var(--electric-solid, var(--electric));
+    color: var(--on-electric, #fff);
     text-decoration: none;
     padding: 0.45rem 1.1rem;
     border-radius: 6px;
@@ -264,7 +273,7 @@ html, body {
     align-items: center;
     gap: 0.5rem;
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
     color: var(--lime);
     background: rgba(74,222,128,0.08);
@@ -348,7 +357,7 @@ html, body {
 }
 
 .hero-stat-label {
-    font-size: 0.72rem;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--text-muted);
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -399,7 +408,7 @@ html, body {
 
 .terminal-title {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--text-muted);
     margin-left: 0.5rem;
     letter-spacing: 0.05em;
@@ -476,7 +485,7 @@ html, body {
 
 .btn-primary {
     background: var(--electric);
-    color: #fff;
+    color: var(--on-accent, #fff);
     box-shadow: 0 0 24px rgba(59,130,246,0.3);
 }
 .btn-primary:hover {
@@ -498,7 +507,7 @@ html, body {
 }
 
 .btn-white {
-    background: #fff;
+    background: var(--on-accent, #fff);
     color: var(--text-dark);
 }
 .btn-white:hover { background: var(--light); transform: translateY(-1px); }
@@ -550,7 +559,7 @@ html, body {
     text-decoration: none;
     transition: var(--transition);
 }
-.btn-white-sm:hover { background: #fff; transform: translateY(-1px); }
+.btn-white-sm:hover { background: var(--on-accent, #fff); transform: translateY(-1px); }
 
 .btn-ghost-sm {
     display: inline-flex;
@@ -869,7 +878,7 @@ html, body {
     align-items: center;
 }
 
-.roadmap-teaser-head .eyebrow { color: var(--violet); }
+.roadmap-teaser-head .eyebrow { color: color-mix(in srgb, var(--violet) 65%, var(--text-primary)); }
 .roadmap-teaser-head .eyebrow::before { background: var(--violet); }
 
 .roadmap-teaser-head h2 {
@@ -904,7 +913,7 @@ html, body {
     display: inline-flex;
     align-items: center;
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
     color: var(--text-secondary);
     background: var(--surface-3);
@@ -962,7 +971,7 @@ html, body {
 
 .caveat-label {
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--amber);
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1102,7 +1111,7 @@ html, body {
     white-space: nowrap;
 }
 .github-star-btn:hover {
-    background: #fff;
+    background: var(--on-accent, #fff);
     transform: translateY(-1px);
     box-shadow: 0 4px 16px rgba(255,255,255,0.2);
 }
@@ -1193,7 +1202,7 @@ html, body {
     align-items: center;
     gap: 0.25rem;
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--electric);
     margin-top: 1rem;
     opacity: 0;
@@ -1244,7 +1253,7 @@ html, body {
     margin-bottom: 0.15rem;
 }
 .tool-card-desc {
-    font-size: 0.74rem;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--text-muted);
     line-height: 1.4;
 }
@@ -1253,7 +1262,7 @@ html, body {
     display: inline-flex;
     align-items: center;
     font-family: var(--font-mono);
-    font-size: 0.6rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
     padding: 2px 6px;
     border-radius: 3px;
@@ -1263,13 +1272,13 @@ html, body {
 }
 .badge-new {
     background: rgba(74,222,128,0.1);
-    color: var(--lime);
+    color: var(--text-primary);
     border: 1px solid rgba(74,222,128,0.2);
 }
 .badge-wip {
     background: rgba(245,158,11,0.08);
-    color: var(--amber);
-    border: 1px solid rgba(245,158,11,0.2);
+    color: var(--text-primary);
+    border: 1px solid rgba(245,158,11,0.35);
 }
 
 /* Category filter chips */
@@ -1286,7 +1295,7 @@ html, body {
     align-items: center;
     gap: 0.35rem;
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
     color: var(--text-secondary);
     background: var(--surface-2);
@@ -1369,9 +1378,9 @@ html, body {
     align-items: center;
     gap: 0.35rem;
     font-family: var(--font-mono);
-    font-size: 0.7rem;
-    color: var(--lime);
-    opacity: 0.7;
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--text-secondary);
+    opacity: 1;
     margin-left: auto;
 }
 
@@ -1481,7 +1490,7 @@ html, body {
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
 }
-.feat-icon-sm svg { width: 22px; height: 22px; color: #fff; }
+.feat-icon-sm svg { width: 22px; height: 22px; color: var(--on-accent, #fff); }
 
 .feat-card-top { margin-bottom: 0.75rem; }
 .feat-card-content { flex: 1; }
@@ -1518,7 +1527,7 @@ html, body {
     display: inline-flex;
     align-items: center;
     font-family: var(--font-mono);
-    font-size: 0.58rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1527,7 +1536,7 @@ html, body {
 }
 .feat-badge--live {
     background: rgba(74,222,128,0.1);
-    color: var(--lime);
+    color: var(--text-primary);
     border: 1px solid rgba(74,222,128,0.22);
 }
 .feat-card--hero .feat-badge--live {
@@ -1536,8 +1545,8 @@ html, body {
 }
 .feat-badge--soon {
     background: rgba(245,158,11,0.08);
-    color: var(--amber);
-    border: 1px solid rgba(245,158,11,0.2);
+    color: var(--text-primary);
+    border: 1px solid rgba(245,158,11,0.4);
 }
 
 /* ── All Tools section ── */
@@ -1594,19 +1603,19 @@ html, body {
     color: var(--text-primary);
 }
 .filter-tab.active {
-    background: var(--electric);
-    border-color: var(--electric);
-    color: #fff;
+    background: var(--electric-solid, var(--electric));
+    border-color: var(--electric-solid, var(--electric));
+    color: var(--on-electric, #fff);
 }
 .filter-count {
-    font-size: 0.6rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 700;
     background: rgba(255,255,255,0.12);
     border-radius: 4px;
     padding: 0 5px;
     line-height: 1.7;
 }
-.filter-tab.active .filter-count { background: rgba(255,255,255,0.2); }
+.filter-tab.active .filter-count { background: rgba(0,0,0,0.28); }
 
 .tool-card:nth-child(1) { animation-delay: 0.04s; }
 .tool-card:nth-child(2) { animation-delay: 0.08s; }
@@ -1623,7 +1632,7 @@ html, body {
     .tool-card:hover { transform: none; box-shadow: inherit; }
 }
 .tool-card.coming-soon {
-    opacity: 0.45;
+    opacity: 1; border-style: dashed;
     cursor: default;
     pointer-events: none;
 }
@@ -1644,7 +1653,7 @@ html, body {
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
 }
-.card-icon-wrap svg { width: 17px; height: 17px; color: #fff; }
+.card-icon-wrap svg { width: 17px; height: 17px; color: var(--on-accent, #fff); }
 
 .card-icon-indigo { background: linear-gradient(135deg, #6366f1, #3b82f6); }
 .card-icon-violet { background: linear-gradient(135deg, #5b21b6, #7c3aed); }
@@ -1658,7 +1667,7 @@ html, body {
 /* Badges */
 .badge {
     font-family: var(--font-mono);
-    font-size: 0.58rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1669,13 +1678,13 @@ html, body {
 }
 .badge-live {
     background: rgba(74,222,128,0.1);
-    color: var(--lime);
+    color: var(--text-primary);
     border: 1px solid rgba(74,222,128,0.22);
 }
 .badge-soon {
     background: rgba(245,158,11,0.08);
-    color: var(--amber);
-    border: 1px solid rgba(245,158,11,0.2);
+    color: var(--text-primary);
+    border: 1px solid rgba(245,158,11,0.4);
 }
 
 /* Card body */
@@ -1715,7 +1724,7 @@ html, body {
 
 .tag-chip {
     font-family: var(--font-mono);
-    font-size: 0.6rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
     background: var(--surface-3);
     color: var(--text-muted);
@@ -1749,7 +1758,7 @@ html, body {
     font-size: 0.82rem;
     color: var(--text-secondary);
 }
-.coming-soon-strip a { color: var(--electric); text-decoration: none; }
+.coming-soon-strip a { color: var(--electric-text, var(--electric)); text-decoration: none; }
 .coming-soon-strip a:hover { text-decoration: underline; }
 
 /* Active tool indicator */
@@ -1824,7 +1833,7 @@ html, body {
 
 .theme-panel-label {
     font-family: var(--font-mono);
-    font-size: 0.57rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -1850,7 +1859,7 @@ html, body {
     color: var(--text-secondary);
     cursor: pointer;
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 500;
     transition: all 0.14s;
     white-space: nowrap;
@@ -1907,14 +1916,14 @@ html[data-theme="vs"] .badge-live {
     border-color: rgba(22,163,74,0.25);
 }
 html[data-theme="vs"] .filter-tab {
-    background: #ffffff;
+    background: var(--on-accent, #fff);
 }
 html[data-theme="vs"] .filter-tab.active {
     background: #2563eb;
 }
 html[data-theme="vs"] .feat-card,
 html[data-theme="vs"] .tool-card {
-    background: #ffffff;
+    background: var(--on-accent, #fff);
     box-shadow: 0 1px 4px rgba(0,0,0,0.07);
 }
 html[data-theme="vs"] .site-header {
@@ -1935,6 +1944,10 @@ html[data-theme="high-contrast"] .tag-chip {
 html[data-theme="high-contrast"] .filter-tab {
     border-color: rgba(255,255,255,0.35);
     background: #111111;
+}
+html[data-theme="high-contrast"] .filter-tab.active {
+    background: var(--electric-solid);
+    border-color: var(--electric-solid);
 }
 html[data-theme="high-contrast"] .site-header {
     background: rgba(0,0,0,0.95);

@@ -1,7 +1,7 @@
 /**
  * DevSuite — Command Palette pure data module (feature 022).
  *
- * DOM-free, dual-export module: the static DESTINATIONS list (15 tools + Home +
+ * DOM-free, dual-export module: the static DESTINATIONS list (16 tools + Home +
  * Tools Hub) and the matchDestinations(query, list) filter used by the palette's
  * search input. Loaded in the browser as globalThis.CommandPaletteData and
  * require()-able in node for tests/javascript/test_command_palette_data.js.
@@ -97,6 +97,11 @@
             id: 'ws-tester', name: 'WebSocket Tester', route: '/ws-tester', category: 'network',
             keywords: ['websocket', 'ws', 'wss', 'socket', 'realtime'],
             icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3 8 4-16 3 8h4"/></svg>',
+        },
+        {
+            id: 'secret-scanner', name: 'Secret Scanner', route: '/secret-scanner', category: 'security',
+            keywords: ['secrets', 'leak', 'api key', 'token', 'env', 'mcp', 'gitleaks', 'scan', 'credentials'],
+            icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M8.5 11l1.8 1.8L14 9"/></svg>',
         },
         {
             id: 'home', name: 'Home', route: '/', category: 'nav',

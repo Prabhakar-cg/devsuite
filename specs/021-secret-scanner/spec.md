@@ -126,3 +126,11 @@ For a finding surfaced in manifest-aware mode (US2), the developer clicks a "Mov
 - Reducing false positives on obvious documentation placeholders (e.g. AWS's own `EXAMPLE` key suffix convention) is a nice-to-have refinement, not a hard requirement; the redacted-preview-plus-confidence-level design (FR-003/FR-004) gives users a fast way to dismiss such cases manually.
 - This spec covers detection and manifest-aware remediation only (BACKLOG AI-1 + AI-2). The token/cost estimator (AI-3), a general JSON Schema validator (AI-4), and a broader agent-config linter (AI-5) are explicitly out of scope here, though AI-4/AI-5 may later reuse this feature's detection engine as a shared module.
 - Shipping this tool brings the suite to 16 tools; updating the tool-count references (`constitution.md`, `specs/SPEC.md`, `static/tools.html`, `static/home.html`) from 15 to 16 is deferred to the implementation/ship step, not done as part of this spec.
+
+## Implementation status — 2026-11-17 (v0.19.0)
+
+**Shipped**: US1 (generic scan) and US2 (MCP-manifest aware) in full, plus the safe part of US3. Route `/secret-scanner` (ungated), engine `static/secret-scanner.js` (pure, node-tested: 31 tests incl. SC-002/003/004/006/008), UI `static/secret-scanner-ui.js`. Tool count is now 16 (`constitution.md`, `SPEC.md`, `tools.html`, `home.html`, palette updated).
+
+**Deviation (FR-011/FR-012/US3)**: a direct "Move to Vault" write was **not** built. By design (Constitution IV) the master password and the vault key live only in memory of the page that unlocked them and are never cached across pages, so the scanner page has no vault session to write with; implementing it would require the scanner to take and handle the master password itself. Instead remediation is: a **separate** corrected manifest with literal values replaced by `${ENV_NAME}` references (FR-013 preserved — the input is never rewritten), a per-finding **Copy value** action, and an **Open Secret Vault** link. A true one-click vault write remains possible later through the Secret Vault page itself (e.g. an import action) without widening the key's exposure.
+
+**Also shipped beyond the original list**: Slack, Stripe and Google API key shapes; placeholder demotion (`EXAMPLE`/`xxxx` → low confidence); 5 MB scan cap with a visible truncation notice.

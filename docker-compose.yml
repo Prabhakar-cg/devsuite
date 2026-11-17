@@ -1,0 +1,27 @@
+# docker compose up -d   →   http://localhost:8000
+# The port is published on the HOST'S LOOPBACK ONLY (127.0.0.1) — DevSuite is a local tool; do not
+# expose it on 0.0.0.0. Your data persists in the named volume `devsuite-data`.
+services:
+  devsuite:
+    build: .
+    image: devsuite:local
+    container_name: devsuite
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      # Optional: encrypt the whole database file at rest (AES-256-GCM). Leave unset for integrity-only mode.
+      DEVDB_PASSWORD: "${DEVDB_PASSWORD:-}"
+      # Only needed if you reach it via another hostname (Host-header allowlist, SPEC §7.9):
+      # DEVSUITE_ALLOWED_HOSTS: "devbox.lan"
+    volumes:
+      - devsuite-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  devsuite-data:

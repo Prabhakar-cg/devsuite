@@ -1,0 +1,104 @@
+/* ============================================================
+   DevSuite Accessibility Foundation (feature 023, SPEC §9.12)
+   Injected into every page by deps.py::_serve_html() — never
+   linked from a static/*.html file directly.
+   ============================================================ */
+
+/* ── Visually hidden utility (live regions, skip link base) ── */
+.ds-sr-only,
+.sr-only {  /* alias: many pages already use class="sr-only" (it was never defined, so those labels showed) */
+    position: absolute !important;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* ── Skip link: hidden until keyboard focus ── */
+.ds-skip-link {
+    position: fixed;
+    top: 8px; left: 8px;
+    z-index: 100000;
+    padding: 0.6rem 1rem;
+    border-radius: var(--radius-xs, 7px);
+    background: var(--blue, var(--electric, #0071e3));
+    color: #fff;
+    font: 600 0.875rem/1.2 var(--font-sans, var(--font-body, system-ui, sans-serif));
+    text-decoration: none;
+    transform: translateY(-200%);
+}
+.ds-skip-link:focus,
+.ds-skip-link:focus-visible {
+    transform: none;
+    outline: 2px solid var(--focus-ring, #0071e3);
+    outline-offset: 2px;
+}
+
+/* ── Keyboard focus: one shared, theme-aware ring ──
+   !important so tool stylesheets' legacy `outline: none` rules cannot strip it
+   (WCAG 2.4.7). Mouse focus stays quiet because this is :focus-visible only. */
+:focus-visible {
+    outline: 2px solid var(--focus-ring, #0071e3) !important;
+    outline-offset: 2px !important;
+}
+/* Text fields: draw the ring INSIDE the border so it never spills past the field's box
+   (an outward ring made fields look wider than neighbouring buttons and crowded them) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline-offset: -2px !important;
+}
+/* Programmatic focus on containers (main landmark, dialog cards) shows no ring */
+#ds-main:focus-visible,
+[tabindex="-1"]:not(input):not(textarea):not(select):not(button):focus-visible {
+    outline: none !important;
+}
+
+/* ── Scrollbars follow theme tokens ── */
+/* Firefox only: in Chromium scrollbar-color would disable the thin ::-webkit-scrollbar sizing */
+@supports (-moz-appearance: none) { * { scrollbar-color: var(--scrollbar-thumb, #c7c7cc) transparent; } }
+::-webkit-scrollbar-thumb       { background: var(--scrollbar-thumb, #c7c7cc); }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover, #aeaeb2); }
+
+/* ── Touch targets: 44x44 on coarse pointers (WCAG 2.5.5) ── */
+@media (pointer: coarse) {
+    button,
+    [role="button"],
+    [role="tab"],
+    summary,
+    select,
+    input[type="button"],
+    input[type="submit"],
+    input[type="checkbox"] + label,
+    input[type="radio"] + label {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    .toast-close { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+}
+
+/* ── Reduced motion: no non-essential animation or transition ── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+    *:hover, *:active { transform: none !important; }
+    /* Essential motion opt-in: progress indicators and the terminal cursor */
+    .ds-keep-motion, .ds-keep-motion *, .xterm-cursor-blink {
+        animation-duration: revert !important;
+        animation-iteration-count: revert !important;
+    }
+}
+
+/* ── Narrow screens: tool headers wrap instead of overflowing (found at 320px, feature 028) ── */
+@media (max-width: 560px) {
+    .app-header, .tool-header { height: auto !important; min-height: 52px; flex-wrap: wrap; row-gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+    .header-controls, .header-right, .header-left { flex-wrap: wrap; max-width: 100%; row-gap: 6px; }
+}
+
+/* shared stroke icons (icons.js / inline SVG) */
+svg.ico { vertical-align: -0.15em; flex-shrink: 0; }  /* size comes from the width/height attributes */
+button > svg.ico, a > svg.ico { margin-right: 0.35em; }

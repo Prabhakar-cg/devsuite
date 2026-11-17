@@ -19,13 +19,12 @@ import struct
 import urllib.parse
 
 import asyncssh
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 from typing import Annotated
 
 from deps import (
-    _ALLOWED_ORIGINS,
     _DISTRO_NAME_RE,
     _ERR_ORIGIN_NOT_ALLOWED,
     _ERR_ORIGIN_REQUIRED,
@@ -36,10 +35,13 @@ from deps import (
     _WSL_EXE,
     _audit_log,
     fcntl,
+    host_allowed,
     is_auth_configured,
     is_session_valid,
     logger,
+    origin_allowed,
     pty,
+    require_session_if_configured,
     termios,
 )
 
@@ -154,9 +156,9 @@ async def _ws_check_origin(websocket: WebSocket) -> bool:
     if not origin:
         await websocket.close(code=1008, reason=_ERR_ORIGIN_REQUIRED)
         return False
-    allowed = origin in _ALLOWED_ORIGINS or (
-        bool(host) and origin in (f"http://{host}", f"https://{host}")
-    )
+    # SEC-16: trust comes from the hostname allowlist, never from the Host header
+    # itself (an attacker controls Host under DNS rebinding, so origin == Host proves nothing).
+    allowed = host_allowed(host) and origin_allowed(origin)
     if not allowed:
         await websocket.close(code=1008, reason=_ERR_ORIGIN_NOT_ALLOWED)
         return False
@@ -367,8 +369,9 @@ def _make_sftp_approve(approved_fingerprint: str | None):
         500: {"description": _ERR_SFTP_FAILED},
     },
 )
-async def sftp_list(req: SFTPRequest):
+async def sftp_list(req: SFTPRequest, request: Request):
     """List files in a directory on a remote host via SFTP."""
+    require_session_if_configured(request)  # SEC-17
     try:
         known_hosts_path = await _ensure_host_key(
             req.host, req.port, approve_host=_make_sftp_approve(req.approved_fingerprint)
@@ -408,8 +411,9 @@ async def sftp_list(req: SFTPRequest):
         500: {"description": _ERR_SFTP_FAILED},
     },
 )
-async def sftp_download(req: SFTPDownloadRequest):
+async def sftp_download(req: SFTPDownloadRequest, request: Request):
     """Stream a file download from a remote host via SFTP."""
+    require_session_if_configured(request)  # SEC-17
     try:
         known_hosts_path = await _ensure_host_key(
             req.host, req.port, approve_host=_make_sftp_approve(req.approved_fingerprint)
@@ -452,6 +456,7 @@ async def sftp_download(req: SFTPDownloadRequest):
     },
 )
 async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    request: Request,
     host: Annotated[str, Form(...)],
     username: Annotated[str, Form(...)],
     remote_path: Annotated[str, Form(...)],
@@ -462,6 +467,7 @@ async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional
     approved_fingerprint: Annotated[str | None, Form()] = None,
 ):
     """Upload a file to a remote host via SFTP."""
+    require_session_if_configured(request)  # SEC-17
     try:
         known_hosts_path = await _ensure_host_key(
             host, port, approve_host=_make_sftp_approve(approved_fingerprint)
@@ -488,8 +494,9 @@ async def sftp_upload(  # pylint: disable=too-many-arguments,too-many-positional
 # ─── WSL Discovery ───────────────────────────────────────────────────────────
 
 @router.get("/api/wsl/discover", summary="Discover local WSL instances")
-async def wsl_discover():
+async def wsl_discover(request: Request):
     """Discover locally-installed WSL instances by running wsl.exe."""
+    require_session_if_configured(request)  # SEC-17 (before the try: a 401 must not be swallowed)
     try:
         process = await asyncio.create_subprocess_exec(
             _WSL_EXE, "-l", "-q",

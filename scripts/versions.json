@@ -6,7 +6,8 @@
   "static/libs/highlight.min.js": "11.12.0",
   "static/libs/marked.min.js": "18.0.14",
   "static/libs/papaparse.min.js": "5.7.0",
-  "static/libs/js-yaml.min.js": "4.2.0",
+  "static/libs/js-yaml.min.js": "4.3.2",
   "static/libs/require.min.js": "2.3.8",
-  "static/libs/vs": "0.57.0"
+  "static/libs/vs": "0.57.0",
+  "static/libs/dompurify.min.js": "3.4.18"
 }

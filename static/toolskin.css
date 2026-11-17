@@ -1,0 +1,158 @@
+/* ============================================================
+   Tool-page bento skin (feature 028, SPEC §9.15)
+   Injected into every page by deps.py::_serve_html(); styles ONLY
+   elements under [data-tool] (set on <body> of each tool page).
+
+   Rules here may change gap / padding / margin / background /
+   border / radius only — never display, position, flex, width or
+   height of layout containers — so each tool's layout engine
+   (Monaco, xterm, flex panes) is untouched. Colours come from theme
+   tokens via color-mix(); no hex.
+   ============================================================ */
+
+:root {
+    --tk-violet: color-mix(in srgb, var(--blue) 55%, var(--red));
+    --tk-teal:   color-mix(in srgb, var(--green) 55%, var(--blue));
+}
+
+[data-tool] {
+    --tk-radius: var(--radius-xl, 16px);   /* tile corners (matches the Home/Tools bento); set to 0 for square tiles */
+    --tk-hue:    var(--blue);
+    --tk-tile:   color-mix(in srgb, var(--tk-hue) 13%, var(--bg-secondary));
+    --tk-tile-2: color-mix(in srgb, var(--tk-hue) 22%, var(--bg-secondary));
+}
+/* one hue per tool (SPEC §9.7 families) */
+[data-tool="diff"]         { --tk-hue: var(--blue); }
+[data-tool="data-linter"]  { --tk-hue: var(--blue); }
+[data-tool="regex"]        { --tk-hue: var(--tk-violet); }
+[data-tool="base64"]       { --tk-hue: var(--blue); }
+[data-tool="crypto"]       { --tk-hue: var(--amber); }
+[data-tool="api-tester"]   { --tk-hue: var(--tk-violet); }
+[data-tool="ssh"]          { --tk-hue: var(--blue); }
+[data-tool="sftp"]         { --tk-hue: var(--tk-teal); }
+[data-tool="cron"]         { --tk-hue: var(--amber); }
+[data-tool="vault"]        { --tk-hue: var(--amber); }
+[data-tool="notes"]        { --tk-hue: var(--red); }
+[data-tool="roadmap"]      { --tk-hue: var(--green); }
+[data-tool="id-generator"] { --tk-hue: var(--tk-teal); }
+[data-tool="ws-tester"]    { --tk-hue: var(--tk-teal); }
+[data-tool="secret-scanner"] { --tk-hue: var(--red); }
+[data-tool="file-converter"] { --tk-hue: var(--tk-teal); }
+[data-tool="db-manager"]   { --tk-hue: var(--accent, var(--blue)); }
+
+/* ── Surfaces: flat tinted tiles, no borders ── */
+[data-tool] .pane-editor,
+[data-tool] .pane-output,
+[data-tool] .action-toolbar,
+[data-tool] .regex-input-row,
+[data-tool] .input-panel,
+[data-tool] .cs-controls,
+[data-tool] .cs-body,
+[data-tool] .cron-card,
+[data-tool] .idg-panel,
+[data-tool] .idg-results,
+[data-tool] .roadmap-card,
+[data-tool] .wst-connbar,
+[data-tool] .wst-log,
+[data-tool] .wst-composer,
+[data-tool] .api-tester-container > .sidebar,
+[data-tool] .api-tester-container .request-bar,
+[data-tool] .api-tester-container .request-pane,
+[data-tool] .api-tester-container .response-pane,
+[data-tool] .ssh-manager-container > .sidebar,
+[data-tool] .ssh-manager-container > .main-area,
+[data-tool] .sftp-sidebar,
+[data-tool] .sftp-main,
+[data-tool] .vault-sidebar,
+[data-tool] .entry-list-panel,
+[data-tool] .detail-panel,
+[data-tool] .notes-sidebar,
+[data-tool] .notes-main,
+[data-tool] .ss-input-tile,
+[data-tool] .ss-results-tile,
+[data-tool] .ss-fix-tile {
+    background: var(--tk-tile) !important;
+    border: 0 !important;
+    border-radius: var(--tk-radius) !important;
+    overflow: hidden;
+}
+
+/* ── Gutters between tiles (padding/gap only) ── */
+[data-tool] .tool-main { padding: 0 6px 6px; box-sizing: border-box; }
+[data-tool] .split-pane { gap: 6px; }
+[data-tool] .action-toolbar, [data-tool] .regex-input-row, [data-tool] .cs-controls { margin: 6px 6px 0; }
+[data-tool] .cs-body { margin: 6px; }
+[data-tool] .input-panels { gap: 6px; padding: 6px 6px 0; box-sizing: border-box; }
+[data-tool] .action-bar { background: transparent !important; border: 0 !important; }
+[data-tool] .api-tester-container, [data-tool] .ssh-manager-container, [data-tool] .vault-layout,
+[data-tool] .notes-container, [data-tool] .sftp-layout { padding: 6px; gap: 6px; box-sizing: border-box; }
+[data-tool] .api-tester-container .panes { gap: 6px; background: transparent; }
+[data-tool] .cron-main, [data-tool] .idg-main, [data-tool] .wst-main { gap: 6px; }
+
+/* ── Corner language (same as the Home/Tools bento) ──
+   Tiles: --tk-radius (16px). Buttons, badges and pills: full pill. Inputs/selects keep each
+   page's own moderate radius. Monaco, xterm and the SVG art own their look. */
+[data-tool] .btn, [data-tool] .line-badge, [data-tool] .tool-version, [data-tool] .status-pill {
+    border-radius: var(--radius-pill, 980px);
+}
+
+/* room for field labels inside tiles (the old rounded corner used to clip them) */
+[data-tool="ws-tester"] .wst-connbar,
+[data-tool="ws-tester"] .wst-composer { padding: 0.75rem 1rem; }
+[data-tool="ws-tester"] .wst-log-list { padding: 0; }
+
+/* ── Accent text on tinted tiles: use body text so contrast holds in every theme ── */
+[data-tool] .dialect-badge,
+[data-tool] .field-chip-label,
+[data-tool] .roadmap-card-pct,
+[data-tool] .idg-type[aria-pressed="true"] span { color: var(--text); }
+
+/* ── Generated art in empty states / lock screens ── */
+[data-tool] svg[data-art] {
+    --art-1: var(--tk-hue);
+    --art-2: var(--text);
+    --art-3: color-mix(in srgb, var(--tk-hue) 55%, var(--text));
+    --art-4: var(--text);
+}
+[data-tool] .tk-art { display: block; width: min(190px, 60%); height: 130px; margin: 0 auto 0.6rem; }
+
+/* ── Lock screens: one tile card ── */
+[data-tool] .lock-card, [data-tool] .db-lock-card, [data-tool] .sftp-modal,
+[data-tool] #master-password-overlay .modal, #ag-overlay .ag-card {
+    border-radius: var(--tk-radius) !important;
+}
+
+/* ── Hi-Contrast: tiles keep a strong outline instead of relying on tint ── */
+html[data-theme="high-contrast"] [data-tool] .pane-editor,
+html[data-theme="high-contrast"] [data-tool] .pane-output,
+html[data-theme="high-contrast"] [data-tool] .action-toolbar,
+html[data-theme="high-contrast"] [data-tool] .regex-input-row,
+html[data-theme="high-contrast"] [data-tool] .input-panel,
+html[data-theme="high-contrast"] [data-tool] .cs-controls,
+html[data-theme="high-contrast"] [data-tool] .cs-body,
+html[data-theme="high-contrast"] [data-tool] .cron-card,
+html[data-theme="high-contrast"] [data-tool] .idg-panel,
+html[data-theme="high-contrast"] [data-tool] .idg-results,
+html[data-theme="high-contrast"] [data-tool] .roadmap-card,
+html[data-theme="high-contrast"] [data-tool] .wst-connbar,
+html[data-theme="high-contrast"] [data-tool] .wst-log,
+html[data-theme="high-contrast"] [data-tool] .wst-composer,
+html[data-theme="high-contrast"] [data-tool] .api-tester-container > .sidebar,
+html[data-theme="high-contrast"] [data-tool] .api-tester-container .request-bar,
+html[data-theme="high-contrast"] [data-tool] .api-tester-container .request-pane,
+html[data-theme="high-contrast"] [data-tool] .api-tester-container .response-pane,
+html[data-theme="high-contrast"] [data-tool] .ssh-manager-container > .sidebar,
+html[data-theme="high-contrast"] [data-tool] .ssh-manager-container > .main-area,
+html[data-theme="high-contrast"] [data-tool] .sftp-sidebar,
+html[data-theme="high-contrast"] [data-tool] .sftp-main,
+html[data-theme="high-contrast"] [data-tool] .vault-sidebar,
+html[data-theme="high-contrast"] [data-tool] .entry-list-panel,
+html[data-theme="high-contrast"] [data-tool] .detail-panel,
+html[data-theme="high-contrast"] [data-tool] .notes-sidebar,
+html[data-theme="high-contrast"] [data-tool] .notes-main,
+html[data-theme="high-contrast"] [data-tool] .ss-input-tile,
+html[data-theme="high-contrast"] [data-tool] .ss-results-tile,
+html[data-theme="high-contrast"] [data-tool] .ss-fix-tile {
+    outline: 2px solid var(--border-mid);
+    outline-offset: -2px;
+}

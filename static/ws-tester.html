@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/static/ws-tester.css">
     <script src="/static/theme.js?v=2"></script>
 </head>
-<body>
+<body data-tool="ws-tester">
 
 <div id="toast-container"></div>
 
@@ -93,7 +93,7 @@
         </div>
         <div class="wst-log-list" id="wst-log-list" aria-live="polite">
             <div class="wst-empty" id="wst-empty">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h4l3 8 4-16 3 8h4"/></svg>
+                <svg class="tk-art" data-art="pulse"></svg>
                 <span>Connect to a ws:// or wss:// endpoint to start exchanging messages.</span>
             </div>
         </div>

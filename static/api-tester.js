@@ -270,7 +270,7 @@ function setupDynamicList(containerId, addBtnId) {
         vput.className = 'kv-input'; vput.type = 'text'; vput.placeholder = 'Value'; vput.value = v;
 
         const rem = document.createElement('button');
-        rem.className = 'kv-remove'; rem.textContent = '✕'; rem.title = 'Remove';
+        rem.className = 'kv-remove'; rem.textContent = '✕'; rem.title = 'Remove'; rem.setAttribute('aria-label', 'Remove');
         rem.onclick = () => row.remove();
 
         row.appendChild(checkbox);
@@ -560,7 +560,7 @@ function addEnvVarRow(k = '', v = '') {
     const vput = document.createElement('input');
     vput.className = 'kv-input'; vput.type = 'text'; vput.placeholder = 'Value'; vput.value = v;
     const rem = document.createElement('button');
-    rem.className = 'kv-remove'; rem.textContent = '✕'; rem.onclick = () => row.remove();
+    rem.className = 'kv-remove'; rem.textContent = '✕'; rem.setAttribute('aria-label', 'Remove'); rem.onclick = () => row.remove();
     row.appendChild(kput); row.appendChild(vput); row.appendChild(rem);
     els.envVarsList.appendChild(row);
 }
@@ -2252,7 +2252,7 @@ els.btnRunnerClose.addEventListener('click', () => { runnerStopRequested = true;
 els.closeRunnerModal.addEventListener('click', () => { runnerStopRequested = true; els.runnerModal.close(); });
 els.runnerModal.addEventListener('cancel', () => { runnerStopRequested = true; });
 
-// ─── Code Modal — cURL / fetch / HTTPie / import (SPEC §4.7.3) ───────────────
+// ─── Code Modal — cURL / fetch / HTTPie / Python / axios / Go / import (SPEC §4.7.3) ───────────────
 function setActiveCodeTab(kind) {
     document.querySelectorAll('.code-tab').forEach(btn => {
         const active = btn.dataset.codeKind === kind;
@@ -2270,6 +2270,9 @@ function setActiveCodeTab(kind) {
         if (kind === 'curl')   text = globalThis.CurlCodegen.buildCurl(config);
         if (kind === 'fetch')  text = globalThis.CurlCodegen.buildFetch(config);
         if (kind === 'httpie') text = globalThis.CurlCodegen.buildHttpie(config);
+        if (kind === 'python') text = globalThis.CurlCodegen.buildPython(config);
+        if (kind === 'axios')  text = globalThis.CurlCodegen.buildAxios(config);
+        if (kind === 'go')     text = globalThis.CurlCodegen.buildGo(config);
     } catch (e) {
         text = `Could not generate snippet: ${e.message}`;
     }

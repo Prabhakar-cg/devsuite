@@ -19,9 +19,10 @@
     </style>
     <!-- js-yaml must load BEFORE require.js to avoid AMD registration conflicts -->
     <script src="/static/libs/js-yaml.min.js"></script>
+    <link rel="stylesheet" href="/static/schema-validate.css">
     <script src="/static/theme.js?v=2"></script>
 </head>
-<body>
+<body data-tool="data-linter">
 
 <!-- TOAST -->
 <div id="toast-container"></div>
@@ -81,6 +82,10 @@
     <button id="btn-sort-keys" class="btn btn-ghost" data-tabs="json" title="Sort all object keys alphabetically" aria-label="Sort Keys — sort JSON keys alphabetically">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         Sort Keys
+    </button>
+    <button id="btn-schema" class="btn btn-ghost" data-tabs="json yaml" title="Validate the input against a JSON Schema" aria-label="Schema — validate the input against a JSON Schema" aria-haspopup="dialog">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"/></svg>
+        Schema
     </button>
     <div class="toolbar-sep" aria-hidden="true"></div>
     <button id="btn-convert-json" class="btn btn-ghost btn-convert" data-target-format="json" title="Convert to JSON" aria-label="Convert to JSON">→ JSON</button>
@@ -143,7 +148,7 @@
                 </div>
             </div>
             <div id="output-empty" class="output-empty" aria-label="Output area — empty">
-                <span class="output-empty-icon" aria-hidden="true">{ }</span>
+                <svg class="tk-art" data-art="lint"></svg>
                 <span>Run Validate, Format, Minify, or Convert to see output</span>
             </div>
             <section id="output-editor" class="output-monaco-host" style="display:none;" aria-label="Data output" aria-live="polite"></section>
@@ -152,9 +157,29 @@
     </div>
 </main>
 
+
+<!-- JSON Schema validation dialog (BACKLOG AI-4) -->
+<dialog id="schema-dialog" class="schema-dialog" aria-labelledby="schema-title">
+    <div class="schema-box">
+        <h2 id="schema-title" class="schema-title">Validate against a JSON Schema</h2>
+        <p class="schema-hint">Paste a JSON Schema (draft-07 / 2020-12 subset, e.g. an LLM tool-call or structured-output schema). The current <strong id="schema-tab-label">JSON</strong> input is validated in this tab — nothing is sent anywhere.</p>
+        <label for="schema-input" class="ds-sr-only">JSON Schema</label>
+        <textarea id="schema-input" class="schema-input" spellcheck="false" autocomplete="off" placeholder='{ "type": "object", "required": ["name"], "properties": { "name": { "type": "string" } } }'></textarea>
+        <div class="schema-actions">
+            <button type="button" class="btn btn-primary" id="schema-run">Validate</button>
+            <button type="button" class="btn btn-ghost" id="schema-sample">Sample schema</button>
+            <button type="button" class="btn btn-ghost" data-close id="schema-close">Close</button>
+        </div>
+        <output id="schema-summary" class="schema-summary" aria-live="polite" aria-atomic="true"></output>
+        <ul id="schema-errors" class="schema-errors" aria-label="Schema validation errors"></ul>
+    </div>
+</dialog>
+
 <script src="/static/libs/require.min.js"></script>
 <script src="/static/components.js"></script>
 <script src="/static/toon.js"></script>
+<script src="/static/json-schema-lite.js"></script>
+<script src="/static/schema-validate-ui.js" defer></script>
 <script>
 (function () {
     'use strict';

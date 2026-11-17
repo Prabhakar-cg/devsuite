@@ -31,7 +31,7 @@
         #regex-pattern.invalid { border-color: rgba(244,63,94,0.5); box-shadow: 0 0 0 3px rgba(244,63,94,0.1); }
         #regex-pattern.valid   { border-color: rgba(16,185,129,0.5); }
 
-        .flags-wrap { display: flex; gap: 0.25rem; flex-shrink: 0; }
+        .flags-wrap { display: flex; gap: 0.25rem; flex-shrink: 0; border: 0; padding: 0; margin: 0; min-inline-size: 0; }
         .flag-btn {
             font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700;
             width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
@@ -50,9 +50,9 @@
         .match-empty {
             flex: 1; display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            color: var(--text-muted); gap: 0.5rem; font-size: 0.85rem; opacity: 0.6;
+            color: var(--text-muted); gap: 0.5rem; font-size: 0.85rem;
         }
-        .match-empty-icon { font-size: 2rem; opacity: 0.3; }
+        .match-empty-icon { font-size: 2rem; }
 
         .match-summary {
             font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
@@ -94,7 +94,7 @@
         .regex-match-highlight { background: rgba(255, 230, 80, 0.25) !important; border-bottom: 2px solid #fbbf24 !important; }
     </style>
 </head>
-<body>
+<body data-tool="regex">
 
 <div id="toast-container"></div>
 
@@ -128,7 +128,7 @@
         aria-label="Regular expression pattern" aria-describedby="status-text">
     <span class="regex-slash" aria-hidden="true">/</span>
     <fieldset class="flags-wrap">
-        <legend class="sr-only">Regex flags</legend>
+        <legend class="ds-sr-only">Regex flags</legend>
         <button class="flag-btn active" data-flag="g" title="Global — find all matches" aria-pressed="true" aria-label="Global flag — find all matches">g</button>
         <button class="flag-btn" data-flag="i" title="Case-insensitive" aria-pressed="false" aria-label="Case-insensitive flag">i</button>
         <button class="flag-btn" data-flag="m" title="Multiline — ^ and $ match line boundaries" aria-pressed="false" aria-label="Multiline flag">m</button>
@@ -164,7 +164,7 @@
             </div>
             <section class="match-pane" id="match-pane" aria-label="Match results" aria-live="polite">
                 <div class="match-empty" id="match-empty">
-                    <span class="match-empty-icon" aria-hidden="true">🔎</span>
+                    <svg class="tk-art" data-art="regex"></svg>
                     <span>Enter a pattern and test string to see matches</span>
                 </div>
             </section>
@@ -174,31 +174,12 @@
 </main>
 
 <script src="/static/libs/require.min.js"></script>
+<script src="/static/components.js"></script>
 <script>
 (function () {
     'use strict';
 
-    function toast(msg, type = 'info', ms = 2500) {
-        const c = document.getElementById('toast-container');
-        const t = document.createElement('div');
-        t.className = `toast ${type}`;
-        
-        const span = document.createElement('span');
-        span.textContent = msg;
-        
-        const btn = document.createElement('button');
-        btn.className = 'toast-close';
-        btn.textContent = '✕';
-        btn.onclick = function() {
-            this.parentElement.classList.add('hide');
-            setTimeout(() => this.parentElement.remove(), 300);
-        };
-        
-        t.appendChild(span);
-        t.appendChild(btn);
-        c.appendChild(t);
-        setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, ms);
-    }
+    function toast(msg, type = 'info', ms = 2500) { DevSuite.toast(msg, type, ms); }
 
     function buildRegex(pattern, flags) {
         try { return { ok: true, re: new RegExp(pattern, flags) }; }
@@ -282,7 +263,7 @@
             if (!r.ok) {
                 patternEl.className = 'invalid';
                 decorations = editor.deltaDecorations(decorations, []);
-                renderEmpty('⚠ ' + r.error);
+                renderEmpty('Error: ' + r.error);
                 setStatus('invalid', 'Invalid pattern');
                 return;
             }
@@ -326,9 +307,10 @@
             const div = document.createElement('div');
             div.className = 'match-empty';
             
-            const icon = document.createElement('span');
-            icon.className = 'match-empty-icon';
-            icon.textContent = '🔎';
+            const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            icon.setAttribute('class', 'tk-art');
+            icon.setAttribute('data-art', 'regex');
+            globalThis.BentoArt?.render(icon); // generated art (SPEC §9.15); renderAll() covers the pre-load case
             
             const text = document.createElement('span');
             text.textContent = msg;

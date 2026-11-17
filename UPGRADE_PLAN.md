@@ -51,9 +51,9 @@
 |---|---|---|---|
 | `static/libs/highlight.min.js` | highlight.js | unknown | [npmjs highlight.js](https://www.npmjs.com/package/highlight.js) |
 | `static/libs/marked.min.js` | marked | unknown | [npmjs marked](https://www.npmjs.com/package/marked) |
-| `static/libs/dompurify.min.js` | DOMPurify | 3.4.13 | [npmjs dompurify](https://www.npmjs.com/package/dompurify) |
+| `static/libs/dompurify.min.js` | DOMPurify | 3.4.18 (updated 2026-11-17: advisories incl. GHSA-cg2g-xh64-v4q7 fixed in 3.4.17+) | [npmjs dompurify](https://www.npmjs.com/package/dompurify) |
 | `static/libs/papaparse.min.js` | PapaParse | unknown | [npmjs papaparse](https://www.npmjs.com/package/papaparse) |
-| `static/libs/js-yaml.min.js` | js-yaml | 4.1.0 → **4.1.1 available** | [npmjs js-yaml](https://www.npmjs.com/package/js-yaml) |
+| `static/libs/js-yaml.min.js` | js-yaml | 4.3.2 (updated 2026-11-17: merge-key / !!omap CPU-DoS advisories fixed in 4.3.2) | [npmjs js-yaml](https://www.npmjs.com/package/js-yaml) |
 | `static/libs/require.min.js` | RequireJS | 2.3.6 → **2.3.8 available** | [requirejs.org](https://requirejs.org/docs/download.html) |
 | `static/libs/vs/` | Monaco Editor | 0.45.0 → **0.55.1 available** | [npmjs monaco-editor](https://www.npmjs.com/package/monaco-editor) |
 

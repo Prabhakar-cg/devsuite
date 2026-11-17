@@ -8,8 +8,8 @@ const assert = require('node:assert/strict');
 const CommandPaletteData = require('../../static/command-palette-data.js');
 
 // ── DESTINATIONS shape (FR-011) ──
-test('DESTINATIONS has 17 entries (15 tools + Home + Tools Hub)', () => {
-    assert.equal(CommandPaletteData.DESTINATIONS.length, 17);
+test('DESTINATIONS has 18 entries (16 tools + Home + Tools Hub)', () => {
+    assert.equal(CommandPaletteData.DESTINATIONS.length, 18);
 });
 
 test('DESTINATIONS entries all have unique ids', () => {
@@ -52,7 +52,7 @@ test('matchDestinations matches by category', () => {
     const all = CommandPaletteData.DESTINATIONS;
     const security = CommandPaletteData.matchDestinations('security', all);
     const ids = security.map((d) => d.id).sort();
-    assert.deepEqual(ids, ['crypto', 'db-manager', 'vault']);
+    assert.deepEqual(ids, ['crypto', 'db-manager', 'secret-scanner', 'vault']);
 });
 
 test('matchDestinations matches "uuid" to ID Generator via keywords (SC-006)', () => {

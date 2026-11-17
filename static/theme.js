@@ -22,7 +22,6 @@
 
         html[data-theme="vs"] {
             color-scheme: light;
-            --bg-void: #f8fafc;
             --bg-main: #f1f5f9;
             --bg-surface: #ffffff;
             --bg-panel: #ffffff;
@@ -33,16 +32,15 @@
             --glass-shine: rgba(255, 255, 255, 0.6);
             --text-primary: #0f172a;
             --text-secondary: #475569;
-            --text-muted: #64748b;
+            --text-muted: #566478;
+            --bg-tertiary: #e2e8f0;
+            --focus-ring: #0071e3;
             --border: rgba(0, 0, 0, 0.1);
-            --neu-raise: 4px 4px 10px rgba(0,0,0,0.06), -4px -4px 10px rgba(255,255,255,0.8);
             --neu-press: inset 3px 3px 6px rgba(0,0,0,0.05), inset -3px -3px 6px rgba(255,255,255,0.6);
-            --neu-flat: 2px 2px 5px rgba(0,0,0,0.04), -2px -2px 5px rgba(255,255,255,0.7);
         }
 
         html[data-theme="high-contrast"] {
             color-scheme: dark;
-            --bg-void: #000000;
             --bg-main: #000000;
             --bg-surface: #000000;
             --bg-panel: #000000;
@@ -55,17 +53,15 @@
             --text-primary: #ffffff;
             --text-secondary: #e0e0e0;
             --text-muted: #a0a0a0;
+            --bg-tertiary: #141414;
+            --focus-ring: #ffd60a;
             --border: rgba(255, 255, 255, 0.4);
             --border-accent: rgba(255, 255, 255, 0.7);
-            --neu-raise: none;
             --neu-press: none;
-            --neu-flat: none;
-            --shadow-glow: none;
         }
 
         html[data-theme="ios-glass"] {
             color-scheme: light;
-            --bg-void: #c5d8ff;
             --bg-main: #d4e4ff;
             --bg-surface: rgba(255, 255, 255, 0.45);
             --bg-panel: rgba(255, 255, 255, 0.55);
@@ -77,11 +73,10 @@
             --glass-blur: blur(24px) saturate(180%);
             --text-primary: #1c1c1e;
             --text-secondary: rgba(44, 44, 54, 0.85);
-            --text-muted: rgba(60, 60, 67, 0.55);
+            --text-muted: #4a5063;
+            --focus-ring: #1d4ed8;
             --border: rgba(99, 130, 255, 0.15);
-            --neu-raise: 0 8px 32px rgba(80,100,220,0.12), 0 2px 6px rgba(80,100,220,0.06);
             --neu-press: inset 0 2px 5px rgba(80,100,220,0.1);
-            --neu-flat: 0 2px 5px rgba(80,100,220,0.06);
         }
 
         /* Override hardcoded dark elements in light themes */
@@ -379,11 +374,13 @@ document.addEventListener('DOMContentLoaded', attachThemeListeners);
             '--surface-3':    '#1a1a58',
             '--text-primary': '#e8e6ff',
             '--text-secondary':'#9b95cc',
-            '--text-muted':   '#4a4580',
+            '--text-muted':   '#8a87ad',
             '--border':       'rgba(139,92,246,0.15)',
             '--border-bright':'rgba(139,92,246,0.28)',
             '--border-accent':'rgba(139,92,246,0.5)',
             '--electric':     '#8b5cf6',
+            '--electric-solid': '#7c3aed',
+            '--on-electric':  '#ffffff',
             '--electric-glow':'rgba(139,92,246,0.22)',
             '--electric-dim': 'rgba(139,92,246,0.1)',
             '--lime':         '#4ade80',
@@ -402,11 +399,13 @@ document.addEventListener('DOMContentLoaded', attachThemeListeners);
             '--surface-3':    '#162840',
             '--text-primary': '#d8eeff',
             '--text-secondary':'#7fb0d8',
-            '--text-muted':   '#3d6485',
+            '--text-muted':   '#7892a9',
             '--border':       'rgba(56,189,248,0.12)',
             '--border-bright':'rgba(56,189,248,0.22)',
             '--border-accent':'rgba(56,189,248,0.42)',
             '--electric':     '#38bdf8',
+            '--electric-solid': '#0369a1',
+            '--on-electric':  '#ffffff',
             '--electric-glow':'rgba(56,189,248,0.2)',
             '--electric-dim': 'rgba(56,189,248,0.08)',
             '--lime':         '#34d399',
@@ -424,17 +423,19 @@ document.addEventListener('DOMContentLoaded', attachThemeListeners);
             '--surface-2':    '#0a3d4a',
             '--surface-3':    '#0d4a58',
             '--text-primary': '#fdf6e3',
-            '--text-secondary':'#93a1a1',
-            '--text-muted':   '#586e75',
+            '--text-secondary':'#a9b4b4',
+            '--text-muted':   '#a9b4b8',
             '--border':       'rgba(42,161,152,0.2)',
             '--border-bright':'rgba(42,161,152,0.35)',
             '--border-accent':'rgba(42,161,152,0.5)',
             '--electric':     '#268bd2',
+            '--electric-solid': '#1d6fa5',
+            '--on-electric':  '#ffffff',
             '--electric-glow':'rgba(38,139,210,0.2)',
             '--electric-dim': 'rgba(38,139,210,0.08)',
-            '--lime':         '#859900',
+            '--lime':         '#a5bb1c',
             '--lime-glow':    'rgba(133,153,0,0.15)',
-            '--amber':        '#b58900',
+            '--amber':        '#e0aa1f',
             '--violet':       '#6c71c4',
             '--glow-blue':    '0 0 40px rgba(38,139,210,0.18), 0 0 80px rgba(38,139,210,0.08)',
         },
@@ -448,16 +449,20 @@ document.addEventListener('DOMContentLoaded', attachThemeListeners);
             '--surface-3':    'rgba(255,255,255,0.4)',
             '--text-primary': '#1c1c1e',
             '--text-secondary':'rgba(44,44,54,0.8)',
-            '--text-muted':   'rgba(60,60,67,0.5)',
+            '--text-muted':   '#555b6a',
             '--border':       'rgba(99,130,255,0.2)',
             '--border-bright':'rgba(99,130,255,0.35)',
             '--border-accent':'rgba(99,130,255,0.5)',
             '--electric':     '#4f46e5',
+            '--electric-solid': '#4f46e5',
+            '--on-electric':  '#ffffff',
+            '--header-bg': 'rgba(255,255,255,0.8)',
+            '--header-bg-strong': 'rgba(255,255,255,0.95)',
             '--electric-glow':'rgba(79,70,229,0.2)',
             '--electric-dim': 'rgba(79,70,229,0.1)',
-            '--lime':         '#16a34a',
+            '--lime':         '#15803d',
             '--lime-glow':    'rgba(22,163,74,0.15)',
-            '--amber':        '#d97706',
+            '--amber':        '#9a5b00',
             '--violet':       '#7c3aed',
             '--glow-blue':    '0 0 40px rgba(79,70,229,0.14), 0 0 80px rgba(79,70,229,0.06)',
             '--glow-card':    '0 1px 0 rgba(255,255,255,0.3) inset, 0 -1px 0 rgba(0,0,0,0.1) inset',
@@ -477,6 +482,8 @@ document.addEventListener('DOMContentLoaded', attachThemeListeners);
             '--border-bright':'rgba(255,255,255,0.6)',
             '--border-accent':'rgba(255,255,255,0.85)',
             '--electric':     '#60a5fa',
+            '--electric-solid': '#60a5fa',
+            '--on-electric':  '#000000',
             '--electric-glow':'rgba(96,165,250,0.3)',
             '--electric-dim': 'rgba(96,165,250,0.15)',
             '--lime':         '#86efac',
@@ -496,11 +503,15 @@ document.addEventListener('DOMContentLoaded', attachThemeListeners);
             '--surface-3':     '#eef0f5',
             '--text-primary':  '#0f1018',
             '--text-secondary':'#4b5280',
-            '--text-muted':    '#8e94b0',
+            '--text-muted':    '#63687b',
             '--border':        'rgba(0,0,0,0.09)',
             '--border-bright': 'rgba(0,0,0,0.16)',
             '--border-accent': 'rgba(37,99,235,0.4)',
             '--electric':      '#2563eb',
+            '--electric-solid': '#2563eb',
+            '--on-electric':  '#ffffff',
+            '--header-bg': 'rgba(255,255,255,0.85)',
+            '--header-bg-strong': 'rgba(255,255,255,0.96)',
             '--electric-glow': 'rgba(37,99,235,0.2)',
             '--electric-dim':  'rgba(37,99,235,0.08)',
             '--lime':          '#16a34a',
@@ -517,9 +528,9 @@ document.addEventListener('DOMContentLoaded', attachThemeListeners);
         '--void','--deep','--surface','--surface-2','--surface-3',
         '--text-primary','--text-secondary','--text-muted',
         '--border','--border-bright','--border-accent',
-        '--electric','--electric-glow','--electric-dim',
+        '--electric','--electric-solid','--on-electric','--electric-glow','--electric-dim',
         '--lime','--lime-glow','--amber','--violet',
-        '--glow-blue','--glow-card',
+        '--glow-blue','--glow-card','--header-bg','--header-bg-strong',
     ];
 
     window.applyHomeCSSVars = function(theme) {

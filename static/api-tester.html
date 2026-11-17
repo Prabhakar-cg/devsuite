@@ -22,7 +22,7 @@
     <script src="/static/curl-codegen.js"></script>
     <script src="/static/collection-utils.js"></script>
 </head>
-<body>
+<body data-tool="api-tester">
 
     <header class="app-header" aria-label="API Tester toolbar">
         <div style="display:flex; align-items:center; gap:0.75rem;">
@@ -95,7 +95,7 @@
         </nav>
 
         <!-- Main Area -->
-        <div class="main-area">
+        <div class="main-area" role="main">
 
             <div class="request-bar" role="search" aria-label="HTTP request">
                 <label for="req-method" class="sr-only">HTTP method</label>
@@ -116,7 +116,7 @@
                     <option value="direct">Force Direct</option>
                     <option value="proxy">Force Proxy</option>
                 </select>
-                <button id="btn-code" class="btn-small" aria-label="Code snippets — copy as cURL, fetch, or HTTPie, or import a curl command" title="Copy as cURL / fetch / HTTPie — or paste a curl command">Code</button>
+                <button id="btn-code" class="btn-small" aria-label="Code snippets — copy as cURL, fetch, HTTPie, Python, axios or Go, or import a curl command" title="Copy as cURL / fetch / HTTPie — or paste a curl command">Code</button>
                 <button id="btn-send" class="send-btn" aria-label="Send HTTP request">Send</button>
             </div>
 
@@ -477,6 +477,9 @@
                     <button class="code-tab active" data-code-kind="curl" role="tab" aria-selected="true">cURL</button>
                     <button class="code-tab" data-code-kind="fetch" role="tab" aria-selected="false">fetch</button>
                     <button class="code-tab" data-code-kind="httpie" role="tab" aria-selected="false">HTTPie</button>
+                    <button class="code-tab" data-code-kind="python" role="tab" aria-selected="false">Python</button>
+                    <button class="code-tab" data-code-kind="axios" role="tab" aria-selected="false">axios</button>
+                    <button class="code-tab" data-code-kind="go" role="tab" aria-selected="false">Go</button>
                     <button class="code-tab" data-code-kind="import" role="tab" aria-selected="false">Import cURL</button>
                 </div>
                 <div id="code-output-wrap" class="code-output-wrap">

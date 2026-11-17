@@ -5,6 +5,176 @@ Versions follow [Semantic Versioning](https://semver.org/). This log was reset a
 
 ---
 
+## [0.19.0] — 2026-11-17 (Secret Scanner, JSON Schema, code-gen, de-emoji)
+
+### Features
+
+- **Secret Scanner — the 16th tool (`/secret-scanner`, feature 021).** Paste logs, `.env` files, diffs or MCP configs; AWS / GitHub / OpenAI / Anthropic / Slack / Stripe / Google keys, JWTs, PEM private-key headers and high-entropy values on credential-like names are flagged with type, confidence, line/column and a **redacted** preview (reveal is explicit). MCP manifests are recognised: only *literal* `env` secrets are flagged (not `${VAR}` references), attributed per server, with a separate corrected manifest using `${NAME}` references — your input is never rewritten. Pure engine (31 tests incl. a 1 MB performance test and a no-network/no-storage guard), bento-skinned page, palette + Tools card, counts updated to 16. Direct "Move to Vault" was replaced by copy/handoff because vault keys are intentionally never available across pages (see the spec).
+- **JSON Schema validation in the Data Linter (AI-4).** New *Schema* button (JSON/YAML tabs) opens an accessible dialog; errors show as JSON-Pointer path · keyword · message. `json-schema-lite.js` supports the keywords used by LLM tool-call / structured-output schemas (incl. `$ref`, `oneOf`, `if/then/else`, `contains`, formats) and reports unsupported keywords instead of ignoring them (18 tests).
+- **API Tester code-gen: Python (`requests`), axios and Go (`net/http`)** next to cURL / fetch / HTTPie (FEAT-17); generated Python is syntax-checked in the test suite.
+
+### Design-system / DX
+
+- **No more emoji in the UI (DX-9 done):** every pictograph (📋 🔐 🔑 📁 📦 🖼 …) across Crypto, Base64, Diff, Vault, SFTP, Home and others is replaced by the shared stroke-icon set (`static/icons.js`; the SFTP browser now maps file types to icons). A test fails if one comes back.
+- Backlog decisions recorded: SEC-22 not done as proposed (2× benefit vs. cross-store migration risk), ROAD-4 needs a package restructure first, FEAT-5 / ROAD-6 / ROAD-7 declined.
+- Tests: backend 394, JS 250; smoke test 22/22 pages, axe clean on all touched pages.
+
+---
+
+## [0.18.0] — 2026-11-17 (Backlog sweep: BUG-1, SEC-2, DX-1, ROAD-3)
+
+### Security / dependencies
+
+- **Vendored-JS vulnerabilities found and fixed (SEC-2):** a new `package.json` lets `npm audit` see the libraries vendored under `static/`; its first run flagged **js-yaml 4.2.0** (high — merge-key / `!!omap` CPU DoS) and **DOMPurify 3.4.13** (critical `SAFE_FOR_TEMPLATES` bypass, not enabled by DevSuite). Upgraded in place to js-yaml 4.3.2 and DOMPurify 3.4.18 and verified in a browser (YAML parse/dump incl. merge keys, sanitiser output, doc viewer render). Monaco 0.57.0 still bundles an affected DOMPurify with no upstream fix — tracked as SEC-23.
+- CI now runs `ruff`, `pip-audit`, `npm audit` (vendored libs) and a Docker build + health check alongside pytest.
+
+### Fixes
+
+- **DevDB Manager "Database Password" removed (BUG-1):** it rewrote the master-password challenge with a fresh salt and never re-encrypted the vault (orphaning encrypted data), and the database-file encryption it described had no backend. It is replaced by an info card pointing to Secret Vault → Change Password (the safe rotation flow) and the `DEVDB_PASSWORD` env var. Test: only `vault.js` may call `update-challenge`.
+
+### Features / DX
+
+- **Docker (ROAD-3):** multi-stage non-root `Dockerfile`, `docker-compose.yml` (loopback-only port, read-only FS, dropped capabilities, `devsuite-data` volume), `.dockerignore`.
+- **Linting (DX-1):** `ruff.toml`, `.pre-commit-config.yaml`; the backend is ruff-clean.
+- **Browser smoke test (DX-6, first slice):** `tests/e2e/smoke.py`.
+- Backlog/review docs reconciled (`BACKLOG.md`; the standalone `claudefeedback.md` review log was later retired — its history lives in this changelog and `specs/025-security-hardening/assessment.md`); stale items closed (FEAT-6, SEC-1, BUG-1, SEC-2).
+
+---
+
+## [0.17.2] — 2026-11-17 (Corner language: bento rounding)
+
+- Tool pages now use the same corner language as the Home/Tools bento: 16px tiles, pill buttons/badges, moderately rounded fields — replacing the fully square edges from 0.17.1. One `--tk-radius` token controls tile corners.
+- WebSocket Tester keeps its new padding so "ENDPOINT URL" and other labels never touch a rounded corner (label inset 14px).
+- Verified in a real browser: tile radius 16px and button radius pill on WS Tester, File Converter, Cron and Data Linter.
+
+---
+
+## [0.17.1] — 2026-11-17 (Sharp edges on every tool page)
+
+### Changes
+
+- **Square corners on every tool page.** One universal rule under `[data-tool]` removes all rounding (tiles, panes, inputs, buttons, badges, pills, dots, toasts, lock cards), driven by a single `--tk-radius` token (default `0`). Exempt: SVG artwork, Monaco editor internals, the xterm terminal, and the command-palette chrome. File Converter and DevDB Manager now opt into the skin too.
+- WebSocket Tester: the rounded connection bar no longer clips the "ENDPOINT URL" label; the connection bar and composer have proper padding.
+- Verified in a real browser: 0 rounded elements on all 16 tool pages, locked and unlocked; Monaco still fills its host exactly; Home/Tools bento tiles keep their rounded look.
+
+---
+
+## [0.17.0] — 2026-11-17 (Tool pages bento redesign)
+
+### Features
+
+#### Bento skin for every tool page (`static/toolskin.css`, feature 028)
+
+- All 14 tool pages — Diff, Data Linter, Regex, Base64, Crypto, API Tester, Secure Terminal, SFTP Browser, Cron, Secret Vault, Notes, Roadmap, ID Generator, WebSocket Tester — now use flat colour-blocked tiles with 6px gutters, a hue per tool, pill controls and generated artwork in empty states (replacing emoji/glyph icons). Hi-Contrast adds strong tile outlines.
+- **Layout-safe by construction:** one injected stylesheet scoped to `<body data-tool>` that only changes gap/padding/background/border/radius — Monaco editors still fill their panes exactly, the terminal/dashboard sizing is untouched, and a test enforces the rule.
+- New pictures `regex`, `encode`, `ids`, `pulse` in `bento-art.js`; JS-rendered empty states (Regex matches, Vault list) use generated art too.
+- Verified in a real browser: axe 0 violations — 9 ungated pages × 6 themes, locked states × 6 themes, unlocked gated pages in light/glass/Hi-Contrast; no new console errors; no horizontal overflow at 320px.
+
+### Fixes
+
+- **Standalone SFTP Browser could not unlock** any vault created by a current version (it never verified the challenge or opened a session, so profile loading returned 401). It now uses `master-verify.js` like DevDB Manager.
+- **Lock-screen contrast:** the shared unlock card's button (3.7:1) and error text (4.3:1) failed WCAG AA in every theme; DevDB Manager's Unlock button had dropped to 2.5:1 after an earlier colour swap (now a separate `--accent-solid` fill).
+- `class="sr-only"` was used on many pages but never defined, so screen-reader-only labels (API Tester "HTTP method"/"Request URL", Base64/Regex fieldset legends) showed as visible text — now defined once in `a11y.css`.
+- Header controls wrap below 560px (Diff, SSH, Notes overflowed horizontally at 320px).
+- ios-glass muted text and a few accent-on-tint labels adjusted so tinted tiles keep ≥ 4.5:1.
+- Specs: `specs/028-tool-pages-bento/`; SPEC §9.15.
+
+---
+
+## [0.16.0] — 2026-11-17 (File Converter redesign)
+
+### Features
+
+#### File Converter bento redesign (`static/converter.css`, feature 027)
+
+- A rich, colour-blocked layout using the bento visual language: a large drop tile with generated artwork (a document becoming another), a grouped **Convert** panel (From → To selectors, full-width pill Convert button, Reset), a full-width result tile, and four category tiles — Data, Spreadsheet, Documents, Images — each with its own hue, small artwork and legible chips.
+- Server-side conversions are marked with an amber tint **and** an `SRV` cue (not colour alone), and the legend is readable.
+- Conversion logic, endpoints and limits are unchanged — every element id and the `drag-over` / `has-file` / `loading` states are preserved (verified by a real JSON→YAML conversion in a browser). Theme-token colours only: all six themes, 12→6→1 columns, no overflow at 320px, axe 0 violations ×6 themes.
+- New pictures `convert`, `sheet`, `doc`, `image` in `bento-art.js` (data-only SVG, no assets).
+
+### Fixes
+
+- **Toasts were unstyled on the Linter, Crypto, Base64, Regex, Diff and Converter pages:** `@import 'toast.css'` sat mid-file in `linter.css`/`style.css`, where browsers ignore it. The import now precedes all rules (guard test added).
+- Specs: `specs/027-file-converter-bento/`.
+
+---
+
+## [0.15.0] — 2026-11-17 (Bento Showcase)
+
+### Features
+
+#### Bento showcase on Home and Tools (`static/bento-art.js`, `static/bento.css`) — feature 026
+
+- A mosaic of flat, colour-blocked tiles under the Home hero and above the Tools catalog: six tool tiles (Text Diff, Data Linter, Secret Vault, API Tester, Secure Terminal, Cron Visualizer) with a generated picture each, a pattern tile, and one statement tile with a single headline and pill button. Composition inspired by modern consumer-tech marketing pages; no third-party imagery, logos or branding.
+- **Generated art, no assets:** pictures are plain shape data rendered to SVG with `createElementNS` (no images, network or HTML-string injection); tiles stay coloured, labelled links with JS off.
+- **All six themes for free:** tile colours are `color-mix()` of the theme's accent tokens over its surface, so dark and light themes (and Hi-Contrast) recolour automatically — axe: 0 violations on `/` and `/tools` in all six themes.
+- Responsive (12 → 6 → 1 columns, no overflow at 320px), keyboard operable (tiles are links; Enter opens the tool), reduced-motion safe, art is decorative (`aria-hidden`).
+- Tests: `tests/javascript/test_bento_art.js` (art data), `tests/python/test_bento.py` (structure, routes, accessible names, no inline script/style, token-only CSS); SPEC §9.14.
+
+---
+
+## [0.14.0] — 2026-11-17 (Independent assessment: security hardening + runtime fixes)
+
+### Security (feature 025, SPEC §7.9)
+
+- **DNS-rebinding defence (SEC-15/16):** `Host` header allowlist on every request (`localhost`, `127.0.0.1`, `::1` + `DEVSUITE_ALLOWED_HOSTS`); Origin validation on mutating requests; WebSocket origin trust no longer derives from the `Host` header.
+- **SFTP/WSL endpoints now session-gated (SEC-17)** once a master password is configured.
+- **Proxy SSRF (SEC-18):** the connected peer address is validated before any request bytes are sent (initial request and every redirect); IPv4-mapped IPv6 and `0.0.0.0`/`::` are rejected; environment proxies are ignored.
+- **Headers (SEC-19):** CSP `frame-ancestors/base-uri/object-src/form-action`, `Permissions-Policy`, `Cross-Origin-Opener/Resource-Policy`, `Cache-Control: no-store` on `/api/*`.
+- **Archive limits (SEC-20)** for docx/xlsx conversion; **session/audit hygiene (SEC-21):** expired-session eviction + cap, `AUTH_FAIL` audit events, `/api/auth/setup` rate limit.
+- `pip-audit` added to CI (SEC-1); `pip-audit` and `bandit` are clean. Open: SEC-22 (KDF cost), SEC-11 (CSP `unsafe-inline`).
+
+### Fixes found by running the product
+
+- **File Converter was dead since 0.11.0:** palette/a11y scripts were injected before the first `</body>`, which sits inside a JS string on that page. Injection now targets the final `</body>`.
+- **DevDB Manager could not unlock any current vault:** it only understood the legacy v1 challenge. New `static/master-verify.js` supports v1 and v2 (9 unit tests incl. a real WebCrypto v2 vector); also loads the missing `components.js`; 429 shows a clear message.
+- **SSH live dashboard never rendered:** `chart.js` was never vendored. Replaced by a dependency-free `static/mini-chart.js` (Chart.js-compatible subset, 9 unit tests) — no new third-party library.
+- `Permissions-Policy` no longer lists the unrecognised `bluetooth` feature.
+
+### Tests
+
+- Backend 321 (was 217), JS 183 (was 165): new `test_security_hardening.py` (63 tests, mutation-checked), regression guards for script injection/missing assets, `test_mini_chart.js`, `test_master_verify.js`.
+- Full write-up: `specs/025-security-hardening/assessment.md`.
+
+---
+
+## [0.13.0] — 2026-11-17 (Tool-Page Theming)
+
+### Fixes
+
+#### Themes now recolour the whole tool page (`static/theme-layer.css`, `deps.py`) — feature 024
+
+- **Root cause fixed**: every tool stylesheet carried its own copy of the palette while `theme.js` only overrode legacy alias names, so themes only half-applied. A new shared theme layer (injected on every page, SPEC §9.13) assigns the canonical tokens per theme with `html[data-theme]` selectors that beat page-local palettes regardless of load order.
+- **Hi-Contrast is genuinely high contrast** on every tool page: black surfaces, white text (≥7:1), strong outlines, yellow focus ring, dark-on-light filled buttons. Light and iOS Glass get complete canonical tokens too.
+- **Crypto Suite and DevDB Manager** have consistent dark chrome (no light header or white buttons on a dark page).
+- **Home and Tools**: filled controls use a themed solid accent (`--electric-solid`/`--on-electric`), badges, tag chips, eyebrows and links meet 4.5:1 in all six themes; header glass follows the theme; "coming soon" cards use a dashed border instead of dimming text.
+- Lock screens: SSH unlock card keeps a 16px margin on narrow viewports and the Vault password placeholders no longer clip at 320px (Vault, SFTP and SSH lock cards were measured aligned in a browser).
+- DevDB Manager lock card: the unlock form no longer collapses its field/button gap (script forced `display: block` over the flex layout), and text-field focus rings are drawn inside the border so they never spill past neighbouring controls.
+- Status text across tools uses the text-safe `--green/amber/red-text` tokens; empty-state and secondary text no longer rely on opacity; `Ctrl K` palette hint is spaced; a pre-existing bug where a page comment mentioning an asset name suppressed its injection is fixed (injection checks match the full asset path).
+- Verified in headless Chromium + axe: 18 pages × 6 themes — contrast violations 706 → 0 (reduced-motion emulation; see `specs/024-tool-page-theming/checklists/verification.md`).
+
+## [0.12.0] — 2026-11-17 (Accessibility & Design-Token Foundation)
+
+### Features
+
+#### WCAG 2.1 AA foundation, injected suite-wide (`static/a11y.css`, `static/a11y.js`, `deps.py`) — feature 023
+
+- One shared, theme-aware **keyboard focus ring** (`--focus-ring`) that legacy `outline: none` rules can no longer strip; **skip link** ("Skip to main content") first in every page's tab order, including pre-unlock lock screens; every page now has exactly one `<main>` landmark; labelled `<nav>` regions.
+- **Shared dialog behavior** for native `<dialog>` and overlay modals: dialog role/name, focus moves in, Tab trapped, Esc closes via the existing close control (lock screens are non-dismissible), focus returns to the opener. The Command Palette is untouched.
+- **Announcements**: toasts now speak through persistent polite/assertive live regions (`DevSuite.a11y.announce`); toast close buttons are SVG with an accessible name; the Diff tool's emoji toast icons are now stroke SVG; glyph-only buttons gained `aria-label`s.
+- **Contrast**: `--text-muted` fixed in all 6 themes (it was 2.1–3.6:1; now ≥4.5:1), new text-safe `--blue/green/amber/red-text` tokens, `--focus-ring` per theme. Verified by a computed matrix test.
+- **Responsive / 200% zoom**: below 900px the fixed-viewport shell scrolls and multi-pane layouts stack (14 stylesheets now define narrow behavior); 44px touch targets on coarse pointers; reduced-motion support suite-wide; scrollbars derive from theme tokens.
+- **Tokens**: `--radius-xl` / `--radius-pill` (SPEC §9.4 discrepancy closed), type scale (no UI text under 12px), spacing scale, `--on-accent`; white-on-accent and status-text hex literals replaced; five unused alias variables removed.
+- Spec: `specs/023-ui-accessibility-foundation/` + SPEC §9.12 (new), §9.4, §10.5.
+
+### Known follow-ups
+
+- Remaining compatibility aliases are the documented theme-override API; renaming them needs a rendered-browser pass.
+- Pre-existing emoji in Vault entry types, SFTP file icons and Crypto tab labels (SPEC §9.8) are not yet converted to SVG.
+- Axe pass done (specs/023-ui-accessibility-foundation/checklists/verification.md): no critical violations; contrast work remains, notably the Hi-Contrast theme on tool pages.
+
+---
+
 ## [0.11.0] — 2026-09-28 (Command Palette)
 
 ### Features

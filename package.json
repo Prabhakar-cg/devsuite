@@ -1,0 +1,23 @@
+{
+  "name": "devsuite-vendored-libs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Manifest of the third-party JS vendored under static/ \u2014 exists ONLY so `npm audit` / Dependabot can see known CVEs (BACKLOG SEC-2). Nothing here is installed or bundled at runtime; the files are served from /static (no build step, Constitution III). Keep versions in sync with scripts/versions.json.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "dompurify": "3.4.18",
+    "highlight.js": "11.12.0",
+    "jszip": "3.10.1",
+    "js-yaml": "4.3.2",
+    "marked": "18.0.14",
+    "papaparse": "5.7.0",
+    "requirejs": "2.3.8"
+  },
+  "unvendoredVersionUnknown": [
+    "xterm (static/xterm.js)",
+    "crypto-js (static/crypto-js.min.js)"
+  ],
+  "knownUnfixableUpstream": {
+    "monaco-editor 0.57.0": "bundles dompurify 3.4.15 (GHSA-cg2g-xh64-v4q7, SAFE_FOR_TEMPLATES bypass; Monaco does not enable that option and DevSuite never feeds it untrusted HTML). No fixed release yet (latest 0.57.0; 0.58 dev only). Tracked as BACKLOG SEC-23 \u2014 re-add to dependencies once a fixed Monaco ships."
+  }
+}

@@ -1,0 +1,28 @@
+/* JSON Schema dialog for the Data Linter (BACKLOG AI-4) */
+.schema-dialog {
+    border: 0; padding: 0; background: transparent; color: var(--text);
+    width: min(720px, 94vw); max-height: 90vh;
+    margin: auto;   /* linter.css resets all margins, which un-centres native dialogs */
+}
+.schema-dialog::backdrop { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); }
+.schema-box {
+    background: var(--bg); border-radius: var(--radius-xl, 16px); padding: 1.25rem 1.4rem;
+    display: flex; flex-direction: column; gap: 0.7rem; max-height: 90vh; overflow: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+.schema-title { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+.schema-hint { font-size: var(--text-sm, 0.8125rem); color: var(--text-mid); margin: 0; line-height: 1.5; }
+.schema-input {
+    width: 100%; min-height: 180px; box-sizing: border-box; resize: vertical; padding: 0.7rem;
+    background: var(--bg-secondary); color: var(--text); border: 1px solid var(--border-mid); border-radius: 10px;
+    font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.5;
+}
+.schema-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.schema-summary { font-size: var(--text-sm, 0.8125rem); font-weight: 600; color: var(--text); min-height: 1.2em; }
+.schema-summary.ok { color: var(--green-text, var(--text)); }
+.schema-summary.fail { color: var(--red-text, var(--text)); }
+.schema-errors { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow: auto; }
+.schema-errors li { background: var(--bg-secondary); border-radius: 8px; padding: 0.45rem 0.65rem; font-size: var(--text-sm, 0.8125rem); display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: baseline; }
+.schema-errors code { font-family: var(--font-mono); font-size: var(--text-xs, 0.75rem); color: var(--text); background: var(--bg-tertiary); padding: 1px 6px; border-radius: 6px; }
+.schema-errors .kw { font-weight: 700; color: var(--text); }
+.schema-ignored { font-size: var(--text-xs, 0.75rem); color: var(--text-mid); margin: 0; }

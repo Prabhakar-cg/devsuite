@@ -20,8 +20,8 @@
     display: flex;
     align-items: center;
     gap: 0.45rem;
-    font-size: 0.72rem;
-    color: var(--amber-mid);
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--amber-text, var(--amber-mid));
     background: var(--amber-subtle);
     border: 1px solid rgba(255,159,10,0.25);
     border-radius: var(--radius-xs);
@@ -37,8 +37,8 @@
     display: none;
     align-items: center;
     gap: 0.45rem;
-    font-size: 0.72rem;
-    color: var(--amber-mid);
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--amber-text, var(--amber-mid));
     background: var(--amber-subtle);
     border: 1px solid rgba(255,159,10,0.25);
     border-radius: var(--radius-xs);
@@ -61,7 +61,7 @@
 .wst-proto-wrap { width: 220px; display: flex; flex-direction: column; gap: 0.25rem; }
 
 .wst-field-label {
-    font-size: 0.66rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.07em;
@@ -84,8 +84,8 @@
 
 .wst-input-error {
     display: none;
-    font-size: 0.72rem;
-    color: var(--red-mid);
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--red-text, var(--red-mid));
     flex-basis: 100%;
 }
 .wst-input-error.visible { display: block; }
@@ -99,7 +99,7 @@
     flex-wrap: wrap;
 }
 .wst-nego {
-    font-size: 0.72rem;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--text-muted);
     font-family: var(--font-mono);
 }
@@ -115,13 +115,13 @@
 /* display:flex above otherwise wins over the UA [hidden] rule (same author-origin
    specificity), so recentWrap.hidden = true would not actually hide the element. */
 .wst-recent[hidden] { display: none; }
-.wst-recent-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
+.wst-recent-label { font-size: var(--text-xs, 0.75rem); color: var(--text-muted); font-weight: 600; }
 .wst-recent-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
     font-family: var(--font-mono);
-    font-size: 0.68rem;
+    font-size: var(--text-xs, 0.75rem);
     padding: 2px 8px;
     border: 1px solid var(--border);
     border-radius: var(--radius-xs);
@@ -159,7 +159,7 @@
     flex-shrink: 0;
 }
 .wst-log-title {
-    font-size: 0.7rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.07em;
@@ -196,9 +196,9 @@
     align-items: start;
 }
 .wst-entry:hover { background: var(--bg-secondary); }
-.wst-entry-ts { color: var(--text-muted); font-size: 0.68rem; white-space: nowrap; }
+.wst-entry-ts { color: var(--text-muted); font-size: var(--text-xs, 0.75rem); white-space: nowrap; }
 .wst-entry-dir {
-    font-size: 0.62rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -210,9 +210,9 @@
 .wst-entry-body { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); margin: 0; }
 
 .wst-dir-sent     { background: var(--blue-subtle);  color: var(--blue); }
-.wst-dir-received { background: var(--green-subtle); color: var(--green-mid); }
+.wst-dir-received { background: var(--green-subtle); color: var(--green-text, var(--green-mid)); }
 .wst-dir-event    { background: var(--bg-tertiary);  color: var(--text-mid); }
-.wst-dir-error    { background: var(--red-subtle);   color: var(--red-mid); }
+.wst-dir-error    { background: var(--red-subtle);   color: var(--red-text, var(--red-mid)); }
 
 /* ── Composer ── */
 .wst-composer {
@@ -238,7 +238,7 @@
 .wst-msg:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-subtle); }
 .wst-composer-actions { display: flex; flex-direction: column; gap: 0.4rem; }
 
-.wst-jsonmode { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; color: var(--text-mid); user-select: none; cursor: pointer; }
+.wst-jsonmode { display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--text-xs, 0.75rem); color: var(--text-mid); user-select: none; cursor: pointer; }
 
 @media (max-width: 780px) {
     .wst-proto-wrap { width: 100%; }

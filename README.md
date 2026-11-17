@@ -1,6 +1,6 @@
 # DevSuite — Developer Tools from Hell
 
-![Version](https://img.shields.io/badge/version-0.11.0-blue)
+![Version](https://img.shields.io/badge/version-0.19.0-blue)
 [![CodeQL](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/codeql.yml)
 [![Tests](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml/badge.svg)](https://github.com/Prabhakar-cg/devsuite/actions/workflows/tests.yml)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Prabhakar-cg/devsuite?utm_source=oss&utm_medium=github&utm_campaign=Prabhakar-cg%2Fdevsuite&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
@@ -26,6 +26,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - Export as `.patch` or copy unified diff to clipboard.
 
 ### 2. Data Format Linter
+- **JSON Schema validation** — a *Schema* button validates the current JSON/YAML input against a pasted schema (draft-07 / 2020-12 subset: types, required, enums, `$ref`, `oneOf`/`anyOf`, `if/then/else`, formats…), with JSON-Pointer error paths. Handy for LLM tool-call / structured-output schemas. Unsupported keywords are listed, never silently passed.
 - **JSON / YAML / XML / TOON tab strip** — switch formats instantly, in-page, no reload; input text is preserved across switches, output resets.
 - **JSON tab** — Validate, Format (2-space pretty-print), Minify, Sort Keys (recursive alphabetical).
 - **YAML tab** — Validate, Format (2-space/120-column/double-quote re-dump). Supports Kubernetes, Docker Compose, GitHub Actions configs.
@@ -55,7 +56,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Request Engine** — GET, POST, PUT, DELETE, PATCH, custom headers, JSON / form / text / GraphQL bodies, OAuth2.
 - **Collection Runner** — run a folder or the whole collection sequentially with per-request test results and a pass/fail summary; runtime variables persist across the run for request chaining.
 - **Sandboxed scripting** — pre-request and test scripts execute in a dedicated Web Worker with no page, cookie, or network access (and `unsafe-eval` removed from the page CSP).
-- **cURL in & out** — paste a curl command to import it; copy any request as cURL, fetch, or HTTPie.
+- **cURL in & out** — paste a curl command to import it; copy any request as cURL, fetch, Python (requests), axios, Go, or HTTPie.
 - **Nested folders** — `/`-separated folder paths with auth inheritance down the tree; Postman imports keep their hierarchy.
 - **Cookie jar** — session-scoped, in-memory; captures Set-Cookie from proxied responses and attaches matching cookies automatically.
 - **Git-friendly export** — export the collection as a zip with one JSON file per request (folder tree mirrored), ready to commit; zip import round-trips.
@@ -130,6 +131,11 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **Subprotocols & recent endpoints** — offer subprotocols in the handshake; recently-used endpoints are remembered locally for quick reconnection.
 - **Network Notice**: This tool opens **outbound WebSocket connections** from your browser to the endpoint you enter, so it is not strictly offline (labeled in the UI). It is served with a scoped CSP whose `connect-src` allows `ws:`/`wss:` — no other page carries that relaxation.
 
+### 16. Secret Scanner
+- **Find leaked secrets before you share text** — paste agent session logs, `.env` files, shell history, git diffs or an MCP config; AWS/GitHub/OpenAI/Anthropic/Slack/Stripe/Google keys, JWTs, private-key headers and high-entropy values assigned to credential-like names are flagged with type, confidence, line/column and a **redacted** preview (reveal is an explicit click).
+- **MCP-config aware** — recognises `mcpServers` manifests and flags only *literal* `env` secrets (not `${VAR}` references), attributed to the owning server; shows a **separate** corrected manifest with `${NAME}` references. Your original text is never modified.
+- **100% local** — the engine is a pure module; nothing you paste is sent, stored or logged (enforced by tests).
+
 ---
 
 ## Premium UI
@@ -152,7 +158,10 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 - **BLAKE2b session-token hashing** — only the BLAKE2b-32 digest of each session token is kept in server memory; a process-memory snapshot does not yield usable tokens.
 - **Auth endpoint rate limiting** — `/api/auth/challenge` and `/api/auth/session` accept at most 5 requests per minute per IP (HTTP 429 beyond that), preventing brute-force and timing attacks.
 - **Audit log** — sensitive operations (vault unlock, vault access, SSH connect) are recorded in an append-only `~/.devsuite/audit.log`. Secret values are never logged.
-- **SSRF-hardened CORS proxy** — `/api/proxy` resolves and validates every target (and every redirect hop) before connecting, blocking loopback, link-local/cloud-metadata, and reserved IPs, and restricting schemes to `http`/`https`.
+- **SSRF-hardened CORS proxy** — `/api/proxy` validates every target (and every redirect hop) before connecting **and re-checks the connected peer address before sending any bytes**, blocking loopback, link-local/cloud-metadata, reserved, unspecified (`0.0.0.0`) and IPv4-mapped addresses, ignoring environment proxies, and restricting schemes to `http`/`https`.
+- **DNS-rebinding & cross-site defence** — every request's `Host` must be `localhost`, `127.0.0.1` or `::1` (extend with `DEVSUITE_ALLOWED_HOSTS=devbox.lan` only if you deliberately bind another interface); mutating requests with a foreign `Origin`, and WebSocket handshakes with a foreign `Host`/`Origin`, are rejected. SFTP/WSL endpoints require the unlocked session once a master password exists.
+- **Hardening headers** — CSP with `frame-ancestors 'none'`, `base-uri`, `object-src 'none'`, `form-action 'self'`; `Permissions-Policy`, `Cross-Origin-Opener-Policy`/`Cross-Origin-Resource-Policy: same-origin`; API responses are `Cache-Control: no-store`.
+- **Dependency & static scans** — `pip-audit` runs in CI; `bandit` is clean. The latest independent review is in `specs/025-security-hardening/assessment.md`.
 
 > **Security scan coverage note:** Static analysis (SonarCloud, CodeQL, CodeRabbit & Snyk) excludes `static/libs/**` and all `*.min.js` / `*.min.css` files. These are third-party vendored bundles (Monaco Editor, xterm.js, crypto-js) and are not covered by automated security scanning. Keep them updated to their latest stable releases to manage upstream CVEs.
 
@@ -178,6 +187,14 @@ chmod +x start.sh
 `start.sh`/`start.ps1` print the detected Python version and warn (without aborting) if it's below the supported minimum — you can choose to continue anyway. They also prompt for a PyPI index URL to install dependencies from; press Enter to use the standard registry (`https://pypi.org/simple`), or set the `PYPI_INDEX_URL` environment variable to point at a private mirror/proxy without being prompted.
 
 Open **[http://localhost:8000](http://localhost:8000)** in your browser.
+
+### Docker
+
+```bash
+docker compose up -d        # http://localhost:8000
+```
+
+The image is multi-stage and runs as a non-root user; your encrypted database persists in the `devsuite-data` volume. The compose file publishes the port on the host's **loopback only** and runs with a read-only filesystem and dropped capabilities. Set `DEVDB_PASSWORD` in your environment to encrypt the database file at rest. The SSH/local terminal run *inside* the container.
 
 ### Manual Setup
 

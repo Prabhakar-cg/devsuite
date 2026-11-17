@@ -256,3 +256,13 @@ encryption of the *challenge* (does not itself re-encrypt other stores).
   value that originated as free-form user input — so it is treated as compliant with the "no
   `innerHTML` with **untrusted** data" rule (SPEC §7.7), distinct from Vault's stricter
   all-`textContent` approach where entry titles/notes *are* user input.
+
+## Update 2026-11-17 (independent assessment, `specs/025-security-hardening/assessment.md` F-2)
+
+- **Unlock supports both challenge formats.** The lock screen previously implemented only the legacy v1 challenge (CryptoJS PBKDF2-SHA1/50k + AES-CBC), so every vault created by current versions (`challenge_version: 2`, WebCrypto PBKDF2-SHA256/310k, Kauth + AES-GCM) was rejected as "Incorrect master password". Verification now goes through `static/master-verify.js` (`MasterVerify.verifyMasterPassword`), which returns the Kauth hex for `POST /api/auth/session`. Kenc never leaves the browser (SPEC §7.5).
+- `db-manager.html` loads `components.js` (provides `DevSuite.csrfToken()`) before `db-manager.js`; HTTP 429 from `/api/auth/challenge` shows "Too many attempts".
+- Tests: `tests/javascript/test_master_verify.js` (v2 vector, wrong password, tampering, malformed input, v1 via injected CryptoJS).
+
+## Update 2026-11-17 (BACKLOG BUG-1 — feature removed)
+
+The **"Database Password"** card and modal were removed. They called `POST /api/auth/update-challenge` with a fresh salt and a v1-shaped challenge but never re-encrypted the vault, so using them orphaned encrypted data; the advertised database-file encryption had no backend endpoint at all (it is enabled with the `DEVDB_PASSWORD` environment variable, applied at server start). DevDB Manager now shows an informational **Master password** card linking to Secret Vault → *Change Password*, which rotates the challenge and re-encrypts the vault together. Only `vault.js` may call `update-challenge` (enforced by `tests/python/test_backlog_fixes.py`).

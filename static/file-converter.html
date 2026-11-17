@@ -368,8 +368,11 @@
             .formats-grid { grid-template-columns: 1fr 1fr; }
         }
     </style>
+    <link rel="stylesheet" href="/static/bento.css">
+    <link rel="stylesheet" href="/static/converter.css">
+    <script src="/static/bento-art.js" defer></script>
 </head>
-<body>
+<body data-tool="file-converter">
 
 <!-- TOAST -->
 <div id="toast-container"></div>
@@ -408,17 +411,13 @@
      ==================================================== -->
 <main style="overflow-y:auto; flex:1;">
 <div class="converter-main">
+  <div class="cv-grid">
 
     <!-- Drop Zone -->
-    <div>
+    <div class="cv-drop-col">
         <div id="drop-zone" class="drop-zone">
-            <input type="file" id="file-input" accept="*/*">
-            <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"/>
-                <polyline points="7 10 12 5 17 10"/>
-                <line x1="12" y1="5" x2="12" y2="17"/>
-            </svg>
+            <input type="file" id="file-input" accept="*/*" aria-label="Choose a file to convert">
+            <svg class="cv-art" data-art="convert"></svg>
             <div class="drop-title">Drop a file here or click to browse</div>
             <div class="drop-sub">JSON · CSV · YAML · XML · TOON · TSV · XLSX · Markdown · HTML · PNG · JPG · WebP · SVG · PDF · DOCX · and more</div>
         </div>
@@ -443,11 +442,13 @@
         </div>
     </div>
 
-    <!-- Format Selection -->
+    <!-- Format Selection + Convert -->
+    <div class="cv-panel" role="group" aria-label="Conversion">
+    <div class="cv-panel-title">Convert</div>
     <div class="format-row">
         <div class="format-box">
             <div class="format-box-label">From format</div>
-            <select id="from-format">
+            <select id="from-format" aria-label="Convert from format">
                 <option value="">— auto detect —</option>
                 <optgroup label="Data">
                     <option value="json">JSON</option>
@@ -490,7 +491,7 @@
 
         <div class="format-box">
             <div class="format-box-label">To format</div>
-            <select id="to-format">
+            <select id="to-format" aria-label="Convert to format">
                 <option value="">— select target —</option>
             </select>
         </div>
@@ -511,6 +512,9 @@
         </button>
         <button id="btn-reset" class="btn btn-ghost" title="Reset everything">Reset</button>
     </div>
+
+    </div><!-- /cv-panel -->
+  </div><!-- /cv-grid -->
 
     <!-- Result -->
     <div id="result-section" class="result-section" style="display:none;">
@@ -540,8 +544,8 @@
     </div>
 
     <!-- Supported Formats -->
-    <div>
-        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+    <div class="cv-formats">
+        <div class="cv-formats-head">
             <span class="section-title">Supported conversions</span>
             <span class="note-badge">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -553,7 +557,8 @@
             </span>
         </div>
         <div class="formats-grid">
-            <div class="format-category">
+            <div class="format-category cv-data">
+                <svg class="cv-cat-art" data-art="lint"></svg>
                 <div class="format-category-title">Data → Data</div>
                 <div class="format-chips">
                     <span class="format-chip">JSON→CSV</span>
@@ -575,7 +580,8 @@
                     <span class="format-chip">TOON↔XML/CSV/TSV</span>
                 </div>
             </div>
-            <div class="format-category">
+            <div class="format-category cv-sheet">
+                <svg class="cv-cat-art" data-art="sheet"></svg>
                 <div class="format-category-title">Spreadsheet</div>
                 <div class="format-chips">
                     <span class="format-chip server">XLSX→CSV</span>
@@ -584,7 +590,8 @@
                     <span class="format-chip server">JSON→XLSX</span>
                 </div>
             </div>
-            <div class="format-category">
+            <div class="format-category cv-doc">
+                <svg class="cv-cat-art" data-art="doc"></svg>
                 <div class="format-category-title">Documents</div>
                 <div class="format-chips">
                     <span class="format-chip">MD→HTML</span>
@@ -595,7 +602,8 @@
                     <span class="format-chip server">HTML→PDF</span>
                 </div>
             </div>
-            <div class="format-category">
+            <div class="format-category cv-img">
+                <svg class="cv-cat-art" data-art="image"></svg>
                 <div class="format-category-title">Images</div>
                 <div class="format-chips">
                     <span class="format-chip">PNG→JPG</span>
@@ -823,7 +831,7 @@ function updateToOptions() {
     opts.forEach(o => {
         const el = document.createElement('option');
         el.value = o.value;
-        el.textContent = o.label + (o.server ? ' ⚡ server' : '');
+        el.textContent = o.label + (o.server ? ' (server)' : '');
         toSelect.appendChild(el);
     });
     // Auto-select first

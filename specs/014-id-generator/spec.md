@@ -1,5 +1,7 @@
 # Feature Specification: ID Generator
 
+> **Superseded** by [`specs/019-id-generator`](../019-id-generator/spec.md) (same feature, re-specified 2026-09-17; the shipped implementation follows 019). Kept for history.
+
 **Feature Branch**: `014-id-generator`
 
 **Created**: 2026-08-08

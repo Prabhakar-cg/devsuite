@@ -174,3 +174,46 @@ test('parseCurl → buildCurl round-trips the essentials', () => {
     assert.match(cmd, /dry=1/);
     assert.match(cmd, /-d '\{"q":true\}'/);
 });
+
+// ── FEAT-17: Python requests / axios / Go generators ──
+const CG = require('../../static/curl-codegen.js');
+const TRICKY = {
+    url: 'https://api.example.com/v1/users', method: 'POST', queryParams: { q: 'a b&c' },
+    headers: { 'X-Note': 'it\'s "quoted" \\ backé', Accept: 'application/json' },
+    auth: { type: 'bearer', token: 'tok' }, bodyType: 'json', body: { name: 'Zoë', multi: 'line1\nline2\ttab', n: 1 },
+};
+
+test('buildPython emits a requests call with headers, query string, and a safely quoted body', () => {
+    const py = CG.buildPython(TRICKY);
+    assert.match(py, /^import requests/);
+    assert.ok(py.includes('"POST"') && py.includes('?q=a%20b%26c') && py.includes('"Authorization": "Bearer tok"'));
+    assert.ok(py.includes('data="{\\"name\\":\\"Zoë\\"'));
+    assert.ok(!py.includes('\nline2'), 'newlines inside the body must stay escaped');
+});
+
+test('buildPython omits headers/data when there are none', () => {
+    const py = CG.buildPython({ url: 'https://x.io', method: 'GET' });
+    assert.ok(!py.includes('headers=') && !py.includes('data='));
+});
+
+test('buildAxios returns valid-looking ESM using the lower-cased method', () => {
+    const ax = CG.buildAxios(TRICKY);
+    assert.match(ax, /^import axios from "axios";/);
+    assert.ok(ax.includes('"method": "post"') && ax.includes('"Authorization": "Bearer tok"'));
+    const obj = JSON.parse(ax.slice(ax.indexOf('axios(') + 6, ax.lastIndexOf(');\nconsole')));
+    assert.equal(obj.url, 'https://api.example.com/v1/users?q=a%20b%26c');
+});
+
+test('buildGo imports strings only when there is a body and quotes every string literal', () => {
+    const withBody = CG.buildGo(TRICKY);
+    assert.ok(withBody.includes('"strings"') && withBody.includes('strings.NewReader("{'));
+    assert.ok(withBody.includes('req.Header.Set("X-Note", "it\'s \\"quoted\\" \\\\ backé")'));
+    const noBody = CG.buildGo({ url: 'https://x.io', method: 'DELETE' });
+    assert.ok(!noBody.includes('"strings"') && noBody.includes(', nil)'));
+    assert.ok(noBody.startsWith('package main'));
+});
+
+test('GET requests never emit a body in any language', () => {
+    const cfg = { url: 'https://x.io', method: 'GET', bodyType: 'json', body: { a: 1 } };
+    assert.ok(!CG.buildPython(cfg).includes('data=') && !CG.buildAxios(cfg).includes('"data"') && !CG.buildGo(cfg).includes('strings.NewReader'));
+});

@@ -229,7 +229,7 @@
 
         const kbd = document.createElement('span');
         kbd.className = 'cpal-trigger-kbd';
-        kbd.textContent = (isMac() ? '⌘' : 'Ctrl') + 'K';
+        kbd.textContent = isMac() ? '\u2318K' : 'Ctrl K';
         btn.appendChild(kbd);
 
         btn.addEventListener('click', openPalette);

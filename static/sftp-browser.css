@@ -97,7 +97,7 @@
     background: linear-gradient(135deg,#0369a1,#0e7490);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
-    color: #fff;
+    color: var(--on-accent, #fff);
     font-size: 0.75rem;
     font-weight: 700;
     font-family: var(--font-mono);
@@ -118,7 +118,7 @@
     text-overflow: ellipsis;
 }
 .sftp-group-label {
-    font-size: 0.7rem;
+    font-size: var(--text-xs, 0.75rem);
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -306,7 +306,7 @@
     border-radius: 8px;
     border: 1px solid rgba(239,68,68,0.3);
     background: rgba(239,68,68,0.06);
-    color: var(--color-danger, #dc2626);
+    color: var(--red-text, #b3231a);
     font-size: 0.875rem;
     margin-top: 0.5rem;
     font-family: var(--font-mono);
@@ -363,7 +363,7 @@
     -webkit-box-orient: vertical;
 }
 .sftp-file-meta {
-    font-size: 0.7rem;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--text-muted);
 }
 
@@ -371,8 +371,8 @@
 .sftp-btn-primary {
     padding: 0.6rem 1.25rem;
     border-radius: 8px;
-    background: #0369a1;
-    color: #fff;
+    background: var(--blue-solid, #0369a1);
+    color: var(--on-accent, #fff);
     border: none;
     font-size: 0.9rem;
     font-weight: 600;
@@ -424,7 +424,7 @@
 .sftp-modal {
     background: var(--bg-main);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius-xl, 16px);
     padding: 2rem;
     width: 420px;
     max-width: calc(100vw - 2rem);
@@ -450,7 +450,7 @@
     border-radius: 12px;
     background: linear-gradient(135deg,#0369a1,#0e7490);
     display: flex; align-items: center; justify-content: center;
-    color: #fff;
+    color: var(--on-accent, #fff);
     margin-bottom: 0.25rem;
 }
 .sftp-modal-icon svg { width: 24px; height: 24px; }
@@ -514,9 +514,9 @@
     transition: opacity 0.3s;
 }
 
-.toast-info    { background: #0369a1; color: #fff; }
-.toast-success { background: #15803d; color: #fff; }
-.toast-error   { background: #dc2626; color: #fff; }
+.toast-info    { background: #0369a1; color: var(--on-accent, #fff); }
+.toast-success { background: #15803d; color: var(--on-accent, #fff); }
+.toast-error   { background: #dc2626; color: var(--on-accent, #fff); }
 
 /* Empty file grid state */
 .sftp-empty-dir {
@@ -527,4 +527,11 @@
     padding: 3rem 1rem;
     color: var(--text-muted);
     font-size: 0.9rem;
+}
+
+/* ── Responsive / 200% zoom (feature 023) ── */
+@media (max-width: 900px) {
+    .sftp-layout { flex-direction: column; height: auto; min-height: calc(100dvh - 65px); overflow: visible; }
+    .sftp-sidebar { width: 100%; max-height: 40vh; }
+    .sftp-modal { width: min(420px, 94vw); }
 }

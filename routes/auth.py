@@ -5,7 +5,6 @@ Client-side password verification: the server stores a challenge blob (AES-encry
 known plaintext).  The plaintext password never leaves the browser.
 """
 import secrets
-import time
 
 import deps
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -18,6 +17,7 @@ from deps import (
     _hash_token,
     _sessions,
     limiter,
+    register_session,
     require_unlocked,
 )
 
@@ -96,7 +96,8 @@ def auth_challenge(request: Request):
         409: {"description": "Master password already configured"},
     },
 )
-def auth_setup(data: dict):
+@limiter.limit("10/minute")
+def auth_setup(request: Request, data: dict):
     """One-time setup: store the PBKDF2 salt and AES verification blob in app_prefs.
 
     v1: {salt, verify_blob, verify_iv}
@@ -253,12 +254,14 @@ def auth_session(request: Request, data: dict):  # pylint: disable=too-many-loca
         if plaintext != "DEVSUITE_MASTER_OK":
             raise HTTPException(status_code=401, detail="Invalid master key")
     except HTTPException:
+        _audit_log("AUTH_FAIL", ip=request.client.host if request.client else "unknown")
         raise
     except Exception as exc:  # pylint: disable=broad-exception-caught
+        _audit_log("AUTH_FAIL", ip=request.client.host if request.client else "unknown")
         raise HTTPException(status_code=401, detail="Key verification failed") from exc
 
     token = secrets.token_urlsafe(32)
-    _sessions[_hash_token(token)] = time.time() + _SESSION_TTL
+    register_session(token)
     csrf_token = secrets.token_hex(32)
     client_ip = request.client.host if request.client else "unknown"
     _audit_log("AUTH_SESSION", ip=client_ip)

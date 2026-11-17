@@ -1,8 +1,10 @@
 """
 routes/convert.py — Server-side file format conversion (/api/convert).
 """
+import io
 import json
 import urllib.parse
+import zipfile
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -10,12 +12,37 @@ from fastapi.responses import Response
 
 from deps import (
     MAX_UPLOAD_SIZE,
-    _MIME_OCTET_STREAM,
     _OPENPYXL_MISSING,
     _XLSX_MEDIA_TYPE,
 )
 
 router = APIRouter()
+
+
+# ─── Archive-bomb guard (SEC-20) ──────────────────────────────────────────────
+# .docx/.xlsx are ZIP containers. The upload cap bounds the *compressed* size only, so a
+# tiny hostile archive could expand to gigabytes inside openpyxl/mammoth. Check the
+# declared uncompressed sizes (central directory) before handing the bytes to a parser.
+MAX_ARCHIVE_UNCOMPRESSED = 200 * 1024 * 1024
+MAX_ARCHIVE_ENTRIES = 10_000
+
+
+def _check_archive_limits(content: bytes) -> None:
+    """Raise HTTP 413 if an OOXML archive declares an unreasonable uncompressed size or entry count."""
+    if not zipfile.is_zipfile(io.BytesIO(content)):
+        return  # not a ZIP (e.g. legacy .doc) — the parser will reject it on its own terms
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            infos = zf.infolist()
+    except zipfile.BadZipFile as exc:
+        raise HTTPException(status_code=400, detail="Corrupt or invalid archive") from exc
+    total = sum(i.file_size for i in infos)
+    if len(infos) > MAX_ARCHIVE_ENTRIES or total > MAX_ARCHIVE_UNCOMPRESSED:
+        raise HTTPException(
+            status_code=413,
+            detail=(f"Archive expands to {total // (1024 * 1024)} MB across {len(infos)} entries "
+                    f"(limit {MAX_ARCHIVE_UNCOMPRESSED // (1024 * 1024)} MB / {MAX_ARCHIVE_ENTRIES} entries)"),
+        )
 
 
 # ─── Conversion helpers ───────────────────────────────────────────────────────
@@ -262,6 +289,9 @@ async def convert_file(
             status_code=413,
             detail=f"Upload too large (limit {MAX_UPLOAD_SIZE // 1024 // 1024} MB)",
         )
+
+    if src_ext in ("xlsx", "docx", "doc"):
+        _check_archive_limits(content)
 
     if src_ext == "xlsx" and target_format in ("csv", "json"):
         return _conv_xlsx_to_csv_json(content, target_format)

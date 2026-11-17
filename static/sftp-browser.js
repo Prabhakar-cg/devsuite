@@ -69,6 +69,29 @@ document.getElementById('unlock-btn').addEventListener('click', async () => {
     const pwd = document.getElementById('master-password').value;
     if (!pwd) { showError('Master Password is required.'); return; }
 
+    // Once a master password exists, profile storage is session-gated (SPEC §7.9): verify the
+    // password against the server challenge (v1 + v2) and open a session first. Without this the
+    // standalone SFTP page got "401" for every vault created by a current version.
+    try {
+        const st = await fetch('/api/auth/status').then(r => r.json());
+        if (st.is_setup) {
+            const chRes = await fetch('/api/auth/challenge');
+            if (chRes.status === 429) { showError('Too many attempts. Wait a minute and try again.'); return; }
+            if (!chRes.ok) { showError('Could not reach the server (' + chRes.status + ').'); return; }
+            const verified = await MasterVerify.verifyMasterPassword(pwd, await chRes.json());
+            if (!verified.ok) { showError('Incorrect master password.'); return; }
+            const sr = await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key_hex: verified.keyHex }),
+            });
+            if (!sr.ok) { showError('Session exchange failed. Please try again.'); return; }
+        }
+    } catch (e) {
+        showError('Unable to unlock — network or server error: ' + e.message);
+        return;
+    }
+
     let blob;
     try {
         blob = await loadBlob();
@@ -135,7 +158,7 @@ function renderSidebar() {
     if (filtered.length === 0) {
         list.innerHTML = `<div class="sftp-no-sessions">
             ${profiles.length === 0
-                ? 'No saved sessions yet.<br>Add sessions in <a href="/ssh" style="color:#0ea5e9;">Secure Terminal</a>.'
+                ? 'No saved sessions yet.<br>Add sessions in <a href="/ssh" style="color:var(--blue-text, var(--blue));text-decoration:underline;">Secure Terminal</a>.'
                 : 'No sessions match your search.'}
         </div>`;
         return;
@@ -325,13 +348,13 @@ function renderFileGrid(files) {
         const card = document.createElement('div');
         card.className = f.is_dir ? 'sftp-file-card sftp-dir-card' : 'sftp-file-card';
 
-        const icon = f.is_dir ? '📁' : getFileIcon(f.name);
+        const icon = f.is_dir ? 'folder' : getFileIcon(f.name);
         const size = f.is_dir ? '' : formatSize(f.size);
 
         // Create icon element
         const iconDiv = document.createElement('div');
         iconDiv.className = 'sftp-file-icon';
-        iconDiv.textContent = icon;
+        iconDiv.replaceChildren(DevSuiteIcons.element(icon, 20));
 
         // Create name element
         const nameDiv = document.createElement('div');
@@ -426,17 +449,18 @@ function formatSize(bytes) {
 }
 
 function getFileIcon(name) {
+    // Icon NAMES from the shared stroke-icon set (icons.js) — no emoji (SPEC §9.8).
     const ext = (name || '').split('.').pop().toLowerCase();
-    const iconMap = {
-        js: '📜', ts: '📜', py: '🐍', rb: '💎', go: '🐹',
-        sh: '⚙️', bash: '⚙️', zsh: '⚙️',
-        html: '🌐', css: '🎨', json: '📋', yaml: '📋', yml: '📋',
-        toml: '📋', xml: '📋', md: '📝', txt: '📝', log: '📝',
-        pdf: '📄', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️',
-        svg: '🖼️', ico: '🖼️', zip: '📦', tar: '📦', gz: '📦',
-        bz2: '📦', xz: '📦', deb: '📦', rpm: '📦',
-        mp3: '🎵', mp4: '🎬', mkv: '🎬', avi: '🎬',
-        dockerfile: '🐳', lock: '🔒',
+    const map = {
+        js: 'file-code', ts: 'file-code', py: 'file-code', rb: 'file-code', go: 'file-code', rs: 'file-code', java: 'file-code',
+        c: 'file-code', cpp: 'file-code', h: 'file-code', php: 'file-code', css: 'file-code', sql: 'file-code',
+        sh: 'terminal', bash: 'terminal', zsh: 'terminal', html: 'globe',
+        json: 'file-data', yaml: 'file-data', yml: 'file-data', toml: 'file-data', xml: 'file-data', csv: 'file-data', ini: 'file-data',
+        md: 'file-text', txt: 'file-text', log: 'file-text', pdf: 'file-text', doc: 'file-text', docx: 'file-text',
+        png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', svg: 'image', ico: 'image', webp: 'image', bmp: 'image',
+        zip: 'archive', tar: 'archive', gz: 'archive', bz2: 'archive', xz: 'archive', deb: 'package', rpm: 'package',
+        mp3: 'music', wav: 'music', flac: 'music', mp4: 'film', mkv: 'film', avi: 'film', mov: 'film',
+        dockerfile: 'package', lock: 'lock', pem: 'key', key: 'key',
     };
-    return iconMap[ext] || '📄';
+    return map[ext] || 'file';
 }

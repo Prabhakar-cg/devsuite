@@ -1,6 +1,10 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.0.2 → 1.0.3 (PATCH — clarifying addition, no principle change)
+Modified: "Additional Constraints" — notes the injected accessibility foundation (feature 023, SPEC §9.12).
+
+Previous entry:
 Version change: 1.0.1 → 1.0.2 (PATCH — clarifying addition, no principle change)
 Modified principles: none
 Added sections: none
@@ -81,12 +85,15 @@ automatic via `_serve_html()` — manual version query strings in HTML are forbi
 
 - Fonts load only via `@import '/static/libs/fonts.css'` — never from a CDN.
 - New third-party JS libraries require updating `specs/SPEC.md` §11 and `UPGRADE_PLAN.md`.
-- The tool count (currently 15) is sourced from `routes/pages.py` + `static/tools.html`;
+- The tool count (currently 16) is sourced from `routes/pages.py` + `static/tools.html`;
   README/SPEC/`tools.html`/`home.html` counts stay in sync. `static/command-palette-data.js`
   (feature 022, SPEC §9.11) is a third manually-synced copy of this same tool/destination
   list — keep it in sync too when tools are added, removed, or renamed.
 - Design system rules (typography, color tokens, radii, motion, copy tone) are
-  defined in SPEC §9 and are binding for all UI work.
+  defined in SPEC §9 and are binding for all UI work. Accessibility (WCAG 2.1 AA) is
+  part of §9 (§9.12): `static/a11y.css` + `static/a11y.js` are injected into every page
+  by `_serve_html()`; new UI must use the shared focus ring, text-safe color tokens,
+  and the shared dialog/announcer behavior rather than re-implementing them.
 
 ## Development Workflow
 
@@ -109,4 +116,4 @@ All plans and code reviews verify compliance with the principles above; violatio
 of the NON-NEGOTIABLE principles block merge. Complexity beyond the vanilla-stack
 baseline must be justified in the feature's plan.
 
-**Version**: 1.0.2 | **Ratified**: 2026-06-10 | **Last Amended**: 2026-09-28
+**Version**: 1.0.3 | **Ratified**: 2026-06-10 | **Last Amended**: 2026-11-17

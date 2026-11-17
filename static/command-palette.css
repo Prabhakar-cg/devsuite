@@ -53,7 +53,7 @@
     width: 17px;
     height: 17px;
     flex-shrink: 0;
-    color: var(--text-muted, #86868b);
+    color: var(--text-muted, #636366);
 }
 
 .cpal-input {
@@ -67,14 +67,14 @@
 }
 
 .cpal-input::placeholder {
-    color: var(--text-muted, #86868b);
+    color: var(--text-muted, #636366);
 }
 
 .cpal-esc-hint {
     flex-shrink: 0;
     font-family: var(--font-mono, monospace);
-    font-size: 0.68rem;
-    color: var(--text-muted, #86868b);
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--text-muted, #636366);
     border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
     border-radius: var(--radius-xs, 6px);
     padding: 1px 6px;
@@ -128,17 +128,17 @@
 .cpal-row-cat {
     flex-shrink: 0;
     font-family: var(--font-mono, monospace);
-    font-size: 0.66rem;
+    font-size: var(--text-xs, 0.75rem);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--text-muted, #86868b);
+    color: var(--text-muted, #636366);
 }
 
 .cpal-empty {
     padding: 1.5rem 1rem;
     text-align: center;
     font-size: 0.85rem;
-    color: var(--text-muted, #86868b);
+    color: var(--text-muted, #636366);
 }
 
 /* ── Discoverability trigger (US3) — a floating corner pill, not injected
@@ -157,7 +157,7 @@
     border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
     border-radius: var(--radius-pill, 980px);
     background: var(--surface, var(--bg, #ffffff));
-    color: var(--text-muted, #86868b);
+    color: var(--text-muted, #636366);
     box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.12));
     cursor: pointer;
     font-family: inherit;
@@ -176,7 +176,7 @@
 
 .cpal-trigger-kbd {
     font-family: var(--font-mono, monospace);
-    font-size: 0.68rem;
+    font-size: var(--text-xs, 0.75rem);
     letter-spacing: 0.02em;
 }
 
