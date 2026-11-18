@@ -7,7 +7,9 @@
     <meta name="description" content="15 powerful developer tools — locally hosted, zero cloud, zero tracking. Diff files, lint JSON/YAML/XML, test REST & WebSocket APIs, generate IDs, manage secrets and more.">
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/home.css">
+    <link rel="stylesheet" href="/static/bento.css">
     <script src="/static/theme.js"></script>
+    <script src="/static/bento-art.js" defer></script>
     <script>
         /* Apply home.css CSS variables synchronously to prevent FOUC */
         (function() {
@@ -213,7 +215,7 @@
                 <span class="logo-name">DevSuite</span>
                 <span class="logo-version">v1.0</span>
             </a>
-            <nav class="site-nav">
+            <nav class="site-nav" aria-label="Primary">
                 <a href="/">Home</a>
                 <a href="/tools" class="nav-active">All Tools</a>
                 <a href="/#privacy">Privacy</a>
@@ -262,6 +264,8 @@
         </div>
     </header>
 
+    <main>
+
     <!-- =====================================================
          PAGE HEADER
          ===================================================== -->
@@ -276,6 +280,48 @@
         </div>
     </div>
 
+
+    <!-- =====================================================
+         BENTO SHOWCASE (feature 026) — generated SVG art, tinted from theme tokens
+         ===================================================== -->
+    <section class="bento-section" aria-labelledby="bento-title">
+        <div class="container">
+            <h2 id="bento-title" class="ds-sr-only">Featured tools</h2>
+            <div class="bento">
+                <a class="bento-tile t-diff" href="/diff" aria-label="Text Diff — compare files side by side">
+                    <svg data-art="diff" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Text Diff</strong><span>Side-by-side and inline</span></span>
+                </a>
+                <div class="bento-tile t-pattern" aria-hidden="true"><svg data-art="pattern"></svg></div>
+                <a class="bento-tile t-vault" href="/vault" aria-label="Secret Vault — encrypted secrets that never leave your browser">
+                    <svg data-art="vault" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Secret Vault</strong><span>Encrypted in your browser</span></span>
+                </a>
+                <a class="bento-tile t-api" href="/api-tester" aria-label="API Tester — send and script REST requests">
+                    <svg data-art="api" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>API Tester</strong><span>REST requests with scripting</span></span>
+                </a>
+                <a class="bento-tile t-terminal" href="/ssh" aria-label="Secure Terminal — SSH and SFTP sessions">
+                    <svg data-art="terminal" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Secure Terminal</strong><span>SSH and SFTP</span></span>
+                </a>
+                <div class="bento-tile t-text">
+                    <h2>Sixteen tools. Zero cloud.</h2>
+                    <p>Pick one, or filter the full catalog below.</p>
+                    <a class="bento-cta" href="#tools">Browse the catalog</a>
+                </div>
+                <a class="bento-tile t-cron" href="/cron" aria-label="Cron Visualizer — see when a schedule runs next">
+                    <svg data-art="cron" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Cron Visualizer</strong><span>Next runs, in plain words</span></span>
+                </a>
+                <a class="bento-tile t-lint" href="/data-linter" aria-label="Data Linter — validate and convert JSON, YAML and XML">
+                    <svg data-art="lint" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Data Linter</strong><span>JSON, YAML, XML</span></span>
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- =====================================================
          QUICK ACCESS — stats strip + most-used rail
          ===================================================== -->
@@ -286,7 +332,7 @@
             <div class="qa-stats-strip">
                 <span class="qa-stat">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-                    15 tools
+                    16 tools
                 </span>
                 <span class="qa-divider">·</span>
                 <span class="qa-stat">100% offline</span>
@@ -296,7 +342,7 @@
                 <div class="qa-jump-chips">
                     <button class="qa-chip" data-jump="dev">Dev <span>6</span></button>
                     <button class="qa-chip" data-jump="data">Data <span>3</span></button>
-                    <button class="qa-chip" data-jump="security">Security <span>3</span></button>
+                    <button class="qa-chip" data-jump="security">Security <span>4</span></button>
                     <button class="qa-chip" data-jump="network">Network <span>2</span></button>
                     <button class="qa-chip" data-jump="time">Schedule <span>1</span></button>
                 </div>
@@ -377,13 +423,13 @@
 
             <div class="filter-tabs" role="radiogroup" aria-label="Filter tools by category">
                 <input type="radio" name="tool-filter" id="filter-all"      class="filter-radio" value="all"      checked tabindex="0">
-                <label  class="filter-tab active" for="filter-all"      data-filter="all"     >All      <span class="filter-count">15</span></label>
+                <label  class="filter-tab active" for="filter-all"      data-filter="all"     >All      <span class="filter-count">16</span></label>
                 <input type="radio" name="tool-filter" id="filter-dev"      class="filter-radio" value="dev"      tabindex="-1">
                 <label  class="filter-tab"        for="filter-dev"      data-filter="dev"     >Dev      <span class="filter-count">6</span></label>
                 <input type="radio" name="tool-filter" id="filter-data"     class="filter-radio" value="data"     tabindex="-1">
                 <label  class="filter-tab"        for="filter-data"     data-filter="data"    >Data     <span class="filter-count">3</span></label>
                 <input type="radio" name="tool-filter" id="filter-security" class="filter-radio" value="security" tabindex="-1">
-                <label  class="filter-tab"        for="filter-security" data-filter="security">Security <span class="filter-count">3</span></label>
+                <label  class="filter-tab"        for="filter-security" data-filter="security">Security <span class="filter-count">4</span></label>
                 <input type="radio" name="tool-filter" id="filter-network"  class="filter-radio" value="network"  tabindex="-1">
                 <label  class="filter-tab"        for="filter-network"  data-filter="network" >Network  <span class="filter-count">2</span></label>
                 <input type="radio" name="tool-filter" id="filter-time"     class="filter-radio" value="time"     tabindex="-1">
@@ -725,6 +771,30 @@
                     </div>
                 </a>
 
+                <!-- Secret Scanner -->
+                <a class="tool-card active-tool" href="/secret-scanner" data-category="security"
+                   style="--card-glow:rgba(225,29,72,0.18);--card-border-hover:rgba(251,113,133,0.5);">
+                    <div class="card-header">
+                        <div class="card-icon-wrap" style="background:linear-gradient(135deg,#9f1239,#e11d48);">
+                            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M8.5 11l1.8 1.8L14 9"/>
+                            </svg>
+                        </div>
+                        <span class="badge badge-live">Live</span>
+                    </div>
+                    <div>
+                        <div class="card-title">Secret Scanner</div>
+                        <div class="card-desc">Paste logs, .env files, diffs or MCP configs and find leaked API keys, tokens and private keys. Pattern + entropy detection, redacted previews, 100% local.</div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="tag-chip">API keys</span>
+                        <span class="tag-chip">MCP configs</span>
+                        <span class="tag-chip">Entropy</span>
+                        <svg aria-hidden="true" class="card-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                </a>
+
+
             </div>
 
             <div class="filter-empty" id="filter-empty" style="display:none;">
@@ -747,7 +817,7 @@
                     <h2>Coming<br>soon.</h2>
                     <p>DevSuite is actively growing. Here's what's being built next — all following the same offline-first, zero-cloud principle.</p>
                     <p style="margin-top:1rem; font-size:0.88rem; color:var(--text-muted);">
-                        Have an idea? <a href="https://github.com/Prabhakar-cg/devsuite/issues" target="_blank" rel="noopener noreferrer" style="color:var(--electric); text-decoration:none;">Open a feature request on GitHub →</a>
+                        Have an idea? <a href="https://github.com/Prabhakar-cg/devsuite/issues" target="_blank" rel="noopener noreferrer" style="color:var(--electric-text, var(--electric)); text-decoration:none;">Open a feature request on GitHub →</a>
                     </p>
                 </div>
 
@@ -815,6 +885,8 @@
     <!-- =====================================================
          FOOTER
          ===================================================== -->
+    </main>
+
     <footer class="site-footer">
         <div class="footer-inner">
             <span class="footer-brand">DevSuite</span>

@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.10", "3.12" ]
+        python-version: [ "3.11", "3.12" ]
 
     steps:
       - name: Checkout repository
@@ -31,11 +31,53 @@ jobs:
           cache: pip
 
       - name: Install dependencies
+        # Hash-locked, wheels only: no unpinned resolution and no sdist setup.py runs in CI.
+        # requirements-ci.lock = requirements.txt + CI tools (pytest, httpx/httpx2 for
+        # starlette's TestClient, ruff, pip-audit); see its header to regenerate.
         run: |
-          python -m pip install --upgrade --only-binary :all: pip==26.2.1
-          pip install --require-hashes --only-binary :all: -r requirements-lock.txt
-          # httpx / httpx2: test-only deps of starlette's TestClient (httpx2 for starlette >= 1.3)
-          pip install --only-binary :all: pytest==9.1.1 httpx==0.28.1 httpx2==2.10.0
+          pip install --require-hashes --only-binary :all: -r requirements-ci.lock
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Dependency vulnerability scan (pip-audit)
+        run: pip-audit --require-hashes --disable-pip -r requirements-ci.lock
 
       - name: Run backend test suite
         run: pytest tests/python/ -q
+
+  vendored-js-audit:
+    name: Vendored JS audit (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Audit vendored libraries listed in package.json (SEC-2)
+        # package.json only describes the files vendored under static/ so npm can see their CVEs;
+        # nothing is installed or bundled. Fails the build on high/critical advisories.
+        # package-lock.json is committed (Sonar text:S8564); fail if it has drifted from package.json.
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-fund --no-audit
+          git diff --exit-code package-lock.json
+          npm audit --audit-level=high
+
+  docker-build:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Build image (ROAD-3)
+        run: docker build -t devsuite:ci .
+
+      - name: Container answers its health endpoint
+        run: |
+          docker run -d --name ds -p 127.0.0.1:8000:8000 devsuite:ci
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8000/api/auth/status && exit 0; sleep 2; done
+          docker logs ds; exit 1

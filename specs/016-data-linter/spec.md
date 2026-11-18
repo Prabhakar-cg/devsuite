@@ -443,3 +443,7 @@ performs its documented effect.
   formats like JSON rarely detected as themselves. A bare YAML scalar (e.g. pasted prose) is
   deliberately excluded from counting as a YAML "detection" — otherwise nearly any pasted text
   would falsely claim to be YAML, since YAML's plain-scalar grammar accepts almost anything.
+
+## Update 2026-11-17 — JSON Schema validation (BACKLOG AI-4)
+
+New **Schema** toolbar button (JSON and YAML tabs only) opens a dialog: paste a JSON Schema, validate the current input against it, see errors as `JSON-Pointer path · keyword · message`. Engine `static/json-schema-lite.js` (pure, 18 node tests): type/enum/const, string/number/array/object keywords, `$ref` to local `#/definitions`/`#/$defs`, `allOf/anyOf/oneOf/not`, `if/then/else`, `contains`, `prefixItems`, `dependentRequired`, common `format`s. Unsupported keywords are reported, never silently treated as passing; a depth guard prevents `$ref` cycles from hanging. Everything is client-side; results render with `textContent`. The dialog is a native `<dialog>` (focus trap, Esc, focus return via the shared helper).

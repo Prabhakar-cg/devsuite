@@ -5,7 +5,7 @@
  *  - parseCurl(cmd)  → request item shape used by loadItem() in api-tester.js
  *                      ({method, url, queryParams/headers as entry arrays,
  *                        auth, bodyType, body}).
- *  - buildCurl / buildFetch / buildHttpie(config)
+ *  - buildCurl / buildFetch / buildHttpie / buildPython / buildAxios / buildGo(config)
  *                    → snippets from the *resolved* execute-config shape
  *                      ({url, method, queryParams/headers as objects, auth,
  *                        bodyType, body}) produced by buildRequestConfig().
@@ -278,5 +278,41 @@
         return body !== null ? `echo ${shellQuote(body)} | ${cmd}` : cmd;
     }
 
-    return { tokenize, parseCurl, finalize, buildCurl, buildFetch, buildHttpie, shellQuote };
+    // ─── More languages (BACKLOG FEAT-17): Python requests, axios, Go net/http ─────
+    // JSON.stringify output is a valid string/dict literal in Python and a valid
+    // interpreted string literal in Go, so one quoting rule keeps all three safe.
+    const q = (v) => JSON.stringify(String(v));
+
+    function buildPython(config) {
+        const { url, method, headers, body } = finalize(config);
+        const args = [`    ${q(method)},`, `    ${q(url)},`];
+        if (Object.keys(headers).length) args.push(`    headers=${JSON.stringify(headers, null, 4).replace(/\n/g, '\n    ')},`);
+        if (body !== null) args.push(`    data=${q(body)},`);
+        return `import requests\n\nresponse = requests.request(\n${args.join('\n')}\n)\nprint(response.status_code)\nprint(response.text)`;
+    }
+
+    function buildAxios(config) {
+        const { url, method, headers, body } = finalize(config);
+        const opts = { method: method.toLowerCase(), url };
+        if (Object.keys(headers).length) opts.headers = headers;
+        if (body !== null) opts.data = body;
+        return `import axios from "axios";\n\nconst response = await axios(${JSON.stringify(opts, null, 2)});\nconsole.log(response.status, response.data);`;
+    }
+
+    function buildGo(config) {
+        const { url, method, headers, body } = finalize(config);
+        const imports = ['"fmt"', '"io"', '"net/http"'].concat(body !== null ? ['"strings"'] : []).sort();
+        const lines = [
+            'package main', '', 'import (', ...imports.map((i) => `\t${i}`), ')', '', 'func main() {',
+            `\treq, err := http.NewRequest(${q(method)}, ${q(url)}, ${body !== null ? `strings.NewReader(${q(body)})` : 'nil'})`,
+            '\tif err != nil {', '\t\tpanic(err)', '\t}',
+            ...Object.entries(headers).map(([k, v]) => `\treq.Header.Set(${q(k)}, ${q(v)})`),
+            '\tresp, err := http.DefaultClient.Do(req)', '\tif err != nil {', '\t\tpanic(err)', '\t}',
+            '\tdefer resp.Body.Close()', '\tdata, _ := io.ReadAll(resp.Body)',
+            '\tfmt.Println(resp.Status)', '\tfmt.Println(string(data))', '}',
+        ];
+        return lines.join('\n');
+    }
+
+    return { tokenize, parseCurl, finalize, buildCurl, buildFetch, buildHttpie, buildPython, buildAxios, buildGo, shellQuote };
 });

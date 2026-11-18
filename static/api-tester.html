@@ -22,7 +22,7 @@
     <script src="/static/curl-codegen.js"></script>
     <script src="/static/collection-utils.js"></script>
 </head>
-<body>
+<body data-tool="api-tester">
 
     <header class="app-header" aria-label="API Tester toolbar">
         <div style="display:flex; align-items:center; gap:0.75rem;">
@@ -95,7 +95,7 @@
         </nav>
 
         <!-- Main Area -->
-        <div class="main-area">
+        <main class="main-area">
 
             <div class="request-bar" role="search" aria-label="HTTP request">
                 <label for="req-method" class="sr-only">HTTP method</label>
@@ -116,7 +116,7 @@
                     <option value="direct">Force Direct</option>
                     <option value="proxy">Force Proxy</option>
                 </select>
-                <button id="btn-code" class="btn-small" aria-label="Code snippets — copy as cURL, fetch, or HTTPie, or import a curl command" title="Copy as cURL / fetch / HTTPie — or paste a curl command">Code</button>
+                <button id="btn-code" class="btn-small" aria-label="Code snippets — copy as cURL, fetch, HTTPie, Python, axios or Go, or import a curl command" title="Copy as cURL / fetch / HTTPie — or paste a curl command">Code</button>
                 <button id="btn-send" class="send-btn" aria-label="Send HTTP request">Send</button>
             </div>
 
@@ -238,7 +238,7 @@
                             <div id="req-body-editor" style="width:100%; height:100%;"></div>
                         </div>
                         <div id="req-text-body-wrap" style="display:none; flex:1; padding:0.5rem;">
-                            <textarea id="req-text-body" class="text-body-area" placeholder="Raw text body" aria-label="Raw request body"></textarea>
+                            <textarea id="req-text-body" aria-label="Raw text request body" class="text-body-area" placeholder="Raw text body"></textarea>
                         </div>
                         <div id="req-form-data-wrap" style="display:none; flex:1; overflow-y:auto;">
                             <div class="kv-table-head" role="presentation" style="margin:0.75rem 0.875rem 0;">
@@ -353,13 +353,13 @@
 
             </div>
 
-        </div>
+        </main>
 
     </div>
 
-    <input type="file" id="import-collections-file" accept=".json,.zip" style="display:none;" tabindex="-1" aria-label="Import collections file">
-    <input type="file" id="import-env-file" accept=".json" style="display:none;" tabindex="-1" aria-label="Import environment file">
-    <input type="file" id="openapi-file-input" accept=".json" style="display:none;" tabindex="-1" aria-label="Import OpenAPI spec file">
+    <input type="file" id="import-collections-file" aria-label="Import collections file" accept=".json,.zip" style="display:none;" tabindex="-1">
+    <input type="file" id="import-env-file" aria-label="Import environments file" accept=".json" style="display:none;" tabindex="-1">
+    <input type="file" id="openapi-file-input" aria-label="OpenAPI spec file" accept=".json" style="display:none;" tabindex="-1">
 
     <!-- OpenAPI Import Modal -->
     <dialog id="openapi-modal" class="modal" aria-label="Import OpenAPI Spec">
@@ -374,7 +374,7 @@
             <div style="display:flex; gap:0.5rem; flex-shrink:0;">
                 <button id="btn-openapi-load-file" class="btn-small">Load JSON File…</button>
             </div>
-            <textarea id="openapi-spec-input" class="openapi-spec-textarea" placeholder='{"openapi":"3.0.0","info":{"title":"My API","version":"1.0"},"paths":{"/users":{"get":{"summary":"List users","responses":{"200":{"description":"OK"}}}}}}' aria-label="OpenAPI spec JSON"></textarea>
+            <textarea id="openapi-spec-input" aria-label="OpenAPI spec JSON" class="openapi-spec-textarea" placeholder='{"openapi":"3.0.0","info":{"title":"My API","version":"1.0"},"paths":{"/users":{"get":{"summary":"List users","responses":{"200":{"description":"OK"}}}}}}'></textarea>
             <div style="display:flex; align-items:center; gap:0.625rem; flex-shrink:0;">
                 <button id="btn-openapi-import" class="btn-small btn-accent">Import into Collection</button>
                 <button id="btn-openapi-cancel" class="btn-small">Cancel</button>
@@ -477,6 +477,9 @@
                     <button class="code-tab active" data-code-kind="curl" role="tab" aria-selected="true">cURL</button>
                     <button class="code-tab" data-code-kind="fetch" role="tab" aria-selected="false">fetch</button>
                     <button class="code-tab" data-code-kind="httpie" role="tab" aria-selected="false">HTTPie</button>
+                    <button class="code-tab" data-code-kind="python" role="tab" aria-selected="false">Python</button>
+                    <button class="code-tab" data-code-kind="axios" role="tab" aria-selected="false">axios</button>
+                    <button class="code-tab" data-code-kind="go" role="tab" aria-selected="false">Go</button>
                     <button class="code-tab" data-code-kind="import" role="tab" aria-selected="false">Import cURL</button>
                 </div>
                 <div id="code-output-wrap" class="code-output-wrap">
@@ -485,7 +488,7 @@
                 </div>
                 <div id="code-import-wrap" class="code-import-wrap" style="display:none;">
                     <p class="code-hint">Paste a curl command — method, headers, body, basic auth, cookies, and query strings are imported into the editor. Unsupported flags are ignored.</p>
-                    <textarea id="code-import-input" class="code-import-textarea" placeholder="curl -X POST https://api.example.com/v1/users -H 'Content-Type: application/json' -d '{&quot;name&quot;:&quot;Ada&quot;}'" aria-label="Paste curl command to import"></textarea>
+                    <textarea id="code-import-input" aria-label="Code snippet to import" class="code-import-textarea" placeholder="curl -X POST https://api.example.com/v1/users -H 'Content-Type: application/json' -d '{&quot;name&quot;:&quot;Ada&quot;}'"></textarea>
                     <div style="display:flex; align-items:center; gap:0.625rem;">
                         <button id="btn-code-import" class="btn-small btn-accent">Import into editor</button>
                         <span id="code-import-status" style="font-size:0.78rem; color:#dc2626;"></span>

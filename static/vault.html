@@ -11,7 +11,7 @@
     <script src="/static/crypto-js.min.js"></script>
     <script src="/static/components.js"></script>
 </head>
-<body>
+<body data-tool="vault">
 
 <!-- ================================================================
      LOCK SCREEN OVERLAY
@@ -100,7 +100,7 @@
 <!-- ================================================================
      MAIN LAYOUT
      ================================================================ -->
-<div class="vault-layout">
+<main class="vault-layout">
 
     <!-- ── Left Sidebar — Type Filter ── -->
     <aside class="vault-sidebar">
@@ -166,7 +166,7 @@
         </div>
         <div class="entry-list" id="entry-list">
             <div class="empty-list" id="empty-list">
-                <div class="icon">🔐</div>
+                <svg class="tk-art" data-art="vault" aria-hidden="true"></svg>
                 <p>No secrets yet.<br>Click <strong>New Secret</strong> to add one.</p>
             </div>
         </div>
@@ -176,7 +176,7 @@
     <div class="detail-panel" id="detail-panel">
         <!-- Empty state -->
         <div class="detail-empty" id="detail-empty">
-            <div class="big-icon">🏛️</div>
+            <svg class="tk-art" data-art="vault" aria-hidden="true"></svg>
             <h3>Select a secret</h3>
             <p>Choose an entry from the list to view its details here.</p>
         </div>
@@ -204,7 +204,7 @@
         </div>
     </div>
 
-</div>
+</main>
 
 <!-- ================================================================
      ADD / EDIT MODAL
@@ -213,7 +213,7 @@
     <div class="modal-box">
         <div class="modal-header">
             <span class="modal-title" id="modal-title">New Secret</span>
-            <button class="modal-close" id="modal-close" title="Close">✕</button>
+            <button class="modal-close" id="modal-close" title="Close" aria-label="Close"><span aria-hidden="true">✕</span></button>
         </div>
 
         <div class="modal-body">
@@ -222,27 +222,27 @@
                 <legend class="form-label">Secret Type</legend>
                 <div class="type-select-row">
                     <button class="type-opt selected" data-type="password">
-                        <span class="type-emoji">🔑</span>
+                        <span class="type-emoji"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8z"/><path d="M15.5 7.5l3 3L22 7l-3-3"/></svg></span>
                         <span class="type-name">Password</span>
                     </button>
                     <button class="type-opt" data-type="token">
-                        <span class="type-emoji">🪙</span>
+                        <span class="type-emoji"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8a5 5 0 1 0 0 .01"/><path d="M16.5 9.5a5 5 0 1 1-6.9 6.9"/><path d="M7 6h2v4"/></svg></span>
                         <span class="type-name">Token</span>
                     </button>
                     <button class="type-opt" data-type="ssh">
-                        <span class="type-emoji">🗝️</span>
+                        <span class="type-emoji"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.6 18.4a2 2 0 0 0 0 2.8 2 2 0 0 0 2.8 0l7.2-7.2a5 5 0 1 0-2.8-2.8z"/><path d="M17 6.5h.01"/></svg></span>
                         <span class="type-name">SSH Key</span>
                     </button>
                     <button class="type-opt" data-type="api">
-                        <span class="type-emoji">⚡</span>
+                        <span class="type-emoji"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg></span>
                         <span class="type-name">API Key</span>
                     </button>
                     <button class="type-opt" data-type="env">
-                        <span class="type-emoji">📦</span>
+                        <span class="type-emoji"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="M3.3 7L12 12l8.7-5"/><path d="M12 22V12"/></svg></span>
                         <span class="type-name">Env Secret</span>
                     </button>
                     <button class="type-opt" data-type="note">
-                        <span class="type-emoji">📝</span>
+                        <span class="type-emoji"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14l-4-4H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 8h8"/><path d="M8 12h5"/></svg></span>
                         <span class="type-name">Secure Note</span>
                     </button>
                 </div>
@@ -406,7 +406,7 @@
     <div class="modal-box">
         <div class="modal-header">
             <span class="modal-title">Restore from Backup</span>
-            <button class="modal-close" id="restore-modal-close" title="Close">✕</button>
+            <button class="modal-close" id="restore-modal-close" title="Close" aria-label="Close"><span aria-hidden="true">✕</span></button>
         </div>
 
         <div class="modal-body">
@@ -439,7 +439,7 @@
     <div class="modal-box">
         <div class="modal-header">
             <span class="modal-title">Change Master Password</span>
-            <button class="modal-close" id="change-pw-modal-close" title="Close">✕</button>
+            <button class="modal-close" id="change-pw-modal-close" title="Close" aria-label="Close"><span aria-hidden="true">✕</span></button>
         </div>
 
         <div class="modal-body">
@@ -474,6 +474,7 @@
      ================================================================ -->
 <div id="toast-container"></div>
 
+<script src="/static/icons.js"></script>
 <script src="/static/vault.js?v=2"></script>
 </body>
 </html>

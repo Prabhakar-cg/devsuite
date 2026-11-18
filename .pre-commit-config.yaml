@@ -1,0 +1,28 @@
+# Install once:  pip install pre-commit ruff && pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check
+        entry: ruff check
+        language: system
+        types: [python]
+      - id: pytest-fast
+        name: pytest (backend)
+        entry: python -m pytest tests/python -q -x
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+      - id: js-tests
+        name: node tests/javascript/run.js
+        entry: node tests/javascript/run.js
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+        exclude: ^static/libs/
+      - id: check-yaml
+      - id: check-merge-conflict

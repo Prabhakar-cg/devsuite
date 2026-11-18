@@ -1,0 +1,112 @@
+/* ============================================================
+   DevSuite Tool-Page Theme Layer (feature 024, SPEC §9.13)
+   Injected into every page by deps.py::_serve_html() — never
+   linked from a static/*.html file directly.
+
+   Assigns the CANONICAL tool-page tokens per theme. Selectors are
+   html[data-theme="…"] (specificity 0,1,1) so they beat every
+   page-local :root palette (0,1,0) regardless of stylesheet order.
+   ============================================================ */
+
+/* ── Default (light) text-safe status tokens, available on every page ──
+   Pages that do not load style.css (linter, vault, cron, …) rely on these. */
+:root {
+    --blue-text:  #0062c4;
+    --green-text: #0f6b1e;
+    --red-text:   #b3231a;
+    --amber-text: #7a3f05;
+}
+
+/* ── Hi-Contrast: black surfaces, white text, yellow focus ── */
+html[data-theme="high-contrast"] {
+    color-scheme: dark;
+    --bg:              #000000;
+    --bg-secondary:    #0a0a0a;
+    --bg-tertiary:     #141414;
+    --text:            #ffffff;
+    --text-mid:        #f0f0f0;
+    --text-muted:      #c8c8c8;
+    --text-primary:    #ffffff;
+    --text-secondary:  #f0f0f0;
+    --border:          rgba(255,255,255,0.55);
+    --border-mid:      rgba(255,255,255,0.8);
+
+    --blue:            #6cb6ff;
+    --blue-hover:      #9fd0ff;
+    --blue-subtle:     rgba(108,182,255,0.18);
+    --blue-text:       #9fd0ff;
+    --green:           #5dff7a;
+    --green-mid:       #5dff7a;
+    --green-text:      #5dff7a;
+    --green-subtle:    rgba(93,255,122,0.16);
+    --red:             #ff7b72;
+    --red-mid:         #ff7b72;
+    --red-text:        #ff9b94;
+    --red-subtle:      rgba(255,123,114,0.18);
+    --amber:           #ffd60a;
+    --amber-mid:       #ffd60a;
+    --amber-text:      #ffd60a;
+    --amber-subtle:    rgba(255,214,10,0.16);
+
+    --on-accent:       #000000;
+    --focus-ring:      #ffd60a;
+    --scrollbar-thumb:       rgba(255,255,255,0.6);
+    --scrollbar-thumb-hover: rgba(255,255,255,0.85);
+    --shadow-xs:       none;
+    --shadow-sm:       none;
+    --shadow-md:       none;
+    --surface-glass:        rgba(0,0,0,0.94);
+    --surface-glass-strong: #000000;
+    /* tool-local accent aliases (cron teal) */
+    --vio:             #c4b5fd;
+    --blue-solid:      #6cb6ff;
+    --teal:            #2dd4bf;
+    --teal-hover:      #5eead4;
+    --teal-mid:        #5eead4;
+    --teal-subtle:     rgba(45,212,191,0.16);
+}
+
+/* ── iOS Glass (light, blue-tinted) ── */
+html[data-theme="ios-glass"] {
+    color-scheme: light;
+    --bg:              #f4f7ff;
+    --bg-secondary:    #e8efff;
+    --bg-tertiary:     #d9e4ff;
+    --text:            #1c1c1e;
+    --text-mid:        #34364a;
+    --text-muted:      #4a5063;
+    --border:          rgba(60,70,160,0.22);
+    --border-mid:      rgba(60,70,160,0.34);
+
+    --blue:            #0057d9;
+    --blue-hover:      #0049b8;
+    --blue-subtle:     rgba(0,87,217,0.10);
+    --blue-text:       #0049b8;
+    --green-text:      #0f6b1e;
+    --red-text:        #b3231a;
+    --amber-text:      #7a3f05;
+    --on-accent:       #ffffff;
+    --focus-ring:      #1d4ed8;
+    --teal-mid:        #0b5f58;
+    --surface-glass:        rgba(244,247,255,0.85);
+    --surface-glass-strong: rgba(244,247,255,0.96);
+}
+
+/* ── Light (clean slate) ── */
+html[data-theme="vs"] {
+    color-scheme: light;
+    --bg:              #ffffff;
+    --bg-secondary:    #f1f5f9;
+    --bg-tertiary:     #e2e8f0;
+    --text:            #0f172a;
+    --text-mid:        #334155;
+    --text-muted:      #566478;
+    --border:          rgba(15,23,42,0.12);
+    --border-mid:      rgba(15,23,42,0.2);
+    --blue-text:       #0062c4;
+    --green-text:      #0f6b1e;
+    --red-text:        #b3231a;
+    --amber-text:      #7a3f05;
+    --on-accent:       #ffffff;
+    --focus-ring:      #0071e3;
+}

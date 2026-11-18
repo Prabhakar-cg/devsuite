@@ -47,7 +47,7 @@
     </style>
 </head>
 
-<body>
+<body data-tool="diff">
 
     <!-- ============================================================
          HEADER
@@ -132,7 +132,7 @@
             <span class="tab-icon">⟨⟩</span> DevSuite Text Diff
         </button>
         <button class="tab-btn" data-tab="folder-diff" id="tab-folder-diff">
-            <span class="tab-icon">📁</span> DevSuite Folder Diff
+            <span class="tab-icon"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span> DevSuite Folder Diff
         </button>
     </div>
 
@@ -157,8 +157,8 @@
                             <span class="line-count-badge" id="lines-original" aria-live="polite" aria-atomic="true">0 lines</span>
                         </div>
                         <div class="panel-actions">
-                            <button class="btn btn-ghost" id="paste-original-btn" aria-label="📋 Paste from clipboard" title="Paste from clipboard">
-                                📋 Paste
+                            <button class="btn btn-ghost" id="paste-original-btn" aria-label="Paste from clipboard" title="Paste from clipboard">
+                                <svg class="ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg> Paste
                             </button>
                             <label class="btn-upload" id="drop-original" title="Upload a file" aria-label="Upload File 1">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -177,7 +177,7 @@
                                 </svg>
                             </button>
                             <button class="btn btn-ghost clear-btn" data-target="original-input"
-                                title="Clear File 1">✕</button>
+                                title="Clear File 1" aria-label="Clear File 1"><span aria-hidden="true">✕</span></button>
                         </div>
                     </div>
                     <textarea id="original-input" spellcheck="false" aria-label="File 1 content"
@@ -192,8 +192,8 @@
                             <span class="line-count-badge" id="lines-modified" aria-live="polite" aria-atomic="true">0 lines</span>
                         </div>
                         <div class="panel-actions">
-                            <button class="btn btn-ghost" id="paste-modified-btn" aria-label="📋 Paste from clipboard" title="Paste from clipboard">
-                                📋 Paste
+                            <button class="btn btn-ghost" id="paste-modified-btn" aria-label="Paste from clipboard" title="Paste from clipboard">
+                                <svg class="ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg> Paste
                             </button>
                             <label class="btn-upload" id="drop-modified" title="Upload a file" aria-label="Upload File 2">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -212,7 +212,7 @@
                                 </svg>
                             </button>
                             <button class="btn btn-ghost clear-btn" data-target="modified-input"
-                                title="Clear File 2">✕</button>
+                                title="Clear File 2" aria-label="Clear File 2"><span aria-hidden="true">✕</span></button>
                         </div>
                     </div>
                     <textarea id="modified-input" spellcheck="false" aria-label="File 2 content"
@@ -287,10 +287,10 @@
                             </button>
                             <div class="export-menu hidden" id="export-menu" role="menu">
                                 <button class="export-menu-item" id="export-patch-btn" role="menuitem">
-                                    📄 Download as .patch
+                                    <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Download as .patch
                                 </button>
                                 <button class="export-menu-item" id="export-copy-btn" role="menuitem">
-                                    📋 Copy unified diff
+                                    <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9h11a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1z"/><path d="M5 15H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1"/></svg> Copy unified diff
                                 </button>
                             </div>
                         </div>
@@ -527,13 +527,13 @@
                                 </button>
                                 <div class="export-menu hidden" id="folder-export-menu" role="menu">
                                     <button class="export-menu-item" id="folder-export-right-btn" role="menuitem">
-                                        📄 Download right file
+                                        <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Download right file
                                     </button>
                                     <button class="export-menu-item" id="folder-export-left-btn" role="menuitem">
-                                        📄 Download left file
+                                        <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Download left file
                                     </button>
                                     <button class="export-menu-item" id="folder-export-patch-btn" role="menuitem">
-                                        📋 Copy unified diff
+                                        <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9h11a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1z"/><path d="M5 15H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v1"/></svg> Copy unified diff
                                     </button>
                                 </div>
                             </div>

@@ -1,6 +1,7 @@
 """
 routes/proxy.py — CORS bypass proxy for the Local API Tester (/api/proxy).
 """
+import http.client
 import ipaddress
 import socket
 import urllib.error
@@ -21,6 +22,23 @@ _HOP_BY_HOP_HEADERS = frozenset(("host", "connection", "origin", "referer", "acc
 _MAX_PROXY_RESPONSE = 10 * 1024 * 1024  # 10 MB response cap
 
 
+def ip_is_forbidden(ip_str: str) -> bool:
+    """True for loopback, link-local, multicast, reserved or unspecified addresses (SEC-18).
+
+    IPv4-mapped IPv6 (``::ffff:127.0.0.1``) is unwrapped first, and ``0.0.0.0`` / ``::``
+    are rejected because connecting to them reaches the local host on Linux.
+    Non-IP strings return False (hostnames are resolved and checked separately).
+    """
+    try:
+        ip_obj = ipaddress.ip_address(ip_str.split("%", 1)[0])
+    except ValueError:
+        return False
+    if ip_obj.version == 6 and ip_obj.ipv4_mapped is not None:
+        ip_obj = ip_obj.ipv4_mapped
+    return (ip_obj.is_loopback or ip_obj.is_link_local or ip_obj.is_multicast
+            or ip_obj.is_reserved or ip_obj.is_unspecified)
+
+
 def _check_ip_not_private(ip_str: str) -> None:
     """Raise HTTPException 403 if the IP is loopback, link-local, multicast, or reserved.
 
@@ -33,16 +51,11 @@ def _check_ip_not_private(ip_str: str) -> None:
       - Link-local (169.254.x.x)     — cloud-metadata endpoints (AWS/GCP/Azure)
       - Multicast / IANA-reserved    — no legitimate target for an HTTP API
     """
-    try:
-        ip_obj = ipaddress.ip_address(ip_str)
-        if (ip_obj.is_loopback or ip_obj.is_link_local
-                or ip_obj.is_multicast or ip_obj.is_reserved):
-            raise HTTPException(
-                status_code=403,
-                detail=f"Access to loopback, link-local, or reserved IP addresses is forbidden: {ip_str}",
-            )
-    except ValueError:
-        pass  # intentionally ignored: non-IP strings (hostnames) are not checked here
+    if ip_is_forbidden(ip_str):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access to loopback, link-local, or reserved IP addresses is forbidden: {ip_str}",
+        )
 
 
 def _filter_proxy_headers(headers: dict) -> dict:
@@ -60,6 +73,48 @@ def _collect_set_cookies(headers) -> list[str]:
         return headers.get_all("Set-Cookie") or []
     except AttributeError:
         return []
+
+
+def _assert_peer_allowed(sock) -> None:
+    """Validate the address we actually connected to, before any request bytes are sent.
+
+    The pre-flight ``getaddrinfo`` check can be raced by DNS rebinding (the name resolves
+    to a public IP for the check and to 127.0.0.1 for the connect). Checking the socket's
+    real peer closes that window (SEC-18).
+    """
+    try:
+        peer = sock.getpeername()[0]
+    except OSError:
+        sock.close()
+        raise
+    if ip_is_forbidden(peer):
+        sock.close()
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access to loopback, link-local, or reserved IP addresses is forbidden: {peer}",
+        )
+
+
+class _GuardedHTTPConnection(http.client.HTTPConnection):
+    def connect(self):
+        super().connect()
+        _assert_peer_allowed(self.sock)
+
+
+class _GuardedHTTPSConnection(http.client.HTTPSConnection):
+    def connect(self):
+        super().connect()
+        _assert_peer_allowed(self.sock)
+
+
+class _GuardedHTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req):
+        return self.do_open(_GuardedHTTPConnection, req)
+
+
+class _GuardedHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_GuardedHTTPSConnection, req, context=self._context)
 
 
 class _SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -85,7 +140,12 @@ class _SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
 
 def _execute_proxy_request(request_obj) -> dict:
     """Run a urllib request (redirects re-validated, response size-capped) and normalise it."""
-    opener = urllib.request.build_opener(_SSRFSafeRedirectHandler())
+    # ProxyHandler({}) ignores HTTP(S)_PROXY env vars: a proxy would resolve the target
+    # itself, bypassing every address check here.
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _GuardedHTTPHandler(), _GuardedHTTPSHandler(), _SSRFSafeRedirectHandler(),
+    )
     try:
         with opener.open(request_obj, timeout=15) as resp:  # nosec B310
             raw = resp.read(_MAX_PROXY_RESPONSE + 1)

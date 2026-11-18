@@ -49,7 +49,7 @@
         #file-input { display: none; }
     </style>
 </head>
-<body>
+<body data-tool="base64">
 
 <div id="toast-container"></div>
 
@@ -98,8 +98,8 @@
         <button class="toggle-opt" id="mode-url" title="URL-safe Base64 (replaces +/ with -_)" aria-pressed="false">URL-safe</button>
     </fieldset>
 
-    <button id="btn-decode-jwt" class="btn btn-ghost" title="Decode as JWT — splits header.payload.signature" aria-label="🔐 JWT — Decode as JWT token">
-        🔐 JWT
+    <button id="btn-decode-jwt" class="btn btn-ghost" title="Decode as JWT — splits header.payload.signature" aria-label="JWT — Decode as JWT token">
+        <svg class="ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11h14v10H5z"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> JWT
     </button>
 
     <div class="toolbar-sep" aria-hidden="true"></div>
@@ -138,7 +138,7 @@
                     <span class="pane-label">Input</span>
                     <div class="pane-actions">
                         <span id="char-count-2" class="line-badge" aria-live="polite" aria-atomic="true">0 chars</span>
-                        <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="📋 Paste from clipboard">📋 Paste</button>
+                        <button id="btn-paste" class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" aria-label="Paste from clipboard"><svg class="ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg> Paste</button>
                     </div>
                 </div>
                 <div id="input-editor" class="monaco-host" aria-label="Base64 input editor"></div>
@@ -151,14 +151,14 @@
                     <span id="output-char-count" class="line-badge" style="display:none;" aria-live="polite" aria-atomic="true"></span>
                 </div>
                 <div id="output-empty" class="output-empty" aria-label="Output area — empty">
-                    <span class="output-empty-icon" aria-hidden="true">🔀</span>
+                    <svg class="tk-art" data-art="encode" aria-hidden="true"></svg>
                     <span>Click Encode or Decode to see output</span>
                 </div>
                 <section id="output-editor" class="output-monaco-host" style="display:none;" aria-label="Encoded/decoded output" aria-live="polite"></section>
 
                 <!-- Error panel inside output pane -->
                 <div id="error-panel" class="error-panel" role="alert" aria-live="assertive" aria-atomic="true">
-                    <span class="error-icon" aria-hidden="true">⚠️</span>
+                    <span class="error-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg></span>
                     <div class="error-body">
                         <div id="error-message" class="error-message"></div>
                         <div id="error-hint" class="error-hint"></div>
@@ -173,7 +173,7 @@
                 <span>JWT Decoded</span>
                 <span style="display:flex;align-items:center;gap:0.5rem;">
                     <a href="/crypto?tab=jwt" class="btn btn-ghost" style="padding:1px 8px;font-size:0.7rem;" title="Verify this token's signature in Crypto Suite">Verify signature →</a>
-                    <button onclick="document.getElementById('jwt-section').classList.remove('visible')" class="btn btn-ghost" style="padding:1px 6px;font-size:0.7rem;" aria-label="Close JWT panel">✕</button>
+                    <button onclick="document.getElementById('jwt-section').classList.remove('visible')" class="btn btn-ghost" style="padding:1px 6px;font-size:0.7rem;" aria-label="Close JWT panel"><span aria-hidden="true">✕</span></button>
                 </span>
             </div>
             <div class="jwt-parts">
@@ -195,31 +195,12 @@
 </main>
 
 <script src="/static/libs/require.min.js"></script>
+<script src="/static/components.js"></script>
 <script>
 (function () {
     'use strict';
 
-    function toast(msg, type = 'info', ms = 2500) {
-        const c = document.getElementById('toast-container');
-        const t = document.createElement('div');
-        t.className = `toast ${type}`;
-        
-        const span = document.createElement('span');
-        span.textContent = msg;
-        
-        const btn = document.createElement('button');
-        btn.className = 'toast-close';
-        btn.textContent = '✕';
-        btn.onclick = function() {
-            this.parentElement.classList.add('hide');
-            setTimeout(() => this.parentElement.remove(), 300);
-        };
-        
-        t.appendChild(span);
-        t.appendChild(btn);
-        c.appendChild(t);
-        setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, ms);
-    }
+    function toast(msg, type = 'info', ms = 2500) { DevSuite.toast(msg, type, ms); }
 
     require.config({ paths: { vs: '/static/libs/vs' }});
     globalThis.MonacoEnvironment = { getWorkerUrl: () => URL.createObjectURL(new Blob([`

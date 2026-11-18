@@ -148,6 +148,13 @@
             return;
         }
         clearUrlError();
+        // Reflect the actual parsed/normalized URL back into the field. A stray dropped
+        // character (e.g. an OS-level typing-suggestion feature swallowing one of two
+        // "/" keystrokes) can leave the field showing something that looks malformed
+        // even though it parses to a valid URL — this makes the field always show
+        // exactly what's about to be connected to, instead of the possibly-mangled
+        // raw text the user typed.
+        urlEl.value = parsed.url;
         if (insecureWarnEl) insecureWarnEl.classList.toggle('visible', !parsed.secure);
 
         // FR-006: never hold two live sockets. Detach the old socket's handlers

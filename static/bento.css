@@ -1,0 +1,142 @@
+/* ============================================================
+   Bento showcase (feature 026, SPEC §9.14) — Home + Tools hub
+   Flat, colour-blocked tiles tinted from the active theme's accent
+   tokens via color-mix(), so all six themes work with no per-theme
+   tables. Artwork is generated SVG (static/bento-art.js).
+   ============================================================ */
+
+.bento-section { padding: 2.5rem 0 3.5rem; }
+
+.bento {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-rows: 260px;
+    gap: 6px;
+}
+
+.bento-tile {
+    --hue:   var(--electric);
+    --hue-2: var(--violet);
+    --tile:  color-mix(in srgb, var(--hue) 24%, var(--deep, var(--surface)));
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    isolation: isolate;
+    border-radius: var(--radius-xl, 16px);
+    background: var(--tile);
+    color: var(--text-primary);
+    text-decoration: none;
+    /* artwork palette */
+    --art-1: var(--hue);
+    --art-2: var(--text-primary);
+    --art-3: var(--hue-2);
+    --art-4: var(--text-primary);
+}
+
+/* ── Artwork ── */
+.bento-tile svg[data-art] {
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    width: 100%;
+    height: calc(100% - 3.4rem);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+}
+a.bento-tile:hover svg[data-art],
+a.bento-tile:focus-visible svg[data-art] { transform: scale(1.04); }
+
+.art-f1 { fill: var(--art-1); } .art-f2 { fill: var(--art-2); }
+.art-f3 { fill: var(--art-3); } .art-f4 { fill: var(--art-4); }
+.art-s1 { stroke: var(--art-1); } .art-s2 { stroke: var(--art-2); }
+.art-s3 { stroke: var(--art-3); } .art-s4 { stroke: var(--art-4); }
+
+/* ── Caption ── */
+.bento-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.8rem 1.1rem 1rem;
+    background: linear-gradient(to top, var(--tile) 65%, transparent);
+}
+.bento-label strong {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+}
+.bento-label span {
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--text-secondary);
+}
+
+/* ── Per-tile hues (all from theme tokens) ── */
+/* Per-tile hue + 12-column desktop span (tablet/phone spans are in the media queries below) */
+.t-diff     { --hue: var(--lime);     --hue-2: var(--amber);    grid-column: span 3; }
+.t-lint     { --hue: var(--electric); --hue-2: var(--lime);     grid-column: span 2; }
+.t-vault    { --hue: var(--amber);    --hue-2: var(--violet);   grid-column: span 3; }
+.t-api      { --hue: var(--violet);   --hue-2: var(--lime);     grid-column: span 4; }
+.t-terminal { --hue: var(--electric); --hue-2: var(--amber);    grid-column: span 3; }
+.t-cron     { --hue: var(--lime);     --hue-2: var(--electric); grid-column: span 2; }
+.t-pattern  { --hue: var(--violet);   --hue-2: var(--electric); grid-column: span 2;
+              --tile: color-mix(in srgb, var(--violet) 18%, var(--deep, var(--surface))); }
+.t-pattern svg[data-art] { height: 100%; opacity: 0.85; }
+
+/* ── Statement tile ── */
+.t-text {
+    --tile: color-mix(in srgb, var(--lime) 10%, var(--void));
+    justify-content: center;
+    gap: 0.9rem;
+    padding: 2rem 2.25rem;
+    align-items: flex-start;
+    grid-column: span 5;
+}
+.t-text h2 {
+    font-family: var(--font-mono);
+    font-size: clamp(1.5rem, 2.6vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: var(--text-primary);
+    margin: 0;
+}
+.t-text p {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    max-width: 34ch;
+    margin: 0;
+}
+.bento-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.3rem;
+    border-radius: var(--radius-pill, 980px);
+    background: var(--electric-solid, var(--electric));
+    color: var(--on-electric, #fff);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: var(--transition);
+}
+.bento-cta:hover { filter: brightness(1.08); }
+.bento-cta:active { transform: scale(0.97); }
+
+/* Tablet: 6 columns, two tiles per row, statement spans the row */
+@media (max-width: 999px) {
+    .bento { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-rows: minmax(230px, auto); }
+    .bento > * { grid-column: span 3; }
+    .bento > .t-text { grid-column: span 6; order: -1; }
+    .bento > .t-pattern { display: none; }
+}
+
+/* Phone: single column */
+@media (max-width: 599px) {
+    .bento { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(210px, auto); }
+    .bento > *, .bento > .t-text { grid-column: 1 / -1; }
+    .bento-section { padding: 1.5rem 0 2.5rem; }
+}

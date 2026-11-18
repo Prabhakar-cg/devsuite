@@ -19,7 +19,7 @@ DevSuite is a **locally-hosted, offline-first developer tools suite**. No cloud 
 
 ### 1.3 Current Version
 
-`0.10.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
+`0.19.0` — bumped simultaneously in `deps.py` (`APP_VERSION`), `README.md` (version badge), `CHANGELOG.md` (version heading), and this section (`specs/SPEC.md` §1.3). See §12.1.
 
 ---
 
@@ -45,7 +45,7 @@ These are hard rules. No implementation may violate them.
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3.10+, FastAPI, Uvicorn (`localhost:8000`) |
+| Backend | Python 3.11+, FastAPI, Uvicorn (`localhost:8000`) |
 | Frontend | Vanilla HTML / CSS / JS |
 | Storage | DevDB — KeePass-style `.dsb` binary at `~/.devsuite/devdb.dsb` |
 | SSH/SFTP | `asyncssh` |
@@ -150,6 +150,17 @@ All HTML pages are served through `_serve_html(filename)` in `main.py`, which:
 | Learning Roadmap — Doc Viewer | `roadmap-doc-viewer.html` | `roadmap-doc-viewer.js`, `roadmap-doc-viewer.css`, `notes-links.js` (shared `sanitizeMarkdownBody`), self-hosted `marked`, `dompurify` | `/roadmap/docs` (page route only; content fetched client-side from static `roadmap-docs/*.md`) | — |
 | ID Generator | `id-generator.html` | `id-gen.js` (pure generator core), `id-generator.js`, `id-generator.css`, `crypto-js.min.js` (SHA3 for CUID2) | `/id-generator` (page route only; all generation client-side) | — |
 | WebSocket Tester | `ws-tester.html` | `ws-utils.js` (pure helpers), `ws-tester.js`, `ws-tester.css`, `components.js` (toast) | `/ws-tester` (page route only; browser connects to ws:/wss: directly, scoped CSP) | — |
+| Command Palette *(cross-cutting, not a tool — §9.11)* | *(none — injected, no `.html` file)* | `command-palette-data.js` (pure destination list + filter), `command-palette.js`, `command-palette.css` | *(none — injected by `deps.py::_serve_html()` into every page)* | — |
+| Accessibility foundation *(cross-cutting, not a tool — §9.12)* | *(none — injected)* | `a11y.js`, `a11y.css` | *(none — injected by `deps.py::_serve_html()` into every page)* | — |
+| Tool-page theme layer *(cross-cutting, not a tool — §9.13)* | *(none — injected)* | `theme-layer.css` | *(none — injected by `deps.py::_serve_html()` into every page)* | — |
+| Bento showcase *(Home/Tools section, not a tool — §9.14)* | *(none — section of `home.html`/`tools.html`)* | `bento-art.js`, `bento.css` | — | — |
+| Tool-page bento skin *(cross-cutting, not a tool — §9.15)* | *(none — injected; pages opt in via `<body data-tool>`)* | `toolskin.css` (+ `bento.css`, `bento-art.js`) | *(injected by `deps.py::_serve_html()`)* | — |
+| File Converter bento redesign *(presentation of the File Converter tool, feature 027)* | `/file-converter` | `converter.css` (+ `bento.css`, `bento-art.js`) | — | — |
+| Dashboard charts *(shared helper)* | *(none)* | `mini-chart.js` (dependency-free canvas renderer, Chart.js-compatible subset used by the SSH dashboard; replaces the never-vendored `chart.js`) | — | — |
+| Master verification *(shared helper)* | *(none)* | `master-verify.js` (client-side v1/v2 challenge verification used by DevDB Manager) | — | — |
+| Secret Scanner | `/secret-scanner` | `secret-scanner.html`, `secret-scanner.js` (pure detection engine), `secret-scanner-ui.js`, `secret-scanner.css` | *(none — 100% client-side)* | — |
+| Icon set *(shared helper, §9.8)* | *(none)* | `icons.js` (stroke-based SVG icons for JS and static markup) | — | — |
+| JSON Schema validator *(Data Linter feature)* | `/data-linter` | `json-schema-lite.js`, `schema-validate-ui.js`, `schema-validate.css` | *(none — client-side)* | — |
 
 ---
 
@@ -179,6 +190,7 @@ into §5–§12 below.
 | 4.13 | Learning Roadmap | `/roadmap` | [specs/018-learning-roadmap/spec.md](018-learning-roadmap/spec.md) |
 | 4.14 | ID Generator | `/id-generator` | [specs/019-id-generator/spec.md](019-id-generator/spec.md) |
 | 4.15 | WebSocket Tester | `/ws-tester` | [specs/020-websocket-tester/spec.md](020-websocket-tester/spec.md) |
+| 4.16 | Secret Scanner | `/secret-scanner` | [specs/021-secret-scanner/spec.md](021-secret-scanner/spec.md) |
 
 ---
 
@@ -443,6 +455,7 @@ DevDB.getMeta()           // GET /api/db/meta
 ### 7.4 Rate Limiting
 
 - `/api/auth/challenge` and `/api/auth/session`: 5 req/60s per IP via `slowapi`.
+- `/api/auth/setup`: 10 req/60s per IP.
 - Returns HTTP 429 on excess.
 
 ### 7.5 Client-Side Encryption
@@ -464,6 +477,7 @@ DevDB.getMeta()           // GET /api/db/meta
 - Append-only. `ts` is `strftime("%Y-%m-%dT%H:%M:%SZ", gmtime())`.
 - Events:
   - `AUTH_SESSION` — fields: `ip`. On successful session unlock.
+  - `AUTH_FAIL` — fields: `ip`. On a failed session verification (the submitted key is never logged).
   - `AUTH_LOGOUT` — fields: `ip`. On explicit logout.
   - `VAULT_ACCESS` — fields: `ip`. On every `GET /api/vault` call.
   - `SSH_CONNECT` — fields: `host`, `port`, `user`. On WebSocket SSH terminal connect.
@@ -474,6 +488,18 @@ DevDB.getMeta()           // GET /api/db/meta
 - All dynamic content uses `document.createElement()` + `textContent`.
 - `innerHTML` assignment with untrusted data is forbidden.
 
+### 7.9 Network-Boundary Hardening (feature 025)
+
+Shipped in `specs/025-security-hardening/` after an independent review (SEC-15…SEC-21).
+
+- **Host allowlist (SEC-15):** `main.py::host_and_origin_guard` is the outermost HTTP middleware. A request whose `Host` hostname is not in `deps.allowed_hosts()` (`localhost`, `127.0.0.1`, `::1` + `DEVSUITE_ALLOWED_HOSTS`) gets `400 {"error":"Invalid Host header"}`. This defeats DNS rebinding, where a hostile page whose DNS flips to 127.0.0.1 would otherwise be same-origin and pass both CORS and the double-submit CSRF check.
+- **Origin validation (SEC-16):** a POST/PUT/PATCH/DELETE carrying an `Origin` whose hostname is not allowlisted (including `null`) gets `403`. WebSocket handshakes require both an allowlisted `Host` and an allowlisted `Origin`; trust is **never** derived from the `Host` header itself.
+- **SFTP/WSL gate (SEC-17):** `/api/sftp/list`, `/api/sftp/download`, `/api/sftp/upload`, `/api/wsl/discover` call `deps.require_session_if_configured` — dormant before a master password exists (same carve-out as SEC-14), mandatory afterwards.
+- **Proxy peer check (SEC-18):** `routes/proxy.py` classifies addresses with `ip_is_forbidden` (loopback, link-local, multicast, reserved, unspecified, and IPv4-mapped forms) and additionally validates the **connected peer address** (`_GuardedHTTPConnection/_GuardedHTTPSConnection`) before any request bytes are sent, for the first request and every redirect. Environment proxies (`HTTP(S)_PROXY`) are ignored because a proxy would resolve the target itself.
+- **Headers (SEC-19):** document CSP adds `frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'`; every response carries `Permissions-Policy` (camera/mic/geolocation/payment/usb/serial denied), `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Resource-Policy: same-origin`; `/api/*` responses carry `Cache-Control: no-store`.
+- **Archive limits (SEC-20):** `/api/convert` rejects `.xlsx/.docx/.doc` archives declaring more than 200 MB uncompressed or 10,000 entries with `413` before parsing.
+- **Session/audit hygiene (SEC-21):** `deps.register_session` evicts expired sessions and caps the table at 100; failed unlocks log `AUTH_FAIL` (§7.6); `/api/auth/setup` is rate limited (§7.4).
+
 ### 7.8 Open Security Debt
 
 | ID | Issue | Priority |
@@ -481,6 +507,8 @@ DevDB.getMeta()           // GET /api/db/meta
 | SEC-11 | CSP nonces to replace `unsafe-inline`. (`unsafe-eval` was removed from document responses in v0.3.0 — SEC-6 — by sandboxing API Tester scripting in a Web Worker with its own scoped CSP; only `unsafe-inline` remains.) | P2 |
 | ~~SEC-14~~ | ~~WebSocket endpoints not session-gated.~~ **✅ Resolved (v0.2.4):** `_ws_require_session` enforces a valid `ds_session` cookie on all three WS endpoints once a master password is configured (see §5.8). | — |
 | SEC-12 | Localhost HTTPS (self-signed cert on first run) | P3 |
+| SEC-22 | Master-password PBKDF2-SHA256 is 310,000 iterations (current guidance ≥ 600,000) and `/api/auth/challenge` (5/min) allows offline guessing; raising it or moving to Argon2id (SEC-13) needs a vault re-encryption migration and an end-to-end crypto test harness. | P2 |
+| ~~SEC-15…21~~ | ~~Host/Origin validation, SFTP/WSL session gate, proxy peer check, hardening headers, archive limits, session/audit hygiene~~ — **✅ Resolved (v0.14.0)**, see §7.9. | — |
 | SEC-13 | Argon2id KDF to replace PBKDF2 | P3 |
 | SEC-3 | Explicit CORS allowlist (`localhost`, `127.0.0.1`) | XS |
 | ~~SEC-5~~ | ~~SRI hashes for CDN-loaded scripts~~ — **obsolete**: all scripts are self-hosted under `/static/`; there are no CDN-loaded scripts to hash. | — |
@@ -538,11 +566,11 @@ CSS variables: `--font-mono` / `--font-body`. Loaded via `@import '/static/libs/
 
 | Token | Value | Use |
 |---|---|---|
-| `--radius-xl` | 16px | Modals, lock cards |
+| `--radius-xl` | 16px | Modals, lock cards *(defined in `style.css` since 023; previously documented-only)* |
 | `--radius` | 14px | Standard light cards |
 | `--radius-sm` | 10–12px | Small cards |
 | `--radius-xs` | 7–8px | Inputs, small buttons |
-| `--radius-pill` | 980px | CTA buttons, badges, chips |
+| `--radius-pill` | 980px | CTA buttons, badges, chips *(defined in `style.css` since 023; previously documented-only)* |
 
 ### 9.5 Motion
 
@@ -612,6 +640,139 @@ Themes driven by `theme.js`. Custom event `devsuite-theme-changed` fires on togg
 - Additional font families (Inter + JetBrains Mono is fixed).
 - Reassigning semantic color tokens.
 
+### 9.11 Command Palette
+
+Suite-wide Cmd+K (macOS) / Ctrl+K (other platforms) navigation overlay, shipped in
+`specs/022-command-palette/`. Cross-cutting UI chrome, not a 16th tool — no Tools Hub
+card, no tool-count change, no auth gate.
+
+- **Injection, not markup**: `deps.py::_serve_html()` injects `command-palette.css`
+  (after the favicon `<link>`) and `command-palette-data.js` + `command-palette.js`
+  (before `</body>`, in that order, `defer`) into every page response. No
+  `static/*.html` file references these files directly — any future tool page gets
+  the palette automatically, with zero per-page edits.
+- **Data source of truth**: `static/command-palette-data.js`'s `DESTINATIONS` array
+  (16 tools + Home + Tools Hub, `/base64` deliberately excluded — see
+  `specs/022-command-palette/research.md` §6) is a third manually-synced copy of the
+  tool list, alongside `routes/pages.py` and `static/tools.html` — keep it in sync
+  when tools are added, removed, or renamed.
+- **No auth required**: the palette never calls an `/api/*` endpoint and never checks
+  `auth-guard.js` session state — it must open and navigate on a tool's pre-unlock
+  lock screen.
+- **Theming**: styled via the existing CSS custom properties from both design
+  vocabularies (§9.1) with a two-level `var(--token-a, var(--token-b, #hex))`
+  fallback chain, so it re-themes correctly on home/hub pages (`--void`/`--surface`/
+  `--text-primary`/`--electric`) and on individual tool pages (`--bg`/`--text`/
+  `--blue`) alike, and still renders legibly on `static/db-manager.html`, which loads
+  neither.
+- **Discoverability control**: a floating corner trigger (not injected into any
+  page's own header markup) opens the palette by click — deliberately not
+  DOM-targeted at each page's structurally different header, to guarantee it never
+  collides with existing header controls (theme picker, back link, status pill).
+- **One pre-existing keybinding conflict**: `static/notes.js` already binds Ctrl/Cmd+K
+  to its own in-page "search notes" modal. The palette's keyboard shortcut is
+  suppressed on `/notes` specifically (its click trigger still works there); every
+  other route uses the shortcut normally.
+
+---
+
+### 9.12 Accessibility & Design-Token Contract
+
+Shipped in `specs/023-ui-accessibility-foundation/`. Target: WCAG 2.1 AA. Cross-cutting chrome, not a tool — no Tools Hub card, no tool-count change, no auth gate (works on pre-unlock lock screens).
+
+#### 1. Injection (deps.py `_serve_html()`)
+
+For every served HTML page, if not already present:
+- `<link rel="stylesheet" href="/static/a11y.css">` immediately after `<head>` (before page CSS so page rules can still override layout, but `:focus-visible`/reduced-motion rules use low-specificity-safe `!important` only where noted).
+- `<a class="ds-skip-link" href="#ds-main">Skip to main content</a>` immediately after `<body ...>`.
+- `<script src="/static/a11y.js" defer></script>` before `</body>`, **before** `command-palette-data.js`.
+- No inline script. Assets fingerprinted by the existing regex.
+
+#### 2. `DevSuite.a11y` (static/a11y.js)
+
+```text
+DevSuite.a11y.announce(message: string, politeness?: 'polite'|'assertive') -> void
+DevSuite.a11y.dialog.register(root: Element, opts?: {dismissible?: boolean, closeSelector?: string}) -> void
+```
+- `announce` writes `textContent` into persistent hidden `role=status` / `role=alert` regions.
+- Dialog behavior auto-registers elements matching the registry selectors (`dialog`, `.modal-overlay`, `.db-lock-overlay`, lock-card roots listed in tasks) and also exposes `register` for future tools.
+- Behavior on show: `role="dialog"`, `aria-modal="true"`, accessible name; remember opener; focus first focusable else root (`tabindex=-1`); Tab/Shift+Tab wrap; Esc triggers `closeSelector` (default: first `[data-close],.modal-close,.btn-cancel,[aria-label~=Close]`) when `dismissible`; on hide restore focus to opener if still in DOM else `#ds-main`.
+- Excluded: `.cpal-dialog` (Command Palette root).
+- Never reads input `.value`, never logs, never writes storage.
+
+#### 3. Tokens (style.css `:root`, overridden in theme.js)
+
+Radius: `--radius-xl:16px` `--radius:14px` `--radius-sm:10px` `--radius-xs:7px` `--radius-pill:980px`.
+Type: `--text-xs:.75rem` `--text-sm:.8125rem` `--text-base:.875rem` `--text-md:1rem` `--text-lg:1.25rem` `--text-xl:1.5rem` `--text-2xl:2rem`. Minimum UI text is `--text-xs`.
+Space (4px base): `--space-1:.25rem` `-2:.5rem` `-3:.75rem` `-4:1rem` `-5:1.25rem` `-6:1.5rem` `-8:2rem`.
+Text-safe: `--text-muted` (≥4.5:1 on `--bg`, `--bg-secondary`), `--green-text`, `--amber-text`, `--red-text`, `--blue-text` (≥4.5:1 on their surfaces).
+Focus: `--focus-ring` (≥3:1 vs. page and card surfaces, per theme).
+Scrollbar: `--scrollbar-thumb`, `--scrollbar-thumb-hover`.
+
+##### Contrast pairing matrix (tested for all 6 themes)
+
+| Foreground token | Surface tokens | Min ratio |
+|---|---|---|
+| `--text`/`--text-primary` | `--bg`, `--bg-secondary`, card surface | 4.5 |
+| `--text-mid`/`--text-secondary` | same | 4.5 |
+| `--text-muted` | same | 4.5 |
+| `--green-text`, `--amber-text`, `--red-text`, `--blue-text` | same | 4.5 |
+| `--focus-ring` | `--bg`, `--bg-secondary`, card surface | 3.0 |
+
+#### 4. CSS rules (a11y.css)
+
+- `:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }` applies to all focusable elements; `.ds-skip-link` visually hidden until focused.
+- `@media (prefers-reduced-motion: reduce)` zeroes `animation-duration`, `transition-duration`, `scroll-behavior`, hover/press transforms (exceptions: `.ds-keep-motion` for essential progress; terminal cursor blink).
+- `@media (pointer: coarse)` 44×44 minimum on buttons, `[role=button]`, `summary`, tab controls, icon buttons, form checkboxes/radios' labels.
+- Scrollbars use `--scrollbar-*` tokens (webkit and `scrollbar-color`).
+- `.ds-sr-only` utility; announcer regions use it.
+
+#### 5. Page requirements
+
+- Exactly one `<main>` (or `role=main`) per page, including pre-unlock lock screens (the lock card's container).
+- Navigation regions have distinct `aria-label`s.
+- Narrow layout: below `900px` width, `html,body` become `height:auto; min-height:100dvh; overflow:auto`; multi-pane layouts stack.
+- Toasts: `#toast-container` = `role="region" aria-label="Notifications"`; close control is a `<button aria-label="Dismiss notification">` with inline SVG (no ✕ glyph).
+
+#### 6. Alias layer (amended scope — see research R-06)
+
+Only aliases with **zero uses** were deleted: `--bg-void --accent-dark --neu-raise --neu-flat --shadow-glow` (a test keeps them out).
+The remaining `style.css` compatibility aliases (`--bg-main --bg-surface --bg-panel --text-primary --text-secondary --accent-* --glass-* --border-accent …`) are **retained and documented as the theme-override API**: `theme.js` overrides exactly these names per theme, and several of them (`--text-primary`, `--text-secondary`, `--border-accent`) are the *native* tokens of the Terminal Noir vocabulary in `home.css`. Renaming them is a ~280-site, two-vocabulary change that cannot be verified without a rendered browser pass; it is deferred to a follow-up feature that includes that pass.
+
+### 9.13 Tool-Page Theme Layer
+
+Shipped in `specs/024-tool-page-theming/`. Fixes themes not reaching tool pages (each tool stylesheet carries its own palette copy; `theme.js` only overrode legacy alias names).
+- File: `static/theme-layer.css`, injected by `_serve_html()` first in `<head>` (before `a11y.css`); never linked from a page.
+- Selectors: `html[data-theme="high-contrast" | "ios-glass" | "vs"]`.
+- Canonical tokens defined per theme: `--bg --bg-secondary --bg-tertiary --text --text-mid --text-muted --border --border-mid --blue --blue-hover --blue-subtle --blue-text --green --green-mid --green-text --green-subtle --red --red-mid --red-text --red-subtle --amber --amber-mid --amber-text --amber-subtle --on-accent --focus-ring --scrollbar-thumb --scrollbar-thumb-hover --shadow-xs --shadow-sm --shadow-md`.
+- Contrast: Hi-Contrast text ≥7:1 (large/UI ≥4.5:1); Light/iOS Glass per 023 matrix.
+- Local `:root` palettes in tool stylesheets remain as defaults and are overridden by the layer.
+- Guard: a test fails if a themed token is missing for any themed variant.
+
+### 9.14 Bento Showcase (feature 026)
+
+Shipped in `specs/026-bento-showcase/`. A mosaic of flat, colour-blocked tiles with generated artwork, under the Home hero and above the Tools catalog — compositional inspiration only; no third-party imagery or branding.
+
+- **Markup:** `<section class="bento-section" aria-labelledby="bento-title">` with an `sr-only` `h2`, then `.bento` containing 6 tool tiles (`<a class="bento-tile t-diff|t-lint|t-vault|t-api|t-terminal|t-cron">` → `/diff`, `/data-linter`, `/vault`, `/api-tester`, `/ssh`, `/cron`), 1 decorative `t-pattern` tile (`aria-hidden`), and 1 statement tile `t-text` (one `h2` + one pill CTA). Each tool tile has `aria-label="<Name> — <purpose>"` (starts with the visible caption) and a visible caption; art is `aria-hidden`.
+- **Art:** `static/bento-art.js` holds pictures as shape descriptors (`rect|circle|line|path`, colour keys `f1–f4`/`s1–s4`) and renders every `<svg data-art="…">` with `createElementNS` — no images, no network, no HTML-string injection. With JS off the tiles remain coloured, labelled links.
+- **Colour:** each tile sets `--hue`/`--hue-2` from theme tokens (`--electric/--lime/--amber/--violet`) and `--tile: color-mix(in srgb, var(--hue) 24%, var(--deep))`; art classes read `--art-1…4`. No hex literals and no per-theme tables, so all six themes (dark and light) work. Caption/headline text uses `--text-primary/--text-secondary` (axe-verified ≥ 4.5:1).
+- **Layout:** 12 columns ≥ 1000px (spans 3/2/3/4 and 3/5/2/2, 260px rows, 6px gutters, `--radius-xl`); 6 columns 600–999px (pattern hidden, statement first, full width); 1 column < 600px. No horizontal scroll at 320px.
+- **Motion:** only a 1.04 art scale on hover/focus (`var(--transition)`); suppressed by the global reduced-motion rule (§9.12).
+- **Adding a tile:** add a descriptor function to `bento-art.js` (`ART`), a tile in both `home.html` and `tools.html`, a hue rule in `bento.css`, and keep the href in `command-palette-data.js`; `tests/python/test_bento.py` enforces the structure.
+
+### 9.15 Tool-Page Bento Skin (feature 028)
+
+Shipped in `specs/028-tool-pages-bento/`. One shared stylesheet gives every tool the bento language (flat tinted tiles, 6px gutters, `--radius-xl`, pill controls, generated empty-state art) without touching any tool's layout engine.
+
+- **Scope:** `static/toolskin.css` (plus `bento.css` art colours and `bento-art.js`) is injected into every page by `deps.py::_serve_html()` and styles **only** elements under `[data-tool]`. Each tool page sets `<body data-tool="diff|data-linter|regex|base64|crypto|api-tester|ssh|sftp|cron|vault|notes|roadmap|id-generator|ws-tester">`. Home/Tools use §9.14; File Converter keeps its dedicated 027 layout (`converter.css`); DevDB Manager keeps its dark dashboard cards.
+- **Hue:** `[data-tool="x"]` sets `--tk-hue` from theme tokens (`--blue/--green/--amber/--red`, plus `--tk-violet`/`--tk-teal` mixes); tiles are `--tk-tile = color-mix(hue 13% into --bg-secondary)`.
+- **Layout safety rule:** the skin may change gap / padding / margin / background / border / radius / outline only — never `display`, `position`, `flex*`, `width`, `height` of layout containers (enforced by `tests/python/test_toolskin.py`). Monaco/xterm sizing therefore stays correct (verified: editor rect == host rect).
+- **Tiles:** `.pane-editor/.pane-output/.action-toolbar/.regex-input-row`, `.input-panel`, `.cs-controls/.cs-body`, `.cron-card`, `.idg-panel/.idg-results`, `.roadmap-card`, `.wst-connbar/.wst-log/.wst-composer`, API Tester sidebar/request/response panes, SSH/SFTP sidebars and main areas, Vault three panes, Notes sidebar/main. Hi-Contrast adds a 2px outline to every tile.
+- **Art:** empty states use `<svg class="tk-art" data-art="…">` (decorative, `aria-hidden`) with pictures `lint`, `encode`, `regex`, `ids`, `pulse`, `vault`, `doc`; JS-rendered empty states (Regex matches, Vault list) create the SVG with `createElementNS` and call `BentoArt.render`. No emoji in empty states (§9.8).
+- **Adding a tool page:** set `data-tool`, add a hue rule, add the tile selectors to `toolskin.css` (both the main group and the Hi-Contrast outline group).
+- **Corner language (0.17.2):** tiles use `--tk-radius` (= `--radius-xl`, 16px — the same as the Home/Tools bento); buttons, badges and status pills are full pills; inputs/selects keep each page's moderate radius; Monaco, xterm and SVG art own their look. Set `--tk-radius: 0` for square tiles. Tiles that hold field labels (e.g. the WebSocket Tester connection bar) carry padding so no label sits in a rounded corner. File Converter and DevDB Manager opt in with `data-tool="file-converter"` / `"db-manager"`.
+- **Cross-cutting fix:** `class="sr-only"` is aliased to `.ds-sr-only` in `a11y.css`; tool headers wrap below 560px.
+
 ---
 
 ## 10. Quality & Testing
@@ -667,6 +828,11 @@ These paths must have automated tests. Adding or changing any of them requires a
 
 ---
 
+### 10.5 Accessibility Testing (feature 023)
+
+- Automated (`tests/python/test_a11y.py`): injection + skip link on every page route; one `<main>` per page; contrast matrix (§9.12 §3) for all 6 themes; no bare `outline:none`; reduced-motion / `:focus-visible` / `pointer:coarse` rules present; hex-color lint on migrated stylesheets (allowlist: tool-icon gradients §9.7, `xterm.css`, `command-palette.css`); retired alias names absent.
+- Manual: headless-Chromium keyboard/zoom/reduced-motion pass plus an ad-hoc axe-core run (dev-time only, not vendored — SPEC §11 unaffected). Procedure in `specs/023-ui-accessibility-foundation/quickstart.md`.
+
 ## 11. Dependency Inventory
 
 ### 11.1 Python (`requirements.txt`)
@@ -685,7 +851,7 @@ These paths must have automated tests. Adding or changing any of them requires a
 | python-docx | `>=1.2.0` | DOCX |
 | mammoth | `>=1.12.0` | DOCX → HTML |
 | weasyprint | `>=68.1` | HTML → PDF |
-| markdown | `>=3.10.2` | Markdown parsing |
+| markdown | `>=3.11` | Markdown parsing |
 | slowapi | `>=0.1.9` | Rate limiting — security-sensitive, patch promptly |
 
 ### 11.2 Vendored JavaScript (`static/`)
@@ -703,9 +869,9 @@ These paths must have automated tests. Adding or changing any of them requires a
 |---|---|---|
 | `highlight.min.js` | highlight.js | — |
 | `marked.min.js` | marked | — |
-| `dompurify.min.js` | DOMPurify | — |
+| `dompurify.min.js` | DOMPurify | 3.4.18 |
 | `papaparse.min.js` | PapaParse | — |
-| `js-yaml.min.js` | js-yaml | 4.1.1 available |
+| `js-yaml.min.js` | js-yaml | 4.3.2 |
 | `jszip.min.js` | JSZip | — |
 | `require.min.js` | RequireJS | 2.3.8 available |
 | `vs/` | Monaco Editor | 0.55.1 available (current: 0.45.0) |
@@ -993,9 +1159,18 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 |---|---|---|
 | `DEVSUITE_DEV` | `0` | Set to `1` to enable `/docs` (Swagger UI) and `/redoc` |
 | `DEVSUITE_HTTPS` | `0` | Set to `1` to add `Secure` flag to `ds_session` and `ds_csrf` cookies (use when serving over HTTPS) |
+| `DEVSUITE_ALLOWED_HOSTS` | *(empty)* | Comma-separated extra hostnames accepted in the `Host` header/`Origin` (e.g. `devbox.lan`) when you deliberately bind a non-loopback interface. Loopback names (`localhost`, `127.0.0.1`, `::1`) are always allowed. Anything else → HTTP 400 (§7.9). |
 | `DEVDB_PASSWORD` | _(empty)_ | Server-side DevDB encryption password (leave blank to disable) |
 | `PORT` | `8000` | Port Uvicorn listens on — honoured by `__main__` (`python main.py`) and by `start.sh`/`start.ps1`. |
 | `HOST` | `127.0.0.1` | Bind host — honoured by `__main__` and by `start.sh`/`start.ps1`. `--reload` is only enabled when `DEVSUITE_DEV=1` (in `__main__` and both start scripts). |
+
+### 14.2a Containers, linting and CI (v0.18.0)
+
+- **Docker:** `Dockerfile` (multi-stage, non-root uid 10001, `HOME=/data` volume, `HEALTHCHECK` on `/api/auth/status`, `HOST=0.0.0.0`) and `docker-compose.yml` (port published as `127.0.0.1:8000:8000` only, `read_only`, `cap_drop: [ALL]`, `no-new-privileges`). The container's host-header allowlist is unchanged (§7.9); add `DEVSUITE_ALLOWED_HOSTS` only for other hostnames.
+- **Lint:** `ruff.toml` (E/F/W + mutable-default/eval checks; `static/` excluded) and `.pre-commit-config.yaml` (ruff on commit; pytest + node tests on push). The backend is ruff-clean.
+- **CI (`.github/workflows/tests.yml`):** pytest (Py 3.11/3.12), `ruff check .`, `pip-audit`, all installed from `requirements-ci.lock` (`requirements.txt` + `requirements-ci.in` compiled with hashes, wheels only, `pip install --require-hashes --only-binary :all:`; regenerate with the command in its header whenever either input changes), a `vendored-js-audit` job (`npm audit` against the committed `package-lock.json`, which must match `package.json` — CI fails on drift; `package.json` only lists the files vendored under `static/` so npm can see their CVEs — nothing is installed or bundled), and a `docker-build` job (build + health check).
+- **Browser smoke test:** `tests/e2e/smoke.py` (optional, needs Playwright + a running server) loads every page and fails on JS errors / 4xx-5xx.
+- **Vendored-lib policy:** `scripts/versions.json`, `package.json`, `UPGRADE_PLAN.md` and §11 are kept in sync; DOMPurify 3.4.18 and js-yaml 4.3.2 replaced advisory-affected versions on 2026-11-17. Monaco 0.57.0 bundles a DOMPurify with a published advisory that no Monaco release fixes yet (BACKLOG SEC-23).
 
 ### 14.3 Upgrade Process Summary
 

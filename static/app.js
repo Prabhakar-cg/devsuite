@@ -388,20 +388,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     const toastContainer = document.getElementById('toast-container');
 
-    const TOAST_ICONS = {
-        success: '✅',
-        error: '❌',
-        warning: '⚠️',
-        info: 'ℹ️'
+    // Stroke-based inline SVG paths (SPEC §9.8 — no emoji in UI chrome)
+    const TOAST_ICON_PATHS = {
+        success: ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', 'M8 12l3 3 5-6'],
+        error:   ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', 'M15 9l-6 6M9 9l6 6'],
+        warning: ['M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z', 'M12 9v4M12 17h.01'],
+        info:    ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', 'M12 16v-4M12 8h.01']
     };
+    function toastSvg(paths, size) {
+        const NS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(NS, 'svg');
+        const attrs = { viewBox: '0 0 24 24', width: size, height: size, fill: 'none', stroke: 'currentColor',
+            'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' };
+        for (const k of Object.keys(attrs)) svg.setAttribute(k, attrs[k]);
+        for (const d of paths) { const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); svg.appendChild(p); }
+        return svg;
+    }
 
     function showToast(message, type = 'info', durationMs = 4500) {
+        globalThis.DevSuite?.a11y?.announce?.(message, type === 'error' ? 'assertive' : 'polite');
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
 
         const iconSpan = document.createElement('span');
         iconSpan.className = 'toast-icon';
-        iconSpan.textContent = TOAST_ICONS[type] || 'ℹ️';
+        iconSpan.setAttribute('aria-hidden', 'true');
+        iconSpan.appendChild(toastSvg(TOAST_ICON_PATHS[type] || TOAST_ICON_PATHS.info, 16));
 
         const bodySpan = document.createElement('span');
         bodySpan.className = 'toast-body';
@@ -409,8 +421,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const closeBtn = document.createElement('button');
         closeBtn.className = 'toast-close';
-        closeBtn.setAttribute('aria-label', 'Dismiss');
-        closeBtn.textContent = '✕';
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', 'Dismiss notification');
+        closeBtn.appendChild(toastSvg(['M6 6l12 12M18 6L6 18'], 14));
 
         toast.appendChild(iconSpan);
         toast.appendChild(bodySpan);

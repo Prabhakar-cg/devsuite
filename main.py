@@ -42,6 +42,8 @@ from deps import (
     _audit_log,        # noqa: F401 — re-exported for import completeness
     _db,
     _hash_token,
+    host_allowed,
+    origin_allowed,
     _sessions,
     limiter,
     logger,
@@ -115,7 +117,8 @@ _DOCUMENT_CSP = (
     "style-src 'self' 'unsafe-inline'; "
     "font-src 'self' data:; "
     "img-src 'self' data:; "
-    "connect-src 'self';"
+    "connect-src 'self'; "
+    "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self';"
 )
 
 # Scoped policy for the API Tester scripting sandbox (SPEC §4.7.1 / §5.10):
@@ -142,7 +145,8 @@ _WS_TESTER_CSP = (
     "style-src 'self' 'unsafe-inline'; "
     "font-src 'self' data:; "
     "img-src 'self' data:; "
-    "connect-src 'self' ws: wss:;"
+    "connect-src 'self' ws: wss:; "
+    "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self';"
 )
 
 
@@ -155,7 +159,16 @@ async def add_security_headers(request, call_next):
     # X-XSS-Protection is deprecated; set to "0" to avoid legacy browser quirks.
     response.headers["X-XSS-Protection"] = "0"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # SEC-19: deny powerful features, isolate the browsing context, block cross-origin embedding.
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()"
+    )
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     path = request.url.path
+    if path.startswith("/api/"):
+        # Encrypted vault/notes blobs and DB metadata must never sit in a shared/disk cache.
+        response.headers["Cache-Control"] = "no-store"
     if path == _SANDBOX_WORKER_PATH:
         response.headers["Content-Security-Policy"] = _SANDBOX_WORKER_CSP
     elif path == _WS_TESTER_PATH:
@@ -222,6 +235,30 @@ async def csrf_middleware(request, call_next):
             expected    = request.cookies.get("ds_csrf", "")
             if not csrf_header or not expected or not secrets.compare_digest(csrf_header, expected):
                 return JSONResponse({"error": "CSRF validation failed"}, status_code=403)
+    return await call_next(request)
+
+
+# ─── Host / Origin guard (SEC-15 / SEC-16) ───────────────────────────────────
+
+_MUTATING_METHODS = ("POST", "PUT", "DELETE", "PATCH")
+
+
+@app.middleware("http")
+async def host_and_origin_guard(request, call_next):
+    """Outermost guard: reject foreign Host headers and cross-origin mutating requests.
+
+    * Host not in the allowlist → 400. Defeats DNS rebinding: a hostile page whose
+      DNS flips to 127.0.0.1 still sends its own hostname in Host.
+    * Mutating request with an Origin header whose hostname is not allowlisted → 403
+      (cross-site form/fetch posts). Requests without an Origin (curl, tests,
+      same-origin GET navigations) are unaffected; the CSRF double-submit still applies.
+    """
+    if not host_allowed(request.headers.get("host", "")):
+        return JSONResponse({"error": "Invalid Host header"}, status_code=400)
+    if request.method in _MUTATING_METHODS:
+        origin = request.headers.get("origin")
+        if origin is not None and not origin_allowed(origin):
+            return JSONResponse({"error": "Cross-origin request blocked"}, status_code=403)
     return await call_next(request)
 
 

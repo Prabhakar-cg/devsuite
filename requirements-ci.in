@@ -1,0 +1,7 @@
+# CI-only tools (lint, test client, audit). Compiled with the runtime deps into
+# requirements-ci.lock — see that file header for the regenerate command.
+pytest
+httpx
+httpx2
+ruff
+pip-audit

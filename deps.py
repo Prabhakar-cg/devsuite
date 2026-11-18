@@ -34,9 +34,9 @@ fcntl = None  # pylint: disable=invalid-name
 termios = None  # pylint: disable=invalid-name
 _pty_available = False
 try:
-    import pty  # type: ignore[assignment]
-    import fcntl  # type: ignore[assignment]
-    import termios  # type: ignore[assignment]
+    import pty  # type: ignore[assignment]  # noqa: F401 — re-exported to routes/ssh.py
+    import fcntl  # type: ignore[assignment]  # noqa: F401
+    import termios  # type: ignore[assignment]  # noqa: F401
     _pty_available = True
 except ImportError:
     pass
@@ -45,7 +45,7 @@ _PTY_AVAILABLE = _pty_available  # compatibility alias for tests referencing mai
 logger = logging.getLogger("devsuite")
 
 # ─── App version and run-mode flags ──────────────────────────────────────────
-APP_VERSION = "0.10.0"
+APP_VERSION = "0.19.0"
 _DEV_MODE   = os.getenv("DEVSUITE_DEV",   "0") == "1"
 _HTTPS      = os.getenv("DEVSUITE_HTTPS", "0") == "1"
 
@@ -68,6 +68,42 @@ _MIME_OCTET_STREAM      = "application/octet-stream"
 _RE_NON_DIGIT           = r'\D'
 _WSL_EXE                = "wsl.exe"
 
+# ─── Host / Origin allowlist (SEC-15 / SEC-16, specs/025-security-hardening) ───
+# DevSuite is a loopback tool. Validating the Host header defeats DNS rebinding
+# (a hostile page whose DNS flips to 127.0.0.1 would otherwise be same-origin, so
+# CORS and the double-submit CSRF cookie both pass). Users who deliberately bind
+# another interface add its hostname via DEVSUITE_ALLOWED_HOSTS (comma-separated).
+_LOOPBACK_HOSTNAMES = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def allowed_hosts() -> frozenset:
+    """Allowlisted hostnames (port-agnostic), read from the environment each call."""
+    extra = {h.strip().lower() for h in os.getenv("DEVSUITE_ALLOWED_HOSTS", "").split(",") if h.strip()}
+    return _LOOPBACK_HOSTNAMES | extra
+
+
+def _hostname_of(host_header: str) -> str:
+    """Hostname from a Host header value (strips port; understands [::1]:8000)."""
+    value = (host_header or "").strip().lower()
+    if value.startswith("["):
+        return value[1:value.find("]")] if "]" in value else ""
+    return value.rsplit(":", 1)[0] if value.count(":") == 1 else value
+
+
+def host_allowed(host_header: str) -> bool:
+    """True if the request's Host header names an allowlisted hostname."""
+    name = _hostname_of(host_header)
+    return bool(name) and name in allowed_hosts()
+
+
+def origin_allowed(origin: str) -> bool:
+    """True if an Origin header (scheme://host[:port]) names an allowlisted hostname."""
+    if not origin or origin == "null":
+        return False
+    parsed = urllib.parse.urlparse(origin)
+    return parsed.scheme in ("http", "https") and bool(parsed.hostname) and parsed.hostname.lower() in allowed_hosts()
+
+
 # ─── Static file serving ─────────────────────────────────────────────────────
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(static_dir, exist_ok=True)
@@ -79,6 +115,43 @@ _STATIC_ASSET_RE = re.compile(r'(/static/[^"\'?]+\.(?:css|js))(?:\?v=[^"\']*)?')
 _FAVICON_TAG = (
     '<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">\n'
     '    <link rel="icon" href="/static/favicon.svg" sizes="any">'
+)
+# Command Palette (feature 022): injected on every page, never linked from any
+# static/*.html file directly — see specs/022-command-palette/contracts/injected-markup.md.
+_COMMAND_PALETTE_CSS_TAG = '<link rel="stylesheet" href="/static/command-palette.css">'
+_COMMAND_PALETTE_SCRIPT_TAGS = (
+    '<script src="/static/command-palette-data.js" defer></script>\n'
+    '<script src="/static/command-palette.js" defer></script>'
+)
+# Accessibility foundation (feature 023, SPEC §9.12): injected on every page, never
+# linked from any static/*.html file directly. Skip link targets #ds-main, which
+# static/a11y.js assigns to the page's <main> landmark.
+_A11Y_CSS_TAG = '<link rel="stylesheet" href="/static/a11y.css">'
+# Tool-page theme layer (feature 024, SPEC §9.13): canonical tokens per theme, injected on every page.
+_THEME_LAYER_CSS_TAG = '<link rel="stylesheet" href="/static/theme-layer.css">'
+# Tool-page bento skin (feature 028, SPEC §9.15): toolskin.css styles only [data-tool] pages;
+# bento.css supplies the shared art-colour classes; bento-art.js renders <svg data-art>.
+_BENTO_CSS_TAG = '<link rel="stylesheet" href="/static/bento.css">'
+_TOOLSKIN_CSS_TAG = '<link rel="stylesheet" href="/static/toolskin.css">'
+_BENTO_ART_SCRIPT_TAG = '<script src="/static/bento-art.js" defer></script>'
+_A11Y_SKIP_LINK = '<a class="ds-skip-link" href="#ds-main">Skip to main content</a>'
+_A11Y_SCRIPT_TAG = '<script src="/static/a11y.js" defer></script>'
+_BODY_OPEN_RE = re.compile(r'<body\b[^>]*>', re.IGNORECASE)
+_HEAD_OPEN = '<head>'
+_BODY_CLOSE = '</body>'
+# (marker, tag): inject *tag* unless *marker* is already in the page. Order matters — see _serve_html.
+_HEAD_INJECTIONS = (
+    ('favicon', _FAVICON_TAG),
+    ('/static/a11y.css', _A11Y_CSS_TAG),
+    ('/static/toolskin.css', _TOOLSKIN_CSS_TAG),
+    ('/static/bento.css', _BENTO_CSS_TAG),
+    ('/static/theme-layer.css', _THEME_LAYER_CSS_TAG),
+    ('command-palette.css', _COMMAND_PALETTE_CSS_TAG),
+)
+_BODY_END_INJECTIONS = (
+    ('/static/a11y.js', _A11Y_SCRIPT_TAG),
+    ('/static/bento-art.js', _BENTO_ART_SCRIPT_TAG),
+    ('command-palette.js', _COMMAND_PALETTE_SCRIPT_TAGS),
 )
 
 
@@ -92,6 +165,17 @@ def _asset_fingerprint(static_path: str) -> str:
         return APP_VERSION
 
 
+def _insert_before_closing_body(html: str, tags: str) -> str:
+    """Insert *tags* before the document's FINAL ``</body>``.
+
+    ``str.replace(..., 1)`` hit the first occurrence, which for file-converter.html is a
+    ``</body>`` inside a JavaScript template literal — the injected ``<script>`` tags landed
+    inside the string and broke the page's whole script (every button dead).
+    """
+    head, sep, tail = html.rpartition(_BODY_CLOSE)
+    return f'{head}{tags}\n{sep}{tail}' if sep else html
+
+
 def _serve_html(filename: str) -> str:
     """Read an HTML file, inject favicon + per-file content-hash versions into asset URLs."""
     html_path = os.path.join(static_dir, filename)
@@ -100,8 +184,17 @@ def _serve_html(filename: str) -> str:
             html = f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"{filename} not found.") from None  # NOSONAR
-    if 'favicon' not in html:
-        html = html.replace('<head>', f'<head>\n    {_FAVICON_TAG}', 1)
+    # Each head tag is inserted right after <head>, so the LAST entry ends up FIRST in the
+    # document — order here sets the cascade; keep it.
+    for marker, tag in _HEAD_INJECTIONS:
+        if marker not in html:
+            html = html.replace(_HEAD_OPEN, f'{_HEAD_OPEN}\n    {tag}', 1)
+    if 'ds-skip-link' not in html:
+        html = _BODY_OPEN_RE.sub(lambda m: f'{m.group(0)}\n{_A11Y_SKIP_LINK}', html, count=1)
+    if _BODY_CLOSE in html:
+        for marker, tag in _BODY_END_INJECTIONS:
+            if marker not in html:
+                html = _insert_before_closing_body(html, tag)
     return _STATIC_ASSET_RE.sub(lambda m: f'{m.group(1)}?v={_asset_fingerprint(m.group(1))}', html)
 
 
@@ -135,6 +228,23 @@ _SESSION_TTL = 8 * 3600            # 8 hours (matches auth-guard.js SESSION_MS)
 
 def _hash_token(token: str) -> str:
     return hashlib.blake2b(token.encode(), digest_size=32).hexdigest()
+
+
+_MAX_SESSIONS = 100  # defence in depth: sessions are per unlock, 100 is far beyond real use
+
+
+def _evict_expired_sessions(now: float | None = None) -> None:
+    now = time.time() if now is None else now
+    for key in [k for k, exp in _sessions.items() if exp <= now]:
+        _sessions.pop(key, None)
+
+
+def register_session(token: str) -> None:
+    """Store a new session, evicting expired entries and capping the table (SEC-21)."""
+    _evict_expired_sessions()
+    while len(_sessions) >= _MAX_SESSIONS:
+        _sessions.pop(min(_sessions, key=_sessions.get), None)  # drop the soonest-to-expire
+    _sessions[_hash_token(token)] = time.time() + _SESSION_TTL
 
 
 def is_session_valid(token: str) -> bool:
@@ -172,6 +282,16 @@ def require_unlocked(request: Request) -> None:
         )
     if not is_session_valid(token):
         raise HTTPException(status_code=401, detail="Session expired or invalid.")
+
+
+def require_session_if_configured(request: Request) -> None:
+    """Session gate for endpoints that must also work before any master password exists.
+
+    Mirrors the WebSocket carve-out (SEC-14): dormant until a master password is
+    configured, then a valid session is mandatory (SEC-17).
+    """
+    if is_auth_configured():
+        require_unlocked(request)
 
 
 # ─── Shared DevDB / validation constants ─────────────────────────────────────

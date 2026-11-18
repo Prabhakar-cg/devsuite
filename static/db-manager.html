@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/db-manager.css?v=2" />
 </head>
-<body>
+<body data-tool="db-manager">
 
 <!-- ── Lock Overlay ───────────────────────────────────────────────────────── -->
 <div id="lock-overlay" class="db-lock-overlay">
@@ -192,25 +192,20 @@
                 </div>
             </div>
 
-            <!-- Encryption -->
+            <!-- Master password & encryption (info only — rotation lives in Secret Vault) -->
             <div class="action-card">
                 <div class="action-card-header">
                     <div class="action-card-icon action-icon-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;color:#f59e0b" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg></div>
                     <div>
-                        <div class="action-card-title">Database Password</div>
+                        <div class="action-card-title">Master password</div>
                     </div>
                 </div>
                 <div class="action-card-desc">
-                    Optionally wrap the entire database in AES-256-GCM server-side
-                    encryption. Leave blank to use integrity-only mode (BLAKE2b).
+                    Change your master password from Secret Vault, which re-encrypts your data
+                    safely. To encrypt the whole database file at rest, start DevSuite with the
+                    <code>DEVDB_PASSWORD</code> environment variable.
                 </div>
-                <button class="btn btn-amber" id="change-pw-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                    Set Password
-                </button>
+                <a class="btn btn-amber" href="/vault">Open Secret Vault</a>
             </div>
 
             <!-- Refresh -->
@@ -291,44 +286,12 @@
 
 </main>
 
-<!-- ── Password Modal ──────────────────────────────────────────────────────── -->
-<dialog class="modal-overlay" id="pw-modal" aria-labelledby="pw-modal-title">
-    <div class="modal-box">
-        <h2 class="modal-title" id="pw-modal-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;vertical-align:-2px;margin-right:7px" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>Set Database Password</h2>
-        <div class="modal-body">
-            <p style="color:var(--text-muted);font-size:13px;line-height:1.6;">
-                Setting a password enables <strong>AES-256-GCM server-side encryption</strong>
-                for the entire database file.
-                Leave both fields blank  to switch to <em>integrity-only</em> mode (BLAKE2b, no encryption).
-            </p>
-            <div class="field-group">
-                <label class="field-label-text" for="new-pw-input">New Password</label>
-                <input type="password" id="new-pw-input" class="field-input"
-                       placeholder="Leave blank to remove encryption" autocomplete="new-password" />
-            </div>
-            <div class="field-group">
-                <label class="field-label-text" for="confirm-pw-input">Confirm Password</label>
-                <input type="password" id="confirm-pw-input" class="field-input"
-                       placeholder="Repeat the password above" autocomplete="new-password" />
-            </div>
-            <div class="alert-bar alert-warn" id="pw-modal-alert" style="display:none;"></div>
-            <div class="alert-bar alert-info">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                <span>A server restart is required for the password change to take effect.
-                      The password must be provided to DevDB at startup (e.g., via environment variable).</span>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-ghost" id="pw-cancel-btn">Cancel</button>
-            <button class="btn btn-primary" id="pw-save-btn">Apply Password</button>
-        </div>
-    </div>
-</dialog>
-
 <!-- ── Toast container ─────────────────────────────────────────────────────── -->
 <div id="toast-container" aria-live="polite"></div>
 
 <script src="/static/crypto-js.min.js"></script>
+<script src="/static/master-verify.js"></script>
+<script src="/static/components.js"></script>
 <script src="/static/db-manager.js?v=2"></script>
 </body>
 </html>

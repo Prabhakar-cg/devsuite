@@ -6,6 +6,9 @@
 
 @import '/static/libs/fonts.css';
 
+/* @import must precede every rule or browsers ignore it (toasts were unstyled when it sat mid-file). */
+@import 'toast.css';
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── Design tokens — Apple.com ── */
@@ -15,7 +18,7 @@
     --bg-tertiary:     #e8e8ed;
     --text:            #1d1d1f;
     --text-mid:        #515154;
-    --text-muted:      #86868b;
+    --text-muted:      #636366;
     --blue:            #0071e3;
     --blue-hover:      #0077ed;
     --blue-subtle:     rgba(0,113,227,0.08);
@@ -60,8 +63,8 @@ html, body {
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 6px; }
-::-webkit-scrollbar-thumb:hover { background: #aeaeb2; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb, #c7c7cc); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover, #aeaeb2); }
 
 /* ============================================================
    HEADER — Apple frosted nav
@@ -69,7 +72,7 @@ html, body {
 .tool-header {
     height: 52px;
     flex-shrink: 0;
-    background: rgba(255,255,255,0.85);
+    background: var(--surface-glass, rgba(255,255,255,0.85));
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     border-bottom: 1px solid var(--border);
@@ -91,7 +94,7 @@ html, body {
     font-size: 0.78rem; font-weight: 500;
     color: var(--text-muted); text-decoration: none;
     padding: 4px 12px 4px 8px;
-    border: 1px solid var(--border-mid); border-radius: 980px;
+    border: 1px solid var(--border-mid); border-radius: var(--radius-pill, 980px);
     background: transparent;
     transition: var(--transition);
 }
@@ -110,7 +113,7 @@ html, body {
     background: rgba(255,255,255,0.22);
     border-radius: 8px 8px 0 0;
 }
-.tool-icon svg { width: 15px; height: 15px; color: #fff; position: relative; z-index: 1; }
+.tool-icon svg { width: 15px; height: 15px; color: var(--on-accent, #fff); position: relative; z-index: 1; }
 
 .tool-icon-emerald { background: linear-gradient(135deg, #059669, #10b981); }
 .tool-icon-amber   { background: linear-gradient(135deg, #d97706, #f59e0b); }
@@ -120,21 +123,21 @@ html, body {
 .tool-icon-rose    { background: linear-gradient(135deg, #be185d, #f43f5e); }
 
 .tool-name { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.2px; color: var(--text); }
-.tool-name .tool-accent { color: var(--blue); }
+.tool-name .tool-accent { color: var(--blue-text, var(--blue)); }
 
 .tool-version {
-    font-size: 0.58rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: var(--text-xs, 0.75rem); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--text-muted); background: var(--bg-secondary);
-    border: 1px solid var(--border); border-radius: 980px; padding: 1px 8px;
+    border: 1px solid var(--border); border-radius: var(--radius-pill, 980px); padding: 1px 8px;
 }
 
 .header-right { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 
 /* Line count badge */
 .line-badge {
-    font-size: 0.62rem; font-family: var(--font-mono); color: var(--text-muted);
+    font-size: var(--text-xs, 0.75rem); font-family: var(--font-mono); color: var(--text-muted);
     background: var(--bg-secondary); border: 1px solid var(--border);
-    border-radius: 980px; padding: 2px 9px;
+    border-radius: var(--radius-pill, 980px); padding: 2px 9px;
 }
 
 /* ============================================================
@@ -157,15 +160,15 @@ html, body {
 /* Status pills */
 .status-pill {
     display: inline-flex; align-items: center; gap: 0.4rem;
-    font-size: 0.68rem; font-weight: 600;
-    padding: 3px 10px; border-radius: 980px;
+    font-size: var(--text-xs, 0.75rem); font-weight: 600;
+    padding: 3px 10px; border-radius: var(--radius-pill, 980px);
     transition: var(--transition);
     font-family: var(--font-mono);
 }
 .status-pill.idle    { background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-muted); }
-.status-pill.valid   { background: var(--green-subtle); border: 1px solid rgba(40,205,65,0.25); color: var(--green-mid); }
-.status-pill.invalid { background: var(--red-subtle);   border: 1px solid rgba(255,59,48,0.25); color: var(--red-mid); }
-.status-pill.loading { background: var(--amber-subtle); border: 1px solid rgba(255,159,10,0.25); color: var(--amber-mid); }
+.status-pill.valid   { background: var(--green-subtle); border: 1px solid rgba(40,205,65,0.25); color: var(--green-text, var(--green-mid)); }
+.status-pill.invalid { background: var(--red-subtle);   border: 1px solid rgba(255,59,48,0.25); color: var(--red-text, var(--red-mid)); }
+.status-pill.loading { background: var(--amber-subtle); border: 1px solid rgba(255,159,10,0.25); color: var(--amber-text, var(--amber-mid)); }
 
 .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentcolor; flex-shrink: 0; }
 
@@ -176,7 +179,7 @@ html, body {
 .btn {
     display: inline-flex; align-items: center; gap: 0.35rem;
     font-family: var(--font); font-size: 0.78rem; font-weight: 500;
-    border-radius: 980px; cursor: pointer;
+    border-radius: var(--radius-pill, 980px); cursor: pointer;
     transition: var(--transition); border: 1px solid transparent;
     padding: 0.3rem 0.85rem; white-space: nowrap; user-select: none;
 }
@@ -187,14 +190,14 @@ html, body {
 .btn-ghost:hover { color: var(--text); border-color: rgba(0,0,0,0.22); background: var(--bg-secondary); }
 .btn-ghost:active { transform: scale(0.97); }
 .btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
-.btn-ghost.active { background: var(--text); color: #fff; border-color: var(--text); }
+.btn-ghost.active { background: var(--text); color: var(--on-accent, #fff); border-color: var(--text); }
 
-.btn-primary { background: var(--blue); color: #fff; border: none; }
+.btn-primary { background: var(--blue); color: var(--on-accent, #fff); border: none; }
 .btn-primary:hover { background: var(--blue-hover); transform: scale(1.01); }
 .btn-primary:active { transform: scale(0.98); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-.btn-success { background: var(--green); color: #fff; border: none; }
+.btn-success { background: var(--green); color: var(--on-accent, #fff); border: none; }
 .btn-success:hover { background: #22b538; transform: scale(1.01); }
 .btn-success:active { transform: scale(0.98); }
 
@@ -224,7 +227,7 @@ html, body {
     min-height: 36px;
 }
 .pane-label {
-    font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+    font-size: var(--text-xs, 0.75rem); font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.12em; color: var(--text-muted);
 }
 .pane-actions { display: flex; align-items: center; gap: 0.3rem; }
@@ -253,7 +256,7 @@ html, body {
 .error-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
 .error-body { flex: 1; }
 .error-message {
-    font-size: 0.82rem; font-weight: 600; color: var(--red-mid); line-height: 1.4;
+    font-size: 0.82rem; font-weight: 600; color: var(--red-text, var(--red-mid)); line-height: 1.4;
     font-family: var(--font-mono);
 }
 .error-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
@@ -264,11 +267,14 @@ html, body {
 .output-empty {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    color: var(--text-muted); gap: 0.6rem; font-size: 0.88rem; opacity: 0.6;
+    color: var(--text-muted); gap: 0.6rem; font-size: 0.88rem;
 }
-.output-empty-icon { font-size: 2.2rem; opacity: 0.35; }
+.output-empty-icon { font-size: 2.2rem; color: var(--text-muted); }
 
-/* ============================================================
-   TOAST
-   ============================================================ */
-@import 'toast.css';
+/* ── Responsive / 200% zoom (feature 023) ── */
+@media (max-width: 900px) {
+    .split-pane { flex-direction: column; overflow: visible; }
+    .pane-editor { border-right: none; border-bottom: 1px solid var(--border); }
+    .pane-editor, .pane-output { min-height: 50vh; overflow: visible; }
+    .monaco-host, .output-monaco-host { min-height: 280px; }
+}

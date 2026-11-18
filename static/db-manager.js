@@ -45,8 +45,6 @@ async function _authFetch(url, opts = {}) {
     return res;
 }
 
-const PBKDF2_ITERATIONS = 50000;
-const PBKDF2_KEYSIZE    = 256 / 32;
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function toast(msg, type = 'info') {
@@ -124,7 +122,7 @@ async function initLockScreen() {
     }
 
     if (isSetup) {
-        document.getElementById('lock-form').style.display = 'block';
+        document.getElementById('lock-form').style.display = 'flex';
         // Focus password field after a tick
         setTimeout(() => document.getElementById('lock-pw-input').focus(), 80);
     } else {
@@ -151,15 +149,18 @@ async function attemptUnlock() {
     btn.textContent = 'Verifying…';
 
     try {
-        const challenge = await fetch('/api/auth/challenge').then(r => r.json());
-        const salt = CryptoJS.enc.Hex.parse(challenge.salt);
-        const key  = CryptoJS.PBKDF2(pw, salt, { keySize: PBKDF2_KEYSIZE, iterations: PBKDF2_ITERATIONS });
-        const dec  = CryptoJS.AES.decrypt(challenge.verify_blob, key, {
-            iv: CryptoJS.enc.Hex.parse(challenge.verify_iv),
-        });
-        const plaintext = dec.toString(CryptoJS.enc.Utf8);
-
-        if (plaintext !== 'DEVSUITE_MASTER_OK') {
+        const chRes = await fetch('/api/auth/challenge');
+        if (chRes.status === 429) {
+            errEl.textContent = 'Too many attempts. Wait a minute and try again.';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (!chRes.ok) throw new Error(`challenge request failed (${chRes.status})`);
+        // MasterVerify handles both the legacy v1 (CryptoJS) and current v2 (WebCrypto) challenge
+        // formats — this screen used to be v1-only, so every vault created by current versions
+        // was reported as "Incorrect master password".
+        const verified = await MasterVerify.verifyMasterPassword(pw, await chRes.json());
+        if (!verified.ok) {
             errEl.textContent = 'Incorrect master password. Check the password and try again.';
             errEl.style.display = 'block';
             return;
@@ -169,7 +170,7 @@ async function attemptUnlock() {
         const sr = await fetch('/api/auth/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key_hex: key.toString() }),
+            body: JSON.stringify({ key_hex: verified.keyHex }),
         });
         if (!sr.ok) {
             errEl.textContent = 'Session exchange failed. Please try again.';
@@ -339,69 +340,6 @@ function setupImport() {
     });
 }
 
-// ── Password modal ────────────────────────────────────────────────────────────
-function openPasswordModal() {
-    document.getElementById('pw-modal').showModal();
-    document.getElementById('new-pw-input').focus();
-}
-function closePasswordModal() {
-    document.getElementById('pw-modal').close();
-    document.getElementById('new-pw-input').value    = '';
-    document.getElementById('confirm-pw-input').value = '';
-    document.getElementById('pw-modal-alert').style.display = 'none';
-}
-
-async function savePassword() {
-    const pw1   = document.getElementById('new-pw-input').value;
-    const pw2   = document.getElementById('confirm-pw-input').value;
-    const alert = document.getElementById('pw-modal-alert');
-    alert.style.display = 'none';
-
-    // Allow empty password to remove encryption
-    if (pw1 !== pw2) {
-        alert.textContent    = 'Passwords do not match.';
-        alert.style.display  = 'flex';
-        return;
-    }
-
-    const saveBtn = document.getElementById('pw-save-btn');
-    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
-
-    try {
-        let payload;
-        if (pw1) {
-            const salt      = CryptoJS.lib.WordArray.random(16);
-            const key       = CryptoJS.PBKDF2(pw1, salt, { keySize: PBKDF2_KEYSIZE, iterations: PBKDF2_ITERATIONS });
-            const verifyIv   = CryptoJS.lib.WordArray.random(16);
-            const verifyBlob = CryptoJS.AES.encrypt('DEVSUITE_MASTER_OK', key, { iv: verifyIv });
-            payload = {
-                salt:        salt.toString(),
-                verify_blob: verifyBlob.toString(),
-                verify_iv:   verifyIv.toString(),
-            };
-        } else {
-            payload = { salt: '', verify_blob: '', verify_iv: '' };
-        }
-
-        const res = await _authFetch('/api/auth/update-challenge', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify(payload),
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.detail || `Server error ${res.status}`);
-        }
-        toast('Password updated successfully.', 'success');
-        closePasswordModal();
-    } catch (err) {
-        alert.textContent   = err.message;
-        alert.style.display = 'flex';
-    } finally {
-        saveBtn.disabled = false; saveBtn.textContent = 'Apply Password';
-    }
-}
-
 // ── Refresh ────────────────────────────────────────────────────────────────────
 async function doRefresh() {
     const btn = document.getElementById('refresh-btn');
@@ -445,10 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('refresh-btn').addEventListener('click', doRefresh);
 
     // Password modal
-    document.getElementById('change-pw-btn').addEventListener('click', openPasswordModal);
-    document.getElementById('pw-cancel-btn').addEventListener('click', closePasswordModal);
-    document.getElementById('pw-save-btn').addEventListener('click',   savePassword);
-    document.getElementById('pw-modal').addEventListener('close', closePasswordModal);
 
     // About panel
     setupAboutPanel();

@@ -506,3 +506,7 @@ and confirm a round trip with no data loss.
 - **OAuth2 and GraphQL support are treated as already-shipped, stable capabilities** worth
   documenting fully here even though SPEC.md §4.7 predates them — not marked `NEEDS
   CLARIFICATION` since the code is unambiguous about their behavior.
+
+## Update 2026-11-17 — more code-generation targets (BACKLOG FEAT-17)
+
+The **Code** dialog gained **Python** (`requests`), **axios** and **Go** (`net/http`) tabs beside cURL / fetch / HTTPie. Builders live in `static/curl-codegen.js` (`buildPython/buildAxios/buildGo`) and share `finalize()` with the others, so auth, query strings and bodies behave identically. String quoting uses JSON string literals, which are valid in all three languages; generated Python is checked with `ast.parse` in `tests/python/test_backlog_fixes.py`.

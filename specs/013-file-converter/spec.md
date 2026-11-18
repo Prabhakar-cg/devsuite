@@ -285,3 +285,7 @@ at any point.
   except User Story 5 and FR-011/012/013, which were specified before implementation in the
   normal spec-first order, since they're genuinely new capability rather than documentation of
   already-shipped behavior.
+
+## Update 2026-11-17 (feature 027, presentation only)
+
+The page was redesigned with the bento visual language (`specs/027-file-converter-bento/`, `static/converter.css`): large drop tile with generated art, grouped Convert panel, result tile, and four colour-coded category tiles with `SRV`-marked server conversions. Behavior, endpoints, limits and element ids are unchanged. Also fixed: toasts were unstyled on pages using `linter.css`/`style.css` because `@import 'toast.css'` sat mid-file.

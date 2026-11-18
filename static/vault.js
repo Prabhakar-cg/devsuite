@@ -34,12 +34,12 @@ let isNewVault  = false;
 
 // ── Type metadata ─────────────────────────────────────────────────
 const TYPE_META = {
-    password: { emoji: '🔑', label: 'Password',    badgeClass: 'badge-password', iconClass: 'icon-password' },
-    token:    { emoji: '🪙', label: 'Token',        badgeClass: 'badge-token',    iconClass: 'icon-token'    },
-    ssh:      { emoji: '🗝️', label: 'SSH Key',      badgeClass: 'badge-ssh',      iconClass: 'icon-ssh'      },
-    api:      { emoji: '⚡',  label: 'API Key',      badgeClass: 'badge-api',      iconClass: 'icon-api'      },
-    env:      { emoji: '📦', label: 'Env Secret',   badgeClass: 'badge-env',      iconClass: 'icon-env'      },
-    note:     { emoji: '📝', label: 'Secure Note',  badgeClass: 'badge-note',     iconClass: 'icon-note'     },
+    password: { icon: 'key', label: 'Password',    badgeClass: 'badge-password', iconClass: 'icon-password' },
+    token:    { icon: 'coins', label: 'Token',        badgeClass: 'badge-token',    iconClass: 'icon-token'    },
+    ssh:      { icon: 'key-round', label: 'SSH Key',      badgeClass: 'badge-ssh',      iconClass: 'icon-ssh'      },
+    api:      { icon: 'zap', label: 'API Key',      badgeClass: 'badge-api',      iconClass: 'icon-api'      },
+    env:      { icon: 'package', label: 'Env Secret',   badgeClass: 'badge-env',      iconClass: 'icon-env'      },
+    note:     { icon: 'note', label: 'Secure Note',  badgeClass: 'badge-note',     iconClass: 'icon-note'     },
 };
 
 // ── V1 Crypto helpers (legacy — migration path only) ─────────────
@@ -197,8 +197,8 @@ async function loadVault(key) {
  */
 function _validateSetupPassword(password) {
     const confirm = document.getElementById('master-pw-confirm').value;
-    if (password !== confirm) return '❌ Passwords do not match.';
-    if (password.length < 8) return '❌ Master password must be at least 8 characters.';
+    if (password !== confirm) return 'Passwords do not match.';
+    if (password.length < 8) return 'Master password must be at least 8 characters.';
     return null;
 }
 
@@ -349,7 +349,7 @@ async function _tryDecryptBlob(data, keyV1, errEl) {
         }
         return true;
     } catch {
-        errEl.textContent = '❌ Incorrect password — cannot decrypt vault.';
+        errEl.textContent = 'Incorrect password — cannot decrypt vault.';
         errEl.style.display = 'block';
         return false;
     }
@@ -432,8 +432,8 @@ async function _unlockVaultNormal(password, errEl) {
     const res = await fetch('/api/vault', { headers: _authHeaders() });
     if (!res.ok) {
         errEl.textContent = res.status === 401
-            ? '❌ Session could not be established — please reload and try again.'
-            : `❌ Could not load vault (HTTP ${res.status}).`;
+            ? 'Session could not be established — please reload and try again.'
+            : `Could not load vault (HTTP ${res.status}).`;
         errEl.style.display = 'block';
         return;
     }
@@ -467,7 +467,7 @@ async function _unlockVaultNormal(password, errEl) {
             console.warn('v1→v2 migration failed (will retry next unlock):', migrateErr);
         }
     } else {
-        errEl.textContent = '❌ Unexpected vault/challenge version mismatch — please reload.';
+        errEl.textContent = 'Unexpected vault/challenge version mismatch — please reload.';
         errEl.style.display = 'block';
         return;
     }
@@ -584,20 +584,21 @@ function renderEntryList() {
         empty.style.display = 'flex';
         empty.replaceChildren();
 
-        const icon = document.createElement('div');
-        icon.className = 'icon';
+        // Generated art instead of an emoji (SPEC §9.8 / §9.15)
+        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('class', 'tk-art');
+        icon.dataset.art = searchQuery ? 'regex' : 'vault';
+        globalThis.BentoArt?.render(icon);
 
         const message = document.createElement('p');
 
         if (searchQuery) {
-            icon.textContent = '🔍';
             message.append('No results for "');
             const strong = document.createElement('strong');
             strong.textContent = searchQuery;
             message.appendChild(strong);
             message.append('"');
         } else {
-            icon.textContent = '🔐';
             message.append('No secrets yet.');
             message.appendChild(document.createElement('br'));
             message.append('Click ');
@@ -625,7 +626,7 @@ function renderEntryList() {
         header.className = 'entry-item-header';
         const badge = document.createElement('span');
         badge.className = `entry-type-badge ${m[e.type].badgeClass}`;
-        badge.textContent = `${m[e.type].emoji} ${m[e.type].label}`;
+        badge.replaceChildren(DevSuiteIcons.element(m[e.type].icon, 12), document.createTextNode(' ' + m[e.type].label));
         header.appendChild(badge);
         item.appendChild(header);
 
@@ -672,7 +673,7 @@ function renderDetail() {
     const iconEl = document.getElementById('detail-icon');
     iconEl.className = `detail-type-icon ${m.iconClass}`;
     iconEl.style.fontSize = '1.5rem';
-    iconEl.textContent = m.emoji;
+    iconEl.replaceChildren(DevSuiteIcons.element(m.icon, 18));
 
     document.getElementById('detail-title').textContent = e.title;
     document.getElementById('detail-type-label').textContent = `${m.label} · Modified ${relativeTime(e.modified)}`;
@@ -1413,7 +1414,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await unlockVault(pw);
         } catch (e) {
             const err = document.getElementById('lock-error');
-            err.textContent = '❌ ' + (e.message || 'Unknown error — check the browser console.');
+            err.textContent = '' + (e.message || 'Unknown error — check the browser console.');
             err.style.display = 'block';
         } finally {
             // Only restore if vault is still locked (unlockVault hides the overlay on success)

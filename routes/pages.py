@@ -113,6 +113,12 @@ def read_notes_tool():
     return _serve_html("notes.html")
 
 
+@router.get("/secret-scanner", response_class=HTMLResponse, summary="Serve Secret Scanner tool")
+def read_secret_scanner():
+    """Serve the Secret Scanner (client-side leaked-secret detection; no backend calls)."""
+    return _serve_html("secret-scanner.html")
+
+
 @router.get("/roadmap", response_class=HTMLResponse, summary="Serve Learning Roadmap tool")
 def read_roadmap_tool():
     """Serve the Learning Roadmap tool."""

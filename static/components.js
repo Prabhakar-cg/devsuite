@@ -24,6 +24,8 @@ DevSuite.csrfToken = function csrfToken() {
 
 /* ─── Toast notification ──────────────────────────────────────────────────── */
 DevSuite.toast = function toast(msg, type = 'info', ms = 3000) {
+    // Announce first so assistive tech hears the message even without a container (SPEC §9.12).
+    DevSuite.a11y?.announce?.(msg, type === 'error' ? 'assertive' : 'polite');
     const c = document.getElementById('toast-container');
     if (!c) return;
     const t = document.createElement('div');
@@ -33,8 +35,19 @@ DevSuite.toast = function toast(msg, type = 'info', ms = 3000) {
     span.textContent = msg;
 
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'toast-close';
-    btn.textContent = '✕';
+    btn.setAttribute('aria-label', 'Dismiss notification');
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    for (const [k, v] of Object.entries({
+        viewBox: '0 0 24 24', width: '14', height: '14', fill: 'none', stroke: 'currentColor',
+        'stroke-width': '2.2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true'
+    })) svg.setAttribute(k, v);
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', 'M6 6l12 12M18 6L6 18');
+    svg.appendChild(path);
+    btn.appendChild(svg);
     btn.onclick = function () {
         this.parentElement.classList.add('hide');
         setTimeout(() => this.parentElement.remove(), 300);

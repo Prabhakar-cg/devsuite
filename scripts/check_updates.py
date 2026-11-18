@@ -380,7 +380,7 @@ def _is_safe_member(member: tarfile.TarInfo, base_dir: Path | None = None) -> bo
         and member.isfile()
     ):
         return False
-    
+
     if base_dir is not None:
         return _is_within_directory(base_dir, Path(member.name))
     return True
@@ -392,7 +392,7 @@ def _extract_member_from_tarball(tgz_path: Path, tarball_path: str, dest: Path) 
     if not _is_within_directory(ROOT, dest):
         print(f"    Destination {dest} escapes project root — aborting.")
         return False
-    
+
     target_name = Path(tarball_path).name
     with tarfile.open(tgz_path) as tf:
         candidates = [

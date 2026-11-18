@@ -3,7 +3,8 @@
  * DevSuite JavaScript unit-test runner (SPEC §10.1) — zero dependencies.
  *
  * Covers the pure modules in static/ (curl-codegen.js, cookie-jar.js,
- * collection-utils.js, toon.js, notes-links.js, roadmap-utils.js, id-gen.js),
+ * collection-utils.js, toon.js, notes-links.js, roadmap-utils.js, id-gen.js,
+ * ws-utils.js, command-palette-data.js, mini-chart.js),
  * which use a browser/node dual export.
  *
  * Test registration (`test(name, fn)`, called at require-time) and execution are
@@ -29,6 +30,13 @@ const TEST_FILES = [
     'test_roadmap_utils.js',
     'test_id_gen.js',
     'test_ws_utils.js',
+    'test_command_palette_data.js',
+    'test_mini_chart.js',
+    'test_master_verify.js',
+    'test_bento_art.js',
+    'test_secret_scanner.js',
+    'test_json_schema_lite.js',
+    'test_icons.js',
 ];
 
 const tests = [];

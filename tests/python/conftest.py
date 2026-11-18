@@ -3,6 +3,7 @@
 Isolates every app-level test against a throwaway DevDB so the suite never
 reads or writes the real ~/.devsuite/devdb.dsb.
 """
+import os
 import sys
 from pathlib import Path
 
@@ -12,6 +13,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+# TestClient sends Host: testserver — allow it explicitly (the app rejects unknown Hosts, SEC-15).
+os.environ.setdefault("DEVSUITE_ALLOWED_HOSTS", "testserver")
 
 import deps  # noqa: E402
 import main  # noqa: E402

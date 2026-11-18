@@ -12,9 +12,9 @@
 .toast {
     display: flex; align-items: flex-start; gap: 0.6rem;
     padding: 0.75rem 1rem; border-radius: var(--radius-sm);
-    font-size: 0.82rem; font-weight: 500; max-width: 340px;
+    font-size: var(--text-sm, 0.8125rem); font-weight: 500; max-width: 340px;
     pointer-events: auto;
-    background: rgba(255,255,255,0.92);
+    background: var(--surface-glass-strong, rgba(255,255,255,0.92));
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
@@ -25,11 +25,11 @@
 @keyframes toast-in { from { opacity:0; transform:translateX(40px) scale(0.95); } to { opacity:1; transform:none; } }
 .toast.hide { animation: toast-out 0.25s ease-out both; }
 @keyframes toast-out { to { opacity:0; transform:translateX(40px) scale(0.95); } }
-.toast.error   { background: rgba(255,59,48,0.08);  border-color: rgba(255,59,48,0.25);  color: var(--red-mid); }
-.toast.success { background: rgba(40,205,65,0.08);  border-color: rgba(40,205,65,0.25);  color: var(--green-mid); }
-.toast.warning { background: rgba(255,159,10,0.08); border-color: rgba(255,159,10,0.25); color: var(--amber-mid); }
-.toast.info    { background: var(--blue-subtle);    border-color: rgba(0,113,227,0.2);   color: var(--blue); }
+.toast.error   { background: rgba(255,59,48,0.08);  border-color: rgba(255,59,48,0.25);  color: var(--red-text, var(--red-mid)); }
+.toast.success { background: rgba(40,205,65,0.08);  border-color: rgba(40,205,65,0.25);  color: var(--green-text, var(--green-mid)); }
+.toast.warning { background: rgba(255,159,10,0.08); border-color: rgba(255,159,10,0.25); color: var(--amber-text, var(--amber-mid)); }
+.toast.info    { background: var(--blue-subtle);    border-color: rgba(0,113,227,0.2);   color: var(--blue-text, var(--blue)); }
 .toast-icon  { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
 .toast-body  { flex: 1; line-height: 1.4; }
-.toast-close { cursor: pointer; opacity: 0.4; font-size: 1rem; line-height: 1; padding: 0; background: none; border: none; color: inherit; flex-shrink: 0; transition: opacity 0.15s; }
+.toast-close { cursor: pointer; opacity: 0.75; font-size: 1rem; line-height: 1; padding: 0; background: none; border: none; color: inherit; flex-shrink: 0; transition: opacity 0.15s; }
 .toast-close:hover { opacity: 1; }

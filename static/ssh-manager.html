@@ -16,9 +16,9 @@
     <script src="/static/auth-guard.js?v=1"></script>
     <script src="/static/xterm.js"></script>
     <script src="/static/xterm-addon-fit.js"></script>
-    <script src="/static/libs/chart.js"></script>
+    <script src="/static/mini-chart.js"></script>
 </head>
-<body>
+<body data-tool="ssh">
 
     <!-- Header -->
     <header class="app-header">
@@ -106,7 +106,7 @@
             </div>
 
             <div style="display:flex; gap:0.75rem; margin-top:1rem;">
-                <button id="cancel-srv-btn" class="btn" style="flex:1;">Cancel</button>
+                <button id="cancel-srv-btn" data-close class="btn" style="flex:1;">Cancel</button>
                 <button id="save-srv-btn" class="btn btn-primary" style="flex:1;">Save</button>
             </div>
             <button id="delete-srv-btn" class="btn btn-danger btn-block" style="margin-top:0.6rem; display:none;">
@@ -196,7 +196,7 @@
         </div>
 
         <!-- Main Area -->
-        <div class="main-area" id="main-area">
+        <main class="main-area" id="main-area">
 
             <!-- ══ TERMINAL PANEL ══ -->
             <div id="terminal-panel" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
@@ -368,7 +368,7 @@
                 </div>
             </div>
 
-        </div>
+        </main>
     </div>
 
     <!-- Toast Container -->

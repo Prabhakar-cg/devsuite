@@ -7,7 +7,9 @@
     <meta name="description" content="A locally-hosted, offline-first developer toolkit. Diff files, lint JSON/YAML, test APIs, manage secrets, SSH into servers — all from your machine. Zero cloud. Zero tracking.">
     <link rel="stylesheet" href="/static/libs/fonts.css">
     <link rel="stylesheet" href="/static/home.css">
+    <link rel="stylesheet" href="/static/bento.css">
     <script src="/static/theme.js"></script>
+    <script src="/static/bento-art.js" defer></script>
     <script>
         /* Apply home.css CSS variables synchronously to prevent FOUC */
         (function() {
@@ -35,7 +37,7 @@
                 <span class="logo-name">DevSuite</span>
                 <span class="logo-version">v1.0</span>
             </a>
-            <nav class="site-nav">
+            <nav class="site-nav" aria-label="Primary">
                 <a href="#about">About</a>
                 <a href="#features">Features</a>
                 <a href="#privacy">Privacy</a>
@@ -88,6 +90,8 @@
         </div>
     </header>
 
+    <main>
+
     <!-- =====================================================
          HERO — terminal noir, split layout
          ===================================================== -->
@@ -106,7 +110,7 @@
                         <span class="accent-line">stays on your machine.</span>
                     </h1>
                     <p class="hero-subtitle">
-                        15 production-grade developer tools. Diff code, lint configs,
+                        16 production-grade developer tools. Diff code, lint configs,
                         test REST &amp; WebSocket APIs, manage secrets and SSH — all private, all
                         user-initiated: nothing leaves your machine unless you tell it to.
                     </p>
@@ -119,7 +123,7 @@
                     </div>
                     <div class="hero-stats">
                         <div class="hero-stat">
-                            <span class="hero-stat-num">15</span>
+                            <span class="hero-stat-num">16</span>
                             <span class="hero-stat-label">Tools</span>
                         </div>
                         <div class="hero-stat">
@@ -161,7 +165,7 @@
                                 <span class="t-cmd">devsuite <span class="t-flag">vault</span> get API_KEY</span>
                             </div>
                             <div class="t-line t-4">
-                                <span class="t-out">🔑 Decrypted: <span style="color:#f0f1f6;">sk-prod-••••••••••</span></span>
+                                <span class="t-out"><svg class="ico" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8z"/><path d="M15.5 7.5l3 3L22 7l-3-3"/></svg> Decrypted: <span style="color:#f0f1f6;">sk-prod-••••••••••</span></span>
                             </div>
                             <div class="t-line t-5" style="margin-top:0.5rem;">
                                 <span class="t-prompt">~$</span>
@@ -186,6 +190,48 @@
         </div>
     </section>
 
+
+    <!-- =====================================================
+         BENTO SHOWCASE (feature 026) — generated SVG art, tinted from theme tokens
+         ===================================================== -->
+    <section class="bento-section" aria-labelledby="bento-title">
+        <div class="container">
+            <h2 id="bento-title" class="ds-sr-only">Featured tools</h2>
+            <div class="bento">
+                <a class="bento-tile t-diff" href="/diff" aria-label="Text Diff — compare files side by side">
+                    <svg data-art="diff" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Text Diff</strong><span>Side-by-side and inline</span></span>
+                </a>
+                <div class="bento-tile t-pattern" aria-hidden="true"><svg data-art="pattern"></svg></div>
+                <a class="bento-tile t-vault" href="/vault" aria-label="Secret Vault — encrypted secrets that never leave your browser">
+                    <svg data-art="vault" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Secret Vault</strong><span>Encrypted in your browser</span></span>
+                </a>
+                <a class="bento-tile t-api" href="/api-tester" aria-label="API Tester — send and script REST requests">
+                    <svg data-art="api" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>API Tester</strong><span>REST requests with scripting</span></span>
+                </a>
+                <a class="bento-tile t-terminal" href="/ssh" aria-label="Secure Terminal — SSH and SFTP sessions">
+                    <svg data-art="terminal" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Secure Terminal</strong><span>SSH and SFTP</span></span>
+                </a>
+                <div class="bento-tile t-text">
+                    <h2>Nothing leaves your machine.</h2>
+                    <p>Sixteen developer tools that run locally. No accounts, no uploads, no telemetry.</p>
+                    <a class="bento-cta" href="/tools">Open all tools</a>
+                </div>
+                <a class="bento-tile t-cron" href="/cron" aria-label="Cron Visualizer — see when a schedule runs next">
+                    <svg data-art="cron" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Cron Visualizer</strong><span>Next runs, in plain words</span></span>
+                </a>
+                <a class="bento-tile t-lint" href="/data-linter" aria-label="Data Linter — validate and convert JSON, YAML and XML">
+                    <svg data-art="lint" aria-hidden="true"></svg>
+                    <span class="bento-label"><strong>Data Linter</strong><span>JSON, YAML, XML</span></span>
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- Stats strip removed — stats now inline in hero -->
 
     <!-- =====================================================
@@ -198,7 +244,7 @@
                     <span class="eyebrow">What is DevSuite?</span>
                     <h2>Everything you<br>reach for daily,<br>in one place.</h2>
                     <p>A locally-hosted, offline-first developer suite that runs entirely on your machine. No subscriptions, no sign-ups, no data leaving your network — ever.</p>
-                    <a href="/tools" class="text-link">Browse all 15 tools →</a>
+                    <a href="/tools" class="text-link">Browse all 16 tools →</a>
                 </div>
                 <div class="about-cards">
                     <div class="about-card">
@@ -305,7 +351,7 @@
 
             <div style="text-align:center; margin-top:2.5rem;">
                 <a href="/tools" class="btn-outline-dark">
-                    See all 15 tools
+                    See all 16 tools
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </a>
             </div>
@@ -459,6 +505,8 @@
     <!-- =====================================================
          FOOTER
          ===================================================== -->
+    </main>
+
     <footer class="site-footer">
         <div class="footer-inner">
             <span class="footer-brand">DevSuite</span>

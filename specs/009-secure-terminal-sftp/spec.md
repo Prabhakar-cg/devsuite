@@ -398,3 +398,9 @@ approximately every 2 seconds and reflect real `/proc` values on the remote host
   write + a real mid-transfer progress channel, since HTTP request/response gives the server no
   way to push progress back mid-request) is a larger change, deliberately out of scope for this
   round; tracked as `BACKLOG.md` BUG-2.
+
+## Update 2026-11-17 (independent assessment, `specs/025-security-hardening/assessment.md`)
+
+- **Dashboard charts restored (F-3).** `ssh-manager.html` referenced `/static/libs/chart.js`, which was never vendored; `updateDashboardGauges` returns early without `Chart`, so the live dashboard (uptime, CPU history, RAM history, swap, disks) never rendered. It now loads `static/mini-chart.js`, a dependency-free canvas renderer exposing the Chart.js subset the dashboard uses (`line` filled/smoothed with fixed y-range, `doughnut` with cutout, `update()`, `defaults`). No third-party library was added (Constitution III, SPEC §11).
+- **SFTP/WSL endpoints are session-gated** (`/api/sftp/list|download|upload`, `/api/wsl/discover`) once a master password is configured — same dormant-before-setup carve-out as the WebSockets (SPEC §7.9, SEC-17).
+- WebSocket origin validation uses the Host/Origin allowlist and never trusts the `Host` header (SEC-16).

@@ -13,7 +13,8 @@
     --border:      rgba(100,120,255,0.12);
     --border-glow: rgba(100,120,255,0.35);
 
-    --accent:      #6477ff;
+    --accent:      #8f9cff;   /* accent as TEXT/graphic on the dark surface */
+    --accent-solid: #4a55d8;  /* accent as a FILL behind white text (5.8:1) */
     --accent-soft: rgba(100,119,255,0.15);
     --accent-glow: rgba(100,119,255,0.35);
 
@@ -25,8 +26,10 @@
     --amber-soft:  rgba(245,158,11,0.12);
     --cyan:        #06b6d4;
 
+    --focus-ring:  #b4bcff; /* light indigo: >=3:1 on the dark DevDB surfaces */
+    --on-accent:   #ffffff; /* keep white on dark-surface accents regardless of theme layer */
     --text:        #e2e8f0;
-    --text-muted:  #64748b;
+    --text-muted:  #8b9ab0;
     --text-dim:    #94a3b8;
 
     --radius:      12px;
@@ -103,7 +106,7 @@ body::before {
 .tool-sub { font-size: 12px; color: var(--text-muted); font-weight: 400; }
 
 .header-badge {
-    padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 99px; font-size: var(--text-xs, 0.75rem); font-weight: 600;
     letter-spacing: 0.05em; text-transform: uppercase;
 }
 .badge-secure   { background: var(--green-soft); color: var(--green); border: 1px solid rgba(34,197,94,0.25); }
@@ -151,14 +154,14 @@ body::before {
 .stat-item {
     display: flex; flex-direction: column; gap: 2px;
 }
-.stat-label { font-size: 11px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+.stat-label { font-size: var(--text-xs, 0.75rem); color: var(--text-muted); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
 .stat-value { font-size: 15px; font-weight: 700; color: var(--text); }
 .stat-value.green { color: var(--green); }
 .stat-value.amber { color: var(--amber); }
 
 /* ── Section titles ── */
 .section-title {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    font-size: var(--text-xs, 0.75rem); font-weight: 700; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--text-muted);
     margin-bottom: 12px;
 }
@@ -192,7 +195,7 @@ body::before {
 .store-card-name { font-weight: 700; font-size: 14px; color: var(--text); }
 .store-card-size {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 11px; color: var(--text-muted);
+    font-size: var(--text-xs, 0.75rem); color: var(--text-muted);
 }
 .store-card-entries {
     font-size: 22px; font-weight: 800;
@@ -254,8 +257,8 @@ body::before {
 }
 .btn-primary {
     background: #1d4ed8;
-    background-image: linear-gradient(135deg, var(--accent), #1d4ed8);
-    color: #fff;
+    background-image: linear-gradient(135deg, var(--accent-solid), #1d4ed8);
+    color: var(--on-accent, #fff);
     box-shadow: 0 2px 12px var(--accent-glow);
 }
 .btn-primary:hover {
@@ -369,7 +372,7 @@ body::before {
     background: #3730a3;
     background: rgba(55,48,163,0.95);
     backdrop-filter: blur(8px);
-    color: #fff;
+    color: var(--on-accent, #fff);
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     border: 1px solid rgba(255,255,255,0.12);
     animation: fade-slide-in 0.25s ease forwards;
@@ -557,10 +560,10 @@ body::before {
 .db-lock-btn {
     width: 100%;
     padding: 12px;
-    background: var(--accent);
+    background: var(--accent-solid);
     border: none;
     border-radius: var(--radius-sm);
-    color: #fff;
+    color: var(--on-accent, #fff);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -574,7 +577,7 @@ body::before {
     display: flex;
     align-items: flex-start;
     gap: 6px;
-    font-size: 11px;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--text-muted);
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.07);
@@ -589,10 +592,13 @@ body::before {
     display: flex;
     align-items: flex-start;
     gap: 7px;
-    font-size: 11px;
+    font-size: var(--text-xs, 0.75rem);
     color: var(--text-muted);
     text-align: left;
     line-height: 1.5;
     margin-top: 4px;
     width: 100%;
 }
+
+/* "Open Secret Vault" is an <a> styled as a button */
+a.btn { text-decoration: none; }

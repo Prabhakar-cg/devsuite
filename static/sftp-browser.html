@@ -14,7 +14,7 @@
     <script src="/static/theme.js?v=2"></script>
     <script src="/static/crypto-js.min.js"></script>
 </head>
-<body>
+<body data-tool="sftp">
 
     <!-- Header -->
     <header class="app-header">
@@ -30,7 +30,7 @@
                     </svg>
                 </div>
                 <span class="tool-name">
-                    SFTP <span class="tool-accent" style="color:#0ea5e9;">Browser</span>
+                    SFTP <span class="tool-accent">Browser</span>
                 </span>
                 <span class="tool-version">V1.0</span>
             </div>
@@ -68,7 +68,7 @@
             <input type="password" id="q-pass" class="sftp-input" placeholder="Password (Optional)">
             <textarea id="q-key" class="sftp-input sftp-textarea" placeholder="Private Key PEM (Optional)"></textarea>
             <div class="sftp-form-actions">
-                <button id="cancel-connect-btn" class="sftp-btn-secondary">Cancel</button>
+                <button id="cancel-connect-btn" data-close class="sftp-btn-secondary">Cancel</button>
                 <button id="do-connect-btn" class="sftp-btn-primary">Connect</button>
             </div>
         </div>
@@ -94,7 +94,7 @@
         </div>
 
         <!-- Right: File Browser -->
-        <div class="sftp-main" id="sftp-main">
+        <main class="sftp-main" id="sftp-main">
 
             <!-- No Connection State -->
             <div class="sftp-empty-state" id="sftp-empty-state">
@@ -147,12 +147,14 @@
                 </div>
 
             </div>
-        </div>
+        </main>
     </div>
 
     <!-- Toast -->
     <div id="toast-container"></div>
 
-    <script src="/static/sftp-browser.js?v=1"></script>
+    <script src="/static/master-verify.js"></script>
+<script src="/static/icons.js"></script>
+<script src="/static/sftp-browser.js?v=1"></script>
 </body>
 </html>
