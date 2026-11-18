@@ -307,7 +307,7 @@ def test_inline_scripts_still_parse_after_injection(page):
     node = shutil.which("node")
     if not node:
         pytest.skip("node not installed")
-    for i, m in enumerate(re.finditer(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script\s*>", _serve_html(page), re.S | re.I)):
+    for i, m in enumerate(re.finditer(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script(?:\s+[^>]*)?>", _serve_html(page), re.S | re.I)):
         with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as f:
             f.write(m.group(1))
         r = subprocess.run([node, "--check", f.name], capture_output=True, text=True)
