@@ -435,7 +435,7 @@ const AuthGuard = (() => {
 
             document.getElementById('ag-btn').addEventListener('click', doUnlock);
             document.getElementById('ag-pw').addEventListener('keydown', e => {
-                if (e.key === 'Enter') doUnlock();
+                if (e.key === 'Enter') void doUnlock();
             });
         });
     }

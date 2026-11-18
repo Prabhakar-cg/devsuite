@@ -514,8 +514,8 @@ function copyToClipboard(text, label = 'Value') {
     navigator.clipboard.writeText(text).then(() => {
         toast(`${label} copied — cleared in 30s`, 'success');
         if (clipTimer) clearTimeout(clipTimer);
-        clipTimer = setTimeout(() => navigator.clipboard.writeText(''), 30000);
-    });
+        clipTimer = setTimeout(() => { navigator.clipboard.writeText('').catch(() => {}); }, 30000);
+    }).catch(() => toast(`Could not copy ${label.toLowerCase()} — clipboard access was denied`, 'error'));
 }
 
 // ── Toast ─────────────────────────────────────────────────────────
@@ -1393,7 +1393,7 @@ async function initVaultMode() {
 document.addEventListener('DOMContentLoaded', () => {
 
     // Detect first-run / setup mode before showing the lock screen
-    initVaultMode();
+    void initVaultMode();
 
     // Lock screen
     const pwInput = document.getElementById('master-pw-input');
@@ -1452,12 +1452,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const restoreFileInput = document.getElementById('restore-file-input');
     document.getElementById('restore-choose-file-btn').addEventListener('click', () => restoreFileInput.click());
     restoreFileInput.addEventListener('change', () => {
-        handleRestoreFileChosen(restoreFileInput.files[0]);
+        void handleRestoreFileChosen(restoreFileInput.files[0]);
         restoreFileInput.value = ''; // allow re-selecting the same file
     });
     document.getElementById('restore-confirm-btn').addEventListener('click', performRestore);
     document.getElementById('restore-pw-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !document.getElementById('restore-confirm-btn').disabled) performRestore();
+        if (e.key === 'Enter' && !document.getElementById('restore-confirm-btn').disabled) void performRestore();
     });
 
     // Sidebar filter
@@ -1504,7 +1504,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Delete button (inside modal, needs the editingId)
     document.getElementById('delete-btn').addEventListener('click', () => {
-        if (editingId) deleteEntry(editingId);
+        if (editingId) void deleteEntry(editingId);
     });
 
     // Escape key

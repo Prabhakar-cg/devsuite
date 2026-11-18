@@ -163,7 +163,7 @@ async function _applyMasterKey(pwd) {
         profiles  = [];
         await saveProfilesBlob(encryptData('[]', pwd));
         document.getElementById('master-password-overlay').style.display = 'none';
-        discoverWsl();
+        void discoverWsl();
         renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
         return;
     }
@@ -175,7 +175,7 @@ async function _applyMasterKey(pwd) {
             profiles  = JSON.parse(dec);
             masterKey = pwd;
             document.getElementById('master-password-overlay').style.display = 'none';
-            discoverWsl();
+            void discoverWsl();
             renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
         } catch { showToast('Failed to parse profiles.', 'error'); }
         return;
@@ -236,7 +236,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
         await saveProfilesBlob(encryptData(JSON.stringify(profiles), newPwd));
         overlay.style.display = 'none';
         showToast('SSH profiles migrated to master password', 'success');
-        discoverWsl();
+        void discoverWsl();
         renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
     });
 
@@ -247,7 +247,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
         await saveProfilesBlob(encryptData('[]', newPwd));
         overlay.style.display = 'none';
         showToast('SSH profiles reset.', 'info');
-        discoverWsl();
+        void discoverWsl();
         renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
     });
 }
@@ -274,7 +274,7 @@ function _showMigrationPanel(encryptedBlob, newPwd) {
                 }
             }
         } catch { profiles = []; }
-        discoverWsl();
+        void discoverWsl();
         renderSidebar(); renderSftpSidebar(); renderDashboardSidebar();
     }
 })();
@@ -957,11 +957,11 @@ document.getElementById('sftp-up-btn').addEventListener('click', () => {
     if (!sftpConn) return;
     const parts = sftpConn.path.replace(/\/$/, '').split('/');
     parts.pop();
-    sftpLoadDir(parts.join('/') || '/');
+    void sftpLoadDir(parts.join('/') || '/');
 });
 
 document.getElementById('sftp-refresh-btn').addEventListener('click', () => {
-    if (sftpConn) sftpLoadDir(sftpConn.path);
+    if (sftpConn) void sftpLoadDir(sftpConn.path);
 });
 
 async function sftpLoadDir(path) {
@@ -1075,7 +1075,7 @@ function renderSftpGrid(files) {
             card.addEventListener('dblclick', () => {
                 if (!sftpConn) return;
                 const newPath = sftpConn.path === '/' ? '/' + f.name : sftpConn.path + '/' + f.name;
-                sftpLoadDir(newPath);
+                void sftpLoadDir(newPath);
             });
         } else {
             card.title = 'Click to download';

@@ -32,7 +32,7 @@
 
         <!-- Password form (shown once setup is detected) -->
         <div id="lock-form" style="display:none;">
-            <input type="password" id="lock-pw-input" class="db-lock-input"
+            <input aria-label="Master password" type="password" id="lock-pw-input" class="db-lock-input"
                    placeholder="Master Password" autocomplete="off" spellcheck="false" />
             <div class="db-lock-error" id="lock-error" style="display:none;"></div>
             <button class="db-lock-btn" id="lock-unlock-btn">Unlock</button>
@@ -186,7 +186,7 @@
                     </svg>
                     Import .dsb
                 </button>
-                <input type="file" id="import-file-input" accept=".dsb" style="display:none;" />
+                <input aria-label="Import database file" type="file" id="import-file-input" accept=".dsb" style="display:none;" />
                 <div id="import-progress" style="display:none;" class="progress-bar-wrap">
                     <div class="progress-bar" id="import-bar"></div>
                 </div>

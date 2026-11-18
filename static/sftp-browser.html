@@ -50,7 +50,7 @@
             </div>
             <h2>Unlock SFTP Sessions</h2>
             <p>Your connection profiles are encrypted with your Master Password — the same one used in Secure Terminal.</p>
-            <input type="password" id="master-password" class="sftp-input" placeholder="Enter Master Password" autofocus>
+            <input aria-label="Master password" type="password" id="master-password" class="sftp-input" placeholder="Enter Master Password" autofocus>
             <button id="unlock-btn" class="sftp-btn-primary">Unlock</button>
             <div id="unlock-error" class="sftp-error" style="display:none;"></div>
         </div>
@@ -61,12 +61,12 @@
         <div class="sftp-modal">
             <h2>Quick Connect</h2>
             <div class="sftp-form-row">
-                <input type="text" id="q-host" class="sftp-input" placeholder="Host / IP" style="flex:3;">
-                <input type="number" id="q-port" class="sftp-input" placeholder="Port" value="22" style="flex:1;">
+                <input aria-label="Host or IP" type="text" id="q-host" class="sftp-input" placeholder="Host / IP" style="flex:3;">
+                <input aria-label="Port" type="number" id="q-port" class="sftp-input" placeholder="Port" value="22" style="flex:1;">
             </div>
-            <input type="text" id="q-user" class="sftp-input" placeholder="Username">
-            <input type="password" id="q-pass" class="sftp-input" placeholder="Password (Optional)">
-            <textarea id="q-key" class="sftp-input sftp-textarea" placeholder="Private Key PEM (Optional)"></textarea>
+            <input aria-label="Username" type="text" id="q-user" class="sftp-input" placeholder="Username">
+            <input aria-label="Password (optional)" type="password" id="q-pass" class="sftp-input" placeholder="Password (Optional)">
+            <textarea aria-label="Private key PEM (optional)" id="q-key" class="sftp-input sftp-textarea" placeholder="Private Key PEM (Optional)"></textarea>
             <div class="sftp-form-actions">
                 <button id="cancel-connect-btn" data-close class="sftp-btn-secondary">Cancel</button>
                 <button id="do-connect-btn" class="sftp-btn-primary">Connect</button>
@@ -87,7 +87,7 @@
                     </svg>
                 </button>
             </div>
-            <input type="text" id="session-search" class="sftp-search" placeholder="Search sessions...">
+            <input aria-label="Search sessions" type="text" id="session-search" class="sftp-search" placeholder="Search sessions...">
             <div class="sftp-session-list" id="session-list">
                 <!-- Injected by JS -->
             </div>
@@ -122,7 +122,7 @@
                                 <polyline points="18 15 12 9 6 15"/>
                             </svg>
                         </button>
-                        <input type="text" id="path-input" class="sftp-path-input" value="/" readonly>
+                        <input aria-label="Current remote path" type="text" id="path-input" class="sftp-path-input" value="/" readonly>
                         <button id="refresh-btn" class="sftp-nav-btn" title="Refresh">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="23 4 23 10 17 10"/>
