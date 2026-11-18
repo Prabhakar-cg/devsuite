@@ -587,7 +587,7 @@ function renderEntryList() {
         // Generated art instead of an emoji (SPEC §9.8 / §9.15)
         const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         icon.setAttribute('class', 'tk-art');
-        icon.setAttribute('data-art', searchQuery ? 'regex' : 'vault');
+        icon.dataset.art = searchQuery ? 'regex' : 'vault';
         globalThis.BentoArt?.render(icon);
 
         const message = document.createElement('p');

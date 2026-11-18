@@ -7,7 +7,7 @@
 /* ── Visually hidden utility (live regions, skip link base) ── */
 .ds-sr-only,
 .sr-only {  /* alias: many pages already use class="sr-only" (it was never defined, so those labels showed) */
-    position: absolute !important;
+    position: absolute !important; /* NOSONAR — must beat page-level position rules or the hidden label shows */
     width: 1px; height: 1px;
     margin: -1px; padding: 0; border: 0;
     overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
@@ -38,20 +38,20 @@
    !important so tool stylesheets' legacy `outline: none` rules cannot strip it
    (WCAG 2.4.7). Mouse focus stays quiet because this is :focus-visible only. */
 :focus-visible {
-    outline: 2px solid var(--focus-ring, #0071e3) !important;
-    outline-offset: 2px !important;
+    outline: 2px solid var(--focus-ring, #0071e3) !important; /* NOSONAR — WCAG 2.4.7: must beat legacy tool `outline: none` */
+    outline-offset: 2px !important; /* NOSONAR — WCAG 2.4.7 focus ring */
 }
 /* Text fields: draw the ring INSIDE the border so it never spills past the field's box
    (an outward ring made fields look wider than neighbouring buttons and crowded them) */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-    outline-offset: -2px !important;
+    outline-offset: -2px !important; /* NOSONAR — WCAG 2.4.7 focus ring */
 }
 /* Programmatic focus on containers (main landmark, dialog cards) shows no ring */
 #ds-main:focus-visible,
 [tabindex="-1"]:not(input):not(textarea):not(select):not(button):focus-visible {
-    outline: none !important;
+    outline: none !important; /* NOSONAR — pairs with the !important ring above */
 }
 
 /* ── Scrollbars follow theme tokens ── */
@@ -80,22 +80,22 @@ select:focus-visible {
 /* ── Reduced motion: no non-essential animation or transition ── */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
-        animation-duration: 0.001ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.001ms !important;
-        scroll-behavior: auto !important;
+        animation-duration: 0.001ms !important; /* NOSONAR — WCAG 2.3.3 reduced motion must override every tool stylesheet */
+        animation-iteration-count: 1 !important; /* NOSONAR — WCAG 2.3.3 */
+        transition-duration: 0.001ms !important; /* NOSONAR — WCAG 2.3.3 */
+        scroll-behavior: auto !important; /* NOSONAR — WCAG 2.3.3 */
     }
-    *:hover, *:active { transform: none !important; }
+    *:hover, *:active { transform: none !important; } /* NOSONAR — WCAG 2.3.3 */
     /* Essential motion opt-in: progress indicators and the terminal cursor */
     .ds-keep-motion, .ds-keep-motion *, .xterm-cursor-blink {
-        animation-duration: revert !important;
-        animation-iteration-count: revert !important;
+        animation-duration: revert !important; /* NOSONAR — essential-motion opt-in must beat the reduced-motion !important */
+        animation-iteration-count: revert !important; /* NOSONAR — essential-motion opt-in */
     }
 }
 
 /* ── Narrow screens: tool headers wrap instead of overflowing (found at 320px, feature 028) ── */
 @media (max-width: 560px) {
-    .app-header, .tool-header { height: auto !important; min-height: 52px; flex-wrap: wrap; row-gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+    .app-header, .tool-header { height: auto !important; min-height: 52px; flex-wrap: wrap; row-gap: 6px; padding-top: 6px; padding-bottom: 6px; } /* NOSONAR — beats fixed header heights in tool stylesheets at 320px */
     .header-controls, .header-right, .header-left { flex-wrap: wrap; max-width: 100%; row-gap: 6px; }
 }
 

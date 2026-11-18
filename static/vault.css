@@ -127,8 +127,8 @@ html, body {
     outline: none; margin-bottom: 1rem;
     transition: border-color 0.2s, box-shadow 0.2s;
     letter-spacing: 0.1em;
+    text-overflow: ellipsis;
 }
-.lock-input { text-overflow: ellipsis; }
 .lock-input::placeholder { letter-spacing: 0; font-size: 0.875rem; } /* long placeholders must not clip at 320px */
 .lock-input:focus { border-color: var(--amber-dark); box-shadow: 0 0 0 3px rgba(146,64,14,0.12); }
 

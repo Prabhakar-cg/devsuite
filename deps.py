@@ -137,6 +137,22 @@ _BENTO_ART_SCRIPT_TAG = '<script src="/static/bento-art.js" defer></script>'
 _A11Y_SKIP_LINK = '<a class="ds-skip-link" href="#ds-main">Skip to main content</a>'
 _A11Y_SCRIPT_TAG = '<script src="/static/a11y.js" defer></script>'
 _BODY_OPEN_RE = re.compile(r'<body\b[^>]*>', re.IGNORECASE)
+_HEAD_OPEN = '<head>'
+_BODY_CLOSE = '</body>'
+# (marker, tag): inject *tag* unless *marker* is already in the page. Order matters — see _serve_html.
+_HEAD_INJECTIONS = (
+    ('favicon', _FAVICON_TAG),
+    ('/static/a11y.css', _A11Y_CSS_TAG),
+    ('/static/toolskin.css', _TOOLSKIN_CSS_TAG),
+    ('/static/bento.css', _BENTO_CSS_TAG),
+    ('/static/theme-layer.css', _THEME_LAYER_CSS_TAG),
+    ('command-palette.css', _COMMAND_PALETTE_CSS_TAG),
+)
+_BODY_END_INJECTIONS = (
+    ('/static/a11y.js', _A11Y_SCRIPT_TAG),
+    ('/static/bento-art.js', _BENTO_ART_SCRIPT_TAG),
+    ('command-palette.js', _COMMAND_PALETTE_SCRIPT_TAGS),
+)
 
 
 def _asset_fingerprint(static_path: str) -> str:
@@ -156,7 +172,7 @@ def _insert_before_closing_body(html: str, tags: str) -> str:
     ``</body>`` inside a JavaScript template literal — the injected ``<script>`` tags landed
     inside the string and broke the page's whole script (every button dead).
     """
-    head, sep, tail = html.rpartition('</body>')
+    head, sep, tail = html.rpartition(_BODY_CLOSE)
     return f'{head}{tags}\n{sep}{tail}' if sep else html
 
 
@@ -168,26 +184,17 @@ def _serve_html(filename: str) -> str:
             html = f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"{filename} not found.") from None  # NOSONAR
-    if 'favicon' not in html:
-        html = html.replace('<head>', f'<head>\n    {_FAVICON_TAG}', 1)
-    if '/static/a11y.css' not in html:
-        html = html.replace('<head>', f'<head>\n    {_A11Y_CSS_TAG}', 1)
-    if '/static/toolskin.css' not in html:
-        html = html.replace('<head>', f'<head>\n    {_TOOLSKIN_CSS_TAG}', 1)
-    if '/static/bento.css' not in html:
-        html = html.replace('<head>', f'<head>\n    {_BENTO_CSS_TAG}', 1)
-    if '/static/theme-layer.css' not in html:
-        html = html.replace('<head>', f'<head>\n    {_THEME_LAYER_CSS_TAG}', 1)
+    # Each head tag is inserted right after <head>, so the LAST entry ends up FIRST in the
+    # document — order here sets the cascade; keep it.
+    for marker, tag in _HEAD_INJECTIONS:
+        if marker not in html:
+            html = html.replace(_HEAD_OPEN, f'{_HEAD_OPEN}\n    {tag}', 1)
     if 'ds-skip-link' not in html:
         html = _BODY_OPEN_RE.sub(lambda m: f'{m.group(0)}\n{_A11Y_SKIP_LINK}', html, count=1)
-    if '/static/a11y.js' not in html and '</body>' in html:
-        html = _insert_before_closing_body(html, _A11Y_SCRIPT_TAG)
-    if '/static/bento-art.js' not in html and '</body>' in html:
-        html = _insert_before_closing_body(html, _BENTO_ART_SCRIPT_TAG)
-    if 'command-palette.css' not in html:
-        html = html.replace('<head>', f'<head>\n    {_COMMAND_PALETTE_CSS_TAG}', 1)
-    if 'command-palette.js' not in html and '</body>' in html:
-        html = _insert_before_closing_body(html, _COMMAND_PALETTE_SCRIPT_TAGS)
+    if _BODY_CLOSE in html:
+        for marker, tag in _BODY_END_INJECTIONS:
+            if marker not in html:
+                html = _insert_before_closing_body(html, tag)
     return _STATIC_ASSET_RE.sub(lambda m: f'{m.group(1)}?v={_asset_fingerprint(m.group(1))}', html)
 
 

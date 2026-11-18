@@ -14,13 +14,18 @@ RUN /opt/venv/bin/pip install -r requirements.txt
 FROM python:3.12-slim AS runtime
 # System libraries WeasyPrint needs for HTML/DOCX→PDF, plus a font and OpenSSH client tools
 # (ssh-keygen/ssh-keyscan are used by the SFTP host-key approval flow).
+# Non-root user; all persistent data (the encrypted DevDB, audit log) lives in /data via HOME.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-        libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi8 shared-mime-info fonts-dejavu-core openssh-client \
- && rm -rf /var/lib/apt/lists/*
-
-# Non-root user; all persistent data (the encrypted DevDB, audit log) lives in /data via HOME.
-RUN useradd --create-home --home-dir /data --uid 10001 --shell /usr/sbin/nologin devsuite \
+        fonts-dejavu-core \
+        libffi8 \
+        libharfbuzz0b \
+        libpango-1.0-0 \
+        libpangoft2-1.0-0 \
+        openssh-client \
+        shared-mime-info \
+ && rm -rf /var/lib/apt/lists/* \
+ && useradd --create-home --home-dir /data --uid 10001 --shell /usr/sbin/nologin devsuite \
  && chown devsuite:devsuite /data
 ENV HOME=/data \
     PATH="/opt/venv/bin:$PATH" \

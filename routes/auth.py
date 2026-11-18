@@ -196,6 +196,35 @@ def auth_update_challenge(data: dict, request: Request):
     return {"status": "ok"}
 
 
+def _decrypt_verify_blob(prefs: dict, key_bytes: bytes, challenge_version: int) -> str:
+    """Decrypt the stored verify blob with *key_bytes*; any failure raises (caller maps it to 401).
+
+    v2: AES-256-GCM (authenticated). v1: legacy AES-CBC + PKCS7, kept only for existing vaults.
+    """
+    if challenge_version == 2:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # pylint: disable=import-outside-toplevel
+        nonce      = bytes.fromhex(prefs["master_verify_nonce"])
+        ciphertext = bytes.fromhex(prefs["master_verify_blob"])
+        return AESGCM(key_bytes).decrypt(nonce, ciphertext, None).decode("utf-8", errors="strict")
+
+    import base64 as _b64  # pylint: disable=import-outside-toplevel
+    from cryptography.hazmat.primitives.ciphers import (  # pylint: disable=import-outside-toplevel
+        Cipher, algorithms, modes,
+    )
+    from cryptography.hazmat.backends import default_backend  # pylint: disable=import-outside-toplevel
+
+    verify_iv  = bytes.fromhex(prefs["master_verify_iv"])
+    ciphertext = _b64.b64decode(prefs["master_verify_blob"])
+
+    cipher = Cipher(algorithms.AES(key_bytes), modes.CBC(verify_iv), backend=default_backend())  # NOSONAR
+    decryptor = cipher.decryptor()
+    padded    = decryptor.update(ciphertext) + decryptor.finalize()
+    pad_len   = padded[-1]
+    if pad_len < 1 or pad_len > 16:
+        raise ValueError("Invalid PKCS7 padding")
+    return padded[:-pad_len].decode("utf-8", errors="strict")
+
+
 @router.post(
     "/api/auth/session",
     summary="Exchange verified master key for a server-side session token",
@@ -225,32 +254,7 @@ def auth_session(request: Request, data: dict):  # pylint: disable=too-many-loca
     challenge_version = prefs.get("challenge_version", 1)
 
     try:
-        key_bytes = bytes.fromhex(key_hex)
-
-        if challenge_version == 2:
-            from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # pylint: disable=import-outside-toplevel
-            nonce      = bytes.fromhex(prefs["master_verify_nonce"])
-            ciphertext = bytes.fromhex(prefs["master_verify_blob"])
-            aesgcm     = AESGCM(key_bytes)
-            plaintext  = aesgcm.decrypt(nonce, ciphertext, None).decode("utf-8", errors="strict")
-        else:
-            import base64 as _b64  # pylint: disable=import-outside-toplevel
-            from cryptography.hazmat.primitives.ciphers import (  # pylint: disable=import-outside-toplevel
-                Cipher, algorithms, modes,
-            )
-            from cryptography.hazmat.backends import default_backend  # pylint: disable=import-outside-toplevel
-
-            verify_iv  = bytes.fromhex(prefs["master_verify_iv"])
-            ciphertext = _b64.b64decode(prefs["master_verify_blob"])
-
-            cipher = Cipher(algorithms.AES(key_bytes), modes.CBC(verify_iv), backend=default_backend())  # NOSONAR
-            decryptor = cipher.decryptor()
-            padded    = decryptor.update(ciphertext) + decryptor.finalize()
-            pad_len   = padded[-1]
-            if pad_len < 1 or pad_len > 16:
-                raise ValueError("Invalid PKCS7 padding")
-            plaintext = padded[:-pad_len].decode("utf-8", errors="strict")
-
+        plaintext = _decrypt_verify_blob(prefs, bytes.fromhex(key_hex), challenge_version)
         if plaintext != "DEVSUITE_MASTER_OK":
             raise HTTPException(status_code=401, detail="Invalid master key")
     except HTTPException:

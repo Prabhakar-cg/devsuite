@@ -71,9 +71,9 @@
 [data-tool] .ss-input-tile,
 [data-tool] .ss-results-tile,
 [data-tool] .ss-fix-tile {
-    background: var(--tk-tile) !important;
-    border: 0 !important;
-    border-radius: var(--tk-radius) !important;
+    background: var(--tk-tile) !important; /* NOSONAR — SPEC §9.15: skin overrides per-page tile palettes */
+    border: 0 !important; /* NOSONAR — SPEC §9.15 tile skin */
+    border-radius: var(--tk-radius) !important; /* NOSONAR — SPEC §9.15: --tk-radius is the single radius source */
     overflow: hidden;
 }
 
@@ -83,7 +83,7 @@
 [data-tool] .action-toolbar, [data-tool] .regex-input-row, [data-tool] .cs-controls { margin: 6px 6px 0; }
 [data-tool] .cs-body { margin: 6px; }
 [data-tool] .input-panels { gap: 6px; padding: 6px 6px 0; box-sizing: border-box; }
-[data-tool] .action-bar { background: transparent !important; border: 0 !important; }
+[data-tool] .action-bar { background: transparent !important; border: 0 !important; } /* NOSONAR — SPEC §9.15 tile skin */
 [data-tool] .api-tester-container, [data-tool] .ssh-manager-container, [data-tool] .vault-layout,
 [data-tool] .notes-container, [data-tool] .sftp-layout { padding: 6px; gap: 6px; box-sizing: border-box; }
 [data-tool] .api-tester-container .panes { gap: 6px; background: transparent; }
@@ -119,7 +119,7 @@
 /* ── Lock screens: one tile card ── */
 [data-tool] .lock-card, [data-tool] .db-lock-card, [data-tool] .sftp-modal,
 [data-tool] #master-password-overlay .modal, #ag-overlay .ag-card {
-    border-radius: var(--tk-radius) !important;
+    border-radius: var(--tk-radius) !important; /* NOSONAR — SPEC §9.15: --tk-radius is the single radius source */
 }
 
 /* ── Hi-Contrast: tiles keep a strong outline instead of relying on tint ── */

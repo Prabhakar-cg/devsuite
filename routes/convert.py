@@ -293,6 +293,11 @@ async def convert_file(
     if src_ext in ("xlsx", "docx", "doc"):
         _check_archive_limits(content)
 
+    return _dispatch_conversion(src_ext, target_format, content)
+
+
+def _dispatch_conversion(src_ext: str, target_format: str, content: bytes):
+    """Route (source extension, target format) to its converter; 400 if unsupported."""
     if src_ext == "xlsx" and target_format in ("csv", "json"):
         return _conv_xlsx_to_csv_json(content, target_format)
     if src_ext == "csv" and target_format == "xlsx":

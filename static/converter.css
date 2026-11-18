@@ -32,7 +32,7 @@
     gap: 6px;
 }
 .cv-drop-col { grid-column: span 7; display: flex; flex-direction: column; gap: 6px; }
-.cv-panel    { grid-column: span 5; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.1rem; --hue: var(--green); }
+.cv-panel    { grid-column: span 5; margin: 0; min-width: 0; /* fieldset UA defaults */ padding: 1.5rem; display: flex; flex-direction: column; gap: 1.1rem; --hue: var(--green); }
 
 /* ── Drop tile ── */
 .cv-drop-col .drop-zone {
@@ -59,7 +59,7 @@
 .cv-drop-col .drop-sub  { font-size: var(--text-xs, 0.75rem); color: var(--text-mid); max-width: 44ch; line-height: 1.5; }
 
 .cv-drop-col .file-info {
-    margin-top: 0 !important;
+    margin-top: 0;
     background: color-mix(in srgb, var(--green) 14%, var(--bg-secondary));
     border: none;
     border-radius: var(--radius-xl, 16px);

@@ -164,7 +164,7 @@
             </div>
             <section class="match-pane" id="match-pane" aria-label="Match results" aria-live="polite">
                 <div class="match-empty" id="match-empty">
-                    <svg class="tk-art" data-art="regex"></svg>
+                    <svg class="tk-art" data-art="regex" aria-hidden="true"></svg>
                     <span>Enter a pattern and test string to see matches</span>
                 </div>
             </section>
@@ -309,7 +309,7 @@
             
             const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             icon.setAttribute('class', 'tk-art');
-            icon.setAttribute('data-art', 'regex');
+            icon.dataset.art = 'regex';
             globalThis.BentoArt?.render(icon); // generated art (SPEC §9.15); renderAll() covers the pre-load case
             
             const text = document.createElement('span');

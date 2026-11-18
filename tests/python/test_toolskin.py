@@ -54,7 +54,8 @@ def test_data_art_names_used_in_pages_exist():
     for page in list(PAGES) + ["file-converter.html", "home.html", "tools.html"]:
         used |= set(re.findall(r'data-art="([a-z0-9]+)"', (STATIC / page).read_text()))
     for js in ("vault.js", "regex.html"):
-        used |= set(re.findall(r"data-art', ?'([a-z0-9]+)'", (STATIC / js).read_text()))
+        for stmt in re.findall(r"dataset\.art = ([^;]+);", (STATIC / js).read_text()):
+            used |= set(re.findall(r"'([a-z0-9]+)'", stmt))
     assert used and used <= ART_NAMES, used - ART_NAMES
 
 

@@ -100,7 +100,7 @@
 <!-- ================================================================
      MAIN LAYOUT
      ================================================================ -->
-<div class="vault-layout" role="main">
+<main class="vault-layout">
 
     <!-- ── Left Sidebar — Type Filter ── -->
     <aside class="vault-sidebar">
@@ -166,7 +166,7 @@
         </div>
         <div class="entry-list" id="entry-list">
             <div class="empty-list" id="empty-list">
-                <svg class="tk-art" data-art="vault"></svg>
+                <svg class="tk-art" data-art="vault" aria-hidden="true"></svg>
                 <p>No secrets yet.<br>Click <strong>New Secret</strong> to add one.</p>
             </div>
         </div>
@@ -176,7 +176,7 @@
     <div class="detail-panel" id="detail-panel">
         <!-- Empty state -->
         <div class="detail-empty" id="detail-empty">
-            <svg class="tk-art" data-art="vault"></svg>
+            <svg class="tk-art" data-art="vault" aria-hidden="true"></svg>
             <h3>Select a secret</h3>
             <p>Choose an entry from the list to view its details here.</p>
         </div>
@@ -204,7 +204,7 @@
         </div>
     </div>
 
-</div>
+</main>
 
 <!-- ================================================================
      ADD / EDIT MODAL

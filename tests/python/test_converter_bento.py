@@ -30,9 +30,9 @@ def test_grid_structure_and_decorative_art():
         assert needle in HTML, needle
     arts = re.findall(r'<svg class="cv-(?:art|cat-art)" data-art="([a-z]+)"', HTML)
     assert sorted(arts) == ["convert", "doc", "image", "lint", "sheet"]
-    # the old low-contrast icon is gone; the panel is a labelled group
+    # the old low-contrast icon is gone; the panel is a labelled group (native <fieldset>, Sonar Web:S6819)
     assert 'class="drop-icon"' not in HTML
-    assert 'role="group" aria-label="Conversion"' in HTML
+    assert '<fieldset class="cv-panel" aria-label="Conversion">' in HTML
 
 
 def test_four_category_tiles_with_modifiers():

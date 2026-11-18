@@ -65,32 +65,36 @@ async function saveBlob(blob) {
 // ──────────────────────────────────────────
 // Unlock
 // ──────────────────────────────────────────
+// Once a master password exists, profile storage is session-gated (SPEC §7.9): verify the
+// password against the server challenge (v1 + v2) and open a session first. Without this the
+// standalone SFTP page got "401" for every vault created by a current version.
+// Resolves to an error message for the user, or null when a session is open (or none is needed).
+async function openServerSession(pwd) {
+    try {
+        const st = await fetch('/api/auth/status').then(r => r.json());
+        if (!st.is_setup) return null;
+        const chRes = await fetch('/api/auth/challenge');
+        if (chRes.status === 429) return 'Too many attempts. Wait a minute and try again.';
+        if (!chRes.ok) return 'Could not reach the server (' + chRes.status + ').';
+        const verified = await MasterVerify.verifyMasterPassword(pwd, await chRes.json());
+        if (!verified.ok) return 'Incorrect master password.';
+        const sr = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key_hex: verified.keyHex }),
+        });
+        return sr.ok ? null : 'Session exchange failed. Please try again.';
+    } catch (e) {
+        return 'Unable to unlock — network or server error: ' + e.message;
+    }
+}
+
 document.getElementById('unlock-btn').addEventListener('click', async () => {
     const pwd = document.getElementById('master-password').value;
     if (!pwd) { showError('Master Password is required.'); return; }
 
-    // Once a master password exists, profile storage is session-gated (SPEC §7.9): verify the
-    // password against the server challenge (v1 + v2) and open a session first. Without this the
-    // standalone SFTP page got "401" for every vault created by a current version.
-    try {
-        const st = await fetch('/api/auth/status').then(r => r.json());
-        if (st.is_setup) {
-            const chRes = await fetch('/api/auth/challenge');
-            if (chRes.status === 429) { showError('Too many attempts. Wait a minute and try again.'); return; }
-            if (!chRes.ok) { showError('Could not reach the server (' + chRes.status + ').'); return; }
-            const verified = await MasterVerify.verifyMasterPassword(pwd, await chRes.json());
-            if (!verified.ok) { showError('Incorrect master password.'); return; }
-            const sr = await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key_hex: verified.keyHex }),
-            });
-            if (!sr.ok) { showError('Session exchange failed. Please try again.'); return; }
-        }
-    } catch (e) {
-        showError('Unable to unlock — network or server error: ' + e.message);
-        return;
-    }
+    const sessionError = await openServerSession(pwd);
+    if (sessionError) { showError(sessionError); return; }
 
     let blob;
     try {

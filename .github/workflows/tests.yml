@@ -34,7 +34,8 @@ jobs:
         # Hash-locked, wheels only: no unpinned resolution and no sdist setup.py runs in CI.
         # requirements-ci.lock = requirements.txt + CI tools (pytest, httpx/httpx2 for
         # starlette's TestClient, ruff, pip-audit); see its header to regenerate.
-        run: pip install --require-hashes --only-binary :all: -r requirements-ci.lock
+        run: |
+          pip install --require-hashes --only-binary :all: -r requirements-ci.lock
 
       - name: Lint (ruff)
         run: ruff check .
