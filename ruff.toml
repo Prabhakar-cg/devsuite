@@ -1,6 +1,6 @@
 # DevSuite lint config (BACKLOG DX-1). Run: ruff check .   (pre-commit runs it on staged files)
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 extend-exclude = ["static", ".venv", "specs", "scripts/versions.json"]
 
 [lint]

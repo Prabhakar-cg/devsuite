@@ -170,7 +170,7 @@ A beautiful, locally-hosted developer tools suite powered by **FastAPI** and the
 ## Getting Started
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.11+
 
 > [!NOTE]
 > All HTML, CSS, and JS run directly in the browser with no compilation, bundler, or build step. Python is the only runtime requirement — Node.js and npm are **not** needed to run DevSuite.

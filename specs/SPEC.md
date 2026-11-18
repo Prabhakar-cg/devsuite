@@ -45,7 +45,7 @@ These are hard rules. No implementation may violate them.
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3.10+, FastAPI, Uvicorn (`localhost:8000`) |
+| Backend | Python 3.11+, FastAPI, Uvicorn (`localhost:8000`) |
 | Frontend | Vanilla HTML / CSS / JS |
 | Storage | DevDB — KeePass-style `.dsb` binary at `~/.devsuite/devdb.dsb` |
 | SSH/SFTP | `asyncssh` |
@@ -851,7 +851,7 @@ These paths must have automated tests. Adding or changing any of them requires a
 | python-docx | `>=1.2.0` | DOCX |
 | mammoth | `>=1.12.0` | DOCX → HTML |
 | weasyprint | `>=68.1` | HTML → PDF |
-| markdown | `>=3.10.2` | Markdown parsing |
+| markdown | `>=3.11` | Markdown parsing |
 | slowapi | `>=0.1.9` | Rate limiting — security-sensitive, patch promptly |
 
 ### 11.2 Vendored JavaScript (`static/`)
@@ -1168,7 +1168,7 @@ Follows Semantic Versioning. Each release section includes, in this order: Secur
 
 - **Docker:** `Dockerfile` (multi-stage, non-root uid 10001, `HOME=/data` volume, `HEALTHCHECK` on `/api/auth/status`, `HOST=0.0.0.0`) and `docker-compose.yml` (port published as `127.0.0.1:8000:8000` only, `read_only`, `cap_drop: [ALL]`, `no-new-privileges`). The container's host-header allowlist is unchanged (§7.9); add `DEVSUITE_ALLOWED_HOSTS` only for other hostnames.
 - **Lint:** `ruff.toml` (E/F/W + mutable-default/eval checks; `static/` excluded) and `.pre-commit-config.yaml` (ruff on commit; pytest + node tests on push). The backend is ruff-clean.
-- **CI (`.github/workflows/tests.yml`):** pytest (Py 3.10/3.12), `ruff check .`, `pip-audit`, all installed from `requirements-ci.lock` (`requirements.txt` + `requirements-ci.in` compiled with hashes, wheels only, `pip install --require-hashes --only-binary :all:`; regenerate with the command in its header whenever either input changes), a `vendored-js-audit` job (`npm audit` against the committed `package-lock.json`, which must match `package.json` — CI fails on drift; `package.json` only lists the files vendored under `static/` so npm can see their CVEs — nothing is installed or bundled), and a `docker-build` job (build + health check).
+- **CI (`.github/workflows/tests.yml`):** pytest (Py 3.11/3.12), `ruff check .`, `pip-audit`, all installed from `requirements-ci.lock` (`requirements.txt` + `requirements-ci.in` compiled with hashes, wheels only, `pip install --require-hashes --only-binary :all:`; regenerate with the command in its header whenever either input changes), a `vendored-js-audit` job (`npm audit` against the committed `package-lock.json`, which must match `package.json` — CI fails on drift; `package.json` only lists the files vendored under `static/` so npm can see their CVEs — nothing is installed or bundled), and a `docker-build` job (build + health check).
 - **Browser smoke test:** `tests/e2e/smoke.py` (optional, needs Playwright + a running server) loads every page and fails on JS errors / 4xx-5xx.
 - **Vendored-lib policy:** `scripts/versions.json`, `package.json`, `UPGRADE_PLAN.md` and §11 are kept in sync; DOMPurify 3.4.18 and js-yaml 4.3.2 replaced advisory-affected versions on 2026-11-17. Monaco 0.57.0 bundles a DOMPurify with a published advisory that no Monaco release fixes yet (BACKLOG SEC-23).
 

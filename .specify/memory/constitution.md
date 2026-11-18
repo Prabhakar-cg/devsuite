@@ -50,7 +50,7 @@ must be labeled as not-strictly-offline in the UI and spec.
 ### III. Vanilla Stack, Single Store
 
 Vanilla HTML/CSS/JS only — no frameworks (React, Vue, Svelte, Tailwind) and no build
-tools. Backend is Python 3.10+ / FastAPI. All persistence goes through DevDB
+tools. Backend is Python 3.11+ / FastAPI. All persistence goes through DevDB
 (`.dsb` binary); no SQLite, PostgreSQL, Redis, or any external database.
 
 ### IV. Client-Side Encryption Boundary (NON-NEGOTIABLE)
