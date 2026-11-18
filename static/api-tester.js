@@ -763,6 +763,10 @@ function runScriptSandboxed(kind, code, dsResponse = null, timeoutMs = SCRIPT_TI
                 envVars: { ...(getActiveEnv()?.vars || {}) },
                 response: dsResponse,
             });
+        }).catch((e) => {
+            // e.g. crypto.subtle unavailable — fail now instead of waiting for the timeout
+            cleanup();
+            resolve({ logs: [{ type: 'error', text: `Script signing failed: ${e.message}` }], results: [] });
         });
     });
 }
@@ -1211,7 +1215,7 @@ function renameRequest(idx) {
     const name = prompt('Rename request:', item.name || '');
     if (name === null) return; // NOSONAR — guard clause
     item.name = name.trim() || item.name;
-    saveCollections();
+    void saveCollections();
     renderCollections();
 }
 
@@ -1219,7 +1223,7 @@ function duplicateRequest(idx) {
     const copy = structuredClone(collections[idx]);
     copy.name = `${copy.name || 'request'} (copy)`;
     collections.splice(idx + 1, 0, copy);
-    saveCollections();
+    void saveCollections();
     renderCollections();
 }
 
@@ -1229,7 +1233,7 @@ function moveRequestToFolder(idx) {
     if (raw === null) return; // NOSONAR — guard clause
     const path = globalThis.CollectionUtils.normalizeFolderPath(raw);
     if (path) { item.folder = path; } else { delete item.folder; }
-    saveCollections();
+    void saveCollections();
     renderCollections();
 }
 
@@ -1237,7 +1241,7 @@ function deleteRequest(idx) {
     const item = collections[idx];
     if (!confirm(`Delete request "${item.name || item.url}"?`)) return;
     collections.splice(idx, 1);
-    saveCollections();
+    void saveCollections();
     renderCollections();
 }
 
@@ -1247,7 +1251,7 @@ function renameFolderPrompt(path) {
     const newPath = globalThis.CollectionUtils.normalizeFolderPath(raw);
     if (!newPath || newPath === path) return;
     const n = globalThis.CollectionUtils.renameFolder(collections, folderAuths, path, newPath);
-    saveCollections();
+    void saveCollections();
     renderCollections();
     showToast(`Renamed folder — ${n} request${n !== 1 ? 's' : ''} updated`, 'success');
 }
@@ -1257,7 +1261,7 @@ function deleteFolderPrompt(path) {
     if (!confirm(`Delete folder "${path}" and its ${count} request${count !== 1 ? 's' : ''}?`)) return;
     const res = globalThis.CollectionUtils.deleteFolder(collections, folderAuths, path);
     collections = res.items;
-    saveCollections();
+    void saveCollections();
     renderCollections();
     showToast(`Deleted folder "${path}" (${res.removed} request${res.removed !== 1 ? 's' : ''} removed)`, 'success');
 }
@@ -1286,7 +1290,7 @@ function createFolderElement(node) {
     runBtn.appendChild(_makeSvg({ width: '10', height: '10', viewBox: '0 0 24 24', fill: 'currentColor', stroke: 'currentColor', 'stroke-width': '1', 'stroke-linejoin': 'round', 'aria-hidden': 'true' }, 'polygon', { points: '6 4 20 12 6 20 6 4' }));
     runBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        runCollectionItems(collectTreeItems(node), `folder "${node.path}"`);
+        void runCollectionItems(collectTreeItems(node), `folder "${node.path}"`);
     });
 
     const lockBtn = document.createElement('button');
@@ -1359,7 +1363,7 @@ function createFolderElement(node) {
         const src = parseInt(e.dataTransfer.getData('text/plain'), 10);
         if (Number.isNaN(src)) return;
         globalThis.CollectionUtils.moveItem(collections, src, collections.length, node.path);
-        saveCollections();
+        void saveCollections();
         renderCollections();
     });
 
@@ -1421,7 +1425,7 @@ function appendCollectionItem(parent, item, idx) {
         const src = parseInt(e.dataTransfer.getData('text/plain'), 10);
         if (Number.isNaN(src) || src === idx) return;
         globalThis.CollectionUtils.moveItem(collections, src, idx, item.folder);
-        saveCollections();
+        void saveCollections();
         renderCollections();
     });
 
@@ -1501,7 +1505,7 @@ els.saveBtn.addEventListener('click', () => {
     const item = { ...buildRawConfig(), name };
     if (folder) item.folder = folder;
     collections.push(item);
-    saveCollections();
+    void saveCollections();
     renderCollections();
 });
 
@@ -1517,7 +1521,7 @@ els.collectionsList.addEventListener('drop', (e) => {
     const src = parseInt(e.dataTransfer.getData('text/plain'), 10);
     if (Number.isNaN(src)) return;
     globalThis.CollectionUtils.moveItem(collections, src, collections.length, undefined);
-    saveCollections();
+    void saveCollections();
     renderCollections();
 });
 
@@ -1867,7 +1871,7 @@ els.btnOpenapiImport.addEventListener('click', () => {
     }
 
     collections = [...collections, ...imported];
-    saveCollections();
+    void saveCollections();
     renderCollections();
     closeOpenapiModal();
     showToast(`Imported ${imported.length} endpoint${imported.length !== 1 ? 's' : ''} from OpenAPI spec`, 'success');
@@ -2245,7 +2249,7 @@ async function runCollectionItems(entries, scopeLabel) {
 }
 
 els.btnRunCollection.addEventListener('click', () => {
-    runCollectionItems(collectTreeItems(buildFolderTree()), 'all requests');
+    void runCollectionItems(collectTreeItems(buildFolderTree()), 'all requests');
 });
 els.btnRunnerStop.addEventListener('click', () => { runnerStopRequested = true; });
 els.btnRunnerClose.addEventListener('click', () => { runnerStopRequested = true; els.runnerModal.close(); });
@@ -2318,7 +2322,7 @@ async function initApp() {
     updateMethodColor();
     const guard = await AuthGuard.init('API Tester');
     if (guard !== null) {
-        loadCollections();
+        void loadCollections();
         loadEnvironments();
     }
 }

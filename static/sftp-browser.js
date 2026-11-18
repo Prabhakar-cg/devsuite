@@ -239,7 +239,7 @@ document.getElementById('do-connect-btn').addEventListener('click', () => {
         return;
     }
     document.getElementById('connect-modal-overlay').style.display = 'none';
-    connectTo(prof);
+    void connectTo(prof); // loadDirectory reports its own errors
 });
 
 // ──────────────────────────────────────────
@@ -267,11 +267,11 @@ document.getElementById('go-up-btn').addEventListener('click', () => {
     const parts = activeConn.path.replace(/\/$/, '').split('/');
     parts.pop();
     activeConn.path = parts.join('/') || '/';
-    loadDirectory(activeConn.path);
+    void loadDirectory(activeConn.path);
 });
 
 document.getElementById('refresh-btn').addEventListener('click', () => {
-    if (activeConn) loadDirectory(activeConn.path);
+    if (activeConn) void loadDirectory(activeConn.path);
 });
 
 async function loadDirectory(path) {
@@ -380,7 +380,7 @@ function renderFileGrid(files) {
                 const newPath = activeConn.path === '/'
                     ? '/' + f.name
                     : activeConn.path + '/' + f.name;
-                loadDirectory(newPath);
+                void loadDirectory(newPath);
             });
             card.title = 'Double-click to open';
         }
@@ -408,7 +408,7 @@ function renderBreadcrumb(path) {
         if (!isActive) {
             crumb.addEventListener('click', () => {
                 const newPath = idx === 0 ? '/' : parts.slice(0, idx + 1).join('/');
-                loadDirectory(newPath || '/');
+                void loadDirectory(newPath || '/');
             });
         }
         el.appendChild(crumb);

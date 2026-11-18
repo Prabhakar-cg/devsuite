@@ -182,7 +182,7 @@ async function attemptUnlock() {
         document.getElementById('lock-overlay').style.display = 'none';
         _authenticated = true;
         document.getElementById('lock-pw-input').value = '';
-        loadMeta();
+        void loadMeta();
         toast('Access granted', 'success');
     } catch (e) {
         console.error(e);
@@ -365,12 +365,12 @@ function setupAboutPanel() {
 // ── DOMContentLoaded ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     // Show lock screen (will call loadMeta internally once authenticated)
-    initLockScreen();
+    void initLockScreen();
 
     // Lock screen events
     document.getElementById('lock-unlock-btn').addEventListener('click', attemptUnlock);
     document.getElementById('lock-pw-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter') attemptUnlock();
+        if (e.key === 'Enter') void attemptUnlock();
     });
 
     // Export

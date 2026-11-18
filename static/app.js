@@ -537,14 +537,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupDropzone(dropEl, inputEl, labelEl, textareaEl) {
         inputEl.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) handleFileUpload(e.target.files[0], labelEl, textareaEl);
+            if (e.target.files.length > 0) void handleFileUpload(e.target.files[0], labelEl, textareaEl);
         });
         dropEl.addEventListener('dragover', (e) => { e.preventDefault(); dropEl.classList.add('drag-active'); });
         dropEl.addEventListener('dragleave', () => dropEl.classList.remove('drag-active'));
         dropEl.addEventListener('drop', (e) => {
             e.preventDefault();
             dropEl.classList.remove('drag-active');
-            if (e.dataTransfer.files.length > 0) handleFileUpload(e.dataTransfer.files[0], labelEl, textareaEl);
+            if (e.dataTransfer.files.length > 0) void handleFileUpload(e.dataTransfer.files[0], labelEl, textareaEl);
         });
     }
 
@@ -1431,7 +1431,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Remove active class from previous active row
                 document.querySelectorAll('.tree-file-row.active-file').forEach(r => r.classList.remove('active-file'));
                 row.classList.add('active-file');
-                openFileDiff(node.path, node.status, node.name);
+                void openFileDiff(node.path, node.status, node.name);
             });
         }
         return row;
@@ -1449,7 +1449,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = makeMoveBtn('→', 'move-right', isFolder ? `Copy folder to right` : `Copy to right`);
             btn.addEventListener('click', e => {
                 e.stopPropagation();
-                isFolder ? copyFolderToSide(node, 'right') : copyFileToSide(node.path, 'right');
+                (isFolder ? copyFolderToSide(node, 'right') : copyFileToSide(node.path, 'right'))
+                    .catch(err => showToast(`Copy failed: ${err.message}`, 'error'));
             });
             wrap.appendChild(btn);
         }
@@ -1457,7 +1458,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = makeMoveBtn('←', 'move-left', isFolder ? `Copy folder to left` : `Copy to left`);
             btn.addEventListener('click', e => {
                 e.stopPropagation();
-                isFolder ? copyFolderToSide(node, 'left') : copyFileToSide(node.path, 'left');
+                (isFolder ? copyFolderToSide(node, 'left') : copyFileToSide(node.path, 'left'))
+                    .catch(err => showToast(`Copy failed: ${err.message}`, 'error'));
             });
             wrap.appendChild(btn);
         }
