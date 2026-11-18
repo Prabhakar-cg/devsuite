@@ -514,7 +514,10 @@ function copyToClipboard(text, label = 'Value') {
     navigator.clipboard.writeText(text).then(() => {
         toast(`${label} copied — cleared in 30s`, 'success');
         if (clipTimer) clearTimeout(clipTimer);
-        clipTimer = setTimeout(() => { navigator.clipboard.writeText('').catch(() => {}); }, 30000);
+        clipTimer = setTimeout(() => {
+            navigator.clipboard.writeText('').catch(() =>
+                toast(`Could not auto-clear the clipboard — clear it manually (it may still hold the ${label.toLowerCase()})`, 'error'));
+        }, 30000);
     }).catch(() => toast(`Could not copy ${label.toLowerCase()} — clipboard access was denied`, 'error'));
 }
 

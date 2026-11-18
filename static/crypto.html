@@ -392,7 +392,7 @@
                     Input
                     <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="hash-paste-btn"><svg class="ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg> Paste</button>
                 </div>
-                <textarea aria-label="Text to hash" id="hash-input" class="cs-textarea" placeholder="Enter any text to hash…" style="min-height:120px; max-height:30vh;"></textarea>
+                <textarea aria-label="Hash Input" id="hash-input" class="cs-textarea" placeholder="Enter any text to hash…" style="min-height:120px; max-height:30vh;"></textarea>
             </div>
 
             <!-- Results -->
@@ -429,14 +429,14 @@
                     Plaintext Input
                     <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="aes-paste-btn"><svg class="ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6a1 1 0 0 1 1 1v1H8V4a1 1 0 0 1 1-1z"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg> Paste</button>
                 </div>
-                <textarea aria-label="AES input text" id="aes-input" class="cs-textarea" placeholder="Enter text to encrypt…"></textarea>
+                <textarea aria-label="AES Plaintext Input" id="aes-input" class="cs-textarea" placeholder="Enter text to encrypt…"></textarea>
             </div>
             <div class="cs-col">
                 <div class="cs-col-header">
                     Output
                     <span id="aes-status"></span>
                 </div>
-                <textarea aria-label="AES result" id="aes-output" class="cs-textarea" placeholder="Result will appear here…" readonly style="color:var(--text-secondary);"></textarea>
+                <textarea aria-label="AES Output" id="aes-output" class="cs-textarea" placeholder="Result will appear here…" readonly style="color:var(--text-secondary);"></textarea>
                 <div style="padding:0.5rem 1rem; border-top: 1px solid var(--glass-border); display:flex; gap:0.5rem; flex-shrink:0;">
                     <button class="btn btn-ghost" style="font-size:0.75rem;" id="aes-copy-btn">Copy Output</button>
                     <button class="btn btn-ghost" style="font-size:0.75rem;" id="aes-swap-btn">↕ Swap</button>
@@ -470,28 +470,28 @@
                     Public Key (PEM)
                     <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="rsa-copy-pub">Copy</button>
                 </div>
-                <textarea aria-label="RSA public key" id="rsa-public-key" class="key-textarea" placeholder="Generate a keypair to see the public key…" readonly></textarea>
+                <textarea aria-label="RSA Public Key (PEM)" id="rsa-public-key" class="key-textarea" placeholder="Generate a keypair to see the public key…" readonly></textarea>
             </div>
             <div class="rsa-key-pane">
                 <div class="cs-col-header">
                     Private Key (PEM)
                     <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="rsa-copy-priv">Copy</button>
                 </div>
-                <textarea aria-label="RSA private key" id="rsa-private-key" class="key-textarea" placeholder="Generate a keypair to see the private key…" readonly></textarea>
+                <textarea aria-label="RSA Private Key (PEM)" id="rsa-private-key" class="key-textarea" placeholder="Generate a keypair to see the private key…" readonly></textarea>
             </div>
         </div>
 
         <div class="cs-body" style="border-top:1px solid var(--glass-border);">
             <div class="cs-col">
                 <div class="cs-col-header">Plaintext / Ciphertext Input</div>
-                <textarea aria-label="RSA input" id="rsa-input" class="cs-textarea" placeholder="Enter plaintext to encrypt, or base64 ciphertext to decrypt…"></textarea>
+                <textarea aria-label="RSA Plaintext / Ciphertext Input" id="rsa-input" class="cs-textarea" placeholder="Enter plaintext to encrypt, or base64 ciphertext to decrypt…"></textarea>
             </div>
             <div class="cs-col">
                 <div class="cs-col-header">
                     Output
                     <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="rsa-copy-output">Copy</button>
                 </div>
-                <textarea aria-label="RSA output" id="rsa-output" class="cs-textarea" placeholder="Output will appear here…" readonly style="color:var(--text-secondary);"></textarea>
+                <textarea aria-label="RSA Output" id="rsa-output" class="cs-textarea" placeholder="Output will appear here…" readonly style="color:var(--text-secondary);"></textarea>
             </div>
         </div>
     </div>
@@ -519,14 +519,14 @@
         <div class="cs-body">
             <div class="cs-col">
                 <div class="cs-col-header">Message</div>
-                <textarea aria-label="HMAC message" id="hmac-message" class="cs-textarea" placeholder="Enter the message to sign or verify…"></textarea>
+                <textarea aria-label="HMAC Message" id="hmac-message" class="cs-textarea" placeholder="Enter the message to sign or verify…"></textarea>
             </div>
             <div class="cs-col" style="max-width:55%;">
                 <div class="cs-col-header">
                     Signature (Hex)
                     <button class="btn btn-ghost" style="padding:2px 8px;font-size:0.7rem;" id="hmac-copy-sig">Copy</button>
                 </div>
-                <textarea aria-label="HMAC signature" id="hmac-signature" class="cs-textarea" placeholder="Signature will appear here after signing.\nPaste an existing signature here to verify." style="color:var(--text-secondary);"></textarea>
+                <textarea aria-label="HMAC Signature (Hex)" id="hmac-signature" class="cs-textarea" placeholder="Signature will appear here after signing.\nPaste an existing signature here to verify." style="color:var(--text-secondary);"></textarea>
                 <div id="hmac-verify-banner" class="verify-banner"></div>
             </div>
         </div>
@@ -572,14 +572,14 @@
         <div class="cs-body">
             <div class="cs-col">
                 <div class="cs-col-header">Input</div>
-                <textarea aria-label="Base64 input" id="b64-input" class="cs-textarea" placeholder="Enter text to encode, or a Base64 string to decode…"></textarea>
+                <textarea aria-label="Base64 Input" id="b64-input" class="cs-textarea" placeholder="Enter text to encode, or a Base64 string to decode…"></textarea>
             </div>
             <div class="cs-col">
                 <div class="cs-col-header">
                     Output
                     <span id="b64-status"></span>
                 </div>
-                <textarea aria-label="Base64 output" id="b64-output" class="cs-textarea" placeholder="Output will appear here…" readonly style="color:var(--text-secondary);"></textarea>
+                <textarea aria-label="Base64 Output" id="b64-output" class="cs-textarea" placeholder="Output will appear here…" readonly style="color:var(--text-secondary);"></textarea>
             </div>
         </div>
     </div>
