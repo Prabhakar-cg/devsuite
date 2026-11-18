@@ -21,7 +21,7 @@ RUN apt-get update \
 
 # Non-root user; all persistent data (the encrypted DevDB, audit log) lives in /data via HOME.
 RUN useradd --create-home --home-dir /data --uid 10001 --shell /usr/sbin/nologin devsuite \
- && mkdir -p /app && chown devsuite:devsuite /data /app
+ && chown devsuite:devsuite /data
 ENV HOME=/data \
     PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
@@ -30,9 +30,10 @@ ENV HOME=/data \
     PORT=8000
 COPY --from=build /opt/venv /opt/venv
 WORKDIR /app
-COPY --chown=devsuite:devsuite main.py deps.py devdb.py roadmap_utils.py ./
-COPY --chown=devsuite:devsuite routes ./routes
-COPY --chown=devsuite:devsuite static ./static
+# App code stays root-owned (read-only to the runtime user); all writes go to $HOME=/data.
+COPY main.py deps.py devdb.py roadmap_utils.py ./
+COPY routes ./routes
+COPY static ./static
 USER devsuite
 VOLUME ["/data"]
 EXPOSE 8000

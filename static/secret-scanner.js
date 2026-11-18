@@ -218,6 +218,7 @@
     // (GitHub push protection flags them even when fake).
     const FAKE_OPENAI = ['s', 'k-proj-9fK2LmQ7xW3vB8nT5yH1cR6dZ0aS4eU'].join('');
     const FAKE_GITHUB = ['gh', 'p_9aB3dE5fG7hJ2kL4mN6pQ8rS0tU1vW3xY5zA'].join('');
+    const FAKE_DB_URL = ['postgres://app:', 'notasecret', '@localhost/db'].join('');
 
     const SAMPLE = [
         '# Example: an MCP config that leaked a key, plus a .env fragment',
@@ -229,7 +230,7 @@
         '}',
         '',
         'GITHUB_TOKEN=' + FAKE_GITHUB,
-        'DATABASE_URL=postgres://app:notasecret@localhost/db',
+        'DATABASE_URL=' + FAKE_DB_URL,
     ].join('\n');
 
     const SAMPLE_MCP = JSON.stringify({
