@@ -84,9 +84,39 @@ function assertSafeScriptCode(code) {
     return code;
 }
 
-function buildAsyncScriptBody(code) {
+function parseAndValidateScriptPlan(code) {
     const safeCode = assertSafeScriptCode(code);
-    return `return (async()=>{\n${safeCode}\n})()`;
+    let plan;
+    try {
+        plan = JSON.parse(safeCode);
+    } catch {
+        throw new Error('Script must be valid JSON.');
+    }
+
+    if (!Array.isArray(plan)) {
+        throw new Error('Script plan must be an array of steps.');
+    }
+
+    const allowedOps = new Set(['setVar', 'setEnvVar', 'expectEqual', 'log']);
+    for (const step of plan) {
+        if (!step || typeof step !== 'object') throw new Error('Invalid script step.');
+        if (!allowedOps.has(step.op)) throw new Error('Script contains disallowed operations.');
+    }
+    return plan;
+}
+
+async function executeScriptPlan(plan, { ds, consoleObj }) {
+    for (const step of plan) {
+        if (step.op === 'setVar') {
+            ds.setVar(step.key, step.value);
+        } else if (step.op === 'setEnvVar') {
+            ds.setEnvVar(step.key, step.value);
+        } else if (step.op === 'expectEqual') {
+            expect(step.actual).toEqual(step.expected);
+        } else if (step.op === 'log') {
+            consoleObj.log(step.message);
+        }
+    }
 }
 
 function jsonSafe(v) {
@@ -173,15 +203,16 @@ self.onmessage = async (e) => {
     }
 
     try {
+        const plan = parseAndValidateScriptPlan(code);
         if (kind === 'test') {
             const ds = makeDs(runtimeVars, envVars, mutations, { response });
             const test = (name, fn) => _runTestCase(results, logs, name, fn);
-            const run = new Function('ds', 'test', 'expect', 'console', buildAsyncScriptBody(code));
-            await run(ds, test, expect, consoleObj);
+            await test('script-plan', async () => {
+                await executeScriptPlan(plan, { ds, consoleObj });
+            });
         } else {
             const ds = makeDs(runtimeVars, envVars, mutations);
-            const run = new Function('ds', 'expect', 'console', buildAsyncScriptBody(code));
-            await run(ds, expect, consoleObj);
+            await executeScriptPlan(plan, { ds, consoleObj });
         }
     } catch (err) {
         const label = kind === 'test' ? 'Test script error' : 'Pre-request error';
